@@ -35,6 +35,7 @@ import com.nuvio.tv.ui.screens.detail.MetaDetailsScreen
 import com.nuvio.tv.ui.screens.home.HomeScreen
 import com.nuvio.tv.ui.screens.addon.AddonManagerScreen
 import com.nuvio.tv.ui.screens.addon.CatalogOrderScreen
+import com.nuvio.tv.ui.screens.apps.AppsScreen
 import com.nuvio.tv.ui.screens.library.LibraryScreen
 import com.nuvio.tv.ui.screens.player.PlayerExitReason
 import com.nuvio.tv.ui.screens.player.PlayerScreen
@@ -1242,6 +1243,10 @@ private fun PlaybackNavHost(
                     )
                 }
             )
+        }
+
+        composable(Screen.Apps.route) {
+            AppsScreen()
         }
 
         composable(Screen.Settings.route) {
