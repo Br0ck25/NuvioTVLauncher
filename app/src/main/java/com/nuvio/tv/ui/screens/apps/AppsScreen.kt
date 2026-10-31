@@ -19,8 +19,11 @@ import androidx.compose.foundation.lazy.grid.LazyVerticalGrid
 import androidx.compose.foundation.lazy.grid.items
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
+import androidx.compose.material.icons.filled.CheckCircle
+import androidx.compose.material.icons.filled.Home
 import androidx.compose.material.icons.filled.Settings
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.DisposableEffect
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
@@ -30,13 +33,17 @@ import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.ImageBitmap
 import androidx.compose.ui.graphics.asImageBitmap
+import androidx.compose.ui.graphics.vector.ImageVector
 import androidx.compose.ui.platform.LocalContext
+import androidx.compose.ui.platform.LocalLifecycleOwner
 import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
 import androidx.core.graphics.drawable.toBitmap
+import androidx.lifecycle.Lifecycle
+import androidx.lifecycle.LifecycleEventObserver
 import androidx.tv.material3.Border
 import androidx.tv.material3.ClickableSurfaceDefaults
 import androidx.tv.material3.ExperimentalTvMaterial3Api
@@ -45,6 +52,7 @@ import androidx.tv.material3.MaterialTheme
 import androidx.tv.material3.Surface
 import androidx.tv.material3.Text
 import com.nuvio.tv.R
+import com.nuvio.tv.core.launcher.LauncherAccessibilityService
 import com.nuvio.tv.ui.theme.NuvioTheme
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.withContext
@@ -92,9 +100,24 @@ private fun loadInstalledApps(context: Context): List<InstalledApp> {
 @Composable
 fun AppsScreen() {
     val context = LocalContext.current
+    val lifecycleOwner = LocalLifecycleOwner.current
     var apps by remember { mutableStateOf<List<InstalledApp>>(emptyList()) }
+    var isAccessibilityEnabled by remember { mutableStateOf(false) }
+
+    DisposableEffect(lifecycleOwner) {
+        val observer = LifecycleEventObserver { _, event ->
+            if (event == Lifecycle.Event.ON_RESUME) {
+                isAccessibilityEnabled = LauncherAccessibilityService.isServiceEnabled(context)
+            }
+        }
+        lifecycleOwner.lifecycle.addObserver(observer)
+        onDispose {
+            lifecycleOwner.lifecycle.removeObserver(observer)
+        }
+    }
 
     LaunchedEffect(Unit) {
+        isAccessibilityEnabled = LauncherAccessibilityService.isServiceEnabled(context)
         apps = withContext(Dispatchers.Default) { loadInstalledApps(context) }
     }
 
@@ -119,9 +142,24 @@ fun AppsScreen() {
             verticalArrangement = Arrangement.spacedBy(NuvioTheme.spacing.md),
             modifier = Modifier.fillMaxSize()
         ) {
+            item(key = "default_launcher_toggle") {
+                AppTile(
+                    label = if (isAccessibilityEnabled) {
+                        stringResource(R.string.apps_default_launcher_active)
+                    } else {
+                        stringResource(R.string.apps_set_default_launcher)
+                    },
+                    iconVector = if (isAccessibilityEnabled) Icons.Default.CheckCircle else Icons.Default.Home,
+                    icon = null,
+                    onClick = {
+                        LauncherAccessibilityService.openAccessibilitySettings(context)
+                    }
+                )
+            }
             item(key = "android_settings") {
                 AppTile(
                     label = stringResource(R.string.apps_android_settings),
+                    iconVector = Icons.Default.Settings,
                     icon = null,
                     onClick = {
                         launch(
@@ -134,6 +172,7 @@ fun AppsScreen() {
             items(apps, key = { it.packageName }) { app ->
                 AppTile(
                     label = app.label,
+                    iconVector = null,
                     icon = app.icon,
                     onClick = { launch(app.launchIntent) }
                 )
@@ -147,6 +186,7 @@ fun AppsScreen() {
 private fun AppTile(
     label: String,
     icon: ImageBitmap?,
+    iconVector: ImageVector? = null,
     onClick: () -> Unit
 ) {
     Surface(
@@ -186,7 +226,7 @@ private fun AppTile(
                     )
                 } else {
                     Icon(
-                        imageVector = Icons.Default.Settings,
+                        imageVector = iconVector ?: Icons.Default.Settings,
                         contentDescription = null,
                         tint = NuvioTheme.colors.TextSecondary,
                         modifier = Modifier.size(48.dp)
