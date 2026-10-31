@@ -8,11 +8,21 @@
     Bring your own sources. Nuvio turns them into a library with artwork, ratings, subtitles, and your place saved on every screen.
   </p>
 
-  [Website](https://nuvio.tv) · [GitHub releases](https://github.com/Br0ck25/NuvioTVLauncher/releases) · [Support Nuvio](https://nuvio.tv/support)
+  [Original Nuvio website](https://nuvio.tv) · [GitHub releases](https://github.com/Br0ck25/NuvioTVLauncher/releases) · [Support the original Nuvio](https://nuvio.tv/support)
 
 </div>
 
-## Get Nuvio TV
+## About this project
+
+**Nuvio TV Launcher** is an independent fork of [Nuvio TV](https://github.com/NuvioMedia/NuvioTV). It adds Android TV home-screen launcher support, an Apps screen for your installed apps, a shortcut to Android Settings, and an option to make the Home button open the app.
+
+This project is **not affiliated with, endorsed by, or supported by** the Nuvio team or NuvioMedia. Nuvio and its logo belong to their respective owners. Please report problems with this fork in this repository, not to the original project.
+
+Account sign-in and QR-code login rely on the original project's hosted services, which this fork does not have access to. Choose **Continue without account** to use the app.
+
+The website and support links above belong to the original Nuvio project.
+
+## Get Nuvio TV Launcher
 
 - [Android TV APK](https://github.com/Br0ck25/NuvioTVLauncher/releases)
 
