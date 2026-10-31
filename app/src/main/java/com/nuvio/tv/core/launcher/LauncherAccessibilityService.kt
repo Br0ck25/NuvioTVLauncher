@@ -18,8 +18,11 @@ class LauncherAccessibilityService : AccessibilityService() {
     /** When the app was last brought forward for HOME, so the stock launcher cannot double-fire. */
     private var lastHomeLaunchTime = 0L
 
-    /** Uptime of the previous HOME key-up, used to tell a double tap from a single press. */
-    private var lastHomeKeyUpTime = 0L
+    /** Single vs. double tap detection for HOME, shared with the in-app key handler. */
+    private val homeKeyGesture = HomeKeyGesture()
+
+    /** Package of the last window that reported a state change, used to avoid relaunching ourselves. */
+    private var lastForegroundPackage: String? = null
 
     override fun onServiceConnected() {
         super.onServiceConnected()
@@ -38,34 +41,34 @@ class LauncherAccessibilityService : AccessibilityService() {
     }
 
     override fun onKeyEvent(event: KeyEvent): Boolean {
-        if (event.keyCode == KeyEvent.KEYCODE_HOME) {
-            if (event.action == KeyEvent.ACTION_UP) handleHomeKeyUp()
-            return true
-        }
-        return super.onKeyEvent(event)
+        if (event.keyCode != KeyEvent.KEYCODE_HOME) return super.onKeyEvent(event)
+        // Nuvio itself is in front: let its own window handle HOME (single press = top of Home,
+        // double press = profile switcher). Launching the activity from here instead would stack a
+        // second instance on top of the one the user is looking at, which is why HOME appeared to
+        // do nothing when the app was already open.
+        if (lastForegroundPackage == packageName) return false
+        if (event.action == KeyEvent.ACTION_UP) handleHomeKeyUp()
+        return true
     }
 
     /**
-     * A single HOME press returns to the top of Home. A second press within [DOUBLE_TAP_WINDOW_MS]
-     * additionally opens the profile switcher, so switching profiles is one double tap away. The
-     * first press reacts immediately (no debounce delay on a plain HOME press); the double tap only
-     * adds the switcher on top of the already requested Home screen.
+     * A single HOME press returns to the top of Home. A second press right after it additionally
+     * opens the profile switcher, so switching profiles is one double tap away. The first press
+     * reacts immediately - nothing waits for a possible second press - and the double tap only adds
+     * the switcher on top of the Home request that already happened.
      */
     private fun handleHomeKeyUp() {
-        val now = SystemClock.uptimeMillis()
-        val sincePreviousPress = now - lastHomeKeyUpTime
-        lastHomeKeyUpTime = now
-        when {
-            // The key filter can deliver the same press twice; ignore those.
-            sincePreviousPress < DOUBLE_TAP_MIN_GAP_MS -> Unit
-            sincePreviousPress <= DOUBLE_TAP_WINDOW_MS -> launchHome(openProfileSelection = true)
-            else -> launchHome(openProfileSelection = false)
+        when (homeKeyGesture.onPress(SystemClock.uptimeMillis())) {
+            HomeKeyPress.IGNORED -> Unit
+            HomeKeyPress.SINGLE -> launchHome(openProfileSelection = false)
+            HomeKeyPress.DOUBLE -> launchHome(openProfileSelection = true)
         }
     }
 
     override fun onAccessibilityEvent(event: AccessibilityEvent?) {
         if (event?.eventType == AccessibilityEvent.TYPE_WINDOW_STATE_CHANGED) {
             val pkg = event.packageName?.toString() ?: return
+            lastForegroundPackage = pkg
             if (isStockLauncherPackage(pkg)) {
                 val now = SystemClock.uptimeMillis()
                 if (now - lastHomeLaunchTime > HOME_LAUNCH_DEBOUNCE_MS) {
@@ -109,12 +112,6 @@ class LauncherAccessibilityService : AccessibilityService() {
 
     companion object {
         private const val TAG = "LauncherAccessibility"
-
-        /** Presses closer together than this are duplicate deliveries of one press, not a double tap. */
-        private const val DOUBLE_TAP_MIN_GAP_MS = 120L
-
-        /** A second HOME press inside this window opens the profile switcher. */
-        private const val DOUBLE_TAP_WINDOW_MS = 450L
 
         /** Suppresses re-launching when the stock launcher window shows up right after a HOME press. */
         private const val HOME_LAUNCH_DEBOUNCE_MS = 400L

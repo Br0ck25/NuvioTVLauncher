@@ -2,6 +2,7 @@ package com.nuvio.tv
 
 import android.content.Context
 import android.content.Intent
+import android.content.pm.PackageManager
 import android.content.res.Configuration
 import android.graphics.drawable.ColorDrawable
 import android.os.Bundle
@@ -148,6 +149,9 @@ import com.nuvio.tv.core.auth.AuthManager
 import com.nuvio.tv.core.auth.DeviceSessionRegistration
 import com.nuvio.tv.core.deeplink.DeepLinkHandler
 import com.nuvio.tv.core.deeplink.DeepLinkParser
+import com.nuvio.tv.core.launcher.HomeKeyGesture
+import com.nuvio.tv.core.launcher.HomeKeyPress
+import com.nuvio.tv.core.launcher.LauncherAccessibilityService
 import com.nuvio.tv.core.launcher.LauncherHomeRequest
 import com.nuvio.tv.core.player.PlayerWindowBackdrop
 import com.nuvio.tv.core.party.PartyRepository
@@ -352,6 +356,16 @@ open class MainActivity : ComponentActivity() {
     /** Set when the user double-taps HOME; consumed once the profile switcher is shown. */
     private val pendingProfileSwitchRequest = MutableStateFlow(false)
 
+    /** Single vs. double tap detection for HOME pressed inside the app. */
+    private val homeKeyGesture = HomeKeyGesture()
+
+    /**
+     * True when HOME should be handled inside the app: either Nuvio is the resolved HOME activity, or
+     * the launcher accessibility service is on (the user chose "make the Home button open the app").
+     * Otherwise HOME is left alone so it still reaches the real launcher.
+     */
+    private var nuvioHandlesHomeKey = false
+
     private lateinit var jankStats: JankStats
 
     /** Activity-level launcher for external video players. Survives all navigation changes. */
@@ -414,6 +428,7 @@ open class MainActivity : ComponentActivity() {
         val launchEpisodeTitle = intent?.getStringExtra("episodeTitle")
         captureDeepLinkIntent(intent)
         captureHomeRequestIntent(intent, fromNewIntent = false)
+        refreshHomeRole()
 
         setContent {
             var hasSelectedProfileThisSession by rememberSaveable { mutableStateOf(false) }
@@ -1458,6 +1473,7 @@ open class MainActivity : ComponentActivity() {
         // without a PIN exists.
         val idleGapMs = SystemClock.uptimeMillis() - ambientIdleController.lastInteractionAt.value
         ambientIdleController.dismiss()
+        refreshHomeRole()
         // An external player covering the app is playback, not idleness, so a long film must not
         // hand the TV back to the picker when it ends.
         if (idleGapMs >= PROFILE_SWITCH_IDLE_TIMEOUT_MS &&
@@ -1489,6 +1505,34 @@ open class MainActivity : ComponentActivity() {
         captureDeepLinkIntent(intent)
         captureLaunchIntent(intent)
         captureHomeRequestIntent(intent)
+    }
+
+    /**
+     * HOME pressed while Nuvio itself is in front. The first press returns to the top of Home, a
+     * second press right after it also opens the profile switcher.
+     */
+    private fun handleHomeKeyPress() {
+        when (homeKeyGesture.onPress(SystemClock.uptimeMillis())) {
+            HomeKeyPress.IGNORED -> Unit
+            HomeKeyPress.SINGLE -> pendingHomeRequestNonce.value += 1
+            HomeKeyPress.DOUBLE -> {
+                pendingHomeRequestNonce.value += 1
+                pendingProfileSwitchRequest.value = true
+            }
+        }
+    }
+
+    private fun refreshHomeRole() {
+        val ownsHomeRole = runCatching {
+            val homeIntent = Intent(Intent.ACTION_MAIN).addCategory(Intent.CATEGORY_HOME)
+            packageManager.resolveActivity(homeIntent, PackageManager.MATCH_DEFAULT_ONLY)
+                ?.activityInfo
+                ?.packageName == packageName
+        }.getOrDefault(false)
+        val serviceEnabled = runCatching {
+            LauncherAccessibilityService.isServiceEnabled(this)
+        }.getOrDefault(false)
+        nuvioHandlesHomeKey = ownsHomeRole || serviceEnabled
     }
 
     /**
@@ -1549,6 +1593,20 @@ open class MainActivity : ComponentActivity() {
     }
 
     override fun dispatchKeyEvent(event: KeyEvent): Boolean {
+        // HOME is checked before the ambient handler: while the slideshow is up a HOME press should
+        // end it *and* go home, instead of only dismissing the slideshow.
+        if (event.keyCode == KeyEvent.KEYCODE_HOME && nuvioHandlesHomeKey) {
+            ambientIdleController.onInteraction()
+            if (event.action == KeyEvent.ACTION_DOWN && ambientIdleController.isShowing.value) {
+                ambientIdleController.dismiss()
+            }
+            // While Nuvio is the launcher the system swallows HOME when this app is already in front:
+            // it neither starts the home activity again nor calls onNewIntent. Handling it here is the
+            // only way a HOME press on a scrolled Home, another tab, or a detail page can reset the
+            // screen - and the only way to get the double-tap profile switcher.
+            if (event.action == KeyEvent.ACTION_UP) handleHomeKeyPress()
+            return true
+        }
         if (ambientIdleController.consumeKeyEvent(event)) return true
         if (event.keyCode == KeyEvent.KEYCODE_BACK) {
             if (longPressBackHeld.value) {

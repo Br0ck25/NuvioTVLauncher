@@ -7,7 +7,6 @@
 package com.nuvio.tv.ui.components
 
 import android.widget.Toast
-import androidx.compose.foundation.BorderStroke
 import androidx.compose.foundation.Image
 import androidx.compose.foundation.focusGroup
 import androidx.compose.foundation.layout.Arrangement
@@ -41,11 +40,13 @@ import androidx.compose.ui.focus.FocusRequester
 import androidx.compose.ui.focus.focusRequester
 import androidx.compose.ui.focus.focusRestorer
 import androidx.compose.ui.focus.onFocusChanged
+import androidx.compose.ui.draw.clip
+import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.layout.ContentScale
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.res.stringResource
-import androidx.compose.ui.text.style.TextAlign
-import androidx.compose.ui.text.style.TextOverflow
+import androidx.compose.ui.semantics.contentDescription
+import androidx.compose.ui.semantics.semantics
 import androidx.compose.ui.unit.Dp
 import androidx.compose.ui.unit.dp
 import androidx.tv.material3.Border
@@ -60,15 +61,21 @@ import com.nuvio.tv.core.apps.launchInstalledApp
 import com.nuvio.tv.ui.theme.NuvioTheme
 
 val InstalledAppTileWidth = 180.dp
-val InstalledAppTileHeight = 128.dp
+
+/** Artwork-only tile, 16:9 so TV banners fill it without letterboxing. */
+val InstalledAppTileHeight = 101.dp
 
 @Composable
-fun InstalledAppArtwork(app: InstalledApp, modifier: Modifier = Modifier) {
+fun InstalledAppArtwork(
+    app: InstalledApp,
+    modifier: Modifier = Modifier,
+    contentScale: ContentScale = ContentScale.Fit
+) {
     if (app.icon != null) {
         Image(
             bitmap = app.icon,
             contentDescription = null,
-            contentScale = ContentScale.Fit,
+            contentScale = contentScale,
             modifier = modifier
         )
     } else {
@@ -81,6 +88,10 @@ fun InstalledAppArtwork(app: InstalledApp, modifier: Modifier = Modifier) {
     }
 }
 
+/**
+ * A bare, rounded app artwork tile: no card background, no resting border and no label, so the row
+ * reads as a strip of artwork. Only the focus ring is drawn, because the D-pad needs a visible target.
+ */
 @Composable
 fun InstalledAppTile(
     app: InstalledApp,
@@ -97,14 +108,12 @@ fun InstalledAppTile(
             .onFocusChanged { if (it.isFocused) onFocused() },
         shape = CardDefaults.shape(shape),
         colors = CardDefaults.colors(
-            containerColor = NuvioTheme.colors.BackgroundCard,
-            focusedContainerColor = NuvioTheme.colors.FocusBackground
+            containerColor = Color.Transparent,
+            focusedContainerColor = Color.Transparent
         ),
+        // No resting border and a transparent container: the artwork is the card. Same pattern as
+        // ContentCard, so the only chrome is the focus ring.
         border = CardDefaults.border(
-            border = Border(
-                border = BorderStroke(NuvioTheme.spacing.hairline, NuvioTheme.colors.Border),
-                shape = shape
-            ),
             focusedBorder = Border(
                 border = NuvioTheme.focusRing.border(NuvioTheme.spacing.xxs),
                 shape = shape
@@ -112,26 +121,22 @@ fun InstalledAppTile(
         ),
         scale = CardDefaults.scale(focusedScale = 1.03f)
     ) {
-        Column(
-            modifier = Modifier.fillMaxSize().padding(horizontal = 10.dp, vertical = 8.dp),
-            horizontalAlignment = Alignment.CenterHorizontally,
-            verticalArrangement = Arrangement.spacedBy(6.dp)
+        // The artwork carries the app name for screen readers now that the label is gone.
+        Box(
+            modifier = Modifier
+                .fillMaxSize()
+                .semantics { contentDescription = app.label },
+            contentAlignment = Alignment.Center
         ) {
-            Box(modifier = Modifier.weight(1f).fillMaxWidth(), contentAlignment = Alignment.Center) {
+            if (app.hasBanner) {
                 InstalledAppArtwork(
                     app = app,
-                    modifier = if (app.hasBanner) Modifier.fillMaxSize() else Modifier.size(64.dp)
+                    contentScale = ContentScale.Crop,
+                    modifier = Modifier.fillMaxSize().clip(shape)
                 )
+            } else {
+                InstalledAppArtwork(app = app, modifier = Modifier.size(64.dp))
             }
-            Text(
-                text = app.label,
-                style = MaterialTheme.typography.bodyMedium,
-                color = NuvioTheme.colors.TextPrimary,
-                maxLines = 1,
-                overflow = TextOverflow.Ellipsis,
-                textAlign = TextAlign.Center,
-                modifier = Modifier.fillMaxWidth()
-            )
         }
     }
 }

@@ -3,6 +3,9 @@ package com.nuvio.tv.core.apps
 /**
  * Shared by Home and Settings so a saved Installed Apps position means the same thing in both.
  * In follow-addons mode only independent rows may move; addon catalogs retain manifest order.
+ *
+ * The Installed Apps row starts at the very top of Home and only moves once the user reorders it, so
+ * `null`/stale saved orders never bury it under every catalog.
  */
 fun mergeHomeCatalogOrder(
     addonKeys: List<String>,
@@ -15,8 +18,18 @@ fun mergeHomeCatalogOrder(
     val independent = independentKeys.distinct().filterNot { it in addons }
     val available = (addons + independent).toSet()
     val saved = savedOrderKeys.asSequence().filter { it in available }.distinct().toList()
-    if (!followAddonsOrder) return saved + (addons + independent).filterNot { it in saved }
-    if (saved.isEmpty()) return addons + independent
+    // Never saved, or the key appeared after the order was stored: lead with it.
+    val unsavedDefaultFirst = independent.filter {
+        it == INSTALLED_APPS_CATALOG_KEY && it !in saved
+    }
+    if (!followAddonsOrder) {
+        return unsavedDefaultFirst +
+            saved +
+            (addons + independent).filterNot { it in saved || it in unsavedDefaultFirst }
+    }
+    if (saved.isEmpty()) {
+        return unsavedDefaultFirst + addons + independent.filterNot { it in unsavedDefaultFirst }
+    }
 
     val independentSet = independent.toSet()
     val result = mutableListOf<String>()
@@ -37,6 +50,11 @@ fun mergeHomeCatalogOrder(
         pointer++
     }
     independent.forEach { if (it !in result) result.add(it) }
+    // Still above everything when it was never given a saved position.
+    if (unsavedDefaultFirst.isNotEmpty()) {
+        result.removeAll(unsavedDefaultFirst.toSet())
+        result.addAll(0, unsavedDefaultFirst)
+    }
     return normalizeIndependentRows(result, independentSet, addonOwner)
 }
 

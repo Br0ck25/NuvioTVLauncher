@@ -7,9 +7,44 @@ import org.junit.Test
 
 class InstalledAppsCatalogTest {
     @Test
-    fun `new row is enabled and ordered by default`() {
+    fun `new row is enabled and leads the home order by default`() {
         val order = mergeHomeCatalogOrder(listOf("movies", "shows"), listOf(INSTALLED_APPS_CATALOG_KEY), emptyList(), false)
-        assertEquals(listOf("movies", "shows", INSTALLED_APPS_CATALOG_KEY), order)
+        assertEquals(listOf(INSTALLED_APPS_CATALOG_KEY, "movies", "shows"), order)
+    }
+
+    @Test
+    fun `unsaved apps row leads even when other rows already have positions`() {
+        val order = mergeHomeCatalogOrder(
+            addonKeys = listOf("movies", "shows"),
+            independentKeys = listOf("collection_favorites", INSTALLED_APPS_CATALOG_KEY),
+            savedOrderKeys = listOf("shows", "collection_favorites", "movies"),
+            followAddonsOrder = false
+        )
+        assertEquals(listOf(INSTALLED_APPS_CATALOG_KEY, "shows", "collection_favorites", "movies"), order)
+    }
+
+    @Test
+    fun `follow mode also leads with unsaved apps row`() {
+        val addons = listOf("a_movies", "a_shows", "b_movies")
+        val owner = { key: String -> key.substringBefore('_') }
+        assertEquals(
+            listOf(INSTALLED_APPS_CATALOG_KEY) + addons,
+            mergeHomeCatalogOrder(addons, listOf(INSTALLED_APPS_CATALOG_KEY), emptyList(), true, owner)
+        )
+        assertEquals(
+            listOf(INSTALLED_APPS_CATALOG_KEY) + addons,
+            mergeHomeCatalogOrder(addons, listOf(INSTALLED_APPS_CATALOG_KEY), listOf("b_movies"), true, owner)
+        )
+    }
+
+    @Test
+    fun `a saved apps position wins over the default top position`() {
+        val addons = listOf("a_movies", "a_shows", "b_movies")
+        val owner = { key: String -> key.substringBefore('_') }
+        assertEquals(
+            listOf("a_movies", "a_shows", INSTALLED_APPS_CATALOG_KEY, "b_movies"),
+            mergeHomeCatalogOrder(addons, listOf(INSTALLED_APPS_CATALOG_KEY), listOf("a_shows", INSTALLED_APPS_CATALOG_KEY), true, owner)
+        )
     }
 
     @Test
