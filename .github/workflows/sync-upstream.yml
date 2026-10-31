@@ -1,0 +1,46 @@
+name: Sync upstream Nuvio TV
+
+on:
+  schedule:
+    - cron: '0 6 * * *'
+  workflow_dispatch:
+
+permissions:
+  contents: write
+
+concurrency:
+  group: sync-upstream
+  cancel-in-progress: false
+
+jobs:
+  sync:
+    name: Merge NuvioMedia/NuvioTV dev into dev
+    runs-on: ubuntu-latest
+    if: github.repository != 'NuvioMedia/NuvioTV'
+    steps:
+      - name: Check out dev
+        uses: actions/checkout@v6
+        with:
+          ref: dev
+          fetch-depth: 0
+
+      - name: Merge upstream dev
+        run: |
+          git config user.name "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          git remote add upstream https://github.com/NuvioMedia/NuvioTV.git
+          git fetch upstream dev
+
+          behind="$(git rev-list --count HEAD..upstream/dev)"
+          if [[ "${behind}" == "0" ]]; then
+            echo "Already up to date with upstream."
+            exit 0
+          fi
+
+          echo "Merging ${behind} upstream commit(s)."
+          if ! git merge upstream/dev --no-edit -m "Merge upstream NuvioMedia/NuvioTV dev"; then
+            echo "Merge conflicts. Resolve them manually:" >&2
+            git diff --name-only --diff-filter=U >&2
+            exit 1
+          fi
+          git push origin HEAD:dev
