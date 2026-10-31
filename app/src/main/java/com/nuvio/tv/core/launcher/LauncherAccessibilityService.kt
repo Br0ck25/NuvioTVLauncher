@@ -65,6 +65,9 @@ class LauncherAccessibilityService : AccessibilityService() {
     private fun launchHome() {
         try {
             val intent = Intent(this, MainActivity::class.java).apply {
+                // Explicit + tagged so MainActivity lands on Home at the top even when the
+                // requested screen is a detail page, search, settings, or the player.
+                putExtra(LauncherHomeRequest.EXTRA_GO_HOME, true)
                 addFlags(Intent.FLAG_ACTIVITY_NEW_TASK or Intent.FLAG_ACTIVITY_RESET_TASK_IF_NEEDED or Intent.FLAG_ACTIVITY_SINGLE_TOP)
             }
             startActivity(intent)

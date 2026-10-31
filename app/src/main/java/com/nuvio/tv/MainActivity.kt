@@ -144,6 +144,7 @@ import com.nuvio.tv.core.auth.AuthManager
 import com.nuvio.tv.core.auth.DeviceSessionRegistration
 import com.nuvio.tv.core.deeplink.DeepLinkHandler
 import com.nuvio.tv.core.deeplink.DeepLinkParser
+import com.nuvio.tv.core.launcher.LauncherHomeRequest
 import com.nuvio.tv.core.player.PlayerWindowBackdrop
 import com.nuvio.tv.core.party.PartyRepository
 import com.nuvio.tv.core.profile.ProfileManager
@@ -332,6 +333,12 @@ open class MainActivity : ComponentActivity() {
     private val pendingDeepLinkUrl = MutableStateFlow<String?>(null)
     private val pendingLaunchIntent = MutableStateFlow<Intent?>(null)
 
+    /**
+     * Incremented on every HOME request (device HOME key via [com.nuvio.tv.core.launcher.LauncherAccessibilityService]
+     * or a plain HOME-category launch). Navigation observes it and returns to the top of Home.
+     */
+    private val pendingHomeRequestNonce = MutableStateFlow(0)
+
     private lateinit var jankStats: JankStats
 
     /** Activity-level launcher for external video players. Survives all navigation changes. */
@@ -393,6 +400,7 @@ open class MainActivity : ComponentActivity() {
         val launchEpisode = intent?.getIntExtra("episode", -1)?.takeIf { it >= 0 }
         val launchEpisodeTitle = intent?.getStringExtra("episodeTitle")
         captureDeepLinkIntent(intent)
+        captureHomeRequestIntent(intent, fromNewIntent = false)
 
         setContent {
             var hasSelectedProfileThisSession by rememberSaveable { mutableStateOf(false) }
@@ -879,6 +887,37 @@ open class MainActivity : ComponentActivity() {
                         ambientIdleController.onInteraction()
                     }
 
+                    // Device HOME key / HOME-category launch: always land on Home, scrolled to the top,
+                    // whatever screen (tab, detail page, search, settings, player) is showing.
+                    val homeRequestNonce by pendingHomeRequestNonce.collectAsState()
+                    var pendingHomeScrollReset by remember { mutableStateOf(false) }
+                    LaunchedEffect(homeRequestNonce, layoutChosen) {
+                        if (homeRequestNonce == 0 || layoutChosen != true) return@LaunchedEffect
+                        if (navController.currentDestination?.route == Screen.Home.route) {
+                            requestHomeScrollToTop(navController)
+                            return@LaunchedEffect
+                        }
+                        // Reset only once Home is actually the current destination; Home restores its
+                        // own saved scroll position, so the reset has to land after that restore.
+                        pendingHomeScrollReset = true
+                        val popped = navController.popBackStack(Screen.Home.route, inclusive = false)
+                        if (!popped) {
+                            navController.navigate(Screen.Home.route) {
+                                popUpTo(navController.graph.startDestinationId) {
+                                    saveState = true
+                                }
+                                launchSingleTop = true
+                                restoreState = true
+                            }
+                        }
+                    }
+                    LaunchedEffect(pendingHomeScrollReset, actualRoute) {
+                        if (!pendingHomeScrollReset || actualRoute != Screen.Home.route) return@LaunchedEffect
+                        repeat(2) { withFrameNanos { } }
+                        requestHomeScrollToTop(navController)
+                        pendingHomeScrollReset = false
+                    }
+
                     // Auto-play next episode for EXTERNAL players: the tracker resolves the
                     // next episode and we navigate into the same Screen.Stream auto-play route
                     // the internal onPlaybackEnded path uses. Collected from the root composable
@@ -1324,6 +1363,28 @@ open class MainActivity : ComponentActivity() {
         setIntent(intent)
         captureDeepLinkIntent(intent)
         captureLaunchIntent(intent)
+        captureHomeRequestIntent(intent)
+    }
+
+    /**
+     * The device HOME key is consumed by [com.nuvio.tv.core.launcher.LauncherAccessibilityService] so a
+     * launcher HOME press never leaves Nuvio: it is re-delivered as an intent instead. Both that intent
+     * and a plain HOME-category launch mean "show Home at the top".
+     *
+     * @param fromNewIntent false while the activity is being created: a plain HOME launch then simply
+     * opens the app on its start destination, so there is nothing to reset (and forcing a reset would
+     * override the first-run focus handling). An explicit accessibility-service request is still
+     * honoured, because the user did ask for Home.
+     */
+    private fun captureHomeRequestIntent(intent: Intent?, fromNewIntent: Boolean = true) {
+        val requested = if (fromNewIntent) {
+            LauncherHomeRequest.isRequested(intent)
+        } else {
+            intent?.getBooleanExtra(LauncherHomeRequest.EXTRA_GO_HOME, false) == true
+        }
+        if (requested) {
+            pendingHomeRequestNonce.value += 1
+        }
     }
 
     private fun captureDeepLinkIntent(intent: Intent?) {
@@ -2376,15 +2437,7 @@ private fun navigateToDrawerRoute(
 ) {
     if (currentRoute == targetRoute) {
         if (targetRoute == Screen.Home.route) {
-            // Scroll Home to top by clearing saved focus/scroll state on the ViewModel.
-            val homeEntry = try {
-                navController.getBackStackEntry(Screen.Home.route)
-            } catch (_: IllegalArgumentException) {
-                // "home" not yet on the back stack (e.g. nav graph not fully initialized).
-                return
-            }
-            val homeViewModel = androidx.lifecycle.ViewModelProvider(homeEntry)[com.nuvio.tv.ui.screens.home.HomeViewModel::class.java]
-            homeViewModel.requestScrollToTop()
+            requestHomeScrollToTop(navController)
         }
         return
     }
@@ -2396,9 +2449,30 @@ private fun navigateToDrawerRoute(
             launchSingleTop = true
             restoreState = true
         }
+        if (targetRoute == Screen.Home.route) {
+            // Home restores its saved scroll/focus state on restoreState, but a Home tap should
+            // always land at the top of the page.
+            requestHomeScrollToTop(navController)
+        }
     } catch (e: IllegalArgumentException) {
         Log.w("NuvioNavigation", "Route not found in nav graph: $targetRoute", e)
     }
+}
+
+/**
+ * Asks Home to drop its saved scroll/focus state and scroll back to the first row. Safe to call when
+ * Home is not the current destination: the reset is stored on the Home ViewModel and applied the next
+ * time its content is composed.
+ */
+private fun requestHomeScrollToTop(navController: NavHostController) {
+    val homeEntry = try {
+        navController.getBackStackEntry(Screen.Home.route)
+    } catch (_: IllegalArgumentException) {
+        // "home" not yet on the back stack (e.g. nav graph not fully initialized).
+        return
+    }
+    val homeViewModel = androidx.lifecycle.ViewModelProvider(homeEntry)[com.nuvio.tv.ui.screens.home.HomeViewModel::class.java]
+    homeViewModel.requestScrollToTop()
 }
 
 private fun isBlockedContentKey(key: Key): Boolean {

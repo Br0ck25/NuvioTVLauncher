@@ -161,13 +161,6 @@ fun GridHomeContent(
         }
     }
 
-    // Scroll to top when triggered from sidebar Home button.
-    LaunchedEffect(scrollToTopTrigger) {
-        if (scrollToTopTrigger > 0) {
-            gridState.scrollToItem(0, 0)
-        }
-    }
-
     // Save scroll state when leaving
     DisposableEffect(Unit) {
         onDispose {
@@ -268,6 +261,30 @@ fun GridHomeContent(
     }
     val hasStandaloneFocusableGridItem = remember(gridItems) {
         gridItems.any { it is GridItem.Content || it is GridItem.SeeAll || it is GridItem.InstalledAppsRow }
+    }
+
+    // Scroll Home back to the top when asked for (sidebar Home button or the device HOME key).
+    // Only trigger values this screen has not handled yet are applied, so a normal return to Home
+    // (e.g. Back) keeps the previous scroll position.
+    val handledScrollToTopTrigger = rememberSaveable { mutableIntStateOf(0) }
+    LaunchedEffect(scrollToTopTrigger) {
+        if (scrollToTopTrigger <= handledScrollToTopTrigger.intValue) return@LaunchedEffect
+        handledScrollToTopTrigger.intValue = scrollToTopTrigger
+        gridState.scrollToItem(0, 0)
+        // Re-focus whatever now sits at the top; the previously focused card was scrolled out of the
+        // composition, which would otherwise leave the D-pad without a focused target.
+        val candidates = buildList {
+            if (hasHero) add(heroFocusRequester)
+            if (hasContinueWatching) add(cwRowFocusRequester)
+            if (hasStandaloneFocusableGridItem) add(firstGridItemFocusRequester)
+        }
+        if (candidates.isEmpty()) return@LaunchedEffect
+        repeat(4) {
+            withFrameNanos { }
+            for (requester in candidates) {
+                if (runCatching { requester.requestFocus() }.isSuccess) return@LaunchedEffect
+            }
+        }
     }
 
     // Once the user scrolls, initial focus must not pull back to the hero.
@@ -860,23 +877,6 @@ fun GridHomeContent(
                         SectionDivider(catalogName = gridItem.title)
                     }
 
-                    is GridItem.InstalledAppsRow -> {
-                        InstalledAppsRowSection(
-                            apps = gridItem.apps,
-                            listState = installedAppsListState,
-                            rowFocusRequester = installedAppsRowFocusRequester,
-                            horizontalPadding = 0.dp,
-                            focusRequesterForPackage = { packageName ->
-                                focusRequesters.getOrPut("installed_app_$packageName") { FocusRequester() }
-                            },
-                            onItemFocused = { index ->
-                                val packageName = gridItem.apps.getOrNull(index)?.packageName
-                                lastFocusedGridItemKey.value = "installed_app_$packageName"
-                                activeCwRowKey.value = null
-                                onFocusedRowKeyChanged(INSTALLED_APPS_CATALOG_KEY)
-                            }
-                        )
-                    }
                     is GridItem.CollectionFolder -> {
                         GridCollectionFolderCard(
                             folder = gridItem.folder,
