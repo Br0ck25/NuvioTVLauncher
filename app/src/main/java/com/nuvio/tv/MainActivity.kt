@@ -5,6 +5,7 @@ import android.content.Intent
 import android.content.res.Configuration
 import android.graphics.drawable.ColorDrawable
 import android.os.Bundle
+import android.os.SystemClock
 import android.util.Log
 import android.view.KeyEvent
 import android.widget.Toast
@@ -122,6 +123,9 @@ import androidx.compose.ui.unit.sp
 import androidx.core.os.ConfigurationCompat
 import androidx.core.splashscreen.SplashScreen.Companion.installSplashScreen
 import androidx.hilt.navigation.compose.hiltViewModel
+import androidx.lifecycle.Lifecycle
+import androidx.lifecycle.compose.LocalLifecycleOwner
+import androidx.lifecycle.compose.currentStateAsState
 import androidx.lifecycle.lifecycleScope
 import androidx.metrics.performance.JankStats
 import androidx.metrics.performance.PerformanceMetricsState
@@ -235,6 +239,12 @@ val LocalSplashBackground = compositionLocalOf { SplashBackground() }
 private const val SIDEBAR_AUTO_COLLAPSE_DELAY_MS = 3_000L
 
 private const val MAX_SUPPORTED_FONT_SCALE = 1.15f
+
+/** Idle time before Nuvio hands the TV back to the profile picker. */
+private const val PROFILE_SWITCH_IDLE_TIMEOUT_MS = 30L * 60L * 1000L
+
+/** How long after boot Nuvio treats a launch as "the TV was just turned on". */
+private const val PROFILE_SWITCH_BOOT_WINDOW_MS = 3L * 60L * 1000L
 
 data class DrawerItem(
     val route: String,
@@ -826,6 +836,9 @@ open class MainActivity : ComponentActivity() {
                             },
                             onProfileSelected = {
                                 hasSelectedProfileThisSession = true
+                                // Picking a profile restarts the inactivity window, so the picker
+                                // cannot reappear the moment it closes.
+                                ambientIdleController.onInteraction()
                                 if (authManager.authState.value is AuthState.FullAccount) {
                                     startupSyncService.requestSyncNow()
                                 }
@@ -921,6 +934,89 @@ open class MainActivity : ComponentActivity() {
                         repeat(2) { withFrameNanos { } }
                         requestHomeScrollToTop(navController)
                         pendingHomeScrollReset = false
+                    }
+
+                    // Long inactivity or a fresh power-on should hand the TV back to whoever picks
+                    // up the remote, so the profile picker becomes the default screen again.
+                    val profileIdleSwitchEnabled by profileManager.profileIdleSwitchEnabled.collectAsState()
+                    val canSwitchProfiles = profiles.size > 1 || activeProfileHasPin
+                    val interactionAt by ambientIdleController.lastInteractionAt.collectAsState()
+                    val ambientShowing by ambientIdleController.isShowing.collectAsState()
+                    val appLifecycleState by LocalLifecycleOwner.current.lifecycle.currentStateAsState()
+                    var profileSwitchDue by remember { mutableStateOf(false) }
+
+                    // Re-armed on every key press / tap, and only while the app is actually on screen.
+                    // An already stale clock (fresh launch, or coming back after a long absence such as
+                    // the TV being switched off and on) switches immediately.
+                    LaunchedEffect(
+                        profileIdleSwitchEnabled,
+                        canSwitchProfiles,
+                        hasSelectedProfileThisSession,
+                        currentRoute,
+                        appLifecycleState,
+                        interactionAt
+                    ) {
+                        if (!profileIdleSwitchEnabled || !canSwitchProfiles) {
+                            profileSwitchDue = false
+                            return@LaunchedEffect
+                        }
+                        if (!hasSelectedProfileThisSession) {
+                            // The picker is already on screen; nothing to request.
+                            profileSwitchDue = false
+                            return@LaunchedEffect
+                        }
+                        if (!appLifecycleState.isAtLeast(Lifecycle.State.RESUMED)) return@LaunchedEffect
+                        // Never pull the picker over playback, e.g. a paused movie left overnight.
+                        // Leaving the player counts as activity so it cannot fire on the way out.
+                        if (currentRoute?.startsWith("player/") == true) {
+                            ambientIdleController.onInteraction()
+                            return@LaunchedEffect
+                        }
+                        val remainingMs = interactionAt + PROFILE_SWITCH_IDLE_TIMEOUT_MS - SystemClock.uptimeMillis()
+                        if (remainingMs > 0) delay(remainingMs)
+                        profileSwitchDue = true
+                    }
+
+                    // The ambient slideshow is the screen saver for the same idle period; leave it up
+                    // and only switch profiles once the user dismisses it.
+                    LaunchedEffect(profileSwitchDue, ambientShowing, hasSelectedProfileThisSession) {
+                        if (!profileSwitchDue) return@LaunchedEffect
+                        if (!hasSelectedProfileThisSession) {
+                            profileSwitchDue = false
+                            return@LaunchedEffect
+                        }
+                        if (ambientShowing) return@LaunchedEffect
+                        profileSwitchDue = false
+                        // Restart the idle clock so a dismissed request cannot fire twice.
+                        ambientIdleController.onInteraction()
+                        if (profiles.size > 1 || activeProfileHasPin) {
+                            pendingProfileSwitchRequest.value = true
+                        }
+                    }
+
+                    // A device that just booted starts on the picker even when "remember last
+                    // profile" would otherwise skip it. Only once per activity instance.
+                    var bootSwitchHandled by rememberSaveable { mutableStateOf(false) }
+                    LaunchedEffect(
+                        profileIdleSwitchEnabled,
+                        canSwitchProfiles,
+                        hasSelectedProfileThisSession,
+                        layoutChosen
+                    ) {
+                        if (bootSwitchHandled) return@LaunchedEffect
+                        if (layoutChosen != true) return@LaunchedEffect
+                        if (!hasSelectedProfileThisSession) {
+                            // The picker is already the first screen; nothing to force.
+                            bootSwitchHandled = true
+                            return@LaunchedEffect
+                        }
+                        if (SystemClock.elapsedRealtime() > PROFILE_SWITCH_BOOT_WINDOW_MS) {
+                            bootSwitchHandled = true
+                            return@LaunchedEffect
+                        }
+                        if (!profileIdleSwitchEnabled || !canSwitchProfiles) return@LaunchedEffect
+                        bootSwitchHandled = true
+                        pendingProfileSwitchRequest.value = true
                     }
 
                     // Auto-play next episode for EXTERNAL players: the tracker resolves the
@@ -1356,7 +1452,20 @@ open class MainActivity : ComponentActivity() {
 
     override fun onResume() {
         super.onResume()
+        // Coming back after a long absence (TV switched off and on again, or another app for a
+        // while) hands the TV back to the profile picker. Measured before dismiss() restarts the
+        // idle clock. The consumer ignores this when the picker is already up or only one profile
+        // without a PIN exists.
+        val idleGapMs = SystemClock.uptimeMillis() - ambientIdleController.lastInteractionAt.value
         ambientIdleController.dismiss()
+        // An external player covering the app is playback, not idleness, so a long film must not
+        // hand the TV back to the picker when it ends.
+        if (idleGapMs >= PROFILE_SWITCH_IDLE_TIMEOUT_MS &&
+            !externalPlaybackTracker.isTracking &&
+            profileManager.profileIdleSwitchEnabled.value
+        ) {
+            pendingProfileSwitchRequest.value = true
+        }
         if (::jankStats.isInitialized) jankStats.isTrackingEnabled = true
         memberAccessRepository.refreshIfStale()
         lifecycleScope.launch {

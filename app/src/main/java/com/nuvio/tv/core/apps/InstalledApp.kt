@@ -25,6 +25,9 @@ data class InstalledApp(
         .addFlags(Intent.FLAG_ACTIVITY_NEW_TASK or Intent.FLAG_ACTIVITY_RESET_TASK_IF_NEEDED)
 }
 
+/** TV banners are ~16:9; anything squarer than this is just the app icon. */
+private const val BANNER_ASPECT_THRESHOLD = 1.3f
+
 internal suspend fun queryInstalledApps(context: Context): List<InstalledApp> = withContext(Dispatchers.Default) {
     val pm = context.packageManager
     val appsByPackage = linkedMapOf<String, InstalledApp>()
@@ -36,8 +39,16 @@ internal suspend fun queryInstalledApps(context: Context): List<InstalledApp> = 
             if (activity.packageName == context.packageName || appsByPackage.containsKey(activity.packageName)) {
                 return@forEach
             }
-            val banner = runCatching { info.loadBanner(pm) }.getOrNull()
-            val drawable = banner ?: runCatching { info.loadIcon(pm) }.getOrNull()
+            // PackageItemInfo has no public loadBanner(); ask the PackageManager instead. Both calls
+            // fall back to the square app icon when the package ships no banner, so the aspect ratio
+            // decides whether it really is banner artwork.
+            val component = ComponentName(activity.packageName, activity.name)
+            val banner = runCatching { pm.getActivityBanner(component) }.getOrNull()
+                ?: runCatching { pm.getApplicationBanner(activity.packageName) }.getOrNull()
+            val icon = runCatching { info.loadIcon(pm) }.getOrNull()
+            val bannerIsWide = banner != null &&
+                banner.intrinsicWidth > banner.intrinsicHeight * BANNER_ASPECT_THRESHOLD
+            val drawable = if (bannerIsWide) banner else icon ?: banner
             val bitmap = runCatching {
                 drawable?.let {
                     val intrinsicWidth = it.intrinsicWidth.coerceAtLeast(1)
@@ -56,9 +67,9 @@ internal suspend fun queryInstalledApps(context: Context): List<InstalledApp> = 
             appsByPackage[activity.packageName] = InstalledApp(
                 packageName = activity.packageName,
                 label = info.loadLabel(pm).toString().ifBlank { activity.packageName },
-                componentName = ComponentName(activity.packageName, activity.name),
+                componentName = component,
                 icon = bitmap,
-                hasBanner = banner != null
+                hasBanner = bannerIsWide
             )
         }
     }

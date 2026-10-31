@@ -636,6 +636,8 @@
     <string name="advanced_remember_last_profile_subtitle">Remember last selected profile at startup</string>
     <string name="advanced_confirm_exit">Full exit on close</string>
     <string name="advanced_confirm_exit_subtitle">Fully terminate the app and free memory when exiting. Requires pressing back twice to confirm.</string>
+    <string name="advanced_profile_switch_after_idle">Profile picker after inactivity</string>
+    <string name="advanced_profile_switch_after_idle_subtitle">Return to the profile picker after 30 minutes without input and when the TV is turned on. Ignored while a video is playing and when only one profile exists without a PIN.</string>
     <string name="confirm_exit_toast">Press back again to exit</string>
     <string name="settings_debug">Debug</string>
     <string name="settings_plugins_section_subtitle">Manage repositories, providers, and plugin states</string>

@@ -24,8 +24,8 @@ data class InstalledAppsPreferences(
 @Singleton
 @OptIn(kotlinx.coroutines.ExperimentalCoroutinesApi::class)
 class InstalledAppsPreferencesDataStore @Inject constructor(
-    factory: ProfileDataStoreFactory,
-    profileManager: ProfileManager
+    private val factory: ProfileDataStoreFactory,
+    private val profileManager: ProfileManager
 ) {
     private val orderKey = stringPreferencesKey("installed_apps_order")
     private val removedKey = stringPreferencesKey("installed_apps_removed")

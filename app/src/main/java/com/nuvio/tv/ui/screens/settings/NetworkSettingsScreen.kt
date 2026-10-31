@@ -522,6 +522,18 @@ fun AdvancedSettingsContent(
                         }
                     }
                 )
+
+                val profileIdleSwitchEnabled by profileManager.profileIdleSwitchEnabled.collectAsState()
+                SettingsToggleRow(
+                    title = stringResource(R.string.advanced_profile_switch_after_idle),
+                    subtitle = stringResource(R.string.advanced_profile_switch_after_idle_subtitle),
+                    checked = profileIdleSwitchEnabled,
+                    onToggle = {
+                        scope.launch {
+                            profileManager.setProfileIdleSwitchEnabled(!profileIdleSwitchEnabled)
+                        }
+                    }
+                )
             }
         }
 

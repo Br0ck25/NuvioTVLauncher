@@ -1,4 +1,8 @@
-@file:OptIn(androidx.compose.foundation.ExperimentalFoundationApi::class, androidx.tv.material3.ExperimentalTvMaterial3Api::class)
+@file:OptIn(
+    androidx.compose.foundation.ExperimentalFoundationApi::class,
+    androidx.compose.ui.ExperimentalComposeUiApi::class,
+    androidx.tv.material3.ExperimentalTvMaterial3Api::class
+)
 
 package com.nuvio.tv.ui.components
 
@@ -97,8 +101,14 @@ fun InstalledAppTile(
             focusedContainerColor = NuvioTheme.colors.FocusBackground
         ),
         border = CardDefaults.border(
-            border = Border(BorderStroke(NuvioTheme.spacing.hairline, NuvioTheme.colors.Border), shape),
-            focusedBorder = Border(NuvioTheme.focusRing.border(NuvioTheme.spacing.xxs), shape)
+            border = Border(
+                border = BorderStroke(NuvioTheme.spacing.hairline, NuvioTheme.colors.Border),
+                shape = shape
+            ),
+            focusedBorder = Border(
+                border = NuvioTheme.focusRing.border(NuvioTheme.spacing.xxs),
+                shape = shape
+            )
         ),
         scale = CardDefaults.scale(focusedScale = 1.03f)
     ) {
