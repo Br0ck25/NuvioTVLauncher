@@ -17,6 +17,12 @@ object LauncherHomeRequest {
     const val EXTRA_GO_HOME = "com.nuvio.tv.extra.GO_HOME"
 
     /**
+     * Marks an intent as an explicit "open the profile switcher" request, produced by double-tapping
+     * HOME. Always travels together with [EXTRA_GO_HOME], so backing out of the switcher lands on Home.
+     */
+    const val EXTRA_OPEN_PROFILE_SELECTION = "com.nuvio.tv.extra.OPEN_PROFILE_SELECTION"
+
+    /**
      * True when [intent] should take the user to the Home screen and reset its scroll position.
      * Plain HOME-category launches are included so the behaviour is identical with or without the
      * accessibility service.
@@ -26,4 +32,8 @@ object LauncherHomeRequest {
         if (intent.getBooleanExtra(EXTRA_GO_HOME, false)) return true
         return intent.action == Intent.ACTION_MAIN && intent.hasCategory(Intent.CATEGORY_HOME)
     }
+
+    /** True when the user asked for the profile switcher by double-tapping HOME. */
+    fun isProfileSelectionRequested(intent: Intent?): Boolean =
+        intent?.getBooleanExtra(EXTRA_OPEN_PROFILE_SELECTION, false) == true
 }

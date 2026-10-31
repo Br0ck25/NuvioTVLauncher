@@ -339,6 +339,9 @@ open class MainActivity : ComponentActivity() {
      */
     private val pendingHomeRequestNonce = MutableStateFlow(0)
 
+    /** Set when the user double-taps HOME; consumed once the profile switcher is shown. */
+    private val pendingProfileSwitchRequest = MutableStateFlow(false)
+
     private lateinit var jankStats: JankStats
 
     /** Activity-level launcher for external video players. Survives all navigation changes. */
@@ -799,6 +802,8 @@ open class MainActivity : ComponentActivity() {
                         !hasSelectedProfileThisSession && (profiles.size > 1 || activeProfileHasPin)
 
                     if (shouldShowProfileSelection) {
+                        // The switcher is already on screen, so a queued double-tap HOME request is moot.
+                        LaunchedEffect(Unit) { pendingProfileSwitchRequest.value = false }
                         startupDestination = if (splashTriggered) StartupDestination.Loading else StartupDestination.ProfileSelection
                         ProfileSelectionScreen(
                             onProfileClicked = {
@@ -1212,6 +1217,17 @@ open class MainActivity : ComponentActivity() {
                             focusedSplashTheme = null
                             hasSelectedProfileThisSession = false
                         }
+
+                        // Double-tapping HOME asks for the profile switcher. Consumed on read so a
+                        // later recomposition (or returning from the switcher) cannot repeat it.
+                        val profileSwitchRequested by pendingProfileSwitchRequest.collectAsState()
+                        LaunchedEffect(profileSwitchRequested) {
+                            if (!profileSwitchRequested) return@LaunchedEffect
+                            pendingProfileSwitchRequest.value = false
+                            if (profiles.size > 1 || activeProfileHasPin) {
+                                handleSwitchProfile()
+                            }
+                        }
                         Box(modifier = Modifier.fillMaxSize()) {
                             CompositionLocalProvider(LocalNavViewModelStoreOwner provides navViewModelStoreOwner) {
                                 if (modernSidebarEnabled) {
@@ -1377,6 +1393,9 @@ open class MainActivity : ComponentActivity() {
      * honoured, because the user did ask for Home.
      */
     private fun captureHomeRequestIntent(intent: Intent?, fromNewIntent: Boolean = true) {
+        if (LauncherHomeRequest.isProfileSelectionRequested(intent)) {
+            pendingProfileSwitchRequest.value = true
+        }
         val requested = if (fromNewIntent) {
             LauncherHomeRequest.isRequested(intent)
         } else {
