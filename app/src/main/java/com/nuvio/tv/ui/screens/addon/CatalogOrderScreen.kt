@@ -55,7 +55,8 @@ import kotlinx.coroutines.launch
 @Composable
 fun CatalogOrderScreen(
     viewModel: CatalogOrderViewModel = hiltViewModel(),
-    onBackPress: () -> Unit
+    onBackPress: () -> Unit,
+    onManageInstalledApps: () -> Unit
 ) {
     val uiState by viewModel.uiState.collectAsState()
     val listState = rememberLazyListState()
@@ -162,7 +163,8 @@ fun CatalogOrderScreen(
                                     )
                                 }
                             },
-                            onToggleEnabled = { viewModel.toggleCatalogEnabled(item.disableKey) }
+                            onToggleEnabled = { viewModel.toggleCatalogEnabled(item.disableKey) },
+                            onManageInstalledApps = onManageInstalledApps
                         )
                     }
                 }
@@ -176,7 +178,8 @@ private fun CatalogOrderCard(
     item: CatalogOrderItem,
     onMoveUp: () -> Unit,
     onMoveDown: () -> Unit,
-    onToggleEnabled: () -> Unit
+    onToggleEnabled: () -> Unit,
+    onManageInstalledApps: () -> Unit
 ) {
     Card(
         modifier = Modifier.fillMaxWidth(),
@@ -202,6 +205,12 @@ private fun CatalogOrderCard(
                     style = MaterialTheme.typography.bodySmall,
                     color = NuvioTheme.colors.TextSecondary
                 )
+                if (item.key == com.nuvio.tv.core.apps.INSTALLED_APPS_CATALOG_KEY) {
+                    Spacer(modifier = Modifier.height(NuvioTheme.spacing.sm))
+                    Button(onClick = onManageInstalledApps) {
+                        Text(stringResource(R.string.installed_apps_manage))
+                    }
+                }
                 if (item.isDisabled) {
                     Spacer(modifier = Modifier.height(NuvioTheme.spacing.xs))
                     Text(
@@ -262,7 +271,18 @@ private fun CatalogOrderCard(
                     )
                 }
 
-                Button(
+                if (item.key == com.nuvio.tv.core.apps.INSTALLED_APPS_CATALOG_KEY) {
+                    val label = stringResource(R.string.installed_apps_toggle)
+                    Switch(
+                        checked = !item.isDisabled,
+                        onCheckedChange = { onToggleEnabled() },
+                        modifier = Modifier.semantics { contentDescription = label },
+                        colors = SwitchDefaults.colors(
+                            checkedThumbColor = NuvioTheme.colors.Primary,
+                            checkedTrackColor = NuvioTheme.colors.Primary.copy(alpha = 0.5f)
+                        )
+                    )
+                } else Button(
                     onClick = onToggleEnabled,
                     colors = ButtonDefaults.colors(
                         containerColor = NuvioTheme.colors.BackgroundCard,

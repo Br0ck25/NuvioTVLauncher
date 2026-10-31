@@ -14,8 +14,9 @@ import com.nuvio.tv.core.sync.LocalHomeCatalogSettingsState
 import com.nuvio.tv.core.sync.SyncHomeCatalogPayload
 import com.nuvio.tv.core.sync.buildHomeCatalogSyncPayload
 import com.nuvio.tv.core.sync.homeCatalogKey
+import com.nuvio.tv.core.sync.isDeviceLocalCatalogKey
 import com.nuvio.tv.core.sync.homeCollectionKey
-import com.nuvio.tv.core.sync.withLocalServerKeys
+import com.nuvio.tv.core.sync.withDeviceLocalCatalogKeys
 import com.nuvio.tv.data.mediaserver.ServerCatalog
 import com.nuvio.tv.domain.model.Addon
 import com.nuvio.tv.domain.model.CardDepthStyle
@@ -915,8 +916,8 @@ class LayoutPreferenceDataStore @Inject constructor(
 
         store().edit { prefs ->
             val local = readHomeCatalogSettingsState(prefs)
-            val orderKeys = remoteOrderKeys.withLocalServerKeys(local.orderKeys)
-            val disabledKeys = remoteDisabledKeys + local.disabledKeys.filter(ServerCatalog::isServerKey)
+            val orderKeys = remoteOrderKeys.withDeviceLocalCatalogKeys(local.orderKeys)
+            val disabledKeys = remoteDisabledKeys + local.disabledKeys.filter(::isDeviceLocalCatalogKey)
             val titles = remoteTitles + local.customTitles.filterKeys(ServerCatalog::isServerKey)
             prefs[hideUnreleasedContentKey] = payload.hideUnreleasedContent
             if (orderKeys.isNotEmpty()) {

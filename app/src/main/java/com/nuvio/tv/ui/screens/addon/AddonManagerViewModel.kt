@@ -502,7 +502,7 @@ class AddonManagerViewModel @Inject constructor(
         )
         val availableCatalogKeys = currentCatalogEntries.map { it.key }.toSet()
         val collectionKeysSet = currentCollections.map { "collection_${it.id}" }.toSet()
-        val allValidOrderKeys = availableCatalogKeys + collectionKeysSet
+        val allValidOrderKeys = availableCatalogKeys + collectionKeysSet + com.nuvio.tv.core.apps.INSTALLED_APPS_CATALOG_KEY
         val availableDisableKeyToName = currentCatalogEntries.associate { entry ->
             entry.disableKey to "${entry.catalogName} • ${entry.addonName}"
         }
@@ -613,7 +613,7 @@ class AddonManagerViewModel @Inject constructor(
             }
             // Apply disabled collection key changes
             if (pending.proposedDisabledCollectionKeys.isNotEmpty() || disabledHomeCatalogKeys.any { it.startsWith("collection_") }) {
-                val nonCollectionDisabledKeys = disabledHomeCatalogKeys.filter { !it.startsWith("collection_") }
+                val nonCollectionDisabledKeys = disabledHomeCatalogKeys.filterNot { it.startsWith("collection_") }
                 val mergedDisabledKeys = nonCollectionDisabledKeys + pending.proposedDisabledCollectionKeys
                 layoutPreferenceDataStore.setDisabledHomeCatalogKeys(mergedDisabledKeys)
                 homeCatalogSettingsSyncService.triggerPush()
@@ -662,7 +662,7 @@ class AddonManagerViewModel @Inject constructor(
         val availableDisableKeys = availableCatalogEntries.map { it.disableKey }.toSet()
         // Collection keys are also valid in the ordering
         val collectionKeys = currentCollections.map { "collection_${it.id}" }.toSet()
-        val allValidOrderKeys = availableCatalogKeys + collectionKeys
+        val allValidOrderKeys = availableCatalogKeys + collectionKeys + com.nuvio.tv.core.apps.INSTALLED_APPS_CATALOG_KEY
 
         val validCatalogOrder = pending.proposedCatalogOrderKeys
             .asSequence()
@@ -672,6 +672,7 @@ class AddonManagerViewModel @Inject constructor(
         val validDisabledCatalogs = pending.proposedDisabledCatalogKeys
             .asSequence()
             .filter { it in availableDisableKeys }
+            .plus(disabledHomeCatalogKeys.filter { it == com.nuvio.tv.core.apps.INSTALLED_APPS_CATALOG_KEY })
             .distinct()
             .toList()
 

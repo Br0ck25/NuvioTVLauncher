@@ -1351,6 +1351,13 @@ private fun PlaybackNavHost(
 
         composable(Screen.CatalogOrder.route) {
             CatalogOrderScreen(
+                onBackPress = { navController.popBackStack() },
+                onManageInstalledApps = { navController.navigate(Screen.InstalledAppsOrder.route) }
+            )
+        }
+
+        composable(Screen.InstalledAppsOrder.route) {
+            com.nuvio.tv.ui.screens.apps.InstalledAppsOrderScreen(
                 onBackPress = { navController.popBackStack() }
             )
         }

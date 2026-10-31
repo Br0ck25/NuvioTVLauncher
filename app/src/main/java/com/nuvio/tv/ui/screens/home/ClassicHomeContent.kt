@@ -61,6 +61,7 @@ import androidx.compose.foundation.layout.padding
 import androidx.compose.ui.Alignment
 import com.nuvio.tv.ui.components.CatalogRowSection
 import com.nuvio.tv.ui.components.CollectionRowSection
+import com.nuvio.tv.ui.components.InstalledAppsRowSection
 import com.nuvio.tv.ui.components.ContinueWatchingSection
 import com.nuvio.tv.ui.components.LocalLandscapePosterMode
 import com.nuvio.tv.core.poster.withCustomPosterUrls
@@ -283,6 +284,7 @@ fun ClassicHomeContent(
             when (row) {
                 is HomeRow.Catalog -> row.row.stableKey()
                 is HomeRow.CollectionRow -> "collection_${row.collection.id}"
+                is HomeRow.InstalledApps -> com.nuvio.tv.core.apps.INSTALLED_APPS_CATALOG_KEY
                 is HomeRow.PlaceholderCatalog -> row.stableCatalogKey
             }
         }
@@ -799,6 +801,7 @@ fun ClassicHomeContent(
                         "${r.stableKey()}_$index"
                     }
                     is HomeRow.CollectionRow -> "collection_${item.collection.id}"
+                    is HomeRow.InstalledApps -> com.nuvio.tv.core.apps.INSTALLED_APPS_CATALOG_KEY
                     is HomeRow.PlaceholderCatalog -> "${item.stableCatalogKey}_$index"
                 }
             },
@@ -806,6 +809,7 @@ fun ClassicHomeContent(
                 when (item) {
                     is HomeRow.Catalog -> "catalog_row"
                     is HomeRow.CollectionRow -> "collection_row"
+                    is HomeRow.InstalledApps -> "installed_apps_row"
                     is HomeRow.PlaceholderCatalog -> "catalog_row"
                 }
             }
@@ -930,6 +934,32 @@ fun ClassicHomeContent(
                     )
                 }
 
+                is HomeRow.InstalledApps -> {
+                    val rowKey = com.nuvio.tv.core.apps.INSTALLED_APPS_CATALOG_KEY
+                    val restore = restoringFocus && currentFocusSnapshot.rowKey == rowKey
+                    InstalledAppsRowSection(
+                        apps = homeRow.apps,
+                        listState = rowStates.getOrPut(rowKey) { LazyListState(firstVisibleItemIndex = focusState.catalogRowScrollStates[rowKey] ?: 0) },
+                        rowFocusRequester = rowFocusRequesters.getOrPut(rowKey) { FocusRequester() },
+                        focusedItemIndex = when {
+                            restore -> focusState.focusedItemIndex
+                            shouldRequestInitialFocus && !heroVisible &&
+                                (!uiState.continueWatchingEnabled || uiState.continueWatchingItems.isEmpty()) && uiState.upcomingItems.isEmpty() &&
+                                visibleHomeRows.firstOrNull() is HomeRow.InstalledApps -> 0
+                            else -> -1
+                        },
+                        onItemFocused = { itemIndex ->
+                            restoringFocus = false
+                            currentFocusSnapshot.rowIndex = index
+                            currentFocusSnapshot.itemIndex = itemIndex
+                            currentFocusSnapshot.rowKey = rowKey
+                            activeRowKeyState.value = rowKey
+                            onFocusedRowKeyChanged(rowKey)
+                            rowFocusedItemIndex[rowKey] = itemIndex
+                            focusedArtwork = null
+                        }
+                    )
+                }
                 is HomeRow.PlaceholderCatalog -> { }
             }
         }

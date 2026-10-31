@@ -263,7 +263,7 @@ private fun ModernCatalogRowItem(
     val focusKey = when (payload) {
         is ModernPayload.Catalog -> payload.focusKey
         is ModernPayload.CollectionFolder -> payload.focusKey
-        is ModernPayload.ContinueWatching -> error("Unsupported payload for ModernCatalogRowItem")
+        is ModernPayload.ContinueWatching, is ModernPayload.InstalledApp -> error("Unsupported payload for ModernCatalogRowItem")
     }
 
     val metaPreview = item.metaPreview
@@ -325,7 +325,7 @@ private fun ModernCatalogRowItem(
                     )
                 )
             }
-            is ModernPayload.ContinueWatching -> Unit
+            is ModernPayload.ContinueWatching, is ModernPayload.InstalledApp -> Unit
         }
     }
 
@@ -423,7 +423,7 @@ private fun ModernCatalogRowItem(
                         payload.folderId
                     )
                 }
-                is ModernPayload.ContinueWatching -> Unit
+                is ModernPayload.ContinueWatching, is ModernPayload.InstalledApp -> Unit
             }
         },
         onLongPress = onLongPress,
@@ -679,6 +679,7 @@ internal fun ModernRowSection(
             val cwHeightPx = with(density) { continueWatchingCardHeight.roundToPx() }
             fun imageUrlAndKey(item: ModernCarouselItem): Pair<String, String>? {
                 return when (val payload = item.payload) {
+                    is ModernPayload.InstalledApp -> null
                     is ModernPayload.Catalog -> {
                         val url = item.imageUrl ?: return null
                         val metrics = item.catalogCardMetrics(
@@ -766,7 +767,8 @@ internal fun ModernRowSection(
                             )
                             with(density) { metrics.width.roundToPx() } to with(density) { metrics.height.roundToPx() }
                         }
-                        is ModernPayload.ContinueWatching -> cwWidthPx to cwHeightPx
+                        is ModernPayload.InstalledApp -> 0 to 0
+                            is ModernPayload.ContinueWatching -> cwWidthPx to cwHeightPx
                     }
                     enqueueIfNeeded(item, wPx, hPx)
                 }
@@ -802,7 +804,8 @@ internal fun ModernRowSection(
                                     )
                                     with(density) { metrics.width.roundToPx() } to with(density) { metrics.height.roundToPx() }
                                 }
-                                is ModernPayload.ContinueWatching -> cwWidthPx to cwHeightPx
+                                is ModernPayload.InstalledApp -> 0 to 0
+                            is ModernPayload.ContinueWatching -> cwWidthPx to cwHeightPx
                             }
                             enqueueIfNeeded(item, wPx, hPx)
                         }
@@ -932,6 +935,7 @@ internal fun ModernRowSection(
                     },
                     contentType = { _, item ->
                         when (val payload = item.payload) {
+                            is ModernPayload.InstalledApp -> "installed_app"
                             is ModernPayload.ContinueWatching -> "modern_cw_card"
                             is ModernPayload.Catalog -> if (payload.itemId.startsWith("__placeholder_")) "placeholder" else payload.itemType
                             is ModernPayload.CollectionFolder -> "modern_collection_folder_card"
@@ -962,6 +966,24 @@ internal fun ModernRowSection(
                     }
 
                     when (val payload = item.payload) {
+                        is ModernPayload.InstalledApp -> {
+                            val context = LocalContext.current
+                            val error = stringResource(R.string.installed_apps_launch_error)
+                            LaunchedEffect(isTargetItem) {
+                                if (isTargetItem) runCatching { requester.requestFocus() }
+                            }
+                            com.nuvio.tv.ui.components.InstalledAppTile(
+                                app = payload.app,
+                                modifier = Modifier.focusRequester(requester),
+                                onFocused = onFocused,
+                                onClick = {
+                                    onFocused()
+                                    if (!com.nuvio.tv.core.apps.launchInstalledApp(context, payload.app)) {
+                                        android.widget.Toast.makeText(context, error, android.widget.Toast.LENGTH_SHORT).show()
+                                    }
+                                }
+                            )
+                        }
                         is ModernPayload.ContinueWatching -> {
                             ModernContinueWatchingRowItem(
                                 payload = payload,

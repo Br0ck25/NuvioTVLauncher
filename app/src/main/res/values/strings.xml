@@ -3421,4 +3421,23 @@
     <string name="autosync_label_synced">Auto synced</string>
     <string name="stream_resume_from_time">Resume from %1$s</string>
     <string name="stream_resume_from_percent">Resume from %1$d%%</string>
+
+    <!-- Installed Apps home catalog -->
+    <string name="installed_apps_title">Installed Apps</string>
+    <string name="installed_apps_catalog_subtitle">Launch apps directly from Home</string>
+    <string name="installed_apps_toggle">Show Installed Apps on Home</string>
+    <string name="installed_apps_manage">Manage Apps</string>
+    <string name="installed_apps_manage_title">Manage Installed Apps</string>
+    <string name="installed_apps_manage_description">Choose which apps appear in the home row and move them into your preferred order. Removing an app from this row does not uninstall it. The sidebar Apps screen is unchanged.</string>
+    <string name="installed_apps_in_row">In the home row (%1$d)</string>
+    <string name="installed_apps_removed">Removed from the row (%1$d)</string>
+    <string name="installed_apps_removed_description">These apps are still installed on this device.</string>
+    <string name="installed_apps_none">No launchable apps found on this device.</string>
+    <string name="installed_apps_all_removed">All apps have been removed from this row. Restore an app below.</string>
+    <string name="installed_apps_move_left">Move %1$s left</string>
+    <string name="installed_apps_move_right">Move %1$s right</string>
+    <string name="installed_apps_remove">Remove %1$s from row</string>
+    <string name="installed_apps_restore">Restore %1$s to row</string>
+    <string name="installed_apps_restore_all">Restore all</string>
+    <string name="installed_apps_launch_error">This app could not be opened. It may have been disabled or uninstalled.</string>
 </resources>
