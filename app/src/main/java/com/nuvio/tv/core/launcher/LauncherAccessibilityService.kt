@@ -1,11 +1,14 @@
 package com.nuvio.tv.core.launcher
 
 import android.accessibilityservice.AccessibilityService
+import android.accessibilityservice.AccessibilityServiceInfo
+import android.content.ComponentName
 import android.content.Context
 import android.content.Intent
 import android.os.SystemClock
 import android.provider.Settings
 import android.text.TextUtils
+import android.util.Log
 import android.view.KeyEvent
 import android.view.accessibility.AccessibilityEvent
 import com.nuvio.tv.MainActivity
@@ -13,6 +16,22 @@ import com.nuvio.tv.MainActivity
 class LauncherAccessibilityService : AccessibilityService() {
 
     private var lastHomeHandledTime = 0L
+
+    override fun onServiceConnected() {
+        super.onServiceConnected()
+        try {
+            val info = serviceInfo ?: AccessibilityServiceInfo()
+            info.eventTypes = AccessibilityEvent.TYPE_WINDOW_STATE_CHANGED
+            info.feedbackType = AccessibilityServiceInfo.FEEDBACK_GENERIC
+            info.flags = info.flags or
+                AccessibilityServiceInfo.FLAG_REQUEST_FILTER_KEY_EVENTS or
+                AccessibilityServiceInfo.FLAG_RETRIEVE_INTERACTIVE_WINDOWS or
+                AccessibilityServiceInfo.FLAG_INCLUDE_NOT_IMPORTANT_VIEWS
+            serviceInfo = info
+        } catch (e: Exception) {
+            Log.e(TAG, "Error configuring AccessibilityServiceInfo", e)
+        }
+    }
 
     override fun onKeyEvent(event: KeyEvent): Boolean {
         if (event.keyCode == KeyEvent.KEYCODE_HOME) {
@@ -23,20 +42,17 @@ class LauncherAccessibilityService : AccessibilityService() {
                     launchHome()
                 }
             }
-            // Consume the HOME key event so the stock launcher doesn't get it
             return true
         }
         return super.onKeyEvent(event)
     }
 
     override fun onAccessibilityEvent(event: AccessibilityEvent?) {
-        // Fallback for devices where KeyEvent.KEYCODE_HOME isn't directly filtered:
-        // if stock Android TV/Google TV launcher comes to foreground, bring Nuvio back
         if (event?.eventType == AccessibilityEvent.TYPE_WINDOW_STATE_CHANGED) {
             val pkg = event.packageName?.toString() ?: return
             if (isStockLauncherPackage(pkg)) {
                 val now = SystemClock.uptimeMillis()
-                if (now - lastHomeHandledTime > 500) {
+                if (now - lastHomeHandledTime > 400) {
                     lastHomeHandledTime = now
                     launchHome()
                 }
@@ -47,10 +63,14 @@ class LauncherAccessibilityService : AccessibilityService() {
     override fun onInterrupt() {}
 
     private fun launchHome() {
-        val intent = Intent(this, MainActivity::class.java).apply {
-            addFlags(Intent.FLAG_ACTIVITY_NEW_TASK or Intent.FLAG_ACTIVITY_RESET_TASK_IF_NEEDED or Intent.FLAG_ACTIVITY_SINGLE_TOP)
+        try {
+            val intent = Intent(this, MainActivity::class.java).apply {
+                addFlags(Intent.FLAG_ACTIVITY_NEW_TASK or Intent.FLAG_ACTIVITY_RESET_TASK_IF_NEEDED or Intent.FLAG_ACTIVITY_SINGLE_TOP)
+            }
+            startActivity(intent)
+        } catch (e: Exception) {
+            Log.e(TAG, "Failed to launch home activity", e)
         }
-        startActivity(intent)
     }
 
     private fun isStockLauncherPackage(pkg: String): Boolean {
@@ -65,8 +85,10 @@ class LauncherAccessibilityService : AccessibilityService() {
     }
 
     companion object {
+        private const val TAG = "LauncherAccessibility"
+
         fun isServiceEnabled(context: Context): Boolean {
-            val expectedComponentName = "${context.packageName}/${LauncherAccessibilityService::class.java.canonicalName}"
+            val targetComponent = ComponentName(context, LauncherAccessibilityService::class.java)
             val enabledServices = Settings.Secure.getString(
                 context.contentResolver,
                 Settings.Secure.ENABLED_ACCESSIBILITY_SERVICES
@@ -75,8 +97,15 @@ class LauncherAccessibilityService : AccessibilityService() {
             val colonSplitter = TextUtils.SimpleStringSplitter(':')
             colonSplitter.setString(enabledServices)
             while (colonSplitter.hasNext()) {
-                val component = colonSplitter.next()
-                if (component.equals(expectedComponentName, ignoreCase = true)) {
+                val componentStr = colonSplitter.next()
+                val enabledComponent = ComponentName.unflattenFromString(componentStr)
+                if (enabledComponent != null && enabledComponent == targetComponent) {
+                    return true
+                }
+                if (componentStr.equals("${context.packageName}/${LauncherAccessibilityService::class.java.name}", ignoreCase = true) ||
+                    componentStr.equals("${context.packageName}/${LauncherAccessibilityService::class.java.canonicalName}", ignoreCase = true) ||
+                    componentStr.contains(LauncherAccessibilityService::class.java.simpleName, ignoreCase = true)
+                ) {
                     return true
                 }
             }
