@@ -8,20 +8,19 @@
     Bring your own sources. Nuvio turns them into a library with artwork, ratings, subtitles, and your place saved on every screen.
   </p>
 
-  [Website](https://nuvio.tv) · [GitHub releases](https://github.com/NuvioMedia/NuvioTV/releases/latest) · [Support Nuvio](https://nuvio.tv/support)
+  [Website](https://nuvio.tv) · [GitHub releases](https://github.com/Br0ck25/NuvioTVLauncher/releases) · [Support Nuvio](https://nuvio.tv/support)
 
 </div>
 
 ## Get Nuvio TV
 
-- [Android TV on Google Play](https://play.google.com/store/apps/details?id=com.nuvio.app)
-- [Android TV APK](https://github.com/NuvioMedia/NuvioTV/releases/latest)
+- [Android TV APK](https://github.com/Br0ck25/NuvioTVLauncher/releases)
 
 ## Build from source
 
 ```bash
-git clone https://github.com/NuvioMedia/NuvioTV.git
-cd NuvioTV
+git clone https://github.com/Br0ck25/NuvioTVLauncher.git
+cd NuvioTVLauncher
 ./gradlew :app:assembleFullDebug
 ```
 
