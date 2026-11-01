@@ -9,10 +9,11 @@ import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.foundation.verticalScroll
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.DisposableEffect
+import androidx.compose.runtime.collectAsState
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
-import androidx.compose.runtime.rememberCoroutineScope
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.Color
@@ -28,10 +29,10 @@ import androidx.tv.material3.Text
 import com.nuvio.tv.R
 import com.nuvio.tv.core.launcher.LauncherSelfSetup
 import com.nuvio.tv.core.launcher.LocalAdbSetup
+import com.nuvio.tv.core.launcher.PhonePairingSession
 import com.nuvio.tv.ui.components.NuvioDialog
 import com.nuvio.tv.ui.screens.account.InputField
 import com.nuvio.tv.ui.theme.NuvioTheme
-import kotlinx.coroutines.launch
 
 @Composable
 internal fun LocalAdbSetupDialog(
@@ -40,13 +41,19 @@ internal fun LocalAdbSetupDialog(
     onFinished: () -> Unit
 ) {
     val context = LocalContext.current
-    val scope = rememberCoroutineScope()
+    // Shared by the TV fields and the phone page so only one setup run can be active.
+    // The server starts before first composition so the phone address is available immediately.
+    val session = remember { PhonePairingSession(context, setup).also { it.startPhoneServer() } }
+    DisposableEffect(session) {
+        onDispose { session.stop() }
+    }
+    val sessionState by session.state.collectAsState()
     var pairingPort by remember { mutableStateOf("") }
     var pairingCode by remember { mutableStateOf("") }
     var connectPort by remember { mutableStateOf("") }
-    var running by remember { mutableStateOf(false) }
-    var error by remember { mutableStateOf<String?>(null) }
-    var finished by remember { mutableStateOf(false) }
+    val running = sessionState is PhonePairingSession.State.Working
+    val finished = sessionState is PhonePairingSession.State.Done
+    val error = (sessionState as? PhonePairingSession.State.Failed)?.message
 
     val yes = stringResource(R.string.self_setup_yes)
     val no = stringResource(R.string.self_setup_no)
@@ -68,6 +75,13 @@ internal fun LocalAdbSetupDialog(
                 style = MaterialTheme.typography.bodySmall,
                 color = NuvioTheme.colors.TextSecondary
             )
+            session.phoneUrl?.let { url ->
+                Text(
+                    text = stringResource(R.string.self_setup_phone_hint, url),
+                    style = MaterialTheme.typography.bodyMedium,
+                    color = NuvioTheme.colors.TextPrimary
+                )
+            }
             InputField(
                 value = pairingPort,
                 onValueChange = { pairingPort = it.filter(Char::isDigit).take(5) },
@@ -117,18 +131,11 @@ internal fun LocalAdbSetupDialog(
                         onFinished()
                         return@Button
                     }
-                    running = true
-                    error = null
-                    scope.launch {
-                        val result = setup.setUp(
-                            pairingPort = pairingPort.toInt(),
-                            pairingCode = pairingCode,
-                            connectPort = connectPort.toIntOrNull()
-                        )
-                        running = false
-                        result.onSuccess { finished = true }
-                            .onFailure { error = it.message ?: it.javaClass.simpleName }
-                    }
+                    session.submit(
+                        pairingPort = pairingPort.toInt(),
+                        pairingCode = pairingCode,
+                        connectPort = connectPort.toIntOrNull()
+                    )
                 },
                 enabled = finished || canStart,
                 colors = ButtonDefaults.colors(
