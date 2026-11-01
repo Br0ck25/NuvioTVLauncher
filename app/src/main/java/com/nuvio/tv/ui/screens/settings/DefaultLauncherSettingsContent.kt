@@ -7,6 +7,13 @@ import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.verticalScroll
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.getValue
+import androidx.compose.runtime.mutableStateOf
+import androidx.compose.runtime.remember
+import androidx.compose.runtime.setValue
+import androidx.compose.ui.platform.LocalContext
+import com.nuvio.tv.core.launcher.AccessibilityWatchdog
+import com.nuvio.tv.core.launcher.LocalAdbSetupFactory
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.focus.FocusRequester
 import androidx.compose.ui.focus.focusRequester
@@ -18,6 +25,13 @@ import com.nuvio.tv.ui.theme.NuvioTheme
 @Composable
 internal fun DefaultLauncherSettingsContent(initialFocusRequester: FocusRequester? = null) {
     val setup = rememberLauncherSetupState()
+    val context = LocalContext.current
+    // Null on flavors/Android versions without the on-device ADB setup.
+    val selfSetup = remember { LocalAdbSetupFactory.create(context) }
+    var showSelfSetup by remember { mutableStateOf(false) }
+    var setupRevision by remember { mutableStateOf(0) }
+    val secureGranted = remember(setupRevision) { AccessibilityWatchdog.canWriteSecureSettings(context) }
+    var keepOverride by remember(setupRevision) { mutableStateOf(AccessibilityWatchdog.isOptedIn(context)) }
     Column(
         modifier = Modifier.fillMaxSize().verticalScroll(rememberScrollState()),
         verticalArrangement = Arrangement.spacedBy(NuvioTheme.spacing.md)
@@ -59,6 +73,40 @@ internal fun DefaultLauncherSettingsContent(initialFocusRequester: FocusRequeste
                 ),
                 subtitle = stringResource(R.string.settings_home_override_subtitle),
                 onClick = setup.openAccessibilitySettings
+            )
+            if (selfSetup != null) {
+                SettingsActionRow(
+                    title = stringResource(R.string.settings_self_setup_title),
+                    subtitle = stringResource(
+                        if (secureGranted) R.string.settings_self_setup_done_subtitle
+                        else R.string.settings_self_setup_subtitle
+                    ),
+                    onClick = { showSelfSetup = true }
+                )
+            }
+            if (secureGranted) {
+                SettingsToggleRow(
+                    title = stringResource(R.string.settings_keep_override_title),
+                    subtitle = stringResource(R.string.settings_keep_override_subtitle),
+                    checked = keepOverride,
+                    onToggle = {
+                        keepOverride = !keepOverride
+                        AccessibilityWatchdog.setOptIn(context, keepOverride)
+                    }
+                )
+            }
+        }
+        if (showSelfSetup && selfSetup != null) {
+            LocalAdbSetupDialog(
+                setup = selfSetup,
+                onDismiss = {
+                    showSelfSetup = false
+                    setupRevision++
+                },
+                onFinished = {
+                    showSelfSetup = false
+                    setupRevision++
+                }
             )
         }
     }

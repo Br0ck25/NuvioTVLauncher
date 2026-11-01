@@ -86,6 +86,15 @@
             </intent-filter>
         </receiver>
 
+        <receiver
+            android:name=".core.launcher.LauncherBootReceiver"
+            android:exported="false">
+            <intent-filter>
+                <action android:name="android.intent.action.BOOT_COMPLETED" />
+                <action android:name="android.intent.action.MY_PACKAGE_REPLACED" />
+            </intent-filter>
+        </receiver>
+
         <service
             android:name=".core.sync.androidtv.TvChannelRefreshJobService"
             android:exported="false"
