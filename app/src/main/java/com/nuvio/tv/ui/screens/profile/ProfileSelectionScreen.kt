@@ -10,7 +10,13 @@ import com.nuvio.tv.ui.theme.ThemeColors
 import com.nuvio.tv.ui.theme.brandWordmarkResource
 import com.nuvio.tv.ui.theme.createFocusRingStyle
 
+import android.content.Intent
 import android.graphics.Rect
+import android.provider.Settings
+import android.widget.Toast
+import androidx.compose.material.icons.Icons
+import androidx.compose.material.icons.filled.Settings
+import androidx.compose.material3.Icon
 import android.view.KeyEvent as AndroidKeyEvent
 import androidx.activity.compose.BackHandler
 import androidx.compose.animation.AnimatedContent
@@ -960,12 +966,44 @@ private fun ProfileSelectionMainContent(
 
         Spacer(modifier = Modifier.weight(1f, fill = true))
 
-        Text(
-            text = screenHint,
-            color = NuvioTheme.colors.TextTertiary.copy(alpha = 0.9f),
-            fontSize = 14.sp,
-            fontWeight = FontWeight.Medium
-        )
+        Box(modifier = Modifier.fillMaxWidth().height(48.dp)) {
+            Text(
+                text = screenHint,
+                modifier = Modifier.align(Alignment.Center),
+                color = NuvioTheme.colors.TextTertiary.copy(alpha = 0.9f),
+                fontSize = 14.sp,
+                fontWeight = FontWeight.Medium
+            )
+            if (!isManagementMode) {
+                val context = LocalContext.current
+                var focused by remember { mutableStateOf(false) }
+                val settingsLabel = stringResource(R.string.apps_android_settings)
+                Box(
+                    modifier = Modifier.align(Alignment.CenterEnd)
+                        .size(48.dp)
+                        .onFocusChanged { focused = it.isFocused }
+                        .clip(CircleShape)
+                        .background(if (focused) NuvioTheme.colors.TextPrimary.copy(alpha = 0.2f) else Color.Transparent)
+                        .clickable(onClickLabel = settingsLabel) {
+                            try {
+                                context.startActivity(Intent(Settings.ACTION_SETTINGS).addFlags(Intent.FLAG_ACTIVITY_NEW_TASK))
+                            } catch (error: android.content.ActivityNotFoundException) {
+                                Toast.makeText(context, R.string.profile_android_settings_unavailable, Toast.LENGTH_SHORT).show()
+                            } catch (error: SecurityException) {
+                                Toast.makeText(context, R.string.profile_android_settings_unavailable, Toast.LENGTH_SHORT).show()
+                            }
+                        },
+                    contentAlignment = Alignment.Center
+                ) {
+                    Icon(
+                        imageVector = Icons.Default.Settings,
+                        contentDescription = settingsLabel,
+                        tint = if (focused) NuvioTheme.colors.TextPrimary else NuvioTheme.colors.TextTertiary,
+                        modifier = Modifier.size(24.dp)
+                    )
+                }
+            }
+        }
     }
 }
 
