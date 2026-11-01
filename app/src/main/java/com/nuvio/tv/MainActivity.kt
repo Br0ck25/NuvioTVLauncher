@@ -434,6 +434,8 @@ open class MainActivity : ComponentActivity() {
         setContent {
             var hasSelectedProfileThisSession by rememberSaveable { mutableStateOf(false) }
             var startupSession by remember { mutableIntStateOf(0) }
+            // Keep this outside the content branch, which is disposed while the picker is shown.
+            var bootSwitchHandled by rememberSaveable { mutableStateOf(false) }
             // Triggered immediately on profile click (before system confirms selection).
             var splashTriggered by remember { mutableStateOf(false) }
             // Overrides splash background with the currently focused profile
@@ -851,6 +853,7 @@ open class MainActivity : ComponentActivity() {
                                 }
                             },
                             onProfileSelected = {
+                                bootSwitchHandled = true
                                 hasSelectedProfileThisSession = true
                                 // Picking a profile restarts the inactivity window, so the picker
                                 // cannot reappear the moment it closes.
@@ -1012,7 +1015,6 @@ open class MainActivity : ComponentActivity() {
 
                     // A device that just booted starts on the picker even when "remember last
                     // profile" would otherwise skip it. Only once per activity instance.
-                    var bootSwitchHandled by rememberSaveable { mutableStateOf(false) }
                     LaunchedEffect(
                         profileIdleSwitchEnabled,
                         canSwitchProfiles,
