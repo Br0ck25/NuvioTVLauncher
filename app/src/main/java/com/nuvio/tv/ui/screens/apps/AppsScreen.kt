@@ -23,7 +23,6 @@ import androidx.compose.material.icons.filled.CheckCircle
 import androidx.compose.material.icons.filled.Home
 import androidx.compose.material.icons.filled.Settings
 import androidx.compose.runtime.Composable
-import androidx.compose.runtime.DisposableEffect
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
@@ -35,15 +34,12 @@ import androidx.compose.ui.graphics.ImageBitmap
 import androidx.compose.ui.graphics.asImageBitmap
 import androidx.compose.ui.graphics.vector.ImageVector
 import androidx.compose.ui.platform.LocalContext
-import androidx.compose.ui.platform.LocalLifecycleOwner
 import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
 import androidx.core.graphics.drawable.toBitmap
-import androidx.lifecycle.Lifecycle
-import androidx.lifecycle.LifecycleEventObserver
 import androidx.tv.material3.Border
 import androidx.tv.material3.ClickableSurfaceDefaults
 import androidx.tv.material3.ExperimentalTvMaterial3Api
@@ -52,7 +48,7 @@ import androidx.tv.material3.MaterialTheme
 import androidx.tv.material3.Surface
 import androidx.tv.material3.Text
 import com.nuvio.tv.R
-import com.nuvio.tv.core.launcher.LauncherAccessibilityService
+import com.nuvio.tv.ui.components.rememberLauncherSetupState
 import com.nuvio.tv.ui.theme.NuvioTheme
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.withContext
@@ -100,24 +96,9 @@ private fun loadInstalledApps(context: Context): List<InstalledApp> {
 @Composable
 fun AppsScreen() {
     val context = LocalContext.current
-    val lifecycleOwner = LocalLifecycleOwner.current
+    val setup = rememberLauncherSetupState()
     var apps by remember { mutableStateOf<List<InstalledApp>>(emptyList()) }
-    var isAccessibilityEnabled by remember { mutableStateOf(false) }
-
-    DisposableEffect(lifecycleOwner) {
-        val observer = LifecycleEventObserver { _, event ->
-            if (event == Lifecycle.Event.ON_RESUME) {
-                isAccessibilityEnabled = LauncherAccessibilityService.isServiceEnabled(context)
-            }
-        }
-        lifecycleOwner.lifecycle.addObserver(observer)
-        onDispose {
-            lifecycleOwner.lifecycle.removeObserver(observer)
-        }
-    }
-
     LaunchedEffect(Unit) {
-        isAccessibilityEnabled = LauncherAccessibilityService.isServiceEnabled(context)
         apps = withContext(Dispatchers.Default) { loadInstalledApps(context) }
     }
 
@@ -144,16 +125,37 @@ fun AppsScreen() {
         ) {
             item(key = "default_launcher_toggle") {
                 AppTile(
-                    label = if (isAccessibilityEnabled) {
+                    label = if (setup.isDefaultHome) {
                         stringResource(R.string.apps_default_launcher_active)
                     } else {
                         stringResource(R.string.apps_set_default_launcher)
                     },
-                    iconVector = if (isAccessibilityEnabled) Icons.Default.CheckCircle else Icons.Default.Home,
+                    iconVector = if (setup.isDefaultHome) Icons.Default.CheckCircle else Icons.Default.Home,
                     icon = null,
-                    onClick = {
-                        LauncherAccessibilityService.openAccessibilitySettings(context)
-                    }
+                    onClick = setup.requestDefaultHome
+                )
+            }
+            if (setup.showFallback) {
+                item(key = "system_home_settings") {
+                    AppTile(
+                        label = stringResource(R.string.settings_open_home_settings),
+                        iconVector = Icons.Default.Settings,
+                        icon = null,
+                        onClick = setup.openHomeSettings
+                    )
+                }
+            }
+            // Some TV firmware blocks third-party default HOME apps. Keep the accessibility
+            // workaround reachable even when Home settings opens but offers no usable picker.
+            item(key = "home_button_override") {
+                AppTile(
+                    label = stringResource(
+                        if (setup.isAccessibilityEnabled) R.string.apps_home_override_active
+                        else R.string.apps_home_override
+                    ),
+                    iconVector = if (setup.isAccessibilityEnabled) Icons.Default.CheckCircle else Icons.Default.Home,
+                    icon = null,
+                    onClick = setup.openAccessibilitySettings
                 )
             }
             item(key = "android_settings") {

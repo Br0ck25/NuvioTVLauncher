@@ -2,7 +2,6 @@ package com.nuvio.tv
 
 import android.content.Context
 import android.content.Intent
-import android.content.pm.PackageManager
 import android.content.res.Configuration
 import android.graphics.drawable.ColorDrawable
 import android.os.Bundle
@@ -151,7 +150,7 @@ import com.nuvio.tv.core.deeplink.DeepLinkHandler
 import com.nuvio.tv.core.deeplink.DeepLinkParser
 import com.nuvio.tv.core.launcher.HomeKeyGesture
 import com.nuvio.tv.core.launcher.HomeKeyPress
-import com.nuvio.tv.core.launcher.LauncherAccessibilityService
+import com.nuvio.tv.core.launcher.LauncherSetup
 import com.nuvio.tv.core.launcher.LauncherHomeRequest
 import com.nuvio.tv.core.player.PlayerWindowBackdrop
 import com.nuvio.tv.core.party.PartyRepository
@@ -427,7 +426,9 @@ open class MainActivity : ComponentActivity() {
         val launchEpisode = intent?.getIntExtra("episode", -1)?.takeIf { it >= 0 }
         val launchEpisodeTitle = intent?.getStringExtra("episodeTitle")
         captureDeepLinkIntent(intent)
-        captureHomeRequestIntent(intent, fromNewIntent = false)
+        if (savedInstanceState == null) {
+            captureHomeRequestIntent(intent, fromNewIntent = false)
+        }
         refreshHomeRole()
 
         setContent {
@@ -1511,52 +1512,38 @@ open class MainActivity : ComponentActivity() {
      * HOME pressed while Nuvio itself is in front. The first press returns to the top of Home, a
      * second press right after it also opens the profile switcher.
      */
-    private fun handleHomeKeyPress() {
-        when (homeKeyGesture.onPress(SystemClock.uptimeMillis())) {
-            HomeKeyPress.IGNORED -> Unit
-            HomeKeyPress.SINGLE -> pendingHomeRequestNonce.value += 1
-            HomeKeyPress.DOUBLE -> {
-                pendingHomeRequestNonce.value += 1
-                pendingProfileSwitchRequest.value = true
-            }
+    private fun handleHomeKeyPress(pressedAtMs: Long) {
+        applyHomeKeyPress(homeKeyGesture.onPress(pressedAtMs))
+    }
+
+    private fun applyHomeKeyPress(press: HomeKeyPress, openProfileSelection: Boolean = false) {
+        if (press == HomeKeyPress.IGNORED) return
+        ambientIdleController.dismiss()
+        pendingHomeRequestNonce.value += 1
+        if (press == HomeKeyPress.DOUBLE || openProfileSelection) {
+            pendingProfileSwitchRequest.value = true
         }
     }
 
     private fun refreshHomeRole() {
-        val ownsHomeRole = runCatching {
-            val homeIntent = Intent(Intent.ACTION_MAIN).addCategory(Intent.CATEGORY_HOME)
-            packageManager.resolveActivity(homeIntent, PackageManager.MATCH_DEFAULT_ONLY)
-                ?.activityInfo
-                ?.packageName == packageName
+        nuvioHandlesHomeKey = runCatching {
+            LauncherSetup.handlesHome(this)
         }.getOrDefault(false)
-        val serviceEnabled = runCatching {
-            LauncherAccessibilityService.isServiceEnabled(this)
-        }.getOrDefault(false)
-        nuvioHandlesHomeKey = ownsHomeRole || serviceEnabled
     }
 
     /**
-     * The device HOME key is consumed by [com.nuvio.tv.core.launcher.LauncherAccessibilityService] so a
-     * launcher HOME press never leaves Nuvio: it is re-delivered as an intent instead. Both that intent
-     * and a plain HOME-category launch mean "show Home at the top".
-     *
-     * @param fromNewIntent false while the activity is being created: a plain HOME launch then simply
-     * opens the app on its start destination, so there is nothing to reset (and forcing a reset would
-     * override the first-run focus handling). An explicit accessibility-service request is still
-     * honoured, because the user did ask for Home.
+     * Raw keys, native HOME launches, and accessibility requests all use the same tap detector.
+     * A cold native HOME launch records the first press but leaves startup/onboarding alone.
+     * An explicit "go Home" request still resets navigation when starting the Activity.
      */
     private fun captureHomeRequestIntent(intent: Intent?, fromNewIntent: Boolean = true) {
-        if (LauncherHomeRequest.isProfileSelectionRequested(intent)) {
-            pendingProfileSwitchRequest.value = true
-        }
-        val requested = if (fromNewIntent) {
-            LauncherHomeRequest.isRequested(intent)
-        } else {
-            intent?.getBooleanExtra(LauncherHomeRequest.EXTRA_GO_HOME, false) == true
-        }
-        if (requested) {
-            pendingHomeRequestNonce.value += 1
-        }
+        val press = LauncherHomeRequest.onIntent(
+            intent = intent,
+            gesture = homeKeyGesture,
+            nowMs = SystemClock.uptimeMillis(),
+            fromNewIntent = fromNewIntent
+        )
+        applyHomeKeyPress(press, LauncherHomeRequest.isProfileSelectionRequested(intent))
     }
 
     private fun captureDeepLinkIntent(intent: Intent?) {
@@ -1600,11 +1587,11 @@ open class MainActivity : ComponentActivity() {
             if (event.action == KeyEvent.ACTION_DOWN && ambientIdleController.isShowing.value) {
                 ambientIdleController.dismiss()
             }
-            // While Nuvio is the launcher the system swallows HOME when this app is already in front:
-            // it neither starts the home activity again nor calls onNewIntent. Handling it here is the
-            // only way a HOME press on a scrolled Home, another tab, or a detail page can reset the
-            // screen - and the only way to get the double-tap profile switcher.
-            if (event.action == KeyEvent.ACTION_UP) handleHomeKeyPress()
+            // Some firmware delivers raw HOME keys; most sends a HOME intent or lets the
+            // accessibility service filter the key. Keep this as a fallback, not the only path.
+            if (event.action == KeyEvent.ACTION_UP && !event.isCanceled) {
+                handleHomeKeyPress(event.eventTime)
+            }
             return true
         }
         if (ambientIdleController.consumeKeyEvent(event)) return true

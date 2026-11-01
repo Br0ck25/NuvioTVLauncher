@@ -26,6 +26,7 @@ class SettingsCatalogTest {
                 SettingsCategory.INTEGRATION,
                 SettingsCategory.TRACKING,
                 SettingsCategory.ADVANCED,
+                SettingsCategory.DEFAULT_LAUNCHER,
                 SettingsCategory.ABOUT,
                 SettingsCategory.DEBUG
             ),
@@ -122,6 +123,13 @@ class SettingsCatalogTest {
             listOf(SettingsCategory.ACCOUNT, SettingsCategory.PROFILES, SettingsCategory.WATCH_PARTY),
             visibleSettingsCategories(true, isEssentialMode = false, isDebugBuild = false, isWatchPartyAvailable = true).take(3)
         )
+    }
+
+    @Test
+    fun `default launcher setup is available in every profile and experience mode`() {
+        allCombinations().forEach { categories ->
+            assertTrue(SettingsCategory.DEFAULT_LAUNCHER in categories)
+        }
     }
 
     private fun allCombinations(): List<List<SettingsCategory>> =

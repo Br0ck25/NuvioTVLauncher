@@ -18,12 +18,6 @@ class LauncherAccessibilityService : AccessibilityService() {
     /** When the app was last brought forward for HOME, so the stock launcher cannot double-fire. */
     private var lastHomeLaunchTime = 0L
 
-    /** Single vs. double tap detection for HOME, shared with the in-app key handler. */
-    private val homeKeyGesture = HomeKeyGesture()
-
-    /** Package of the last window that reported a state change, used to avoid relaunching ourselves. */
-    private var lastForegroundPackage: String? = null
-
     override fun onServiceConnected() {
         super.onServiceConnected()
         try {
@@ -42,38 +36,23 @@ class LauncherAccessibilityService : AccessibilityService() {
 
     override fun onKeyEvent(event: KeyEvent): Boolean {
         if (event.keyCode != KeyEvent.KEYCODE_HOME) return super.onKeyEvent(event)
-        // Nuvio itself is in front: let its own window handle HOME (single press = top of Home,
-        // double press = profile switcher). Launching the activity from here instead would stack a
-        // second instance on top of the one the user is looking at, which is why HOME appeared to
-        // do nothing when the app was already open.
-        if (lastForegroundPackage == packageName) return false
-        if (event.action == KeyEvent.ACTION_UP) handleHomeKeyUp()
-        return true
-    }
-
-    /**
-     * A single HOME press returns to the top of Home. A second press right after it additionally
-     * opens the profile switcher, so switching profiles is one double tap away. The first press
-     * reacts immediately - nothing waits for a possible second press - and the double tap only adds
-     * the switcher on top of the Home request that already happened.
-     */
-    private fun handleHomeKeyUp() {
-        when (homeKeyGesture.onPress(SystemClock.uptimeMillis())) {
-            HomeKeyPress.IGNORED -> Unit
-            HomeKeyPress.SINGLE -> launchHome(openProfileSelection = false)
-            HomeKeyPress.DOUBLE -> launchHome(openProfileSelection = true)
+        // Android normally reserves HOME for system policy, even when our own window is in
+        // front. Do not hand it back expecting Activity.dispatchKeyEvent to receive it. Forward
+        // every completed press to the one singleTask MainActivity instead.
+        if (event.action == KeyEvent.ACTION_UP && !event.isCanceled) {
+            launchHome(event.eventTime)
         }
+        return true
     }
 
     override fun onAccessibilityEvent(event: AccessibilityEvent?) {
         if (event?.eventType == AccessibilityEvent.TYPE_WINDOW_STATE_CHANGED) {
             val pkg = event.packageName?.toString() ?: return
-            lastForegroundPackage = pkg
             if (isStockLauncherPackage(pkg)) {
                 val now = SystemClock.uptimeMillis()
                 if (now - lastHomeLaunchTime > HOME_LAUNCH_DEBOUNCE_MS) {
                     lastHomeLaunchTime = now
-                    launchHome(openProfileSelection = false)
+                    launchHome(now)
                 }
             }
         }
@@ -81,17 +60,17 @@ class LauncherAccessibilityService : AccessibilityService() {
 
     override fun onInterrupt() {}
 
-    private fun launchHome(openProfileSelection: Boolean) {
+    private fun launchHome(pressedAtMs: Long) {
         lastHomeLaunchTime = SystemClock.uptimeMillis()
         try {
             val intent = Intent(this, MainActivity::class.java).apply {
                 // Explicit + tagged so MainActivity lands on Home at the top even when the
                 // requested screen is a detail page, search, settings, or the player.
                 putExtra(LauncherHomeRequest.EXTRA_GO_HOME, true)
-                if (openProfileSelection) {
-                    putExtra(LauncherHomeRequest.EXTRA_OPEN_PROFILE_SELECTION, true)
-                }
-                addFlags(Intent.FLAG_ACTIVITY_NEW_TASK or Intent.FLAG_ACTIVITY_RESET_TASK_IF_NEEDED or Intent.FLAG_ACTIVITY_SINGLE_TOP)
+                // Gesture timing must survive the first press bringing Nuvio into the foreground.
+                // The Activity, not a second service-local detector, classifies single/double taps.
+                putExtra(LauncherHomeRequest.EXTRA_HOME_PRESS_UPTIME_MS, pressedAtMs)
+                addFlags(Intent.FLAG_ACTIVITY_NEW_TASK or Intent.FLAG_ACTIVITY_CLEAR_TOP or Intent.FLAG_ACTIVITY_SINGLE_TOP)
             }
             startActivity(intent)
         } catch (e: Exception) {
