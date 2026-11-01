@@ -64,7 +64,9 @@ internal fun LocalAdbSetupDialog(
 
     val yes = stringResource(R.string.self_setup_yes)
     val no = stringResource(R.string.self_setup_no)
-    val canStart = !running && pairingPort.toIntOrNull() != null && pairingCode.trim().length == 6
+    // Both blank means "already paired, just connect".
+    val validPairing = pairingPort.toIntOrNull() != null && pairingCode.trim().length == 6
+    val canStart = !running && (validPairing || (pairingPort.isEmpty() && pairingCode.isEmpty()))
 
     NuvioDialog(
         onDismiss = { if (!running) onDismiss() },
@@ -139,8 +141,8 @@ internal fun LocalAdbSetupDialog(
                         return@Button
                     }
                     session.submit(
-                        pairingPort = pairingPort.toInt(),
-                        pairingCode = pairingCode,
+                        pairingPort = pairingPort.toIntOrNull(),
+                        pairingCode = pairingCode.ifEmpty { null },
                         connectPort = connectPort.toIntOrNull()
                     )
                 },

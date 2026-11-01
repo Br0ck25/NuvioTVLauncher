@@ -55,8 +55,12 @@ internal class PhonePairingSession(
     }
 
     /** Returns false when a run is already in progress or the input is invalid. */
-    fun submit(pairingPort: Int, pairingCode: String, connectPort: Int?): Boolean {
-        if (pairingPort !in 1..65535 || !CODE.matches(pairingCode)) return false
+    fun submit(pairingPort: Int?, pairingCode: String?, connectPort: Int?): Boolean {
+        // Both blank means "already paired, just connect"; otherwise both must be valid.
+        val pairing = pairingPort != null || !pairingCode.isNullOrBlank()
+        if (pairing && (pairingPort == null || pairingPort !in 1..65535 || pairingCode == null || !CODE.matches(pairingCode))) {
+            return false
+        }
         synchronized(this) {
             if (mutableState.value is State.Working) return false
             mutableState.value = State.Working
@@ -89,13 +93,15 @@ internal class PhonePairingSession(
 
         private fun handlePair(session: IHTTPSession): Response {
             runCatching { session.parseBody(HashMap()) }
-            val port = session.parms["port"]?.trim()?.toIntOrNull()
-            val code = session.parms["code"]?.trim().orEmpty()
-            if (port == null || !CODE.matches(code)) {
+            val rawPort = session.parms["port"]?.trim().orEmpty()
+            val rawCode = session.parms["code"]?.trim().orEmpty()
+            val port = rawPort.toIntOrNull()
+            val bothBlank = rawPort.isEmpty() && rawCode.isEmpty()
+            if (!bothBlank && (port == null || !CODE.matches(rawCode))) {
                 return json(Response.Status.BAD_REQUEST, mapOf("state" to "failed", "message" to "Enter the port and the 6-digit code."))
             }
             val connect = session.parms["connect"]?.trim()?.toIntOrNull()
-            return if (submit(port, code, connect)) {
+            return if (submit(port, rawCode.ifEmpty { null }, connect)) {
                 json(Response.Status.OK, statusBody())
             } else {
                 json(Response.Status.CONFLICT, mapOf("state" to "failed", "message" to "Setup is already running or the values are invalid."))
@@ -124,7 +130,7 @@ internal class PhonePairingSession(
 input,button{width:100%;box-sizing:border-box;font-size:18px;padding:12px;margin:6px 0;border-radius:8px;border:1px solid #555;background:#222;color:#eee}
 button{background:#3b82f6;border:0;color:#fff}#msg{margin-top:12px;min-height:3em}</style></head><body>
 <h2>Nuvio Home setup</h2>
-<p>Keep the <b>Pair device with pairing code</b> popup open on your TV, then enter what it shows.</p>
+<p>Keep the <b>Pair device with pairing code</b> popup open on your TV, then enter what it shows. If you already paired this TV once, leave both boxes empty.</p>
 <input id="port" inputmode="numeric" placeholder="Pairing port (e.g. 40617)">
 <input id="code" inputmode="numeric" placeholder="6-digit pairing code" maxlength="6">
 <button id="go">Pair and set up</button><div id="msg"></div>

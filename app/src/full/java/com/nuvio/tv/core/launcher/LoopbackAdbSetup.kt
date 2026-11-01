@@ -6,6 +6,7 @@ import android.os.Build
 import android.util.Log
 import com.nuvio.tv.MainActivity
 import io.github.muntashirakon.adb.AbsAdbConnectionManager
+import io.github.muntashirakon.adb.AdbPairingRequiredException
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.withContext
 import org.bouncycastle.asn1.ASN1EncodableVector
@@ -22,6 +23,7 @@ import org.bouncycastle.asn1.x509.Time
 import org.bouncycastle.asn1.x509.V3TBSCertificateGenerator
 import java.io.ByteArrayInputStream
 import java.io.File
+import java.io.IOException
 import java.math.BigInteger
 import java.security.KeyFactory
 import java.security.KeyPairGenerator
@@ -40,16 +42,21 @@ import java.util.concurrent.TimeUnit
  */
 internal class LoopbackAdbSetup(private val context: Context) : LocalAdbSetup {
 
-    override suspend fun setUp(pairingPort: Int, pairingCode: String, connectPort: Int?): Result<Unit> =
+    override suspend fun setUp(pairingPort: Int?, pairingCode: String?, connectPort: Int?): Result<Unit> =
         withContext(Dispatchers.IO) {
             runCatching {
                 val manager = KeyStoreAdbConnectionManager(context)
                 manager.use {
                     it.setApi(Build.VERSION.SDK_INT)
                     it.setTimeout(15, TimeUnit.SECONDS)
-                    check(it.pair(pairingPort, pairingCode.trim())) { "Pairing was rejected. Check the code and port." }
-                    val connected = if (connectPort != null) it.connect(connectPort)
-                    else it.autoConnect(context, 15_000)
+                    if (pairingPort != null && !pairingCode.isNullOrBlank()) {
+                        check(it.pair(pairingPort, pairingCode.trim())) { "Pairing was rejected. Check the code and port." }
+                    }
+                    val connected = try {
+                        if (connectPort != null) it.connect(connectPort) else it.autoConnect(context, 15_000)
+                    } catch (e: AdbPairingRequiredException) {
+                        throw IllegalStateException("This TV isn't paired with Nuvio yet. Enter the pairing port and code.", e)
+                    }
                     check(connected) { "Could not connect to Wireless debugging after pairing." }
                     applyGrants(it)
                 }
@@ -60,19 +67,34 @@ internal class LoopbackAdbSetup(private val context: Context) : LocalAdbSetup {
     private fun applyGrants(manager: AbsAdbConnectionManager) {
         val pkg = context.packageName
         // Required: lets the app enable its own accessibility service and keep it enabled.
-        shell(manager, "pm grant $pkg android.permission.WRITE_SECURE_SETTINGS")
+        // Judge success by the resulting permission, not by command output (this prints nothing).
+        runCatching { shell(manager, "pm grant $pkg android.permission.WRITE_SECURE_SETTINGS") }
         check(AccessibilityWatchdog.canWriteSecureSettings(context)) {
             "Android did not grant the permission. Wireless debugging may be restricted on this TV."
         }
         // Best effort: unknown on older firmware, and not every TV restricts accessibility.
-        shell(manager, "appops set $pkg ACCESS_RESTRICTED_SETTINGS allow")
+        runCatching { shell(manager, "appops set $pkg ACCESS_RESTRICTED_SETTINGS allow") }
         val home = ComponentName(context, MainActivity::class.java).flattenToShortString()
-        shell(manager, "cmd package set-home-activity $home")
+        runCatching { shell(manager, "cmd package set-home-activity $home") }
     }
 
+    /** Runs a shell command and returns its output, which is often empty. */
     private fun shell(manager: AbsAdbConnectionManager, command: String): String =
         manager.openStream("shell:$command").use { stream ->
-            stream.openInputStream().bufferedReader().readText()
+            val input = stream.openInputStream()
+            val output = StringBuilder()
+            val buffer = ByteArray(1024)
+            try {
+                while (true) {
+                    val count = input.read(buffer)
+                    if (count < 0) break
+                    output.append(String(buffer, 0, count))
+                }
+            } catch (_: IOException) {
+                // libadb-android throws instead of returning -1 when the daemon closes the stream
+                // once the command has finished, which is the normal end of every command.
+            }
+            output.toString()
         }.also { Log.d(TAG, "adb shell $command -> ${it.trim()}") }
 
     private companion object {
