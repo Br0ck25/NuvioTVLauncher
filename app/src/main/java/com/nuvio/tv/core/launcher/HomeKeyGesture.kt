@@ -15,8 +15,8 @@ enum class HomeKeyPress {
 /**
  * Shared single/double tap detection for the HOME key.
  *
- * Both entry points use it so the timing is identical whether the press was filtered by
- * [LauncherAccessibilityService] or delivered to the focused activity (see MainActivity). A press
+ * MainActivity owns one detector for raw keys, native HOME intents, and timestamped presses
+ * forwarded by [LauncherAccessibilityService]. A press
  * is handled immediately as a single press - nothing waits for a possible second press - and the
  * double tap merely adds the profile switcher on top of the Home request that already happened.
  */
@@ -24,16 +24,20 @@ class HomeKeyGesture(
     private val minGapMs: Long = HomeKeyGesture.DEFAULT_MIN_GAP_MS,
     private val doubleTapWindowMs: Long = HomeKeyGesture.DEFAULT_DOUBLE_TAP_WINDOW_MS
 ) {
-    private var lastPressAtMs = 0L
+    private var lastPressAtMs: Long? = null
 
     fun onPress(nowMs: Long): HomeKeyPress {
-        val sincePreviousPress = nowMs - lastPressAtMs
-        lastPressAtMs = nowMs
-        return when {
-            sincePreviousPress < minGapMs -> HomeKeyPress.IGNORED
-            sincePreviousPress <= doubleTapWindowMs -> HomeKeyPress.DOUBLE
-            else -> HomeKeyPress.SINGLE
+        val previousPressAtMs = lastPressAtMs
+        if (previousPressAtMs != null) {
+            val sincePreviousPress = nowMs - previousPressAtMs
+            // A duplicate (or out-of-order delivery) must not move the accepted press's clock.
+            if (sincePreviousPress < minGapMs) return HomeKeyPress.IGNORED
+            lastPressAtMs = nowMs
+            if (sincePreviousPress <= doubleTapWindowMs) return HomeKeyPress.DOUBLE
+        } else {
+            lastPressAtMs = nowMs
         }
+        return HomeKeyPress.SINGLE
     }
 
     companion object {

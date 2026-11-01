@@ -2459,6 +2459,17 @@
     <string name="nav_apps">Apps</string>
     <string name="apps_android_settings">Android Settings</string>
     <string name="launcher_accessibility_service_description">Allows Nuvio to detect the Home button and act as your default launcher.</string>
+    <string name="settings_default_launcher">Default launcher</string>
+    <string name="settings_default_launcher_subtitle">Choose Nuvio as the Home app to use the Home button without an accessibility service. After selecting it, press Home to test your TV’s behavior.</string>
+    <string name="settings_make_home_app">Make Nuvio the Home app</string>
+    <string name="settings_make_home_app_subtitle">Show Android’s Home-app selection dialog. Select Nuvio and confirm the default using your remote.</string>
+    <string name="settings_home_role_not_selected">Nuvio is not the selected Home app. If the dialog was dismissed, suppressed, or unsupported, try System Home settings below. Some TVs do not allow changing the Home app.</string>
+    <string name="settings_open_home_settings">System Home settings</string>
+    <string name="settings_open_home_settings_subtitle">Alternative setup if the Home-app dialog does not appear or the request was denied.</string>
+    <string name="settings_home_settings_unavailable">This TV could not open Home settings. The accessibility override below is an optional workaround.</string>
+    <string name="settings_home_override_subtitle">Optional fallback for TVs that block default Home apps. This is separate from the default Home role and is not needed when native Home selection works.</string>
+    <string name="apps_home_override">Home Button Override (Accessibility)</string>
+    <string name="apps_home_override_active">Home Button Override Active (Accessibility)</string>
     <string name="apps_set_default_launcher">Set as Default Launcher</string>
     <string name="apps_default_launcher_active">Default Launcher Active</string>
     <string name="action_select">Select</string>

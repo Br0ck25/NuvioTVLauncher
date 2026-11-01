@@ -19,6 +19,7 @@ internal enum class SettingsCategory(val group: SettingsRailGroup) {
     INTEGRATION(SettingsRailGroup.SERVICES),
     TRACKING(SettingsRailGroup.SERVICES),
     ADVANCED(SettingsRailGroup.SYSTEM),
+    DEFAULT_LAUNCHER(SettingsRailGroup.SYSTEM),
     ABOUT(SettingsRailGroup.SYSTEM),
     DEBUG(SettingsRailGroup.SYSTEM),
     EXPERIENCE(SettingsRailGroup.SYSTEM)
