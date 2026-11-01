@@ -563,6 +563,8 @@ dependencies {
     add("fullImplementation", libs.conscrypt.android)
     // On-device ADB client used by the "set up without a computer" Home-button flow.
     add("fullImplementation", "com.github.MuntashirAkon:libadb-android:3.0.0")
+    // libadb-android only exposes BouncyCastle at runtime; we use it to create the ADB identity cert.
+    add("fullImplementation", "org.bouncycastle:bcprov-jdk15to18:1.78")
     add("fullImplementation", "com.github.recloudstream.cloudstream:library:${libs.versions.cloudstream.get()}") {
         exclude(group = "org.mozilla", module = "rhino")
         exclude(group = "com.github.AmarullisVFX", module = "newpipeextractor")
