@@ -25,6 +25,8 @@ The website and support links above belong to the original Nuvio project.
 ## Get Nuvio TV Launcher
 
 - [Android TV APK](https://github.com/Br0ck25/NuvioTVLauncher/releases)
+- Code for Downloader App 4253389
+- aftv.news/4253389
 
 ## Build from source
 
