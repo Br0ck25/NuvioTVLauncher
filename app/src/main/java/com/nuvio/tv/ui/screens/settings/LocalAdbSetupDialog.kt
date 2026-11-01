@@ -30,6 +30,7 @@ import com.nuvio.tv.R
 import com.nuvio.tv.core.launcher.LauncherSelfSetup
 import com.nuvio.tv.core.launcher.LocalAdbSetup
 import com.nuvio.tv.core.launcher.PhonePairingSession
+import com.nuvio.tv.core.player.ExternalPlaybackKeepAliveService
 import com.nuvio.tv.ui.components.NuvioDialog
 import com.nuvio.tv.ui.screens.account.InputField
 import com.nuvio.tv.ui.theme.NuvioTheme
@@ -45,7 +46,13 @@ internal fun LocalAdbSetupDialog(
     // The server starts before first composition so the phone address is available immediately.
     val session = remember { PhonePairingSession(context, setup).also { it.startPhoneServer() } }
     DisposableEffect(session) {
-        onDispose { session.stop() }
+        // While the user is in Settings reading the pairing code, Nuvio is in the background and the
+        // TV can freeze it, which leaves the phone's request hanging. A foreground service prevents that.
+        ExternalPlaybackKeepAliveService.start(context)
+        onDispose {
+            session.stop()
+            ExternalPlaybackKeepAliveService.stop(context)
+        }
     }
     val sessionState by session.state.collectAsState()
     var pairingPort by remember { mutableStateOf("") }
