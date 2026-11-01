@@ -2,9 +2,11 @@ package com.nuvio.tv
 
 import android.content.Context
 import android.content.Intent
+import android.content.pm.PackageManager
 import android.content.res.Configuration
 import android.graphics.drawable.ColorDrawable
 import android.os.Bundle
+import android.os.SystemClock
 import android.util.Log
 import android.view.KeyEvent
 import android.widget.Toast
@@ -122,6 +124,9 @@ import androidx.compose.ui.unit.sp
 import androidx.core.os.ConfigurationCompat
 import androidx.core.splashscreen.SplashScreen.Companion.installSplashScreen
 import androidx.hilt.navigation.compose.hiltViewModel
+import androidx.lifecycle.Lifecycle
+import androidx.lifecycle.compose.LocalLifecycleOwner
+import androidx.lifecycle.compose.currentStateAsState
 import androidx.lifecycle.lifecycleScope
 import androidx.metrics.performance.JankStats
 import androidx.metrics.performance.PerformanceMetricsState
@@ -144,6 +149,10 @@ import com.nuvio.tv.core.auth.AuthManager
 import com.nuvio.tv.core.auth.DeviceSessionRegistration
 import com.nuvio.tv.core.deeplink.DeepLinkHandler
 import com.nuvio.tv.core.deeplink.DeepLinkParser
+import com.nuvio.tv.core.launcher.HomeKeyGesture
+import com.nuvio.tv.core.launcher.HomeKeyPress
+import com.nuvio.tv.core.launcher.LauncherAccessibilityService
+import com.nuvio.tv.core.launcher.LauncherHomeRequest
 import com.nuvio.tv.core.player.PlayerWindowBackdrop
 import com.nuvio.tv.core.party.PartyRepository
 import com.nuvio.tv.core.profile.ProfileManager
@@ -234,6 +243,12 @@ val LocalSplashBackground = compositionLocalOf { SplashBackground() }
 private const val SIDEBAR_AUTO_COLLAPSE_DELAY_MS = 3_000L
 
 private const val MAX_SUPPORTED_FONT_SCALE = 1.15f
+
+/** Idle time before Nuvio hands the TV back to the profile picker. */
+private const val PROFILE_SWITCH_IDLE_TIMEOUT_MS = 30L * 60L * 1000L
+
+/** How long after boot Nuvio treats a launch as "the TV was just turned on". */
+private const val PROFILE_SWITCH_BOOT_WINDOW_MS = 3L * 60L * 1000L
 
 data class DrawerItem(
     val route: String,
@@ -332,6 +347,25 @@ open class MainActivity : ComponentActivity() {
     private val pendingDeepLinkUrl = MutableStateFlow<String?>(null)
     private val pendingLaunchIntent = MutableStateFlow<Intent?>(null)
 
+    /**
+     * Incremented on every HOME request (device HOME key via [com.nuvio.tv.core.launcher.LauncherAccessibilityService]
+     * or a plain HOME-category launch). Navigation observes it and returns to the top of Home.
+     */
+    private val pendingHomeRequestNonce = MutableStateFlow(0)
+
+    /** Set when the user double-taps HOME; consumed once the profile switcher is shown. */
+    private val pendingProfileSwitchRequest = MutableStateFlow(false)
+
+    /** Single vs. double tap detection for HOME pressed inside the app. */
+    private val homeKeyGesture = HomeKeyGesture()
+
+    /**
+     * True when HOME should be handled inside the app: either Nuvio is the resolved HOME activity, or
+     * the launcher accessibility service is on (the user chose "make the Home button open the app").
+     * Otherwise HOME is left alone so it still reaches the real launcher.
+     */
+    private var nuvioHandlesHomeKey = false
+
     private lateinit var jankStats: JankStats
 
     /** Activity-level launcher for external video players. Survives all navigation changes. */
@@ -393,6 +427,8 @@ open class MainActivity : ComponentActivity() {
         val launchEpisode = intent?.getIntExtra("episode", -1)?.takeIf { it >= 0 }
         val launchEpisodeTitle = intent?.getStringExtra("episodeTitle")
         captureDeepLinkIntent(intent)
+        captureHomeRequestIntent(intent, fromNewIntent = false)
+        refreshHomeRole()
 
         setContent {
             var hasSelectedProfileThisSession by rememberSaveable { mutableStateOf(false) }
@@ -791,6 +827,8 @@ open class MainActivity : ComponentActivity() {
                         !hasSelectedProfileThisSession && (profiles.size > 1 || activeProfileHasPin)
 
                     if (shouldShowProfileSelection) {
+                        // The switcher is already on screen, so a queued double-tap HOME request is moot.
+                        LaunchedEffect(Unit) { pendingProfileSwitchRequest.value = false }
                         startupDestination = if (splashTriggered) StartupDestination.Loading else StartupDestination.ProfileSelection
                         ProfileSelectionScreen(
                             onProfileClicked = {
@@ -813,6 +851,9 @@ open class MainActivity : ComponentActivity() {
                             },
                             onProfileSelected = {
                                 hasSelectedProfileThisSession = true
+                                // Picking a profile restarts the inactivity window, so the picker
+                                // cannot reappear the moment it closes.
+                                ambientIdleController.onInteraction()
                                 if (authManager.authState.value is AuthState.FullAccount) {
                                     startupSyncService.requestSyncNow()
                                 }
@@ -877,6 +918,120 @@ open class MainActivity : ComponentActivity() {
                     LaunchedEffect(actualRoute) {
                         optimisticRoute = null
                         ambientIdleController.onInteraction()
+                    }
+
+                    // Device HOME key / HOME-category launch: always land on Home, scrolled to the top,
+                    // whatever screen (tab, detail page, search, settings, player) is showing.
+                    val homeRequestNonce by pendingHomeRequestNonce.collectAsState()
+                    var pendingHomeScrollReset by remember { mutableStateOf(false) }
+                    LaunchedEffect(homeRequestNonce, layoutChosen) {
+                        if (homeRequestNonce == 0 || layoutChosen != true) return@LaunchedEffect
+                        if (navController.currentDestination?.route == Screen.Home.route) {
+                            requestHomeScrollToTop(navController)
+                            return@LaunchedEffect
+                        }
+                        // Reset only once Home is actually the current destination; Home restores its
+                        // own saved scroll position, so the reset has to land after that restore.
+                        pendingHomeScrollReset = true
+                        val popped = navController.popBackStack(Screen.Home.route, inclusive = false)
+                        if (!popped) {
+                            navController.navigate(Screen.Home.route) {
+                                popUpTo(navController.graph.startDestinationId) {
+                                    saveState = true
+                                }
+                                launchSingleTop = true
+                                restoreState = true
+                            }
+                        }
+                    }
+                    LaunchedEffect(pendingHomeScrollReset, actualRoute) {
+                        if (!pendingHomeScrollReset || actualRoute != Screen.Home.route) return@LaunchedEffect
+                        repeat(2) { withFrameNanos { } }
+                        requestHomeScrollToTop(navController)
+                        pendingHomeScrollReset = false
+                    }
+
+                    // Long inactivity or a fresh power-on should hand the TV back to whoever picks
+                    // up the remote, so the profile picker becomes the default screen again.
+                    val profileIdleSwitchEnabled by profileManager.profileIdleSwitchEnabled.collectAsState()
+                    val canSwitchProfiles = profiles.size > 1 || activeProfileHasPin
+                    val interactionAt by ambientIdleController.lastInteractionAt.collectAsState()
+                    val ambientShowing by ambientIdleController.isShowing.collectAsState()
+                    val appLifecycleState by LocalLifecycleOwner.current.lifecycle.currentStateAsState()
+                    var profileSwitchDue by remember { mutableStateOf(false) }
+
+                    // Re-armed on every key press / tap, and only while the app is actually on screen.
+                    // An already stale clock (fresh launch, or coming back after a long absence such as
+                    // the TV being switched off and on) switches immediately.
+                    LaunchedEffect(
+                        profileIdleSwitchEnabled,
+                        canSwitchProfiles,
+                        hasSelectedProfileThisSession,
+                        currentRoute,
+                        appLifecycleState,
+                        interactionAt
+                    ) {
+                        if (!profileIdleSwitchEnabled || !canSwitchProfiles) {
+                            profileSwitchDue = false
+                            return@LaunchedEffect
+                        }
+                        if (!hasSelectedProfileThisSession) {
+                            // The picker is already on screen; nothing to request.
+                            profileSwitchDue = false
+                            return@LaunchedEffect
+                        }
+                        if (!appLifecycleState.isAtLeast(Lifecycle.State.RESUMED)) return@LaunchedEffect
+                        // Never pull the picker over playback, e.g. a paused movie left overnight.
+                        // Leaving the player counts as activity so it cannot fire on the way out.
+                        if (currentRoute?.startsWith("player/") == true) {
+                            ambientIdleController.onInteraction()
+                            return@LaunchedEffect
+                        }
+                        val remainingMs = interactionAt + PROFILE_SWITCH_IDLE_TIMEOUT_MS - SystemClock.uptimeMillis()
+                        if (remainingMs > 0) delay(remainingMs)
+                        profileSwitchDue = true
+                    }
+
+                    // The ambient slideshow is the screen saver for the same idle period; leave it up
+                    // and only switch profiles once the user dismisses it.
+                    LaunchedEffect(profileSwitchDue, ambientShowing, hasSelectedProfileThisSession) {
+                        if (!profileSwitchDue) return@LaunchedEffect
+                        if (!hasSelectedProfileThisSession) {
+                            profileSwitchDue = false
+                            return@LaunchedEffect
+                        }
+                        if (ambientShowing) return@LaunchedEffect
+                        profileSwitchDue = false
+                        // Restart the idle clock so a dismissed request cannot fire twice.
+                        ambientIdleController.onInteraction()
+                        if (profiles.size > 1 || activeProfileHasPin) {
+                            pendingProfileSwitchRequest.value = true
+                        }
+                    }
+
+                    // A device that just booted starts on the picker even when "remember last
+                    // profile" would otherwise skip it. Only once per activity instance.
+                    var bootSwitchHandled by rememberSaveable { mutableStateOf(false) }
+                    LaunchedEffect(
+                        profileIdleSwitchEnabled,
+                        canSwitchProfiles,
+                        hasSelectedProfileThisSession,
+                        layoutChosen
+                    ) {
+                        if (bootSwitchHandled) return@LaunchedEffect
+                        if (layoutChosen != true) return@LaunchedEffect
+                        if (!hasSelectedProfileThisSession) {
+                            // The picker is already the first screen; nothing to force.
+                            bootSwitchHandled = true
+                            return@LaunchedEffect
+                        }
+                        if (SystemClock.elapsedRealtime() > PROFILE_SWITCH_BOOT_WINDOW_MS) {
+                            bootSwitchHandled = true
+                            return@LaunchedEffect
+                        }
+                        if (!profileIdleSwitchEnabled || !canSwitchProfiles) return@LaunchedEffect
+                        bootSwitchHandled = true
+                        pendingProfileSwitchRequest.value = true
                     }
 
                     // Auto-play next episode for EXTERNAL players: the tracker resolves the
@@ -1173,6 +1328,17 @@ open class MainActivity : ComponentActivity() {
                             focusedSplashTheme = null
                             hasSelectedProfileThisSession = false
                         }
+
+                        // Double-tapping HOME asks for the profile switcher. Consumed on read so a
+                        // later recomposition (or returning from the switcher) cannot repeat it.
+                        val profileSwitchRequested by pendingProfileSwitchRequest.collectAsState()
+                        LaunchedEffect(profileSwitchRequested) {
+                            if (!profileSwitchRequested) return@LaunchedEffect
+                            pendingProfileSwitchRequest.value = false
+                            if (profiles.size > 1 || activeProfileHasPin) {
+                                handleSwitchProfile()
+                            }
+                        }
                         Box(modifier = Modifier.fillMaxSize()) {
                             CompositionLocalProvider(LocalNavViewModelStoreOwner provides navViewModelStoreOwner) {
                                 if (modernSidebarEnabled) {
@@ -1301,7 +1467,21 @@ open class MainActivity : ComponentActivity() {
 
     override fun onResume() {
         super.onResume()
+        // Coming back after a long absence (TV switched off and on again, or another app for a
+        // while) hands the TV back to the profile picker. Measured before dismiss() restarts the
+        // idle clock. The consumer ignores this when the picker is already up or only one profile
+        // without a PIN exists.
+        val idleGapMs = SystemClock.uptimeMillis() - ambientIdleController.lastInteractionAt.value
         ambientIdleController.dismiss()
+        refreshHomeRole()
+        // An external player covering the app is playback, not idleness, so a long film must not
+        // hand the TV back to the picker when it ends.
+        if (idleGapMs >= PROFILE_SWITCH_IDLE_TIMEOUT_MS &&
+            !externalPlaybackTracker.isTracking &&
+            profileManager.profileIdleSwitchEnabled.value
+        ) {
+            pendingProfileSwitchRequest.value = true
+        }
         if (::jankStats.isInitialized) jankStats.isTrackingEnabled = true
         memberAccessRepository.refreshIfStale()
         lifecycleScope.launch {
@@ -1324,6 +1504,59 @@ open class MainActivity : ComponentActivity() {
         setIntent(intent)
         captureDeepLinkIntent(intent)
         captureLaunchIntent(intent)
+        captureHomeRequestIntent(intent)
+    }
+
+    /**
+     * HOME pressed while Nuvio itself is in front. The first press returns to the top of Home, a
+     * second press right after it also opens the profile switcher.
+     */
+    private fun handleHomeKeyPress() {
+        when (homeKeyGesture.onPress(SystemClock.uptimeMillis())) {
+            HomeKeyPress.IGNORED -> Unit
+            HomeKeyPress.SINGLE -> pendingHomeRequestNonce.value += 1
+            HomeKeyPress.DOUBLE -> {
+                pendingHomeRequestNonce.value += 1
+                pendingProfileSwitchRequest.value = true
+            }
+        }
+    }
+
+    private fun refreshHomeRole() {
+        val ownsHomeRole = runCatching {
+            val homeIntent = Intent(Intent.ACTION_MAIN).addCategory(Intent.CATEGORY_HOME)
+            packageManager.resolveActivity(homeIntent, PackageManager.MATCH_DEFAULT_ONLY)
+                ?.activityInfo
+                ?.packageName == packageName
+        }.getOrDefault(false)
+        val serviceEnabled = runCatching {
+            LauncherAccessibilityService.isServiceEnabled(this)
+        }.getOrDefault(false)
+        nuvioHandlesHomeKey = ownsHomeRole || serviceEnabled
+    }
+
+    /**
+     * The device HOME key is consumed by [com.nuvio.tv.core.launcher.LauncherAccessibilityService] so a
+     * launcher HOME press never leaves Nuvio: it is re-delivered as an intent instead. Both that intent
+     * and a plain HOME-category launch mean "show Home at the top".
+     *
+     * @param fromNewIntent false while the activity is being created: a plain HOME launch then simply
+     * opens the app on its start destination, so there is nothing to reset (and forcing a reset would
+     * override the first-run focus handling). An explicit accessibility-service request is still
+     * honoured, because the user did ask for Home.
+     */
+    private fun captureHomeRequestIntent(intent: Intent?, fromNewIntent: Boolean = true) {
+        if (LauncherHomeRequest.isProfileSelectionRequested(intent)) {
+            pendingProfileSwitchRequest.value = true
+        }
+        val requested = if (fromNewIntent) {
+            LauncherHomeRequest.isRequested(intent)
+        } else {
+            intent?.getBooleanExtra(LauncherHomeRequest.EXTRA_GO_HOME, false) == true
+        }
+        if (requested) {
+            pendingHomeRequestNonce.value += 1
+        }
     }
 
     private fun captureDeepLinkIntent(intent: Intent?) {
@@ -1360,6 +1593,20 @@ open class MainActivity : ComponentActivity() {
     }
 
     override fun dispatchKeyEvent(event: KeyEvent): Boolean {
+        // HOME is checked before the ambient handler: while the slideshow is up a HOME press should
+        // end it *and* go home, instead of only dismissing the slideshow.
+        if (event.keyCode == KeyEvent.KEYCODE_HOME && nuvioHandlesHomeKey) {
+            ambientIdleController.onInteraction()
+            if (event.action == KeyEvent.ACTION_DOWN && ambientIdleController.isShowing.value) {
+                ambientIdleController.dismiss()
+            }
+            // While Nuvio is the launcher the system swallows HOME when this app is already in front:
+            // it neither starts the home activity again nor calls onNewIntent. Handling it here is the
+            // only way a HOME press on a scrolled Home, another tab, or a detail page can reset the
+            // screen - and the only way to get the double-tap profile switcher.
+            if (event.action == KeyEvent.ACTION_UP) handleHomeKeyPress()
+            return true
+        }
         if (ambientIdleController.consumeKeyEvent(event)) return true
         if (event.keyCode == KeyEvent.KEYCODE_BACK) {
             if (longPressBackHeld.value) {
@@ -2376,15 +2623,7 @@ private fun navigateToDrawerRoute(
 ) {
     if (currentRoute == targetRoute) {
         if (targetRoute == Screen.Home.route) {
-            // Scroll Home to top by clearing saved focus/scroll state on the ViewModel.
-            val homeEntry = try {
-                navController.getBackStackEntry(Screen.Home.route)
-            } catch (_: IllegalArgumentException) {
-                // "home" not yet on the back stack (e.g. nav graph not fully initialized).
-                return
-            }
-            val homeViewModel = androidx.lifecycle.ViewModelProvider(homeEntry)[com.nuvio.tv.ui.screens.home.HomeViewModel::class.java]
-            homeViewModel.requestScrollToTop()
+            requestHomeScrollToTop(navController)
         }
         return
     }
@@ -2396,9 +2635,30 @@ private fun navigateToDrawerRoute(
             launchSingleTop = true
             restoreState = true
         }
+        if (targetRoute == Screen.Home.route) {
+            // Home restores its saved scroll/focus state on restoreState, but a Home tap should
+            // always land at the top of the page.
+            requestHomeScrollToTop(navController)
+        }
     } catch (e: IllegalArgumentException) {
         Log.w("NuvioNavigation", "Route not found in nav graph: $targetRoute", e)
     }
+}
+
+/**
+ * Asks Home to drop its saved scroll/focus state and scroll back to the first row. Safe to call when
+ * Home is not the current destination: the reset is stored on the Home ViewModel and applied the next
+ * time its content is composed.
+ */
+private fun requestHomeScrollToTop(navController: NavHostController) {
+    val homeEntry = try {
+        navController.getBackStackEntry(Screen.Home.route)
+    } catch (_: IllegalArgumentException) {
+        // "home" not yet on the back stack (e.g. nav graph not fully initialized).
+        return
+    }
+    val homeViewModel = androidx.lifecycle.ViewModelProvider(homeEntry)[com.nuvio.tv.ui.screens.home.HomeViewModel::class.java]
+    homeViewModel.requestScrollToTop()
 }
 
 private fun isBlockedContentKey(key: Key): Boolean {

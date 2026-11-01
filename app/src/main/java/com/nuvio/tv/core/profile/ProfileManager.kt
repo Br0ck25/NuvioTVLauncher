@@ -51,6 +51,10 @@ class ProfileManager @Inject constructor(
     val startupSplashEnabled: StateFlow<Boolean> = profileDataStore.startupSplashEnabled
         .stateIn(scope, SharingStarted.Eagerly, true)
 
+    /** Drives the idle/boot return to the profile picker. */
+    val profileIdleSwitchEnabled: StateFlow<Boolean> = profileDataStore.profileIdleSwitchEnabled
+        .stateIn(scope, SharingStarted.Eagerly, true)
+
     val profiles: StateFlow<List<UserProfile>> = profileDataStore.profilesList
         .stateIn(scope, SharingStarted.Eagerly, listOf(
             UserProfile(id = 1, name = context.getString(R.string.profile_default_name, 1), avatarColorHex = "#1E88E5")
@@ -82,6 +86,10 @@ class ProfileManager @Inject constructor(
 
     suspend fun setStartupSplashEnabled(enabled: Boolean) {
         profileDataStore.setStartupSplashEnabled(enabled)
+    }
+
+    suspend fun setProfileIdleSwitchEnabled(enabled: Boolean) {
+        profileDataStore.setProfileIdleSwitchEnabled(enabled)
     }
 
     suspend fun createProfile(

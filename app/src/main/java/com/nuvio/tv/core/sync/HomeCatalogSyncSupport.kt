@@ -1,5 +1,6 @@
 package com.nuvio.tv.core.sync
 
+import com.nuvio.tv.core.apps.INSTALLED_APPS_CATALOG_KEY
 import com.nuvio.tv.data.mediaserver.ServerCatalog
 import com.nuvio.tv.domain.model.catalogTypeKey
 import com.nuvio.tv.domain.model.catalogRowLegacyKey
@@ -34,10 +35,14 @@ internal fun homeCollectionKey(collectionId: String): String {
     return "collection_${collectionId}"
 }
 
-internal fun List<String>.withLocalServerKeys(local: List<String>): List<String> =
+/** Server and installed-app rows are device-local, including their position and enabled state. */
+internal fun isDeviceLocalCatalogKey(key: String): Boolean =
+    ServerCatalog.isServerKey(key) || key == INSTALLED_APPS_CATALOG_KEY
+
+internal fun List<String>.withDeviceLocalCatalogKeys(local: List<String>): List<String> =
     local.withIndex()
-        .filter { ServerCatalog.isServerKey(it.value) }
-        .fold(filterNot(ServerCatalog::isServerKey).toMutableList()) { keys, (index, key) ->
+        .filter { isDeviceLocalCatalogKey(it.value) }
+        .fold(filterNot(::isDeviceLocalCatalogKey).toMutableList()) { keys, (index, key) ->
             keys.apply { add(index.coerceAtMost(size), key) }
         }
 

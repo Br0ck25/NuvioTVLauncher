@@ -107,6 +107,7 @@ fun HomeScreen(
             if (event == Lifecycle.Event.ON_RESUME) {
                 viewModel.beginShuffleHomeVisit()
                 viewModel.refreshHomeCatalogsIfStale()
+                viewModel.refreshInstalledApps()
             }
         }
         lifecycleOwner.lifecycle.addObserver(observer)
@@ -120,6 +121,7 @@ fun HomeScreen(
     )
     val hasCatalogContent = uiState.catalogRows.any { it.items.isNotEmpty() }
     val hasCollectionContent = uiState.homeRows.any { it is HomeRow.CollectionRow }
+    val hasInstalledAppsContent = uiState.homeRows.any { it is HomeRow.InstalledApps && it.apps.isNotEmpty() }
     val hasHeroContent = uiState.heroItems.isNotEmpty()
     val modernPresentationReady =
         uiState.homeLayout != HomeLayout.MODERN ||
@@ -180,7 +182,7 @@ fun HomeScreen(
         modernPresentationReady
     ) {
         // Track that addons are known (even if isLoading flipped too fast to catch).
-        if (uiState.installedAddonsCount > 0) {
+        if (uiState.installedAddonsCount > 0 || (hasInstalledAppsContent && !uiState.isLoading)) {
             catalogLoadingStarted = true
         }
         // Wait until catalog loading has completed with content AND the CW
@@ -191,7 +193,7 @@ fun HomeScreen(
             initialCwResolved &&
             modernPresentationReady &&
             // When addons are installed, require at least one catalog row.
-            (hasCatalogContent || uiState.installedAddonsCount == 0)
+            (hasCatalogContent || hasInstalledAppsContent || uiState.installedAddonsCount == 0)
         ) {
             Log.d("HomeGate", "RELEASE: catalogs=$hasCatalogContent cwResolved=$initialCwResolved cwItems=${uiState.continueWatchingItems.size} addons=${uiState.installedAddonsCount}")
             homeStableGateReleased = true
@@ -229,13 +231,14 @@ fun HomeScreen(
     val hasAnyContent = uiState.catalogRows.isNotEmpty() ||
         (uiState.continueWatchingEnabled && uiState.continueWatchingItems.isNotEmpty()) ||
         uiState.heroItems.isNotEmpty() ||
-        hasCollectionContent
+        hasCollectionContent ||
+        hasInstalledAppsContent
     val showStartupLoader = when {
         !uiState.layoutPreferencesReady -> true
         uiState.isLoading && !hasAnyContent -> true
-        uiState.error == noAddonsError && uiState.catalogRows.isEmpty() -> !homeStableGateReleased
-        uiState.error == noCatalogAddonsError && uiState.catalogRows.isEmpty() && !hasCollectionContent && !hasHeroContent -> !homeStableGateReleased
-        uiState.error != null && uiState.catalogRows.isEmpty() -> false
+        uiState.error == noAddonsError && uiState.catalogRows.isEmpty() && !hasInstalledAppsContent -> !homeStableGateReleased
+        uiState.error == noCatalogAddonsError && uiState.catalogRows.isEmpty() && !hasCollectionContent && !hasHeroContent && !hasInstalledAppsContent -> !homeStableGateReleased
+        uiState.error != null && uiState.catalogRows.isEmpty() && !hasInstalledAppsContent -> false
         !uiState.isLoading && !hasAnyContent -> !homeStableGateReleased
         else -> !homeStableGateReleased || !modernPresentationReady || !showHomeContentWithAnimation
     }
@@ -267,7 +270,7 @@ fun HomeScreen(
                 Unit
             }
 
-            uiState.error == noAddonsError && uiState.catalogRows.isEmpty() -> {
+            uiState.error == noAddonsError && uiState.catalogRows.isEmpty() && !hasInstalledAppsContent -> {
                 if (!homeStableGateReleased) {
                     Unit
                 } else {
@@ -284,7 +287,7 @@ fun HomeScreen(
                 }
             }
 
-            uiState.error == noCatalogAddonsError && uiState.catalogRows.isEmpty() && !hasCollectionContent && !hasHeroContent -> {
+            uiState.error == noCatalogAddonsError && uiState.catalogRows.isEmpty() && !hasCollectionContent && !hasHeroContent && !hasInstalledAppsContent -> {
                 if (!homeStableGateReleased) {
                     Unit
                 } else {
@@ -301,7 +304,7 @@ fun HomeScreen(
                 }
             }
 
-            uiState.error != null && uiState.catalogRows.isEmpty() -> {
+            uiState.error != null && uiState.catalogRows.isEmpty() && !hasInstalledAppsContent -> {
                 ErrorState(
                     message = uiState.error ?: stringResource(R.string.error_generic),
                     onRetry = { viewModel.onEvent(HomeEvent.OnRetry) }

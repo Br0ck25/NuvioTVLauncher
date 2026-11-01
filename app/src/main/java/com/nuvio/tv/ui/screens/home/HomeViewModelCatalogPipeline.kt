@@ -3,6 +3,8 @@ package com.nuvio.tv.ui.screens.home
 import android.util.Log
 import androidx.lifecycle.viewModelScope
 import com.nuvio.tv.R
+import com.nuvio.tv.core.apps.INSTALLED_APPS_CATALOG_KEY
+import com.nuvio.tv.core.apps.orderInstalledApps
 import com.nuvio.tv.core.network.NetworkResult
 import com.nuvio.tv.domain.model.Addon
 import com.nuvio.tv.domain.model.CatalogDescriptor
@@ -83,9 +85,10 @@ internal fun HomeViewModel.loadDisabledHomeCatalogPreferencePipeline() {
         layoutPreferenceDataStore.disabledHomeCatalogKeys.collectLatest { keys ->
             val newKeys = keys.toSet()
             if (newKeys == disabledHomeCatalogKeys) return@collectLatest
+            val previousKeys = disabledHomeCatalogKeys
             disabledHomeCatalogKeys = newKeys
             rebuildCatalogOrder(addonsCache)
-            if (addonsCache.isNotEmpty()) {
+            if (addonsCache.isNotEmpty() && (previousKeys - newKeys) + (newKeys - previousKeys) != setOf(INSTALLED_APPS_CATALOG_KEY)) {
                 loadAllCatalogsPipeline(addonsCache)
             } else {
                 scheduleUpdateCatalogRows()
@@ -98,6 +101,26 @@ internal fun HomeViewModel.loadCustomCatalogTitlesPipeline() {
     viewModelScope.launch {
         layoutPreferenceDataStore.customCatalogTitles.collectLatest { titles ->
             customCatalogTitles = titles
+            scheduleUpdateCatalogRows()
+        }
+    }
+}
+
+internal fun HomeViewModel.observeInstalledAppsRowPipeline() {
+    viewModelScope.launch {
+        kotlinx.coroutines.flow.combine(
+            installedAppsRepository.state,
+            installedAppsPreferences.preferences
+        ) { state, preferences ->
+            val byPackage = state.apps.associateBy { it.packageName }
+            orderInstalledApps(
+                availablePackages = state.apps.map { it.packageName },
+                savedOrder = preferences.order,
+                removedPackages = preferences.removedPackages
+            ).mapNotNull(byPackage::get)
+        }.distinctUntilChanged().collectLatest { apps ->
+            installedAppsCache = apps
+            rebuildCatalogOrder(addonsCache)
             scheduleUpdateCatalogRows()
         }
     }
@@ -199,6 +222,7 @@ internal suspend fun HomeViewModel.loadAllCatalogsPipeline(
         if (addons.isEmpty()) {
             catalogsLoadInProgress = false
             _uiState.update { it.copy(isLoading = false, error = appContext.getString(R.string.home_empty_no_sources_title)) }
+            scheduleUpdateCatalogRows()
             return
         }
 
@@ -732,6 +756,10 @@ internal suspend fun HomeViewModel.updateCatalogRowsPipeline() {
         }
         for (key in orderedKeys) {
             if (key in disabledHomeCatalogKeys) continue
+            if (key == INSTALLED_APPS_CATALOG_KEY) {
+                installedAppsCache.takeIf { it.isNotEmpty() }?.let { add(HomeRow.InstalledApps(it)) }
+                continue
+            }
             val collectionEntry = collectionsSnapshot[key]
             if (collectionEntry != null) {
                 if (!collectionEntry.pinToTop && addedCollectionIds.add(collectionEntry.id)) {
@@ -862,6 +890,7 @@ internal suspend fun HomeViewModel.updateCatalogRowsPipeline() {
                             ))
                         }
                     }
+                    is HomeRow.InstalledApps -> add(GridItem.InstalledAppsRow(homeRow.apps))
                     is HomeRow.PlaceholderCatalog -> {
                         // Grid layout: skip placeholders (grid loads all at once)
                     }

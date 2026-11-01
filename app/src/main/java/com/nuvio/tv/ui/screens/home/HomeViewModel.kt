@@ -6,6 +6,8 @@ import androidx.compose.runtime.mutableStateMapOf
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
 import com.nuvio.tv.LocaleCache
+import com.nuvio.tv.core.apps.InstalledApp
+import com.nuvio.tv.core.apps.InstalledAppsRepository
 import com.nuvio.tv.core.player.StreamAutoPlayPolicy
 import com.nuvio.tv.core.recommendations.TvRecommendationManager
 import com.nuvio.tv.core.tmdb.MetaPreviewEnricher
@@ -88,6 +90,8 @@ class HomeViewModel @Inject constructor(
     internal val profileManager: com.nuvio.tv.core.profile.ProfileManager,
     internal val tvRecommendationManager: TvRecommendationManager,
     internal val serverCatalog: ServerCatalog,
+    internal val installedAppsRepository: InstalledAppsRepository,
+    internal val installedAppsPreferences: com.nuvio.tv.data.local.InstalledAppsPreferencesDataStore,
     internal val metaPreviewEnricher: MetaPreviewEnricher = MetaPreviewEnricher(
         tmdbService,
         tmdbMetadataService,
@@ -230,6 +234,7 @@ class HomeViewModel @Inject constructor(
     internal val catalogOrder = mutableListOf<String>()
     internal var addonsCache: List<Addon> = emptyList()
     internal var collectionsCache: List<Collection> = emptyList()
+    @Volatile internal var installedAppsCache: List<InstalledApp> = emptyList()
     internal var homeCatalogOrderKeys: List<String> = emptyList()
     internal var disabledHomeCatalogKeys: Set<String> = emptySet()
     internal var followAddonsOrderEnabled: Boolean = false
@@ -374,6 +379,7 @@ class HomeViewModel @Inject constructor(
             loadFollowAddonsOrder()
             loadDisabledHomeCatalogPreference()
             loadCustomCatalogTitles()
+            observeInstalledAppsRow()
             observeLibraryState()
             observeTmdbSettings()
             observeMdbListSettings()
@@ -802,6 +808,10 @@ class HomeViewModel @Inject constructor(
     )
 
     private fun observeCollections() = observeCollectionsPipeline()
+
+    private fun observeInstalledAppsRow() = observeInstalledAppsRowPipeline()
+
+    fun refreshInstalledApps() = installedAppsRepository.refresh()
 
     private fun observeInstalledAddons() = observeInstalledAddonsPipeline()
 
