@@ -8,13 +8,25 @@ import com.nuvio.tv.MainActivity
 import io.github.muntashirakon.adb.AbsAdbConnectionManager
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.withContext
-import org.bouncycastle.asn1.x509.X509Name
-import org.bouncycastle.x509.X509V3CertificateGenerator
+import org.bouncycastle.asn1.ASN1EncodableVector
+import org.bouncycastle.asn1.ASN1Encoding
+import org.bouncycastle.asn1.ASN1Integer
+import org.bouncycastle.asn1.DERBitString
+import org.bouncycastle.asn1.DERNull
+import org.bouncycastle.asn1.DERSequence
+import org.bouncycastle.asn1.pkcs.PKCSObjectIdentifiers
+import org.bouncycastle.asn1.x500.X500Name
+import org.bouncycastle.asn1.x509.AlgorithmIdentifier
+import org.bouncycastle.asn1.x509.SubjectPublicKeyInfo
+import org.bouncycastle.asn1.x509.Time
+import org.bouncycastle.asn1.x509.V3TBSCertificateGenerator
+import java.io.ByteArrayInputStream
 import java.io.File
 import java.math.BigInteger
 import java.security.KeyFactory
 import java.security.KeyPairGenerator
 import java.security.PrivateKey
+import java.security.Signature
 import java.security.SecureRandom
 import java.security.cert.Certificate
 import java.security.cert.CertificateFactory
@@ -96,16 +108,32 @@ private class KeyStoreAdbConnectionManager(context: Context) : AbsAdbConnectionM
 
     private fun generate(): Pair<PrivateKey, Certificate> {
         val pair = KeyPairGenerator.getInstance("RSA").apply { initialize(2048, SecureRandom()) }.generateKeyPair()
-        val name = X509Name("CN=Nuvio TV")
-        val generator = X509V3CertificateGenerator().apply {
-            setSerialNumber(BigInteger.valueOf(System.currentTimeMillis()))
-            setIssuerDN(name)
-            setSubjectDN(name)
-            setNotBefore(Date(System.currentTimeMillis() - TimeUnit.DAYS.toMillis(1)))
-            setNotAfter(Date(System.currentTimeMillis() + TimeUnit.DAYS.toMillis(365L * 25)))
-            setPublicKey(pair.public)
-            setSignatureAlgorithm("SHA256withRSA")
+        // Android's built-in "BC" provider has no SHA256withRSA, so build the certificate structure
+        // with BouncyCastle's ASN.1 classes and sign it with the platform's default provider.
+        val name = X500Name("CN=Nuvio TV")
+        val now = System.currentTimeMillis()
+        val signatureAlgorithm = AlgorithmIdentifier(PKCSObjectIdentifiers.sha256WithRSAEncryption, DERNull.INSTANCE)
+        val tbs = V3TBSCertificateGenerator().apply {
+            setSerialNumber(ASN1Integer(BigInteger.valueOf(now)))
+            setIssuer(name)
+            setSubject(name)
+            setStartDate(Time(Date(now - TimeUnit.DAYS.toMillis(1))))
+            setEndDate(Time(Date(now + TimeUnit.DAYS.toMillis(365L * 25))))
+            setSubjectPublicKeyInfo(SubjectPublicKeyInfo.getInstance(pair.public.encoded))
+            setSignature(signatureAlgorithm)
+        }.generateTBSCertificate()
+        val signature = Signature.getInstance("SHA256withRSA").run {
+            initSign(pair.private)
+            update(tbs.getEncoded(ASN1Encoding.DER))
+            sign()
         }
-        return pair.private to generator.generateX509Certificate(pair.private)
+        val parts = ASN1EncodableVector().apply {
+            add(tbs)
+            add(signatureAlgorithm)
+            add(DERBitString(signature))
+        }
+        val der = DERSequence(parts).getEncoded(ASN1Encoding.DER)
+        val certificate = CertificateFactory.getInstance("X.509").generateCertificate(ByteArrayInputStream(der))
+        return pair.private to certificate
     }
 }
