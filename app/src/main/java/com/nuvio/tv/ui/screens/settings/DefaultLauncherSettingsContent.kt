@@ -53,7 +53,8 @@ internal fun DefaultLauncherSettingsContent(initialFocusRequester: FocusRequeste
             )
             SettingsActionRow(
                 title = stringResource(
-                    if (setup.isAccessibilityEnabled) R.string.apps_home_override_active
+                    if (setup.isAccessibilityActive) R.string.apps_home_override_active
+                    else if (setup.isAccessibilityEnabled) R.string.apps_home_override_pending
                     else R.string.apps_home_override
                 ),
                 subtitle = stringResource(R.string.settings_home_override_subtitle),

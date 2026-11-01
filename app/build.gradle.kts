@@ -121,9 +121,9 @@ val releaseStoreFilePath = env("NUVIO_RELEASE_STORE_FILE")
 val releaseKeyAliasValue = env("NUVIO_RELEASE_KEY_ALIAS")
     ?: localProperties.getProperty("NUVIO_RELEASE_KEY_ALIAS", "nuviotv")
 val releaseKeyPasswordValue = env("NUVIO_RELEASE_KEY_PASSWORD")
-    ?: localProperties.getProperty("NUVIO_RELEASE_KEY_PASSWORD", "815787")
+    ?: localProperties.getProperty("NUVIO_RELEASE_KEY_PASSWORD")
 val releaseStorePasswordValue = env("NUVIO_RELEASE_STORE_PASSWORD")
-    ?: localProperties.getProperty("NUVIO_RELEASE_STORE_PASSWORD", "815787")
+    ?: localProperties.getProperty("NUVIO_RELEASE_STORE_PASSWORD")
 
 android {
     namespace = "com.nuvio.tv"
@@ -135,8 +135,8 @@ android {
         testInstrumentationRunner = "androidx.test.runner.AndroidJUnitRunner"
         minSdk = 24
         targetSdk = 36
-        versionCode = 1083
-        versionName = "1.1.2"
+        versionCode = 1084
+        versionName = "1.1.3"
 
         buildConfigField("String", "PARENTAL_GUIDE_API_URL", "\"${localProperties.getProperty("PARENTAL_GUIDE_API_URL", "")}\"")
         buildConfigField("String", "INTRODB_API_URL", "\"${localProperties.getProperty("INTRODB_API_URL", "")}\"")

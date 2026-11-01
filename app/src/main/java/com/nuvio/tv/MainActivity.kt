@@ -148,6 +148,7 @@ import com.nuvio.tv.core.auth.AuthManager
 import com.nuvio.tv.core.auth.DeviceSessionRegistration
 import com.nuvio.tv.core.deeplink.DeepLinkHandler
 import com.nuvio.tv.core.deeplink.DeepLinkParser
+import com.nuvio.tv.core.launcher.HomeForegroundDelivery
 import com.nuvio.tv.core.launcher.HomeKeyGesture
 import com.nuvio.tv.core.launcher.HomeKeyPress
 import com.nuvio.tv.core.launcher.LauncherSetup
@@ -375,6 +376,34 @@ open class MainActivity : ComponentActivity() {
         externalPlaybackTracker.onActivityResult(result)
     }
 
+    private var automaticHomeRequestEligible = false
+
+    /** Only Android's confirmation UI is shown; no launcher onboarding or settings redirect. */
+    private val homeRoleRequest = registerForActivityResult(
+        androidx.activity.result.contract.ActivityResultContracts.StartActivityForResult()
+    ) {
+        LauncherSetup.recordRoleRequestResult(this)
+        refreshHomeRole()
+    }
+
+    override fun onWindowFocusChanged(hasFocus: Boolean) {
+        super.onWindowFocusChanged(hasFocus)
+        // Defer until a normal app-icon/HOME launch is visible. Never interrupt a deep link or
+        // restored playback, and never reopen a dialog on subsequent resumes/process recreation.
+        if (!automaticHomeRequestEligible || !hasFocus ||
+            !lifecycle.currentState.isAtLeast(Lifecycle.State.RESUMED) ||
+            intent?.action != Intent.ACTION_MAIN || intent?.data != null ||
+            intent?.hasExtra("contentId") == true
+        ) return
+        LauncherSetup.takeAutomaticRoleRequest(this)?.let { request ->
+            automaticHomeRequestEligible = false
+            runCatching { homeRoleRequest.launch(request) }.onFailure {
+                LauncherSetup.recordRoleRequestResult(this, launchFailed = true)
+                Log.w("MainActivity", "Native HOME request unavailable", it)
+            }
+        }
+    }
+
     /** True until the first onResume after onCreate completes. */
     private var isFirstResumeAfterCreate = false
 
@@ -400,6 +429,7 @@ open class MainActivity : ComponentActivity() {
     override fun onCreate(savedInstanceState: Bundle?) {
         installSplashScreen()
         super.onCreate(savedInstanceState)
+        automaticHomeRequestEligible = savedInstanceState == null
         isFirstResumeAfterCreate = true
         window?.setBackgroundDrawable(ColorDrawable(android.graphics.Color.TRANSPARENT))
 
@@ -1477,6 +1507,7 @@ open class MainActivity : ComponentActivity() {
         val idleGapMs = SystemClock.uptimeMillis() - ambientIdleController.lastInteractionAt.value
         ambientIdleController.dismiss()
         refreshHomeRole()
+        HomeForegroundDelivery.attach(this, ::handleHomeKeyPress)
         // An external player covering the app is playback, not idleness, so a long film must not
         // hand the TV back to the picker when it ends.
         if (idleGapMs >= PROFILE_SWITCH_IDLE_TIMEOUT_MS &&
@@ -1561,6 +1592,7 @@ open class MainActivity : ComponentActivity() {
     }
 
     override fun onPause() {
+        HomeForegroundDelivery.detach(this)
         super.onPause()
         if (::jankStats.isInitialized) jankStats.isTrackingEnabled = false
     }
@@ -1584,6 +1616,7 @@ open class MainActivity : ComponentActivity() {
     override fun dispatchKeyEvent(event: KeyEvent): Boolean {
         // HOME is checked before the ambient handler: while the slideshow is up a HOME press should
         // end it *and* go home, instead of only dismissing the slideshow.
+        if (event.keyCode == KeyEvent.KEYCODE_HOME) refreshHomeRole()
         if (event.keyCode == KeyEvent.KEYCODE_HOME && nuvioHandlesHomeKey) {
             ambientIdleController.onInteraction()
             if (event.action == KeyEvent.ACTION_DOWN && ambientIdleController.isShowing.value) {
@@ -1636,6 +1669,7 @@ open class MainActivity : ComponentActivity() {
     }
 
     override fun onDestroy() {
+        HomeForegroundDelivery.detach(this)
         super.onDestroy()
         PluginRuntimeHooks.onActivityDestroy()
     }

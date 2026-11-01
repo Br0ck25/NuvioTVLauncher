@@ -5,6 +5,9 @@
     <!-- Android 11+ fix: SpeechRecognizer not available without this -->
     <!-- https://stackoverflow.com/questions/64319117/speechrecognizer-not-available-when-targeting-android-11 -->
     <queries>
+        <intent>
+            <action android:name="android.settings.HOME_SETTINGS" />
+        </intent>
         <!-- Resolve the selected HOME app when reporting launcher status on Android 11+. -->
         <intent>
             <action android:name="android.intent.action.MAIN" />

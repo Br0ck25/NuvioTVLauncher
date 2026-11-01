@@ -48,6 +48,36 @@ class LauncherManifestTest {
         )
     }
 
+    @Test
+    fun `Home filter includes default and main with an exported activity`() {
+        val main = elements("activity").single { it.androidAttribute("name") == ".MainActivity" }
+        assertEquals("true", main.androidAttribute("exported"))
+        val filters = main.getElementsByTagName("intent-filter")
+        val home = (0 until filters.length).map { filters.item(it) as Element }.single {
+            val categories = it.getElementsByTagName("category")
+            (0 until categories.length).any { index ->
+                (categories.item(index) as Element).androidAttribute("name") == "android.intent.category.HOME"
+            }
+        }
+        assertEquals("android.intent.action.MAIN", (home.getElementsByTagName("action").item(0) as Element).androidAttribute("name"))
+        val categories = home.getElementsByTagName("category")
+        assertTrue((0 until categories.length).any {
+            (categories.item(it) as Element).androidAttribute("name") == "android.intent.category.DEFAULT"
+        })
+    }
+
+    @Test
+    fun `accessibility binds through Android permission and requests no window content`() {
+        val service = elements("service").single { it.androidAttribute("name") == ".core.launcher.LauncherAccessibilityService" }
+        assertEquals("android.permission.BIND_ACCESSIBILITY_SERVICE", service.androidAttribute("permission"))
+        val config = listOf(File("src/main/res/xml/launcher_accessibility_service_config.xml"),
+            File("app/src/main/res/xml/launcher_accessibility_service_config.xml")).first { it.isFile }
+        val root = DocumentBuilderFactory.newInstance().apply { isNamespaceAware = true }
+            .newDocumentBuilder().parse(config).documentElement
+        assertEquals("true", root.androidAttribute("canRequestFilterKeyEvents"))
+        assertEquals("false", root.androidAttribute("canRetrieveWindowContent"))
+    }
+
     private fun elements(tag: String): List<Element> {
         val nodes = manifest.getElementsByTagName(tag)
         return (0 until nodes.length).map { nodes.item(it) as Element }
