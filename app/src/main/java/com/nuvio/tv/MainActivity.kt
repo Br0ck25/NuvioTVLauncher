@@ -376,34 +376,6 @@ open class MainActivity : ComponentActivity() {
         externalPlaybackTracker.onActivityResult(result)
     }
 
-    private var automaticHomeRequestEligible = false
-
-    /** Only Android's confirmation UI is shown; no launcher onboarding or settings redirect. */
-    private val homeRoleRequest = registerForActivityResult(
-        androidx.activity.result.contract.ActivityResultContracts.StartActivityForResult()
-    ) {
-        LauncherSetup.recordRoleRequestResult(this)
-        refreshHomeRole()
-    }
-
-    override fun onWindowFocusChanged(hasFocus: Boolean) {
-        super.onWindowFocusChanged(hasFocus)
-        // Defer until a normal app-icon/HOME launch is visible. Never interrupt a deep link or
-        // restored playback, and never reopen a dialog on subsequent resumes/process recreation.
-        if (!automaticHomeRequestEligible || !hasFocus ||
-            !lifecycle.currentState.isAtLeast(Lifecycle.State.RESUMED) ||
-            intent?.action != Intent.ACTION_MAIN || intent?.data != null ||
-            intent?.hasExtra("contentId") == true
-        ) return
-        LauncherSetup.takeAutomaticRoleRequest(this)?.let { request ->
-            automaticHomeRequestEligible = false
-            runCatching { homeRoleRequest.launch(request) }.onFailure {
-                LauncherSetup.recordRoleRequestResult(this, launchFailed = true)
-                Log.w("MainActivity", "Native HOME request unavailable", it)
-            }
-        }
-    }
-
     /** True until the first onResume after onCreate completes. */
     private var isFirstResumeAfterCreate = false
 
@@ -429,7 +401,6 @@ open class MainActivity : ComponentActivity() {
     override fun onCreate(savedInstanceState: Bundle?) {
         installSplashScreen()
         super.onCreate(savedInstanceState)
-        automaticHomeRequestEligible = savedInstanceState == null
         isFirstResumeAfterCreate = true
         window?.setBackgroundDrawable(ColorDrawable(android.graphics.Color.TRANSPARENT))
 
