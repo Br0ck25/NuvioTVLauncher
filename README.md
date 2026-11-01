@@ -26,30 +26,74 @@ The website and support links above belong to the original Nuvio project.
 
 - [Android TV APK](https://github.com/Br0ck25/NuvioTVLauncher/releases)
 - **AFTV Downloader code:** `2057622`
-- [aftv.news/2057622](aftv.news/2057622)
+- [aftv.news/2057622](https://aftv.news/2057622)
+
+### Install with Downloader (no computer needed)
+
+1. On your TV, install **Downloader by AFTVnews** from the Google Play Store (Android TV / Google TV) or the Amazon Appstore (Fire TV). Search for "Downloader".
+2. Open Downloader and allow the storage/file access prompt if it appears.
+3. In the URL box, enter the code **`2057622`** (or `aftv.news/2057622`) and select **Go**.
+4. When the download finishes, select **Install**.
+5. If Android says it can't install apps from this source, select **Settings**, turn on **Install unknown apps** for **Downloader**, go back, and select **Install** again.
+6. Select **Done** (or **Open**) when the install finishes. You can delete the downloaded APK when Downloader offers to.
+
+Nuvio is now installed, but it is **not** your Home app yet. Continue below.
 
 ## Set Nuvio as your default launcher
 
-### Recommended: install with Tellyscope
+### Recommended: set up from the TV and your phone (no computer)
+
+Works on TVs with **Developer options → Wireless debugging** (Android 11 and newer) with the `full` APK from the releases page. Nuvio runs the ADB steps itself, so you do not need a computer or any typed commands. You need a phone on the **same Wi-Fi network** as the TV.
+
+**1. Turn on Developer options and Wireless debugging**
+
+1. On the TV, go to **Settings → System → About**.
+2. Highlight **OS Build** (or **Android TV OS Build**) and press the center remote button **7 times**, until "You are now a developer!" appears.
+3. Go back to **Settings → System → Developer options** and turn on **Wireless debugging**. Accept any prompt.
+
+**2. Open Nuvio's setup**
+
+1. Open Nuvio and go to **Settings → Default launcher → Set up without a computer**.
+2. A dialog shows a **Phone address** such as `http://192.168.1.50:8091`. Note it down. Nuvio keeps running in the background while this dialog is open.
+
+**3. Get the pairing code**
+
+1. Press **Home** (or go back to the system) and open **Settings → System → Developer options → Wireless debugging**.
+2. Select **Pair device with pairing code**.
+3. **Leave that popup open.** Its port and 6-digit code are only valid while the popup is showing, and they change every time it is reopened.
+
+**4. Enter the code on your phone**
+
+1. On your phone, open the phone address from step 2 in a browser.
+2. Enter the **pairing port** and the **6-digit code** shown on the TV and tap **Pair and set up**.
+3. Wait until the page says **Done**.
+
+**5. Check the result**
+
+Go back to Nuvio. The dialog reports whether Nuvio is now the **Home app** and whether the **Home button override** is on. Press **Home** from another app to confirm Nuvio opens. You can now turn **Wireless debugging** off.
+
+What the setup does for you:
+
+- Allows restricted settings so the accessibility switch can stay on.
+- Selects Nuvio as the Home app.
+- Grants Nuvio permission to keep its own accessibility service enabled. It re-enables it after a reboot, after an update, or if the TV turns it off. Turn this behavior off with **Settings → Default launcher → Keep Home button override on**.
+
+**Tips**
+
+- **Already paired?** If you run setup again later, leave the port and code **empty** and tap **Pair and set up**. Nuvio reconnects without a new code.
+- **Page never finishes or shows an error?** Reopen the setup dialog and try again, and make sure the phone is on the same Wi-Fi (not mobile data or a guest network).
+- You can also type the port and code on the TV in the same dialog, but the popup closes when you leave Settings, so using the phone is more reliable.
+- If your TV has no Wireless debugging option (some Fire TV and older devices), use one of the ADB methods below.
+
+### Alternative: install with Tellyscope (needs a computer)
 
 Install the **release APK** using an ADB-based installer such as [Tellyscope](https://github.com/man15h/tellyscope). After connecting Tellyscope to your TV and installing the APK, open Nuvio and select **Settings → Default launcher → Make Nuvio the Home app**, then confirm the system dialog. On supported devices, no additional restricted-settings unlock or manual ADB commands are needed.
 
 Installation does **not** automatically select Nuvio as Home. Some TV firmware blocks third-party default launchers regardless of the installer. If native Home selection works, the accessibility service is optional.
 
-### No computer: set up from the TV itself (Android 11+, `full` APK)
+### Fallback: manual ADB from a computer
 
-If your TV has **Developer options → Wireless debugging**, Nuvio can do the ADB steps below by itself:
-
-1. Install the APK normally (for example with Downloader) and open Nuvio.
-2. Turn on Developer options (**Settings → System → About**, press **Build** 7 times), then turn on **Wireless debugging**.
-3. Open **Nuvio → Settings → Default launcher → Set up without a computer**.
-4. On the TV choose **Pair device with pairing code**, keep that popup open, and enter its port and 6-digit code in Nuvio.
-
-Nuvio pairs with the TV's own debugging service, allows restricted settings, selects itself as the Home app, and grants itself `WRITE_SECURE_SETTINGS`. With that permission it re-enables its accessibility service if the TV turns it off (after boot, after updates, or at any time). Turn this off with **Keep Home button override on**. TVs without Wireless debugging should use the ADB methods below.
-
-### Installed with AFTV Downloader?
-
-First try **Settings → Default launcher → Make Nuvio the Home app** in Nuvio. If it works, you are done. If the TV blocks the change, or the accessibility switch is greyed out, restricted, or turns itself off, use the ADB setup below. Choose the connection method your TV actually provides; Android version alone does not determine which one is available.
+Use this only if your TV has no Wireless debugging option or the phone setup above did not work. You can also first try **Settings → Default launcher → Make Nuvio the Home app** in Nuvio. If the TV blocks the change, or the accessibility switch is greyed out, restricted, or turns itself off, use the ADB setup below. Choose the connection method your TV actually provides; Android version alone does not determine which one is available.
 
 **Before you start:**
 
