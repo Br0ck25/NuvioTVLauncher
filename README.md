@@ -25,8 +25,8 @@ The website and support links above belong to the original Nuvio project.
 ## Get Nuvio TV Launcher
 
 - [Android TV APK](https://github.com/Br0ck25/NuvioTVLauncher/releases)
-- **AFTV Downloader code:** `4253389`
-- [aftv.news/4253389](https://aftv.news/4253389)
+- **AFTV Downloader code:** `2057622`
+- [[aftv.news/4253389](https://aftv.news/4253389)]
 
 ## Set Nuvio as your default launcher
 
