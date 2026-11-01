@@ -17,8 +17,63 @@ internal object LauncherSetup {
             ?.activityInfo?.packageName == context.packageName
     }.getOrDefault(false)
 
-    fun handlesHome(context: Context): Boolean =
-        isDefaultHome(context) || LauncherAccessibilityService.isServiceEnabled(context)
+    fun handlesHome(context: Context): Boolean {
+        val nativeHome = isDefaultHome(context)
+        observeNativeHome(context, nativeHome)
+        return nativeHome || (accessibilityFallbackAllowed(context) &&
+            LauncherAccessibilityService.isServiceEnabled(context) && LauncherAccessibilityService.isOperational.value)
+    }
+
+    private const val NATIVE_HOME_OBSERVED = "native_home_observed"
+
+    internal fun observeNativeHome(context: Context, isDefault: Boolean) {
+        if (isDefault && !preferences(context).getBoolean(NATIVE_HOME_OBSERVED, false)) {
+            preferences(context).edit().putBoolean(NATIVE_HOME_OBSERVED, true).apply()
+        }
+    }
+
+    // After native HOME has been selected, respect a subsequent choice of a different default launcher.
+    // Explicitly selecting the existing Home override action opts back into the authorized fallback.
+    internal fun accessibilityFallbackAllowed(context: Context): Boolean =
+        !preferences(context).getBoolean(NATIVE_HOME_OBSERVED, false)
+
+    internal fun allowAccessibilityFallback(context: Context) {
+        preferences(context).edit().putBoolean(NATIVE_HOME_OBSERVED, false).apply()
+    }
+
+    internal const val AUTO_REQUEST_ATTEMPTED = "auto_home_request_attempted"
+    internal const val REQUEST_FAILED = "native_home_request_failed"
+
+    internal fun preferences(context: Context) =
+        context.getSharedPreferences("launcher_capabilities", Context.MODE_PRIVATE)
+
+    /** At most one automatic native dialog per installation. Manual retries remain available. */
+    fun takeAutomaticRoleRequest(context: Context): Intent? {
+        val capabilities = LauncherCapabilities.detect(context)
+        val prefs = preferences(context)
+        if (capabilities.isDefaultHome || capabilities.accessibilityEnabled || capabilities.homeRoleHeld) {
+            // Don't surprise an established user later if they deliberately choose another launcher.
+            prefs.edit().putBoolean(AUTO_REQUEST_ATTEMPTED, true).apply()
+            return null
+        }
+        if (!HomeCapabilityPolicy.shouldRequestNativeHome(
+                attempted = prefs.getBoolean(AUTO_REQUEST_ATTEMPTED, false),
+                defaultHome = capabilities.isDefaultHome,
+                roleAvailable = capabilities.homeRoleAvailable,
+                roleHeld = capabilities.homeRoleHeld,
+                accessibilityEnabled = capabilities.accessibilityEnabled
+            )) return null
+        // Persist before creating/launching, including failures and process death in the dialog.
+        if (!prefs.edit().putBoolean(AUTO_REQUEST_ATTEMPTED, true).commit()) return null
+        return createHomeRoleRequest(context).also {
+            if (it == null) recordRoleRequestResult(context, launchFailed = true)
+        }
+    }
+
+    fun recordRoleRequestResult(context: Context, launchFailed: Boolean = false) {
+        // A denial/no change is not proof of a firmware restriction. Only record thrown failures.
+        preferences(context).edit().putBoolean(REQUEST_FAILED, launchFailed).apply()
+    }
 
     /** The caller must launch this for a result, without NEW_TASK, so denial is observable. */
     fun createHomeRoleRequest(context: Context): Intent? {

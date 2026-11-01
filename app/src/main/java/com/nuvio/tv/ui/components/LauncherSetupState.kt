@@ -4,6 +4,8 @@ import androidx.activity.compose.rememberLauncherForActivityResult
 import androidx.activity.result.contract.ActivityResultContracts
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.DisposableEffect
+import androidx.compose.runtime.LaunchedEffect
+import androidx.compose.runtime.collectAsState
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
@@ -15,10 +17,13 @@ import androidx.lifecycle.Lifecycle
 import androidx.lifecycle.LifecycleEventObserver
 import com.nuvio.tv.core.launcher.LauncherAccessibilityService
 import com.nuvio.tv.core.launcher.LauncherSetup
+import com.nuvio.tv.core.launcher.LauncherCapabilities
+import com.nuvio.tv.core.launcher.HomeMechanism
 
 internal data class LauncherSetupState(
     val isDefaultHome: Boolean,
     val isAccessibilityEnabled: Boolean,
+    val isAccessibilityActive: Boolean,
     val showFallback: Boolean,
     val settingsUnavailable: Boolean,
     val requestDefaultHome: () -> Unit,
@@ -31,17 +36,16 @@ internal data class LauncherSetupState(
 internal fun rememberLauncherSetupState(): LauncherSetupState {
     val context = LocalContext.current
     val lifecycleOwner = LocalLifecycleOwner.current
-    var isDefaultHome by remember { mutableStateOf(LauncherSetup.isDefaultHome(context)) }
-    var isAccessibilityEnabled by remember { mutableStateOf(false) }
+    var capabilities by remember { mutableStateOf(LauncherCapabilities.detect(context)) }
+    val serviceOperational by LauncherAccessibilityService.isOperational.collectAsState()
+    val isDefaultHome = capabilities.isDefaultHome
+    val isAccessibilityEnabled = capabilities.accessibilityEnabled
     var showFallback by rememberSaveable { mutableStateOf(false) }
     var settingsUnavailable by rememberSaveable { mutableStateOf(false) }
 
     fun refresh() {
-        isDefaultHome = LauncherSetup.isDefaultHome(context)
-        isAccessibilityEnabled = runCatching {
-            LauncherAccessibilityService.isServiceEnabled(context)
-        }.getOrDefault(false)
-        if (isDefaultHome) {
+        capabilities = LauncherCapabilities.detect(context)
+        if (capabilities.mechanism != HomeMechanism.UNAVAILABLE) {
             showFallback = false
             settingsUnavailable = false
         }
@@ -49,9 +53,12 @@ internal fun rememberLauncherSetupState(): LauncherSetupState {
 
     val roleRequest = rememberLauncherForActivityResult(ActivityResultContracts.StartActivityForResult()) {
         // RESULT_OK alone is not proof on OEM TV firmware. Check the selected Home app again.
+        LauncherSetup.recordRoleRequestResult(context)
         refresh()
-        showFallback = !isDefaultHome
+        showFallback = capabilities.mechanism == HomeMechanism.UNAVAILABLE
     }
+
+    LaunchedEffect(serviceOperational) { refresh() }
 
     DisposableEffect(lifecycleOwner, context) {
         refresh()
@@ -64,22 +71,31 @@ internal fun rememberLauncherSetupState(): LauncherSetupState {
 
     fun openHomeSettings() {
         settingsUnavailable = !LauncherSetup.openHomeSettings(context)
-        showFallback = true
+        showFallback = capabilities.mechanism == HomeMechanism.UNAVAILABLE
     }
 
     return LauncherSetupState(
         isDefaultHome = isDefaultHome,
         isAccessibilityEnabled = isAccessibilityEnabled,
+        isAccessibilityActive = capabilities.mechanism == HomeMechanism.ACCESSIBILITY,
         showFallback = showFallback,
         settingsUnavailable = settingsUnavailable,
         requestDefaultHome = {
-            val intent = LauncherSetup.createHomeRoleRequest(context)
-            if (intent == null) {
-                openHomeSettings()
+            // An already working native launcher must not open redundant configuration.
+            if (LauncherSetup.isDefaultHome(context)) {
+                refresh()
             } else {
-                settingsUnavailable = false
-                val launched = runCatching { roleRequest.launch(intent) }.isSuccess
-                if (!launched) openHomeSettings()
+                val intent = LauncherSetup.createHomeRoleRequest(context)
+                if (intent == null) {
+                    openHomeSettings()
+                } else {
+                    settingsUnavailable = false
+                    val launched = runCatching { roleRequest.launch(intent) }.isSuccess
+                    if (!launched) {
+                        LauncherSetup.recordRoleRequestResult(context, launchFailed = true)
+                        openHomeSettings()
+                    }
+                }
             }
         },
         openHomeSettings = { openHomeSettings() },

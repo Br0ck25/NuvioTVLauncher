@@ -150,10 +150,11 @@ fun AppsScreen() {
             item(key = "home_button_override") {
                 AppTile(
                     label = stringResource(
-                        if (setup.isAccessibilityEnabled) R.string.apps_home_override_active
+                        if (setup.isAccessibilityActive) R.string.apps_home_override_active
+                        else if (setup.isAccessibilityEnabled) R.string.apps_home_override_pending
                         else R.string.apps_home_override
                     ),
-                    iconVector = if (setup.isAccessibilityEnabled) Icons.Default.CheckCircle else Icons.Default.Home,
+                    iconVector = if (setup.isAccessibilityActive) Icons.Default.CheckCircle else Icons.Default.Home,
                     icon = null,
                     onClick = setup.openAccessibilitySettings
                 )
