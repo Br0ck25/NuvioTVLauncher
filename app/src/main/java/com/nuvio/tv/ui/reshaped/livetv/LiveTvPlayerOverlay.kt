@@ -418,7 +418,11 @@ internal class LiveTvPlayerState(
             val playback = try {
                 LiveTvRepository.prepareForPlayback(channel)
             } catch (unavailable: ListChannelUnavailableException) {
-                android.widget.Toast.makeText(controller.context, R.string.live_tv_list_unavailable, android.widget.Toast.LENGTH_SHORT).show()
+                android.widget.Toast.makeText(
+                    controller.context,
+                    controller.context.getString(R.string.live_tv_list_unavailable_reason, ListChannels.lastFailure.orEmpty()),
+                    android.widget.Toast.LENGTH_LONG,
+                ).show()
                 return@launch
             }
             val isListChannel = channel.streamUrl.isListChannelUrl()

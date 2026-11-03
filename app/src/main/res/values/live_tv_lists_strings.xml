@@ -19,4 +19,5 @@
     <string name="settings_live_tv_torbox_title">Download uncached titles with Torbox</string>
     <string name="settings_live_tv_torbox_description">When a list channel\'s title is not cached, add it to your Torbox account so it can play. While you watch, the next title is prepared too; nothing is downloaded when nobody watches</string>
     <string name="live_tv_list_torbox_wait">Torbox is downloading %1$s…</string>
+    <string name="live_tv_list_unavailable_reason">Couldn\'t play this channel: %1$s</string>
 </resources>

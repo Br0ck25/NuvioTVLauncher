@@ -2,6 +2,7 @@
 
 package com.nuvio.tv.ui.reshaped.livetv
 
+import com.nuvio.tv.reshaped.livetv.lists.ListChannels
 import com.nuvio.tv.reshaped.livetv.lists.isListChannelUrl
 import android.text.format.DateFormat
 import androidx.compose.foundation.background
@@ -290,8 +291,12 @@ fun LiveTvScreen(
                     }
                     if (route == null) {
                         launching = false
-                        val message = if (programme == null && channel.streamUrl.isListChannelUrl()) R.string.live_tv_list_unavailable else R.string.live_tv_catchup_failed
-                        android.widget.Toast.makeText(context, message, android.widget.Toast.LENGTH_SHORT).show()
+                        val message = if (programme == null && channel.streamUrl.isListChannelUrl()) {
+                            context.getString(R.string.live_tv_list_unavailable_reason, ListChannels.lastFailure.orEmpty())
+                        } else {
+                            context.getString(R.string.live_tv_catchup_failed)
+                        }
+                        android.widget.Toast.makeText(context, message, android.widget.Toast.LENGTH_LONG).show()
                         return@launch
                     }
                     viewModel.restoreFocusOnReturn = true

@@ -1,5 +1,7 @@
 package com.nuvio.tv.reshaped.livetv.lists
 
+import kotlinx.coroutines.withContext
+import kotlinx.coroutines.CoroutineExceptionHandler
 import android.content.Context
 import android.os.Handler
 import android.os.Looper
@@ -123,7 +125,11 @@ internal object ListChannels {
     private const val TORBOX_WAIT_MS = 60_000L
     private const val TORBOX_POLL_MS = 3_000L
 
-    private val scope = CoroutineScope(SupervisorJob() + Dispatchers.Default)
+    // Background work (schedules, preparing ahead) must never take the app down.
+    private val scope = CoroutineScope(
+        SupervisorJob() + Dispatchers.Default +
+            CoroutineExceptionHandler { _, error -> Log.w(TAG, "Background work failed", error) },
+    )
     private val mutex = Mutex()
     private val _channels = MutableStateFlow<List<ListChannel>>(emptyList())
     val channels: StateFlow<List<ListChannel>> = _channels.asStateFlow()
@@ -543,14 +549,35 @@ internal object ListChannels {
      * torrent, its link is "torrent://hash" and [torrentStreamFor] has the stream. Throws
      * [ListChannelUnavailableException] when nothing can be played.
      */
-    suspend fun resolve(channel: LiveTvChannel): LiveTvChannel {
+    suspend fun resolve(channel: LiveTvChannel): LiveTvChannel = withContext(Dispatchers.Default) {
+        try {
+            resolveNow(channel)
+        } catch (cancel: CancellationException) {
+            throw cancel
+        } catch (unavailable: ListChannelUnavailableException) {
+            lastFailure = unavailable.message
+            throw unavailable
+        } catch (error: Exception) {
+            // Anything unexpected is shown to the viewer, never thrown at the screen that asked.
+            Log.w(TAG, "Could not play ${channel.name}", error)
+            val reason = "${error.javaClass.simpleName}: ${error.message.orEmpty()}".trim().take(160)
+            lastFailure = reason
+            throw ListChannelUnavailableException(reason)
+        }
+    }
+
+    /** Why the last [resolve] failed, for the message shown. */
+    @Volatile var lastFailure: String? = null
+        private set
+
+    private suspend fun resolveNow(channel: LiveTvChannel): LiveTvChannel {
         val id = listChannelIdOf(channel.streamUrl)
         val definition = _channels.value.firstOrNull { it.id == id }
-            ?: throw ListChannelUnavailableException("Channel is gone")
+            ?: throw ListChannelUnavailableException("The channel no longer exists")
         toast(R.string.live_tv_list_finding, definition.name)
         val now = System.currentTimeMillis()
         val slots = extend(definition, now)
-        if (slots.isEmpty()) throw ListChannelUnavailableException("Nothing to play")
+        if (slots.isEmpty()) throw ListChannelUnavailableException("No titles could be loaded from its lists")
         var index = slots.indexOfFirst { now in it.startMs until it.endMs }.takeIf { it >= 0 } ?: slots.lastIndex
         var tries = 0
         while (index in slots.indices && tries < 3) {
@@ -576,7 +603,7 @@ internal object ListChannels {
             index++
             tries++
         }
-        throw ListChannelUnavailableException("No stream found")
+        throw ListChannelUnavailableException("No playable stream was found for ${slots.getOrNull(index.coerceAtMost(slots.lastIndex))?.title.orEmpty()}")
     }
 
     /** The addon streams for [slot] that this app could play in some way. */
