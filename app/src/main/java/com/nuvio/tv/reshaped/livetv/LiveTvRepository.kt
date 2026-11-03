@@ -29,6 +29,7 @@ import kotlinx.coroutines.sync.Semaphore
 import kotlinx.coroutines.sync.withPermit
 import kotlinx.coroutines.withContext
 import kotlinx.coroutines.withTimeoutOrNull
+import com.nuvio.tv.reshaped.sync.ReshapedSync
 
 /**
  * Live TV's channel list, guide, favorites and last channel for the active profile. It lives for
@@ -276,6 +277,7 @@ object LiveTvRepository {
             val sources = _uiState.value.sources.map { if (it.id == source.id) source else it }
             _uiState.update { it.copy(sources = sources) }
             scope.launch(writer) { store.saveSources(sources) }
+            ReshapedSync.onLocalChange()
         }
     }
 
@@ -321,6 +323,7 @@ object LiveTvRepository {
                 store.saveSources(sources)
                 store.deletePlaylistFile(sourceId)
             }
+            ReshapedSync.onLocalChange()
             publish()
             updateLoading()
         }
@@ -347,6 +350,7 @@ object LiveTvRepository {
         _uiState.update { it.copy(hiddenChannelKeys = next) }
         refreshShownChannels()
         storage?.let { store -> scope.launch(writer) { store.saveHiddenChannelKeys(next) } }
+        ReshapedSync.onLocalChange()
     }
 
     /** Moves a category [step] places up (negative) or down; the order is kept for every list. */
@@ -359,6 +363,7 @@ object LiveTvRepository {
         groupOrder = reordered
         _uiState.update { it.copy(groups = reordered) }
         storage?.let { store -> scope.launch(writer) { store.saveGroupOrder(reordered) } }
+        ReshapedSync.onLocalChange()
     }
 
     /**
@@ -373,6 +378,7 @@ object LiveTvRepository {
             state.copy(groupNames = next).let { if (groupOrder.isEmpty()) it.copy(groups = orderedGroups(it.groupCounts.keys, next)) else it }
         }
         storage?.let { store -> scope.launch(writer) { store.saveGroupNames(next) } }
+        ReshapedSync.onLocalChange()
     }
 
     /** Back to the providers' own order. */
@@ -380,6 +386,7 @@ object LiveTvRepository {
         groupOrder = emptyList()
         _uiState.update { it.copy(groups = orderedGroups(it.groupCounts.keys, it.groupNames)) }
         storage?.let { store -> scope.launch(writer) { store.saveGroupOrder(emptyList()) } }
+        ReshapedSync.onLocalChange()
     }
 
     /**
@@ -409,12 +416,14 @@ object LiveTvRepository {
         groupOrder = sorted
         _uiState.update { it.copy(groups = sorted) }
         storage?.let { store -> scope.launch(writer) { store.saveGroupOrder(sorted) } }
+        ReshapedSync.onLocalChange()
     }
 
     private fun saveHiddenGroups(groups: Set<String>) {
         _uiState.update { it.copy(hiddenGroups = groups) }
         refreshShownChannels()
         storage?.let { store -> scope.launch(writer) { store.saveHiddenGroups(groups) } }
+        ReshapedSync.onLocalChange()
     }
 
     fun toggleFavorite(channel: LiveTvChannel) {
@@ -423,6 +432,7 @@ object LiveTvRepository {
         if (!favorites.add(channel.streamUrl)) favorites.remove(channel.streamUrl)
         _uiState.update { it.copy(favoriteUrls = favorites) }
         scope.launch(writer) { store.saveFavoriteUrls(favorites) }
+        ReshapedSync.onLocalChange()
     }
 
     // region Own playlists
@@ -470,6 +480,7 @@ object LiveTvRepository {
         if (!favorites.addAll(channels.map { it.streamUrl })) return
         _uiState.update { it.copy(favoriteUrls = favorites) }
         scope.launch(writer) { store.saveFavoriteUrls(favorites) }
+        ReshapedSync.onLocalChange()
     }
 
     /** Takes [channels] out of favourites, in one change. */
@@ -479,6 +490,7 @@ object LiveTvRepository {
         if (!favorites.removeAll(channels.mapTo(HashSet()) { it.streamUrl })) return
         _uiState.update { it.copy(favoriteUrls = favorites) }
         scope.launch(writer) { store.saveFavoriteUrls(favorites) }
+        ReshapedSync.onLocalChange()
     }
 
     fun removeFromCustomList(id: String, url: String) {
@@ -530,7 +542,9 @@ object LiveTvRepository {
         pendingListSave = scope.launch(writer) {
             if (persistLater) delay(LIST_SAVE_DELAY_MS)
             store.saveCustomLists(saved)
+            if (persistLater) ReshapedSync.onLocalChange()
         }
+        if (!persistLater) ReshapedSync.onLocalChange()
     }
 
     /** The playlists with links that moved ([moved], old link to new) changed over. */
@@ -700,6 +714,7 @@ object LiveTvRepository {
                             store.saveSources(sources)
                             if (source.type != LiveTvSourceType.M3u || source.url.isHttpUrl()) store.deletePlaylistFile(source.id)
                         }
+                        ReshapedSync.onLocalChange()
                     }
                     _uiState.update { state ->
                         val errors = state.sourceErrors - source.id

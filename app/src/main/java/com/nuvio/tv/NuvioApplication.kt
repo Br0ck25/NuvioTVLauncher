@@ -87,6 +87,7 @@ class NuvioApplication : Application(), SingletonImageLoader.Factory {
         PluginRuntimeHooks.onApplicationCreate(this)
         androidTvChannelSyncService.start()
         AccessibilityWatchdog.start(this)
+        com.nuvio.tv.reshaped.sync.ReshapedSync.onAppStart(this) // Live TV sync through the viewer's Google account
         serverUserStateProjection.start()
         // Load locale synchronously so it's available before Activity.attachBaseContext.
         // SharedPreferences reads are fast (cached in memory after first access).
