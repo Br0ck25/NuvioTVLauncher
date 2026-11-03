@@ -2,6 +2,7 @@
 
 package com.nuvio.tv.ui.reshaped.livetv
 
+import com.nuvio.tv.reshaped.livetv.lists.isListChannelUrl
 import android.content.Context
 import android.os.Handler
 import android.os.Looper
@@ -162,6 +163,11 @@ internal class LiveTvPreviewPlayer(private val context: Context) {
     }
 
     fun play(channel: LiveTvChannel) {
+        // A channel made from lists has no link of its own to preview.
+        if (channel.streamUrl.isListChannelUrl()) {
+            stop()
+            return
+        }
         val hls = channel.streamUrl.contains(".m3u8", ignoreCase = true)
         triedHls = hls
         start(channel, hls)

@@ -2,6 +2,7 @@
 
 package com.nuvio.tv.ui.reshaped.livetv
 
+import com.nuvio.tv.reshaped.livetv.lists.isListChannelUrl
 import android.text.format.DateFormat
 import androidx.compose.foundation.background
 import androidx.compose.foundation.focusable
@@ -210,6 +211,7 @@ fun LiveTvScreen(
     var settingsFocused by remember { mutableStateOf(false) }
     var showMenu by remember { mutableStateOf(false) }
     var showPlaylists by remember { mutableStateOf(false) }
+    var showListChannels by remember { mutableStateOf(false) }
     // Naming a new playlist (from "+ New playlist" in the categories).
     var naming by remember { mutableStateOf(false) }
     // Categories, search and settings slide in beside the channels on ◀ (or Back), and away again
@@ -288,7 +290,8 @@ fun LiveTvScreen(
                     }
                     if (route == null) {
                         launching = false
-                        android.widget.Toast.makeText(context, R.string.live_tv_catchup_failed, android.widget.Toast.LENGTH_SHORT).show()
+                        val message = if (programme == null && channel.streamUrl.isListChannelUrl()) R.string.live_tv_list_unavailable else R.string.live_tv_catchup_failed
+                        android.widget.Toast.makeText(context, message, android.widget.Toast.LENGTH_SHORT).show()
                         return@launch
                     }
                     viewModel.restoreFocusOnReturn = true
@@ -572,6 +575,9 @@ fun LiveTvScreen(
     if (showPlaylists) {
         LiveTvPlaylistsDialog(onDismiss = { showPlaylists = false })
     }
+    if (showListChannels) {
+        LiveTvListChannelsDialog(onDismiss = { showListChannels = false })
+    }
     editingList?.let { id ->
         LiveTvPlaylistsDialog(onDismiss = { editingList = null }, openOnly = id)
     }
@@ -594,7 +600,7 @@ fun LiveTvScreen(
         )
     }
     // A closed dialog gives the focus back where the viewer was, so ◀▶ never find nothing focused.
-    val anyDialog = showSourceDialog || showCategoryDialog || showPlaylists || editingList != null || naming ||
+    val anyDialog = showSourceDialog || showCategoryDialog || showPlaylists || showListChannels || editingList != null || naming ||
         showMenu
     var hadDialog by remember { mutableStateOf(false) }
     LaunchedEffect(anyDialog) {
@@ -629,6 +635,10 @@ fun LiveTvScreen(
             onPlaylists = {
                 showMenu = false
                 showPlaylists = true
+            },
+            onListChannels = {
+                showMenu = false
+                showListChannels = true
             },
             onDismiss = { showMenu = false },
         )
@@ -679,6 +689,7 @@ private fun LiveTvMenuDialog(
     onEditCategories: () -> Unit,
     onSources: () -> Unit,
     onPlaylists: () -> Unit,
+    onListChannels: () -> Unit,
     onDismiss: () -> Unit,
 ) {
     val context = LocalContext.current
@@ -712,6 +723,11 @@ private fun LiveTvMenuDialog(
             title = stringResource(R.string.live_tv_my_playlists),
             description = stringResource(R.string.live_tv_menu_playlists_description),
             onClick = onPlaylists,
+        )
+        LiveTvMenuRow(
+            title = stringResource(R.string.live_tv_menu_list_channels),
+            description = stringResource(R.string.live_tv_menu_list_channels_description),
+            onClick = onListChannels,
         )
         LiveTvMenuRow(
             title = stringResource(R.string.live_tv_menu_reload),

@@ -1,5 +1,7 @@
 package com.nuvio.tv.ui.reshaped.livetv
 
+import com.nuvio.tv.reshaped.livetv.lists.isListChannelUrl
+import com.nuvio.tv.reshaped.livetv.lists.ListChannelUnavailableException
 import android.content.Context
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
@@ -145,11 +147,17 @@ class LiveTvFilterInput(
  * The player route for a Live TV channel: resolves its playable link, and plays it as Stremio
  * type "channel" with no content id, so Nuvio's player treats it as live and saves no progress.
  */
-internal suspend fun liveTvPlayerRoute(channel: LiveTvChannel, profileId: Int): String {
-    val playback = LiveTvRepository.prepareForPlayback(channel)
+internal suspend fun liveTvPlayerRoute(channel: LiveTvChannel, profileId: Int): String? {
+    // A channel made from lists has no stream until its addons give one for what is on now.
+    val playback = try {
+        LiveTvRepository.prepareForPlayback(channel)
+    } catch (unavailable: ListChannelUnavailableException) {
+        return null
+    }
+    val isListChannel = channel.streamUrl.isListChannelUrl()
     // The player keys on the URL it plays, which drops a user:password@ part into a header.
     val playerUrl = PlayerMediaSourceFactory.normalizePlaybackRequest(playback.streamUrl, playback.headers).url
-    LiveTvPlaybackRegistry.register(playerUrl, listUrl = channel.streamUrl)
+    LiveTvPlaybackRegistry.register(playerUrl, listUrl = channel.streamUrl, catchup = isListChannel)
     return Screen.Player.createRoute(
         streamUrl = playback.streamUrl,
         title = channel.name,

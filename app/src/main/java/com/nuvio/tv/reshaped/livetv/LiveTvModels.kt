@@ -192,7 +192,7 @@ data class LiveTvUiState(
     /** How each source's guide did, for the Sources dialog; a source missing here has not been read yet. */
     val sourceGuides: Map<String, LiveTvSourceGuide> = emptyMap(),
 ) {
-    val hasSource: Boolean get() = sources.isNotEmpty()
+    val hasSource: Boolean get() = sources.isNotEmpty() || channels.isNotEmpty()
 
     /** The channel's logo, or the guide's when the playlist has none. */
     fun logoFor(channel: LiveTvChannel): String? =

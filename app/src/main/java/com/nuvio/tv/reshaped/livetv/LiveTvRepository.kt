@@ -1,5 +1,7 @@
 package com.nuvio.tv.reshaped.livetv
 
+import com.nuvio.tv.reshaped.livetv.lists.ListChannels
+import com.nuvio.tv.reshaped.livetv.lists.isListChannelUrl
 import android.content.Context
 import android.util.Log
 import okhttp3.HttpUrl.Companion.toHttpUrlOrNull
@@ -156,6 +158,9 @@ object LiveTvRepository {
             val hiddenChannels = withContext(Dispatchers.IO) { store.hiddenChannelKeys() }
             storage = store
             loaded.clear()
+            ListChannels.onChannelsChanged = { scope.launch(serial) { if (storage != null) publish() } }
+            ListChannels.onProgrammesChanged = { scope.launch(serial) { refreshListProgrammes() } }
+            withContext(Dispatchers.IO) { ListChannels.attach(appContext, profileId) }
             _uiState.value = LiveTvUiState(
                 sources = sources,
                 favoriteUrls = store.favoriteUrls(),
@@ -167,6 +172,8 @@ object LiveTvRepository {
                 isLoading = sources.isNotEmpty(),
             )
             sources.forEach { launchSourceLoad(it, adding = false) }
+            // Channels made from lists need no source to show.
+            if (sources.isEmpty()) publish()
         }
         watchIdle()
         return true
@@ -212,6 +219,7 @@ object LiveTvRepository {
         stopEpg()
         epgKey = null
         loaded.clear()
+        ListChannels.detach()
         zapList = emptyList()
         zapFolderKey = null
         storage = null
@@ -585,8 +593,11 @@ object LiveTvRepository {
      * and remembered as the last channel.
      */
     suspend fun prepareForPlayback(channel: LiveTvChannel): LiveTvChannel {
-        val playback = playableChannel(channel)
-        LiveTvPlaybackRegistry.register(playback.streamUrl, listUrl = channel.streamUrl)
+        // A channel made from lists: the stream for what is on now. It plays like a past programme
+        // (a bar to seek in) because it has a start and an end.
+        val isListChannel = channel.streamUrl.isListChannelUrl()
+        val playback = if (isListChannel) ListChannels.resolve(channel) else playableChannel(channel)
+        LiveTvPlaybackRegistry.register(playback.streamUrl, listUrl = channel.streamUrl, catchup = isListChannel)
         recordRecentChannel(channel)
         return playback
     }
@@ -925,8 +936,13 @@ object LiveTvRepository {
     private fun publish() {
         val sources = _uiState.value.sources
         val parts = sources.mapNotNull { loaded[it.id] }
-        val channels = ArrayList<LiveTvChannel>(parts.sumOf { it.channels.size })
-        parts.forEach { channels.addAll(it.channels) }
+        val sourceChannels = ArrayList<LiveTvChannel>(parts.sumOf { it.channels.size })
+        parts.forEach { sourceChannels.addAll(it.channels) }
+        // Channels made from the viewer's lists follow the sources' own; they have no XMLTV guide.
+        val channels = ArrayList<LiveTvChannel>(sourceChannels.size + 8).apply {
+            addAll(sourceChannels)
+            addAll(ListChannels.liveTvChannels())
+        }
         val groupCounts = HashMap<String, Int>()
         val sourceCounts = HashMap<String, Int>()
         channels.forEach { channel ->
@@ -937,9 +953,9 @@ object LiveTvRepository {
         providerGroupOrder = parts.flatMap { it.groupOrder }.distinct()
         val groups = orderedGroups(groupCounts.keys)
         val epgUrls = parts.flatMap { it.epgUrls }.distinct()
-        val guideKeys = channels.mapTo(HashSet(channels.size * 2)) { it.guideKey }
+        val guideKeys = sourceChannels.mapTo(HashSet(sourceChannels.size * 2)) { it.guideKey }
         val hasGuide = epgUrls.isNotEmpty() && guideKeys.isNotEmpty()
-        val guideInput = Triple(epgUrls, guideKeys, liveTvGuideMatchingKey(channels))
+        val guideInput = Triple(epgUrls, guideKeys, liveTvGuideMatchingKey(sourceChannels))
         val guideChanged = epgKey != guideInput || epgJob?.isActive != true
         _uiState.update {
             it.copy(
@@ -949,7 +965,7 @@ object LiveTvRepository {
                 groupCounts = groupCounts,
                 sourceCounts = sourceCounts,
                 // What is on now stays shown until the guide is read again.
-                currentProgrammes = if (hasGuide) it.currentProgrammes else emptyMap(),
+                currentProgrammes = (if (hasGuide) it.currentProgrammes else emptyMap()) + ListChannels.nowProgrammes(),
                 guideLogos = if (hasGuide) it.guideLogos else emptyMap(),
                 isEpgLoading = hasGuide && (guideChanged || it.isEpgLoading),
                 isLoaded = true,
@@ -971,7 +987,7 @@ object LiveTvRepository {
         } else if (guideChanged) {
             epgKey = guideInput
             // A slow or failed channel source must not delay the already-loaded sources' EPG.
-            startEpg(epgUrls, channels, guideKeys)
+            startEpg(epgUrls, sourceChannels, guideKeys)
         }
     }
 
@@ -1005,10 +1021,21 @@ object LiveTvRepository {
 
     /** The next programme after the one on now for [guideKey], from the kept guide; a map lookup. */
     fun nextProgramme(guideKey: String, nowEpochMs: Long = LiveTvClock.nowEpochMs()): LiveTvProgramme? =
-        keptSchedule[guideKey]?.firstOrNull { it.startEpochMs > nowEpochMs }
+        (if (guideKey.startsWith("list:")) ListChannels.schedule(guideKey) else keptSchedule[guideKey])
+            ?.firstOrNull { it.startEpochMs > nowEpochMs }
+
+    /** Puts what is on now on the channels made from lists back into the state, when it changed. */
+    private fun refreshListProgrammes() {
+        val now = ListChannels.nowProgrammes()
+        _uiState.update { state ->
+            val merged = state.currentProgrammes.filterKeys { !it.startsWith("list:") } + now
+            if (merged == state.currentProgrammes) state else state.copy(currentProgrammes = merged, guideVersion = state.guideVersion + 1)
+        }
+    }
 
     /** Every kept programme of [guideKey], earliest first: the last few hours and the next ones. */
-    fun schedule(guideKey: String): List<LiveTvProgramme> = keptSchedule[guideKey].orEmpty()
+    fun schedule(guideKey: String): List<LiveTvProgramme> =
+        if (guideKey.startsWith("list:")) ListChannels.schedule(guideKey) else keptSchedule[guideKey].orEmpty()
 
     private fun stopEpg() {
         keptSchedule = emptyMap()
@@ -1075,7 +1102,7 @@ object LiveTvRepository {
             var firstRead = true
             val publishGuide = { kept: LiveTvSchedule, logos: Map<String, String>?, nowMs: Long, failedLinks: Set<String>? ->
                 if (epgGeneration == generation) keptSchedule = kept
-                val current = currentProgrammes(kept, guideKeys, nowMs)
+                val current = currentProgrammes(kept, guideKeys, nowMs) + ListChannels.nowProgrammes(nowMs)
                 val guides = failedLinks?.let { guideStates(sourceLinks, it, kept, channels) }
                 _uiState.update { state ->
                     if (epgGeneration != generation) {
@@ -1180,7 +1207,7 @@ object LiveTvRepository {
                     // It starts over when Live TV is shown again.
                     if (finished == null) continue
                 }
-                val current = currentProgrammes(schedule, guideKeys, nowMs)
+                val current = currentProgrammes(schedule, guideKeys, nowMs) + ListChannels.nowProgrammes(nowMs)
                 _uiState.update { state ->
                     when {
                         epgGeneration != generation -> state

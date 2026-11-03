@@ -2,6 +2,9 @@
 
 package com.nuvio.tv.ui.reshaped.livetv
 
+import com.nuvio.tv.reshaped.livetv.lists.ListChannelUnavailableException
+import com.nuvio.tv.reshaped.livetv.lists.ListChannels
+import com.nuvio.tv.reshaped.livetv.lists.isListChannelUrl
 import android.view.KeyEvent
 import androidx.compose.animation.AnimatedVisibility
 import androidx.compose.animation.expandHorizontally
@@ -382,8 +385,8 @@ internal class LiveTvPlayerState(
         }
     }
 
-    internal fun switchTo(channel: LiveTvChannel) {
-        if (channel.streamUrl == currentListUrl && !isCatchup()) {
+    internal fun switchTo(channel: LiveTvChannel, force: Boolean = false) {
+        if (!force && channel.streamUrl == currentListUrl && !isCatchup()) {
             closePanel()
             return
         }
@@ -396,12 +399,48 @@ internal class LiveTvPlayerState(
         switchJob?.cancel()
         switchJob = scope.launch {
             delay(ZAP_SETTLE_MS)
-            val playback = LiveTvRepository.prepareForPlayback(channel)
+            val playback = try {
+                LiveTvRepository.prepareForPlayback(channel)
+            } catch (unavailable: ListChannelUnavailableException) {
+                android.widget.Toast.makeText(controller.context, R.string.live_tv_list_unavailable, android.widget.Toast.LENGTH_SHORT).show()
+                return@launch
+            }
+            val isListChannel = channel.streamUrl.isListChannelUrl()
             LiveTvPlaybackRegistry.register(
                 PlayerMediaSourceFactory.normalizePlaybackRequest(playback.streamUrl, playback.headers).url,
                 listUrl = channel.streamUrl,
+                catchup = isListChannel,
             )
+            if (isListChannel) {
+                // What is on, rather than the channel's name, is what the player titles.
+                val programme = LiveTvRepository.uiState.value.currentProgrammes[channel.guideKey]
+                controller._uiState.update { it.copy(title = programme?.title ?: channel.name) }
+            }
             controller.switchToSourceStream(channel.toStream(playback))
+        }
+    }
+
+    /** The list entry's URL while a channel made from lists is playing, else null. */
+    internal fun playingListChannelUrl(): String? =
+        LiveTvPlaybackRegistry.listUrlFor(controller.currentStreamUrl)?.takeIf { it.isListChannelUrl() }
+
+    /** A list channel's programme ended: the channel carries on with what is on next. */
+    internal fun advanceListChannel(listUrl: String) {
+        val channel = LiveTvRepository.uiState.value.channels.firstOrNull { it.streamUrl == listUrl } ?: return
+        switchTo(channel, force = true)
+    }
+
+    /** Tuning in to a list channel joins its programme part-way: seeks there once the player knows the length. */
+    internal suspend fun joinListProgramme(url: String, listUrl: String) {
+        val offset = ListChannels.startOffsetMs(listUrl)
+        if (offset < JOIN_MIN_MS) return
+        repeat(JOIN_WAIT_TRIES) {
+            if (controller.currentStreamUrl != url) return
+            if (controller._uiState.value.duration > 0L) {
+                controller.onEvent(PlayerEvent.OnSeekTo(offset))
+                return
+            }
+            delay(500L)
         }
     }
 
@@ -438,6 +477,8 @@ internal class LiveTvPlayerState(
     private companion object {
         const val ZAP_SETTLE_MS = 350L
         const val INFO_MS = 6_000L
+        const val JOIN_MIN_MS = 5_000L
+        const val JOIN_WAIT_TRIES = 90
         val OK_KEYS = intArrayOf(KeyEvent.KEYCODE_DPAD_CENTER, KeyEvent.KEYCODE_ENTER, KeyEvent.KEYCODE_NUMPAD_ENTER)
     }
 }
@@ -457,6 +498,19 @@ internal fun LiveTvPlayerOverlay(state: LiveTvPlayerState, uiState: PlayerUiStat
     }
 }
 
+/** A channel made from lists joins its programme part-way, and moves on to the next when one ends. */
+@Composable
+private fun LiveTvListChannelEffects(state: LiveTvPlayerState, uiState: PlayerUiState) {
+    val url = state.player.currentStreamUrl
+    val listUrl = state.playingListChannelUrl()
+    LaunchedEffect(url, listUrl) {
+        if (url != null && listUrl != null) state.joinListProgramme(url, listUrl)
+    }
+    LaunchedEffect(uiState.playbackEnded, url) {
+        if (uiState.playbackEnded && listUrl != null) state.advanceListChannel(listUrl)
+    }
+}
+
 @Composable
 private fun BoxScope.LiveTvPlayerOverlayContent(state: LiveTvPlayerState, uiState: PlayerUiState) {
     LaunchedEffect(Unit) { state.syncCurrent() }
@@ -470,6 +524,7 @@ private fun BoxScope.LiveTvPlayerOverlayContent(state: LiveTvPlayerState, uiStat
         onDispose { lifecycleOwner.lifecycle.removeObserver(observer) }
     }
     LiveTvFrameRateMatch(state, uiState)
+    LiveTvListChannelEffects(state, uiState)
     val liveState by LiveTvRepository.uiState.collectAsStateWithLifecycle()
     LaunchedEffect(liveState.isLoaded, liveState.isLoading, liveState.hasSource) {
         if (!liveState.isLoaded && !liveState.isLoading && !liveState.hasSource) LiveTvRepository.reloadIfReleased()
