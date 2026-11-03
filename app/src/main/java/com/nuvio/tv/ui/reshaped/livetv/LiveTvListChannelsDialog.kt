@@ -22,6 +22,7 @@ import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.focus.FocusRequester
 import androidx.compose.ui.focus.focusRequester
+import androidx.compose.ui.input.key.onPreviewKeyEvent
 import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.text.input.KeyboardType
 import androidx.compose.ui.unit.dp
@@ -110,6 +111,7 @@ private fun ColumnScope.ListChannelEditor(initial: ListChannel, onDone: () -> Un
     var picked by remember { mutableStateOf(initial.refs) }
     // null while they are found: addon catalogs, collection folders and library lists.
     val available by produceState<List<ListRef>?>(null) { value = runCatching { ListChannels.availableLists() }.getOrDefault(emptyList()) }
+    val saveFocus = remember { FocusRequester() }
     val field = remember { FocusRequester() }
     LaunchedEffect(Unit) {
         repeat(5) {
@@ -124,13 +126,15 @@ private fun ColumnScope.ListChannelEditor(initial: ListChannel, onDone: () -> Un
         onDone()
     }
     val canSave = picked.isNotEmpty()
-    LiveTvTextField(
-        value = name,
-        onValueChange = { name = it },
-        placeholder = stringResource(R.string.live_tv_list_channel_name_hint),
-        keyboardType = KeyboardType.Text,
+    var renaming by remember { mutableStateOf(false) }
+    LiveTvPillButton(
+        text = if (name.isBlank()) stringResource(R.string.live_tv_list_channel_name_hint) else name,
+        onClick = { renaming = true },
         modifier = Modifier.fillMaxWidth().focusRequester(field),
     )
+    if (renaming) {
+        ListChannelNameDialog(initial = name, onDone = { name = it; renaming = false }, onDismiss = { renaming = false })
+    }
     Row(
         modifier = Modifier.fillMaxWidth(),
         horizontalArrangement = Arrangement.spacedBy(NuvioTheme.spacing.sm, Alignment.End),
@@ -145,7 +149,12 @@ private fun ColumnScope.ListChannelEditor(initial: ListChannel, onDone: () -> Un
             )
         }
         LiveTvPillButton(text = stringResource(R.string.live_tv_cancel), onClick = onDone)
-        LiveTvPillButton(text = stringResource(R.string.live_tv_list_channel_save), onClick = save, enabled = canSave)
+        LiveTvPillButton(
+            text = stringResource(R.string.live_tv_list_channel_save),
+            onClick = save,
+            enabled = canSave,
+            modifier = Modifier.focusRequester(saveFocus),
+        )
     }
     Text(
         text = stringResource(R.string.live_tv_list_channel_lists_heading),
@@ -178,10 +187,51 @@ private fun ColumnScope.ListChannelEditor(initial: ListChannel, onDone: () -> Un
                         text = (if (on) "✓  " else "☐  ") + ref.title,
                         selected = on,
                         onClick = { picked = if (on) picked.filterNot { it.key == ref.key } else picked + ref },
-                        modifier = Modifier.fillMaxWidth(),
+                        modifier = Modifier.fillMaxWidth().onPreviewKeyEvent { event ->
+                            // Right goes straight to Save, so a long list need not be scrolled to its end.
+                            if (event.nativeKeyEvent.keyCode == android.view.KeyEvent.KEYCODE_DPAD_RIGHT && canSave) {
+                                if (event.nativeKeyEvent.action == android.view.KeyEvent.ACTION_DOWN) runCatching { saveFocus.requestFocus() }
+                                true
+                            } else {
+                                false
+                            }
+                        },
                     )
                 }
             }
+        }
+    }
+}
+
+/** Naming is a small dialog of its own, so the keyboard has a stable window to type in. */
+@Composable
+private fun ListChannelNameDialog(initial: String, onDone: (String) -> Unit, onDismiss: () -> Unit) {
+    var text by remember { mutableStateOf(initial) }
+    val field = remember { FocusRequester() }
+    LaunchedEffect(Unit) {
+        repeat(5) {
+            withFrameNanos { }
+            if (runCatching { field.requestFocus() }.isSuccess) return@LaunchedEffect
+        }
+    }
+    NuvioDialog(
+        onDismiss = onDismiss,
+        title = stringResource(R.string.live_tv_list_channel_name_hint),
+        width = 520.dp,
+        usePlatformDefaultWidth = false,
+        contentSpacing = NuvioTheme.spacing.md,
+    ) {
+        LiveTvTextField(
+            value = text,
+            onValueChange = { text = it },
+            placeholder = stringResource(R.string.live_tv_list_channel_name_hint),
+            keyboardType = KeyboardType.Text,
+            onDone = { onDone(text.trim()) },
+            modifier = Modifier.fillMaxWidth().focusRequester(field),
+        )
+        Row(modifier = Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.spacedBy(NuvioTheme.spacing.sm, Alignment.End)) {
+            LiveTvPillButton(text = stringResource(R.string.live_tv_cancel), onClick = onDismiss)
+            LiveTvPillButton(text = stringResource(R.string.live_tv_list_channel_save), onClick = { onDone(text.trim()) })
         }
     }
 }

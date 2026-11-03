@@ -464,10 +464,20 @@ internal class LiveTvPlayerState(
     internal suspend fun joinListProgramme(url: String, listUrl: String) {
         val offset = ListChannels.startOffsetMs(listUrl)
         if (offset < JOIN_MIN_MS) return
+        // On a zap the player is kept, so the previous programme's length is still there: wait until
+        // the new one is really playing before seeking, then check the seek landed.
+        var seeked = false
         repeat(JOIN_WAIT_TRIES) {
             if (controller.currentStreamUrl != url) return
-            if (controller._playbackTimeline.value.duration > 0L) {
+            val timeline = controller._playbackTimeline.value
+            val ready = !controller._uiState.value.isBuffering && timeline.duration > 0L
+            if (ready && !seeked) {
                 controller.onEvent(PlayerEvent.OnSeekTo(offset))
+                seeked = true
+                delay(3_000L)
+                if (controller.currentStreamUrl == url && controller._playbackTimeline.value.currentPosition < offset - 15_000L) {
+                    controller.onEvent(PlayerEvent.OnSeekTo(offset))
+                }
                 return
             }
             delay(500L)
