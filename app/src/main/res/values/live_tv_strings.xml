@@ -21,7 +21,7 @@
     <string name="live_tv_loading">Loading channels…</string>
     <string name="live_tv_guide_loading">Loading guide…</string>
     <string name="live_tv_no_channels_found">No channels match.</string>
-    <string name="live_tv_no_favorites">Hold OK on a channel to add it to your favorites.</string>
+    <string name="live_tv_no_favorites">Nothing here yet. Hold OK on a channel to add it to your favorites. Press Left to browse categories, or go up to the menu to add channels (M3U, Xtream, Stalker) or create a list channel from your Home lists.</string>
     <string name="live_tv_empty_title">Add your channels</string>
     <string name="live_tv_empty_description">Connect an M3U playlist, an Xtream login or a Stalker portal. Setting it up from your phone is the quickest way.</string>
     <string name="live_tv_add_source">Add channels</string>

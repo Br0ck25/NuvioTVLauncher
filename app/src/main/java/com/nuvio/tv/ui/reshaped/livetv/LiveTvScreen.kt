@@ -830,7 +830,11 @@ private fun LiveTvHeader(
             LiveTvPreviewVideo(
                 preview = preview,
                 channel = shownChannel,
-                logo = shownChannel?.let(uiState::logoFor),
+                logo = shownChannel?.let { channel ->
+                    // A list channel is not previewed live: it shows the picture of what is on.
+                    (if (channel.streamUrl.startsWith(com.nuvio.tv.reshaped.livetv.lists.LIST_CHANNEL_SCHEME)) uiState.currentProgrammes[channel.guideKey]?.image else null)
+                        ?: uiState.logoFor(channel)
+                },
                 playVideo = playVideo,
                 modifier = Modifier.padding(start = NuvioTheme.spacing.xl).fillMaxHeight(),
             )

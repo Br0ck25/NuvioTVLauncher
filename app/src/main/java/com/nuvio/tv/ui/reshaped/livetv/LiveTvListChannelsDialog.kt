@@ -131,6 +131,22 @@ private fun ColumnScope.ListChannelEditor(initial: ListChannel, onDone: () -> Un
         keyboardType = KeyboardType.Text,
         modifier = Modifier.fillMaxWidth().focusRequester(field),
     )
+    Row(
+        modifier = Modifier.fillMaxWidth(),
+        horizontalArrangement = Arrangement.spacedBy(NuvioTheme.spacing.sm, Alignment.End),
+    ) {
+        if (initial.id.isNotEmpty()) {
+            LiveTvPillButton(
+                text = stringResource(R.string.live_tv_list_channel_delete),
+                onClick = {
+                    ListChannels.remove(initial.id)
+                    onDone()
+                },
+            )
+        }
+        LiveTvPillButton(text = stringResource(R.string.live_tv_cancel), onClick = onDone)
+        LiveTvPillButton(text = stringResource(R.string.live_tv_list_channel_save), onClick = save, enabled = canSave)
+    }
     Text(
         text = stringResource(R.string.live_tv_list_channel_lists_heading),
         style = MaterialTheme.typography.titleSmall,
@@ -167,21 +183,5 @@ private fun ColumnScope.ListChannelEditor(initial: ListChannel, onDone: () -> Un
                 }
             }
         }
-    }
-    Row(
-        modifier = Modifier.fillMaxWidth(),
-        horizontalArrangement = Arrangement.spacedBy(NuvioTheme.spacing.sm, Alignment.End),
-    ) {
-        if (initial.id.isNotEmpty()) {
-            LiveTvPillButton(
-                text = stringResource(R.string.live_tv_list_channel_delete),
-                onClick = {
-                    ListChannels.remove(initial.id)
-                    onDone()
-                },
-            )
-        }
-        LiveTvPillButton(text = stringResource(R.string.live_tv_cancel), onClick = onDone)
-        LiveTvPillButton(text = stringResource(R.string.live_tv_list_channel_save), onClick = save, enabled = canSave)
     }
 }

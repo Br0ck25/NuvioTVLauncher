@@ -404,7 +404,7 @@ internal class LiveTvPlayerState(
     }
 
     internal fun switchTo(channel: LiveTvChannel, force: Boolean = false) {
-        if (!force && channel.streamUrl == currentListUrl && !isCatchup()) {
+        if (!force && channel.streamUrl == currentListUrl && (!isCatchup() || channel.streamUrl.isListChannelUrl())) {
             closePanel()
             return
         }
@@ -536,8 +536,10 @@ private fun LiveTvListChannelEffects(state: LiveTvPlayerState, uiState: PlayerUi
     LaunchedEffect(url, listUrl) {
         if (url != null && listUrl != null) state.joinListProgramme(url, listUrl)
     }
+    // An ended flag left over from the previous programme must not advance the one just opened.
+    val endedAtOpen = remember(url) { uiState.playbackEnded }
     LaunchedEffect(uiState.playbackEnded, url) {
-        if (uiState.playbackEnded && listUrl != null) state.advanceListChannel(listUrl)
+        if (uiState.playbackEnded && !endedAtOpen && listUrl != null) state.advanceListChannel(listUrl)
     }
     // Only a channel that is on screen, with the app in front, has the programme after it prepared.
     val lifecycleOwner = LocalLifecycleOwner.current
