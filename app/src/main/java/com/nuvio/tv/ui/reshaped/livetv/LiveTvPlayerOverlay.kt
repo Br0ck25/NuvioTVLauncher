@@ -533,6 +533,27 @@ private fun LiveTvListChannelEffects(state: LiveTvPlayerState, uiState: PlayerUi
     LaunchedEffect(uiState.playbackEnded, url) {
         if (uiState.playbackEnded && listUrl != null) state.advanceListChannel(listUrl)
     }
+    // Only a channel that is on screen, with the app in front, has the programme after it prepared.
+    val lifecycleOwner = LocalLifecycleOwner.current
+    DisposableEffect(listUrl, lifecycleOwner) {
+        if (listUrl != null) {
+            if (lifecycleOwner.lifecycle.currentState.isAtLeast(Lifecycle.State.STARTED)) ListChannels.setWatching(listUrl)
+            val observer = LifecycleEventObserver { _, event ->
+                when (event) {
+                    Lifecycle.Event.ON_START -> ListChannels.setWatching(listUrl)
+                    Lifecycle.Event.ON_STOP -> ListChannels.stopWatching(listUrl)
+                    else -> Unit
+                }
+            }
+            lifecycleOwner.lifecycle.addObserver(observer)
+            onDispose {
+                lifecycleOwner.lifecycle.removeObserver(observer)
+                ListChannels.stopWatching(listUrl)
+            }
+        } else {
+            onDispose { }
+        }
+    }
 }
 
 @Composable

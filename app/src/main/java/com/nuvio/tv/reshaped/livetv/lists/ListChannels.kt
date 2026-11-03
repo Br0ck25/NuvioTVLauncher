@@ -122,9 +122,6 @@ internal object ListChannels {
     /** How long tuning in waits for Torbox to download a title it did not have. */
     private const val TORBOX_WAIT_MS = 60_000L
     private const val TORBOX_POLL_MS = 3_000L
-    /** Titles starting within this long are prepared ahead (Torbox starts their download). */
-    private const val PREPARE_AHEAD_MS = 75L * 60 * 1000
-    private const val PREPARE_PER_TICK = 2
 
     private val scope = CoroutineScope(SupervisorJob() + Dispatchers.Default)
     private val mutex = Mutex()
@@ -139,13 +136,15 @@ internal object ListChannels {
     private val poolCache = HashMap<String, Pair<Long, List<ListItem>>>()
     /** The programme each channel was last opened on, for where in it playback starts. */
     private val opened = ConcurrentHashMap<String, ListSlot>()
-    /** Programmes already prepared ahead (by episode or film id), so each is looked at once. */
+    /** Programmes already looked at ahead (by episode or film id), so each is looked at once. */
     private val prepared: MutableSet<String> = ConcurrentHashMap.newKeySet()
     /** The peer-to-peer stream a list channel (by its link) last resolved to, played by the torrent engine. */
     private val torrents = ConcurrentHashMap<String, Stream>()
     /** The channel whose torrent was last handed to the player, until its local link is known. */
     @Volatile private var pendingTorrentChannel: String? = null
     @Volatile private var pendingTorrentAtMs = 0L
+    /** The channel the player is showing right now (its id), or null: the only time anything is prepared ahead. */
+    @Volatile private var watchingChannelId: String? = null
 
     /** Set by Live TV: the list of channels changed. */
     @Volatile var onChannelsChanged: () -> Unit = {}
@@ -186,6 +185,7 @@ internal object ListChannels {
         prepared.clear()
         torrents.clear()
         pendingTorrentChannel = null
+        watchingChannelId = null
         synchronized(poolCache) { poolCache.clear() }
         _channels.value = emptyList()
     }
@@ -283,27 +283,36 @@ internal object ListChannels {
             }
         }
         onProgrammesChanged()
-        prepareUpcoming(now)
+        prepareNext(now)
     }
 
-    /** Looks at the programmes about to start, so a title Torbox has to fetch is on its way before it is tuned. */
-    private suspend fun prepareUpcoming(now: Long) {
+    /**
+     * While a list channel is being watched, looks at the programme after the one on, so a title
+     * Torbox has to fetch is on its way before it starts. Nothing is prepared when nobody watches.
+     */
+    private suspend fun prepareNext(now: Long) {
         if (!LiveTvPreferences.torboxDownloads.value) return
-        var budget = PREPARE_PER_TICK
-        for (channel in _channels.value) {
-            for (slot in slotsById[channel.id].orEmpty()) {
-                if (budget == 0) return
-                if (slot.startMs <= now || slot.startMs > now + PREPARE_AHEAD_MS || !prepared.add(slot.videoId)) continue
-                budget--
-                try {
-                    prepare(slot)
-                } catch (cancel: CancellationException) {
-                    throw cancel
-                } catch (error: Exception) {
-                    Log.w(TAG, "Could not prepare ${slot.title}", error)
-                }
-            }
+        val id = watchingChannelId ?: return
+        val next = slotsById[id].orEmpty().firstOrNull { it.startMs > now } ?: return
+        if (!prepared.add(next.videoId)) return
+        try {
+            prepare(next)
+        } catch (cancel: CancellationException) {
+            throw cancel
+        } catch (error: Exception) {
+            Log.w(TAG, "Could not prepare ${next.title}", error)
         }
+    }
+
+    /** The player shows [channelUrl] (a list channel) and the app is in front, or null when nothing is watched. */
+    fun setWatching(channelUrl: String?) {
+        watchingChannelId = channelUrl?.takeIf { it.isListChannelUrl() }?.let(::listChannelIdOf)
+        if (watchingChannelId != null) scope.launch { prepareNext(System.currentTimeMillis()) }
+    }
+
+    /** [channelUrl] stopped being watched; another channel taking over is left alone. */
+    fun stopWatching(channelUrl: String?) {
+        if (channelUrl != null && channelUrl.isListChannelUrl() && watchingChannelId == listChannelIdOf(channelUrl)) watchingChannelId = null
     }
 
     // endregion
