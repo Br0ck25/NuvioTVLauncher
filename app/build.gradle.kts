@@ -150,9 +150,6 @@ android {
         buildConfigField("String", "SIMKL_CLIENT_ID", buildConfigString(resolveProperty(devProperties, localProperties, "SIMKL_CLIENT_ID")))
         buildConfigField("String", "SIMKL_APP_NAME", buildConfigString(resolveProperty(devProperties, localProperties, "SIMKL_APP_NAME", "nuvio")))
         buildConfigField("String", "MDBLIST_CLIENT_ID", buildConfigString(resolveProperty(devProperties, localProperties, "MDBLIST_CLIENT_ID")))
-        // Google "TVs and Limited Input devices" OAuth client for Live TV sync; blank = sign-in shows as not set up.
-        buildConfigField("String", "RESHAPED_GOOGLE_TV_CLIENT_ID", buildConfigString(resolveProperty(devProperties, localProperties, "RESHAPED_GOOGLE_TV_CLIENT_ID")))
-        buildConfigField("String", "RESHAPED_GOOGLE_TV_CLIENT_SECRET", buildConfigString(resolveProperty(devProperties, localProperties, "RESHAPED_GOOGLE_TV_CLIENT_SECRET")))
         buildConfigField("String", "TMDB_API_KEY", "\"${localProperties.getProperty("TMDB_API_KEY", "")}\"")
         buildConfigField("String", "TV_LOGIN_WEB_BASE_URL", "\"${localProperties.getProperty("TV_LOGIN_WEB_BASE_URL", "https://nuvio.tv/tv-login")}\"")
         buildConfigField("String", "DEVICE_LOGIN_WEB_BASE_URL", "\"${localProperties.getProperty("DEVICE_LOGIN_WEB_BASE_URL", "https://nuvio.tv/link")}\"")
