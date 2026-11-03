@@ -135,6 +135,9 @@ private fun ContentDiscoveryHub(
                 )
             }
         }
+        SettingsGroupCard(modifier = Modifier.fillMaxWidth()) {
+            LiveTvSettingsItems() // Live TV hook
+        }
     }
 }
 

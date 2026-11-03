@@ -1,5 +1,6 @@
 package com.nuvio.tv.ui.screens.player
 
+import com.nuvio.tv.ui.reshaped.livetv.measureLiveTvFrameRate
 import android.net.Uri
 import android.util.Log
 import androidx.media3.common.C
@@ -92,6 +93,8 @@ internal fun PlayerRuntimeController.updateAvailableTracks(tracks: Tracks) {
                                 )
                             }
                         }
+                    } else {
+                        measureLiveTvFrameRate() // TS channels carry no frame rate
                     }
                     // Extract video codec, resolution, and bitrate for stream info
                     currentVideoCodec = CustomDefaultTrackNameProvider.resolveCodecName(format.sampleMimeType, format.codecs)

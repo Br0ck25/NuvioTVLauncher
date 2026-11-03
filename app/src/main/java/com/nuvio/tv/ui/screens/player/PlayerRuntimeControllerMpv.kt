@@ -11,6 +11,10 @@ import kotlin.math.abs
 
 private const val MPV_RESUME_SEEK_TOLERANCE_MS = 1500L
 
+internal fun PlayerRuntimeController.isUsingMpvEngine(): Boolean {
+    return currentInternalPlayerEngine == InternalPlayerEngine.MVP_PLAYER
+}
+
 internal fun PlayerRuntimeController.attachMpvView(view: NuvioMpvSurfaceView?) {
     if (mpvView === view) return
     mpvView = view
