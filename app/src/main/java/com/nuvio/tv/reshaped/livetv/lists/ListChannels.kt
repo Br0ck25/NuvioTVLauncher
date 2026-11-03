@@ -6,6 +6,8 @@ import android.os.Looper
 import android.util.Log
 import android.widget.Toast
 import com.nuvio.tv.R
+import com.nuvio.tv.core.debrid.DirectDebridPlayableResult
+import com.nuvio.tv.core.debrid.DirectDebridResolver
 import com.nuvio.tv.core.network.NetworkResult
 import com.nuvio.tv.core.player.StreamAutoPlaySelector
 import com.nuvio.tv.core.tmdb.TmdbCollectionSourceResolver
@@ -19,6 +21,7 @@ import com.nuvio.tv.domain.model.AddonStreams
 import com.nuvio.tv.domain.model.CatalogRow
 import com.nuvio.tv.domain.model.Meta
 import com.nuvio.tv.domain.model.Stream
+import com.nuvio.tv.domain.model.StreamDebridCacheState
 import com.nuvio.tv.domain.model.TmdbCollectionSource
 import com.nuvio.tv.domain.model.TraktCollectionSource
 import com.nuvio.tv.domain.model.Video
@@ -71,6 +74,7 @@ interface ListChannelsEntryPoint {
     fun traktResolver(): TraktPublicListSourceResolver
     fun watchedItems(): WatchedItemsPreferences
     fun playerSettings(): PlayerSettingsDataStore
+    fun directDebridResolver(): DirectDebridResolver
 }
 
 /** No stream could be found for what is on a list channel right now. */
@@ -100,6 +104,7 @@ internal object ListChannels {
     private const val DEFAULT_MOVIE_MIN = 100
     private const val DEFAULT_EPISODE_MIN = 45
     private const val MAX_BUILD_FAILURES = 6
+    private const val MAX_STREAM_ATTEMPTS = 3
 
     private val scope = CoroutineScope(SupervisorJob() + Dispatchers.Default)
     private val mutex = Mutex()
@@ -453,8 +458,8 @@ internal object ListChannels {
 
     /**
      * The channel as the player should open it: the stream for what is on now, found through the
-     * viewer's addons. Only links the player can open directly count (no torrents, no links to
-     * a web page). Throws [ListChannelUnavailableException] when none is found.
+     * viewer's addons and, where needed, made playable by their debrid service (see [pickStream]).
+     * Throws [ListChannelUnavailableException] when none is found.
      */
     suspend fun resolve(channel: LiveTvChannel): LiveTvChannel {
         val id = listChannelIdOf(channel.streamUrl)
@@ -481,6 +486,13 @@ internal object ListChannels {
         throw ListChannelUnavailableException("No stream found")
     }
 
+    /**
+     * The stream to play for [slot], ready to open. Streams the viewer's debrid service can
+     * play (Torbox, Real-Debrid, Premiumize: addon-provided ones and torrent hashes resolved
+     * with their own key) are prepared the way the player would, and plain links are used as
+     * they are. The autoplay choice is tried first; if its link cannot be made (not cached,
+     * key missing) the next few are tried. Peer-to-peer torrents and web pages are left out.
+     */
     private suspend fun pickStream(slot: ListSlot): Stream? {
         val d = deps()
         var found: List<AddonStreams> = emptyList()
@@ -489,17 +501,22 @@ internal object ListChannels {
                 if (result is NetworkResult.Success) found = result.data
             }
         }
-        val candidates = found.flatMap { it.streams }.filter { stream ->
+        val resolver = d.directDebridResolver()
+        val candidates = ArrayList<Stream>()
+        for (stream in found.flatMap { it.streams }) {
+            if (stream.serverTarget != null || stream.youTubeIdToResolve() != null || stream.isExternal()) continue
+            if (stream.debridCacheStatus?.state == StreamDebridCacheState.NOT_CACHED) continue
             val url = stream.getStreamUrl()
-            url != null && (url.startsWith("http://", true) || url.startsWith("https://", true)) &&
-                !stream.isTorrent() && !stream.isExternal() && stream.serverTarget == null && stream.youTubeIdToResolve() == null
+            val direct = url != null && (url.startsWith("http://", true) || url.startsWith("https://", true)) && !stream.isTorrent()
+            if (direct || resolver.shouldResolveToPlayableStream(stream)) candidates += stream
         }
         if (candidates.isEmpty()) return null
+
         val settings = d.playerSettings().playerSettings.first()
         val installed = d.addonRepository().getInstalledAddons().first().map { it.displayName }.toSet()
         // A channel cannot ask which stream to play: manual picking falls back to the first one.
         val mode = if (settings.streamAutoPlayMode == StreamAutoPlayMode.MANUAL) StreamAutoPlayMode.FIRST_STREAM else settings.streamAutoPlayMode
-        return StreamAutoPlaySelector.selectAutoPlayStream(
+        val preferred = StreamAutoPlaySelector.selectAutoPlayStream(
             streams = candidates,
             mode = mode,
             regexPattern = settings.streamAutoPlayRegex,
@@ -507,7 +524,23 @@ internal object ListChannels {
             installedAddonNames = installed,
             selectedAddons = settings.streamAutoPlaySelectedAddons,
             selectedPlugins = settings.streamAutoPlaySelectedPlugins,
-        ) ?: candidates.first()
+        )
+        // Then known-cached and plain links before the rest, since a miss costs a round trip.
+        val rest = candidates.filter { it !== preferred }.sortedBy { stream ->
+            if (stream.debridCacheStatus?.state == StreamDebridCacheState.CACHED || stream.getStreamUrl() != null) 0 else 1
+        }
+        for (stream in listOfNotNull(preferred) + rest.take(MAX_STREAM_ATTEMPTS)) {
+            val playable = try {
+                resolver.resolveToPlayableStream(stream, slot.season, slot.episode)
+            } catch (cancel: CancellationException) {
+                throw cancel
+            } catch (error: Exception) {
+                Log.w(TAG, "Could not prepare a stream for ${slot.title}", error)
+                continue
+            }
+            if (playable is DirectDebridPlayableResult.Success && playable.stream.getStreamUrl() != null) return playable.stream
+        }
+        return null
     }
 
     private fun toast(resId: Int, vararg args: Any) {
