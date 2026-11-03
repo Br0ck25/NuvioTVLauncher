@@ -121,6 +121,9 @@ internal object ListChannels {
     private const val DEFAULT_EPISODE_MIN = 45
     private const val MAX_BUILD_FAILURES = 6
     private const val MAX_STREAM_ATTEMPTS = 3
+    private const val MAX_LIGHT_BYTES = 10_000_000_000L
+    private val HEAVY_MARKERS = Regex("""4320|2160|8k|\b4k\b|uhd|remux|dolby.?vision|\bdv\b|hdr10|\bhdr\b""")
+    private val SIZE_GB = Regex("""(\d+(?:[.,]\d+)?)\s?gb""")
     /** How long tuning in waits for Torbox to download a title it did not have. */
     private const val TORBOX_WAIT_MS = 60_000L
     private const val TORBOX_POLL_MS = 3_000L
@@ -633,24 +636,26 @@ internal object ListChannels {
         val streams = searchStreams(slot)
         if (streams.isEmpty()) return null
         val uncached = ArrayList<Stream>()
-        preparedStream(slot, streams, uncached)?.let { return it }
+        preparedStream(slot, streams, uncached, allowHeavy = false)?.let { return it }
         torboxDownload(slot, streams, uncached, waitMs = TORBOX_WAIT_MS)?.let { return it }
+        // Only now, with nothing light to play, a heavy cached file (it may still stall on a small box).
+        preparedStream(slot, streams, uncached, allowHeavy = true)?.let { return it }
         return peerToPeerStream(streams)
     }
 
-    private suspend fun preparedStream(slot: ListSlot, streams: List<Stream>, uncached: MutableList<Stream>): Stream? {
+    private suspend fun preparedStream(slot: ListSlot, streams: List<Stream>, uncached: MutableList<Stream>, allowHeavy: Boolean): Stream? {
         val d = deps()
         val resolver = d.directDebridResolver()
         val candidates = ArrayList<Stream>()
         for (stream in streams) {
             if (stream.debridCacheStatus?.state == StreamDebridCacheState.NOT_CACHED) continue
+            if (isHeavy(stream) && !allowHeavy) continue
             if (isDirectLink(stream) || resolver.shouldResolveToPlayableStream(stream)) candidates += stream
         }
         if (candidates.isEmpty()) return null
         // A channel joins a title part-way and must start fast: 4K and remux files (often 20 GB or more,
         // and beyond many TV boxes) come last, and are used only when nothing lighter exists.
-        val lighter = candidates.filterNot { downloadScore(it) <= 1 }
-        val pool = lighter.ifEmpty { candidates }
+        val pool = candidates
 
         val settings = d.playerSettings().playerSettings.first()
         val installed = d.addonRepository().getInstalledAddons().first().map { it.displayName }.toSet()
@@ -740,12 +745,23 @@ internal object ListChannels {
         return (playable as? DirectDebridPlayableResult.Success)?.stream?.takeIf { it.getStreamUrl() != null }
     }
 
+    /** 4K/8K, remuxes, Dolby Vision and files over 10 GB: too much for many TV boxes' decoders and memory. */
+    private fun isHeavy(stream: Stream): Boolean {
+        val text = listOfNotNull(stream.name, stream.title, stream.description, stream.behaviorHints?.filename)
+            .joinToString(" ").lowercase()
+        if (HEAVY_MARKERS.containsMatchIn(text)) return true
+        val hinted = stream.behaviorHints?.videoSize ?: 0L
+        if (hinted > MAX_LIGHT_BYTES) return true
+        val gb = SIZE_GB.findAll(text).mapNotNull { it.groupValues[1].replace(',', '.').toDoubleOrNull() }.maxOrNull() ?: 0.0
+        return gb * 1_000_000_000.0 > MAX_LIGHT_BYTES
+    }
+
     /** Smaller downloads first: 1080p, then 720p; 4K and remuxes take long to fetch. */
     private fun downloadScore(stream: Stream): Int {
         val text = listOfNotNull(stream.name, stream.title, stream.description, stream.behaviorHints?.filename)
             .joinToString(" ").lowercase()
         return when {
-            "2160" in text || "4k" in text || "uhd" in text -> 0
+            isHeavy(stream) || "2160" in text || "4k" in text || "uhd" in text -> 0
             "remux" in text -> 1
             "1080" in text -> 4
             "720" in text -> 3
