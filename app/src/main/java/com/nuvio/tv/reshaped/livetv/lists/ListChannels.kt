@@ -647,13 +647,17 @@ internal object ListChannels {
             if (isDirectLink(stream) || resolver.shouldResolveToPlayableStream(stream)) candidates += stream
         }
         if (candidates.isEmpty()) return null
+        // A channel joins a title part-way and must start fast: 4K and remux files (often 20 GB or more,
+        // and beyond many TV boxes) come last, and are used only when nothing lighter exists.
+        val lighter = candidates.filterNot { downloadScore(it) <= 1 }
+        val pool = lighter.ifEmpty { candidates }
 
         val settings = d.playerSettings().playerSettings.first()
         val installed = d.addonRepository().getInstalledAddons().first().map { it.displayName }.toSet()
         // A channel cannot ask which stream to play: manual picking falls back to the first one.
         val mode = if (settings.streamAutoPlayMode == StreamAutoPlayMode.MANUAL) StreamAutoPlayMode.FIRST_STREAM else settings.streamAutoPlayMode
         val preferred = StreamAutoPlaySelector.selectAutoPlayStream(
-            streams = candidates,
+            streams = pool,
             mode = mode,
             regexPattern = settings.streamAutoPlayRegex,
             source = settings.streamAutoPlaySource,
@@ -662,9 +666,12 @@ internal object ListChannels {
             selectedPlugins = settings.streamAutoPlaySelectedPlugins,
         )
         // Then known-cached and plain links before the rest, since a miss costs a round trip.
-        val rest = candidates.filter { it !== preferred }.sortedBy { stream ->
-            if (stream.debridCacheStatus?.state == StreamDebridCacheState.CACHED || stream.getStreamUrl() != null) 0 else 1
-        }
+        val rest = candidates.filter { it !== preferred }.sortedWith(
+            compareBy<Stream>(
+                { stream -> if (stream.debridCacheStatus?.state == StreamDebridCacheState.CACHED || stream.getStreamUrl() != null) 0 else 1 },
+                { stream -> -downloadScore(stream) },
+            ),
+        )
         for (stream in listOfNotNull(preferred) + rest.take(MAX_STREAM_ATTEMPTS)) {
             val playable = try {
                 resolver.resolveToPlayableStream(stream, slot.season, slot.episode)

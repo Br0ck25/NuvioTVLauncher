@@ -280,6 +280,8 @@ internal class LiveTvPlayerState(
                     true
                 }
                 KeyEvent.KEYCODE_BACK, KeyEvent.KEYCODE_ESCAPE -> {
+                    // A list channel has no live version to go back to: Back leaves, even while it loads.
+                    if (playingListChannelUrl() != null) return false
                     if (uiState.showPauseOverlay) return false
                     // A channel gone since (removed, or its source edited) leaves Back to the player.
                     val channel = currentChannel() ?: return false
