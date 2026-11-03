@@ -2,6 +2,7 @@
 
 package com.nuvio.tv.ui.reshaped.livetv
 
+import androidx.compose.foundation.layout.ColumnScope
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.Row
@@ -84,8 +85,9 @@ internal fun LiveTvListChannelsDialog(onDismiss: () -> Unit) {
                 color = NuvioTheme.colors.TextSecondary,
             )
         }
+        // Takes what is left after the buttons below it, so they always stay on screen.
         LazyColumn(
-            modifier = Modifier.fillMaxWidth().heightIn(max = 320.dp),
+            modifier = Modifier.fillMaxWidth().weight(1f, fill = false),
             verticalArrangement = Arrangement.spacedBy(NuvioTheme.spacing.sm),
         ) {
             items(channels, key = { it.id }) { channel ->
@@ -103,7 +105,7 @@ internal fun LiveTvListChannelsDialog(onDismiss: () -> Unit) {
 }
 
 @Composable
-private fun ListChannelEditor(initial: ListChannel, onDone: () -> Unit) {
+private fun ColumnScope.ListChannelEditor(initial: ListChannel, onDone: () -> Unit) {
     var name by remember { mutableStateOf(initial.name) }
     var picked by remember { mutableStateOf(initial.refs) }
     // null while they are found: addon catalogs, collection folders and library lists.
@@ -115,11 +117,13 @@ private fun ListChannelEditor(initial: ListChannel, onDone: () -> Unit) {
             if (runCatching { field.requestFocus() }.isSuccess) return@LaunchedEffect
         }
     }
+    // Typing is optional: with no name, the channel takes the name of its first list.
     val save: () -> Unit = {
-        if (initial.id.isEmpty()) ListChannels.create(name, picked) else ListChannels.save(initial.copy(name = name.trim(), refs = picked))
+        val finalName = name.trim().ifBlank { picked.firstOrNull()?.title?.substringBefore(" · ")?.trim().orEmpty() }
+        if (initial.id.isEmpty()) ListChannels.create(finalName, picked) else ListChannels.save(initial.copy(name = finalName, refs = picked))
         onDone()
     }
-    val canSave = name.isNotBlank() && picked.isNotEmpty()
+    val canSave = picked.isNotEmpty()
     LiveTvTextField(
         value = name,
         onValueChange = { name = it },
@@ -149,7 +153,7 @@ private fun ListChannelEditor(initial: ListChannel, onDone: () -> Unit) {
             val keys = lists.mapTo(HashSet()) { it.key }
             val rows = picked.filter { it.key !in keys } + lists
             LazyColumn(
-                modifier = Modifier.fillMaxWidth().heightIn(max = 300.dp),
+                modifier = Modifier.fillMaxWidth().weight(1f, fill = false),
                 verticalArrangement = Arrangement.spacedBy(NuvioTheme.spacing.xxs),
             ) {
                 items(rows, key = { it.key }) { ref ->

@@ -6,7 +6,7 @@
     <string name="live_tv_list_channels_description">A list channel plays the titles of the lists you tick, one after another, like live TV. Shows play their next episode.</string>
     <string name="live_tv_list_channel_new">New list channel</string>
     <string name="live_tv_list_channel_edit">Edit list channel</string>
-    <string name="live_tv_list_channel_name_hint">Channel name</string>
+    <string name="live_tv_list_channel_name_hint">Channel name (optional)</string>
     <string name="live_tv_list_channel_lists_heading">Lists in this channel</string>
     <string name="live_tv_list_channel_loading_lists">Finding your lists…</string>
     <string name="live_tv_list_channel_no_lists">No lists found. Install an addon with catalogs, or make a collection.</string>

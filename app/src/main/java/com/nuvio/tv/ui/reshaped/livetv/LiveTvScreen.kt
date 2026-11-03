@@ -458,7 +458,7 @@ fun LiveTvScreen(
                     showTitle = showBuiltInHeader,
                     preview = if (previewsEnabled) preview else null,
                     playVideo = (gridFocused || settingsFocused || categoriesOpen) && started && !launching &&
-                        !showSourceDialog && !showCategoryDialog && !showMenu && !showPlaylists &&
+                        !showSourceDialog && !showCategoryDialog && !showMenu && !showPlaylists && !showListChannels &&
                         !naming && editingList == null,
                 )
                 Spacer(Modifier.height(NuvioTheme.spacing.sm))
