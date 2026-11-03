@@ -460,7 +460,7 @@ internal class LiveTvPlayerState(
         if (offset < JOIN_MIN_MS) return
         repeat(JOIN_WAIT_TRIES) {
             if (controller.currentStreamUrl != url) return
-            if (controller._uiState.value.duration > 0L) {
+            if (controller._playbackTimeline.value.duration > 0L) {
                 controller.onEvent(PlayerEvent.OnSeekTo(offset))
                 return
             }
