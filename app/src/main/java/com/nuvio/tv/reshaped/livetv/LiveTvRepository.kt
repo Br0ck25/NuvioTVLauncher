@@ -597,7 +597,10 @@ object LiveTvRepository {
         // (a bar to seek in) because it has a start and an end.
         val isListChannel = channel.streamUrl.isListChannelUrl()
         val playback = if (isListChannel) ListChannels.resolve(channel) else playableChannel(channel)
-        LiveTvPlaybackRegistry.register(playback.streamUrl, listUrl = channel.streamUrl, catchup = isListChannel)
+        // A peer-to-peer torrent has no link yet: the player registers its local one (see LiveTvPlayerState.isActive).
+        if (!(isListChannel && ListChannels.torrentStreamFor(channel.streamUrl) != null)) {
+            LiveTvPlaybackRegistry.register(playback.streamUrl, listUrl = channel.streamUrl, catchup = isListChannel)
+        }
         recordRecentChannel(channel)
         return playback
     }

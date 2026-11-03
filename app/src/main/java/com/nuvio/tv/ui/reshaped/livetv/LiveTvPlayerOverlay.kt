@@ -2,6 +2,7 @@
 
 package com.nuvio.tv.ui.reshaped.livetv
 
+import com.nuvio.tv.ui.screens.player.switchToTorrentSourceStream
 import com.nuvio.tv.reshaped.livetv.lists.ListChannelUnavailableException
 import com.nuvio.tv.reshaped.livetv.lists.ListChannels
 import com.nuvio.tv.reshaped.livetv.lists.isListChannelUrl
@@ -177,7 +178,22 @@ internal class LiveTvPlayerState(
     internal val player: PlayerRuntimeController get() = controller
 
     /** Whether the player is showing a Live TV channel (read on each key; a memory lookup). */
-    fun isActive(): Boolean = LiveTvPlaybackRegistry.isLiveTv(controller.currentStreamUrl)
+    fun isActive(): Boolean {
+        val url = controller.currentStreamUrl
+        return LiveTvPlaybackRegistry.isLiveTv(url) || adoptTorrent(url)
+    }
+
+    /**
+     * A list channel playing a peer-to-peer torrent: the player's local link for it is only known
+     * once the torrent runs, so it is registered as the channel's here.
+     */
+    private fun adoptTorrent(url: String?): Boolean {
+        if (url.isNullOrBlank() || !url.startsWith("http", ignoreCase = true) || !controller.isTorrentStream) return false
+        val channelUrl = ListChannels.takePendingTorrentChannel() ?: return false
+        ListChannels.clearPendingTorrentChannel()
+        LiveTvPlaybackRegistry.register(url, listUrl = channelUrl, catchup = true)
+        return true
+    }
 
     internal fun syncCurrent() {
         if (currentListUrl == null && isActive()) {
@@ -406,6 +422,14 @@ internal class LiveTvPlayerState(
                 return@launch
             }
             val isListChannel = channel.streamUrl.isListChannelUrl()
+            val torrent = ListChannels.torrentStreamFor(channel.streamUrl)?.takeIf { isListChannel }
+            if (torrent != null) {
+                // Played by the torrent engine; its local link is registered when it is known (see isActive).
+                val programme = LiveTvRepository.uiState.value.currentProgrammes[channel.guideKey]
+                controller._uiState.update { it.copy(title = programme?.title ?: channel.name) }
+                controller.switchToTorrentSourceStream(torrent)
+                return@launch
+            }
             LiveTvPlaybackRegistry.register(
                 PlayerMediaSourceFactory.normalizePlaybackRequest(playback.streamUrl, playback.headers).url,
                 listUrl = channel.streamUrl,

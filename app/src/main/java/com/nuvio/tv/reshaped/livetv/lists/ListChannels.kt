@@ -6,16 +6,21 @@ import android.os.Looper
 import android.util.Log
 import android.widget.Toast
 import com.nuvio.tv.R
+import com.nuvio.tv.core.debrid.DebridMagnetBuilder
+import com.nuvio.tv.core.debrid.DebridProviders
 import com.nuvio.tv.core.debrid.DirectDebridPlayableResult
 import com.nuvio.tv.core.debrid.DirectDebridResolver
 import com.nuvio.tv.core.network.NetworkResult
 import com.nuvio.tv.core.player.StreamAutoPlaySelector
 import com.nuvio.tv.core.tmdb.TmdbCollectionSourceResolver
+import com.nuvio.tv.core.torrent.TorrentSettings
 import com.nuvio.tv.core.trakt.TraktPublicListSourceResolver
 import com.nuvio.tv.data.local.CollectionsDataStore
+import com.nuvio.tv.data.local.DebridSettingsDataStore
 import com.nuvio.tv.data.local.PlayerSettingsDataStore
 import com.nuvio.tv.data.local.StreamAutoPlayMode
 import com.nuvio.tv.data.local.WatchedItemsPreferences
+import com.nuvio.tv.data.remote.api.TorboxApi
 import com.nuvio.tv.domain.model.AddonCatalogCollectionSource
 import com.nuvio.tv.domain.model.AddonStreams
 import com.nuvio.tv.domain.model.CatalogRow
@@ -34,12 +39,14 @@ import com.nuvio.tv.domain.repository.LibraryRepository
 import com.nuvio.tv.domain.repository.MetaRepository
 import com.nuvio.tv.domain.repository.StreamRepository
 import com.nuvio.tv.reshaped.livetv.LiveTvChannel
+import com.nuvio.tv.reshaped.livetv.LiveTvPreferences
 import com.nuvio.tv.reshaped.livetv.LiveTvProgramme
 import com.nuvio.tv.reshaped.livetv.liveTvHideKey
 import dagger.hilt.EntryPoint
 import dagger.hilt.InstallIn
 import dagger.hilt.android.EntryPointAccessors
 import dagger.hilt.components.SingletonComponent
+import android.os.SystemClock
 import java.text.SimpleDateFormat
 import java.util.Date
 import java.util.Locale
@@ -60,6 +67,9 @@ import kotlinx.coroutines.launch
 import kotlinx.coroutines.sync.Mutex
 import kotlinx.coroutines.sync.withLock
 import kotlinx.coroutines.withTimeoutOrNull
+import okhttp3.MediaType.Companion.toMediaType
+import okhttp3.RequestBody
+import okhttp3.RequestBody.Companion.toRequestBody
 
 @EntryPoint
 @InstallIn(SingletonComponent::class)
@@ -75,6 +85,9 @@ interface ListChannelsEntryPoint {
     fun watchedItems(): WatchedItemsPreferences
     fun playerSettings(): PlayerSettingsDataStore
     fun directDebridResolver(): DirectDebridResolver
+    fun debridSettings(): DebridSettingsDataStore
+    fun torboxApi(): TorboxApi
+    fun torrentSettings(): TorrentSettings
 }
 
 /** No stream could be found for what is on a list channel right now. */
@@ -99,12 +112,19 @@ internal object ListChannels {
     private const val MAX_PER_LIST = 60
     private const val POOL_TTL_MS = 20L * 60 * 1000
     private const val TICK_MS = 60_000L
+    private const val PENDING_TORRENT_MS = 3L * 60 * 1000
     private const val NETWORK_TIMEOUT_MS = 20_000L
     private const val STREAMS_TIMEOUT_MS = 25_000L
     private const val DEFAULT_MOVIE_MIN = 100
     private const val DEFAULT_EPISODE_MIN = 45
     private const val MAX_BUILD_FAILURES = 6
     private const val MAX_STREAM_ATTEMPTS = 3
+    /** How long tuning in waits for Torbox to download a title it did not have. */
+    private const val TORBOX_WAIT_MS = 60_000L
+    private const val TORBOX_POLL_MS = 3_000L
+    /** Titles starting within this long are prepared ahead (Torbox starts their download). */
+    private const val PREPARE_AHEAD_MS = 75L * 60 * 1000
+    private const val PREPARE_PER_TICK = 2
 
     private val scope = CoroutineScope(SupervisorJob() + Dispatchers.Default)
     private val mutex = Mutex()
@@ -119,6 +139,13 @@ internal object ListChannels {
     private val poolCache = HashMap<String, Pair<Long, List<ListItem>>>()
     /** The programme each channel was last opened on, for where in it playback starts. */
     private val opened = ConcurrentHashMap<String, ListSlot>()
+    /** Programmes already prepared ahead (by episode or film id), so each is looked at once. */
+    private val prepared: MutableSet<String> = ConcurrentHashMap.newKeySet()
+    /** The peer-to-peer stream a list channel (by its link) last resolved to, played by the torrent engine. */
+    private val torrents = ConcurrentHashMap<String, Stream>()
+    /** The channel whose torrent was last handed to the player, until its local link is known. */
+    @Volatile private var pendingTorrentChannel: String? = null
+    @Volatile private var pendingTorrentAtMs = 0L
 
     /** Set by Live TV: the list of channels changed. */
     @Volatile var onChannelsChanged: () -> Unit = {}
@@ -134,6 +161,7 @@ internal object ListChannels {
         detach()
         val app = context.applicationContext
         appContext = app
+        LiveTvPreferences.ensureLoaded(app)
         this.profileId = profileId
         val saved = ListChannelStore(app, profileId)
         val list = saved.channels()
@@ -155,6 +183,9 @@ internal object ListChannels {
         profileId = -1
         slotsById = emptyMap()
         opened.clear()
+        prepared.clear()
+        torrents.clear()
+        pendingTorrentChannel = null
         synchronized(poolCache) { poolCache.clear() }
         _channels.value = emptyList()
     }
@@ -252,6 +283,27 @@ internal object ListChannels {
             }
         }
         onProgrammesChanged()
+        prepareUpcoming(now)
+    }
+
+    /** Looks at the programmes about to start, so a title Torbox has to fetch is on its way before it is tuned. */
+    private suspend fun prepareUpcoming(now: Long) {
+        if (!LiveTvPreferences.torboxDownloads.value) return
+        var budget = PREPARE_PER_TICK
+        for (channel in _channels.value) {
+            for (slot in slotsById[channel.id].orEmpty()) {
+                if (budget == 0) return
+                if (slot.startMs <= now || slot.startMs > now + PREPARE_AHEAD_MS || !prepared.add(slot.videoId)) continue
+                budget--
+                try {
+                    prepare(slot)
+                } catch (cancel: CancellationException) {
+                    throw cancel
+                } catch (error: Exception) {
+                    Log.w(TAG, "Could not prepare ${slot.title}", error)
+                }
+            }
+        }
     }
 
     // endregion
@@ -456,10 +508,31 @@ internal object ListChannels {
 
     // region Playback
 
+    /** The peer-to-peer stream [channelUrl] resolved to, or null when it resolved to a link. */
+    fun torrentStreamFor(channelUrl: String): Stream? = torrents[channelUrl]
+
     /**
-     * The channel as the player should open it: the stream for what is on now, found through the
-     * viewer's addons and, where needed, made playable by their debrid service (see [pickStream]).
-     * Throws [ListChannelUnavailableException] when none is found.
+     * Called once the player has a local link for a torrent started for a list channel:
+     * the channel it was started for, or null (also when it was started a while ago).
+     */
+    fun takePendingTorrentChannel(): String? {
+        val channel = pendingTorrentChannel ?: return null
+        if (SystemClock.elapsedRealtime() - pendingTorrentAtMs > PENDING_TORRENT_MS) {
+            pendingTorrentChannel = null
+            return null
+        }
+        return channel
+    }
+
+    fun clearPendingTorrentChannel() {
+        pendingTorrentChannel = null
+    }
+
+    /**
+     * The channel as the player should open it, for what is on now. A link plays as it is. A
+     * stream a debrid service has to prepare is prepared first. When it has a peer-to-peer
+     * torrent, its link is "torrent://hash" and [torrentStreamFor] has the stream. Throws
+     * [ListChannelUnavailableException] when nothing can be played.
      */
     suspend fun resolve(channel: LiveTvChannel): LiveTvChannel {
         val id = listChannelIdOf(channel.streamUrl)
@@ -475,10 +548,21 @@ internal object ListChannels {
             val slot = slots[index]
             val stream = pickStream(slot)
             val url = stream?.getStreamUrl()
+            val hash = stream?.getEffectiveInfoHash()
             if (stream != null && url != null) {
+                torrents.remove(channel.streamUrl)
+                pendingTorrentChannel = null
                 opened[id] = slot
                 onProgrammesChanged()
                 return channel.copy(streamUrl = url, headers = stream.behaviorHints?.proxyHeaders?.request.orEmpty())
+            }
+            if (stream != null && hash != null) {
+                torrents[channel.streamUrl] = stream
+                pendingTorrentChannel = channel.streamUrl
+                pendingTorrentAtMs = SystemClock.elapsedRealtime()
+                opened[id] = slot
+                onProgrammesChanged()
+                return channel.copy(streamUrl = "torrent://$hash", headers = emptyMap())
             }
             index++
             tries++
@@ -486,29 +570,45 @@ internal object ListChannels {
         throw ListChannelUnavailableException("No stream found")
     }
 
-    /**
-     * The stream to play for [slot], ready to open. Streams the viewer's debrid service can
-     * play (Torbox, Real-Debrid, Premiumize: addon-provided ones and torrent hashes resolved
-     * with their own key) are prepared the way the player would, and plain links are used as
-     * they are. The autoplay choice is tried first; if its link cannot be made (not cached,
-     * key missing) the next few are tried. Peer-to-peer torrents and web pages are left out.
-     */
-    private suspend fun pickStream(slot: ListSlot): Stream? {
-        val d = deps()
+    /** The addon streams for [slot] that this app could play in some way. */
+    private suspend fun searchStreams(slot: ListSlot): List<Stream> {
         var found: List<AddonStreams> = emptyList()
         withTimeoutOrNull(STREAMS_TIMEOUT_MS) {
-            d.streamRepository().getStreamsFromAllAddons(slot.itemType, slot.videoId, slot.season, slot.episode).collect { result ->
+            deps().streamRepository().getStreamsFromAllAddons(slot.itemType, slot.videoId, slot.season, slot.episode).collect { result ->
                 if (result is NetworkResult.Success) found = result.data
             }
         }
+        return found.flatMap { it.streams }
+            .filter { it.serverTarget == null && it.youTubeIdToResolve() == null && !it.isExternal() }
+    }
+
+    private fun isDirectLink(stream: Stream): Boolean {
+        val url = stream.getStreamUrl() ?: return false
+        return (url.startsWith("http://", true) || url.startsWith("https://", true)) && !stream.isTorrent()
+    }
+
+    /**
+     * The stream to play for [slot], ready to open. In order: plain links and what the viewer's
+     * debrid service has cached (the autoplay choice first, then a few more); what Torbox can
+     * download for them, if they allow it, waiting a little for it; and last a peer-to-peer
+     * torrent, if the viewer turned peer-to-peer on.
+     */
+    private suspend fun pickStream(slot: ListSlot): Stream? {
+        val streams = searchStreams(slot)
+        if (streams.isEmpty()) return null
+        val uncached = ArrayList<Stream>()
+        preparedStream(slot, streams, uncached)?.let { return it }
+        torboxDownload(slot, streams, uncached, waitMs = TORBOX_WAIT_MS)?.let { return it }
+        return peerToPeerStream(streams)
+    }
+
+    private suspend fun preparedStream(slot: ListSlot, streams: List<Stream>, uncached: MutableList<Stream>): Stream? {
+        val d = deps()
         val resolver = d.directDebridResolver()
         val candidates = ArrayList<Stream>()
-        for (stream in found.flatMap { it.streams }) {
-            if (stream.serverTarget != null || stream.youTubeIdToResolve() != null || stream.isExternal()) continue
+        for (stream in streams) {
             if (stream.debridCacheStatus?.state == StreamDebridCacheState.NOT_CACHED) continue
-            val url = stream.getStreamUrl()
-            val direct = url != null && (url.startsWith("http://", true) || url.startsWith("https://", true)) && !stream.isTorrent()
-            if (direct || resolver.shouldResolveToPlayableStream(stream)) candidates += stream
+            if (isDirectLink(stream) || resolver.shouldResolveToPlayableStream(stream)) candidates += stream
         }
         if (candidates.isEmpty()) return null
 
@@ -538,10 +638,95 @@ internal object ListChannels {
                 Log.w(TAG, "Could not prepare a stream for ${slot.title}", error)
                 continue
             }
-            if (playable is DirectDebridPlayableResult.Success && playable.stream.getStreamUrl() != null) return playable.stream
+            when {
+                playable is DirectDebridPlayableResult.Success && playable.stream.getStreamUrl() != null -> return playable.stream
+                playable is DirectDebridPlayableResult.NotCached -> uncached += stream
+            }
         }
         return null
     }
+
+    /**
+     * Torbox downloads titles it does not have: the best uncached torrent is added to the
+     * viewer's account and, if [waitMs] allows, waited for until its files are ready (then the
+     * link is made the usual way). With no wait it only starts the download. Null when Torbox is
+     * not their service, they turned this off, or the download was not ready in time.
+     */
+    private suspend fun torboxDownload(slot: ListSlot, streams: List<Stream>, uncached: List<Stream>, waitMs: Long): Stream? {
+        if (!LiveTvPreferences.torboxDownloads.value) return null
+        val d = deps()
+        val settings = d.debridSettings().settings.first()
+        val key = settings.torboxApiKey.trim()
+        if (settings.activeResolverProviderId != DebridProviders.TORBOX_ID || key.isEmpty()) return null
+        val best = (uncached + streams.filter { it.debridCacheStatus?.state == StreamDebridCacheState.NOT_CACHED })
+            .filter { it.getStreamUrl() == null && DebridMagnetBuilder.fromStream(it) != null }
+            .sortedByDescending(::downloadScore)
+            .firstOrNull() ?: return null
+        val magnet = DebridMagnetBuilder.fromStream(best) ?: return null
+        val authorization = "Bearer $key"
+        val api = d.torboxApi()
+        val torrentId: Int = (
+            try {
+                val created = api.createTorrent(authorization, magnet.textPart(), "false".textPart(), "false".textPart())
+                created.body()?.takeIf { created.isSuccessful && it.success != false }?.data?.resolvedTorrentId()
+            } catch (cancel: CancellationException) {
+                throw cancel
+            } catch (error: Exception) {
+                Log.w(TAG, "Torbox would not take ${slot.title}", error)
+                null
+            }
+            ) ?: return null
+        if (waitMs <= 0L) return null
+
+        toast(R.string.live_tv_list_torbox_wait, slot.title)
+        val deadline = SystemClock.elapsedRealtime() + waitMs
+        var ready = false
+        while (!ready && SystemClock.elapsedRealtime() < deadline) {
+            val info = try {
+                api.getTorrent(authorization, torrentId, true).body()?.data
+            } catch (cancel: CancellationException) {
+                throw cancel
+            } catch (error: Exception) {
+                null
+            }
+            ready = info?.downloadFinished == true || info?.downloadPresent == true
+            if (!ready) delay(TORBOX_POLL_MS)
+        }
+        if (!ready) return null
+        val playable = d.directDebridResolver().resolveToPlayableStream(best, slot.season, slot.episode)
+        return (playable as? DirectDebridPlayableResult.Success)?.stream?.takeIf { it.getStreamUrl() != null }
+    }
+
+    /** Smaller downloads first: 1080p, then 720p; 4K and remuxes take long to fetch. */
+    private fun downloadScore(stream: Stream): Int {
+        val text = listOfNotNull(stream.name, stream.title, stream.description, stream.behaviorHints?.filename)
+            .joinToString(" ").lowercase()
+        return when {
+            "2160" in text || "4k" in text || "uhd" in text -> 0
+            "remux" in text -> 1
+            "1080" in text -> 4
+            "720" in text -> 3
+            else -> 2
+        }
+    }
+
+    /** A torrent the player downloads itself, when the viewer allowed peer-to-peer. */
+    private suspend fun peerToPeerStream(streams: List<Stream>): Stream? {
+        if (!deps().torrentSettings().settings.first().p2pEnabled) return null
+        return streams.filter { it.getStreamUrl() == null && it.isTorrent() && it.getEffectiveInfoHash() != null }
+            .sortedByDescending(::downloadScore)
+            .firstOrNull()
+    }
+
+    /** Looks at an upcoming programme: when nothing for it is cached, Torbox is asked to start fetching it. */
+    private suspend fun prepare(slot: ListSlot) {
+        val streams = searchStreams(slot)
+        if (streams.isEmpty()) return
+        val instant = streams.any { isDirectLink(it) || it.isDirectDebrid() || it.debridCacheStatus?.state == StreamDebridCacheState.CACHED }
+        if (!instant) torboxDownload(slot, streams, emptyList(), waitMs = 0L)
+    }
+
+    private fun String.textPart(): RequestBody = toRequestBody("text/plain".toMediaType())
 
     private fun toast(resId: Int, vararg args: Any) {
         val app = appContext ?: return

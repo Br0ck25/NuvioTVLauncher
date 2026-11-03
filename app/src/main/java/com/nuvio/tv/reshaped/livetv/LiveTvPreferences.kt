@@ -14,6 +14,7 @@ object LiveTvPreferences {
     private const val KEY_ENABLED = "live_tv_enabled"
     private const val KEY_PREVIEWS = "live_tv_previews"
     private const val KEY_PREVIEW_SOUND = "live_tv_preview_sound"
+    private const val KEY_TORBOX_DOWNLOADS = "live_tv_torbox_downloads"
 
     private val _enabled = MutableStateFlow(false)
     val enabled: StateFlow<Boolean> = _enabled.asStateFlow()
@@ -26,6 +27,10 @@ object LiveTvPreferences {
     /** Whether the preview plays the channel's sound. */
     val previewSound: StateFlow<Boolean> = _previewSound.asStateFlow()
 
+    private val _torboxDownloads = MutableStateFlow(true)
+    /** Whether list channels may have Torbox download titles it does not have yet, so they can play. */
+    val torboxDownloads: StateFlow<Boolean> = _torboxDownloads.asStateFlow()
+
     @Volatile
     private var loaded = false
 
@@ -37,6 +42,7 @@ object LiveTvPreferences {
             _enabled.value = prefs.getBoolean(KEY_ENABLED, false)
             _previews.value = prefs.getBoolean(KEY_PREVIEWS, true)
             _previewSound.value = prefs.getBoolean(KEY_PREVIEW_SOUND, true)
+            _torboxDownloads.value = prefs.getBoolean(KEY_TORBOX_DOWNLOADS, true)
             loaded = true
         }
     }
@@ -57,6 +63,12 @@ object LiveTvPreferences {
         ensureLoaded(context)
         _previewSound.value = enabled
         prefs(context).edit().putBoolean(KEY_PREVIEW_SOUND, enabled).apply()
+    }
+
+    fun setTorboxDownloads(context: Context, enabled: Boolean) {
+        ensureLoaded(context)
+        _torboxDownloads.value = enabled
+        prefs(context).edit().putBoolean(KEY_TORBOX_DOWNLOADS, enabled).apply()
     }
 
     // Its own tiny file: this is read on the main thread when the menu is built.

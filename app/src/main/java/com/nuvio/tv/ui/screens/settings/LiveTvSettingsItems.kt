@@ -19,6 +19,7 @@ internal fun LiveTvSettingsItems() {
     val checked by LiveTvPreferences.enabled.collectAsStateWithLifecycle()
     val previews by LiveTvPreferences.previews.collectAsStateWithLifecycle()
     val previewSound by LiveTvPreferences.previewSound.collectAsStateWithLifecycle()
+    val torboxDownloads by LiveTvPreferences.torboxDownloads.collectAsStateWithLifecycle()
 
     SettingsToggleRow(
         title = stringResource(R.string.settings_live_tv_title),
@@ -27,6 +28,12 @@ internal fun LiveTvSettingsItems() {
         onToggle = { LiveTvPreferences.setEnabled(context, !checked) },
     )
     if (checked) {
+        SettingsToggleRow(
+            title = stringResource(R.string.settings_live_tv_torbox_title),
+            subtitle = stringResource(R.string.settings_live_tv_torbox_description),
+            checked = torboxDownloads,
+            onToggle = { LiveTvPreferences.setTorboxDownloads(context, !torboxDownloads) },
+        )
         SettingsToggleRow(
             title = stringResource(R.string.settings_live_tv_previews_title),
             subtitle = stringResource(R.string.settings_live_tv_previews_description),

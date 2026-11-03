@@ -1,5 +1,6 @@
 package com.nuvio.tv.ui.reshaped.livetv
 
+import com.nuvio.tv.reshaped.livetv.lists.ListChannels
 import com.nuvio.tv.reshaped.livetv.lists.isListChannelUrl
 import com.nuvio.tv.reshaped.livetv.lists.ListChannelUnavailableException
 import android.content.Context
@@ -155,6 +156,23 @@ internal suspend fun liveTvPlayerRoute(channel: LiveTvChannel, profileId: Int): 
         return null
     }
     val isListChannel = channel.streamUrl.isListChannelUrl()
+    // A peer-to-peer title: the player starts its torrent and the local link is registered once known.
+    ListChannels.torrentStreamFor(channel.streamUrl)?.takeIf { isListChannel }?.let { torrent ->
+        return Screen.Player.createRoute(
+            streamUrl = playback.streamUrl,
+            title = LiveTvRepository.uiState.value.currentProgrammes[channel.guideKey]?.title ?: channel.name,
+            streamName = channel.name,
+            contentType = LIVE_TV_CONTENT_TYPE,
+            logo = LiveTvRepository.uiState.value.logoFor(channel),
+            filename = torrent.behaviorHints?.filename,
+            addonName = LIVE_TV_ADDON_NAME,
+            streamDescription = channel.group.takeIf(String::isNotBlank),
+            infoHash = torrent.getEffectiveInfoHash(),
+            fileIdx = torrent.getEffectiveFileIdx(),
+            sources = torrent.sources,
+            profileId = profileId,
+        )
+    }
     // The player keys on the URL it plays, which drops a user:password@ part into a header.
     val playerUrl = PlayerMediaSourceFactory.normalizePlaybackRequest(playback.streamUrl, playback.headers).url
     LiveTvPlaybackRegistry.register(playerUrl, listUrl = channel.streamUrl, catchup = isListChannel)

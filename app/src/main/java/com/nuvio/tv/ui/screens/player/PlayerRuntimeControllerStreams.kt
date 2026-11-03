@@ -1079,7 +1079,7 @@ internal fun PlayerRuntimeController.selectEpisodesSeason(season: Int) {
 }
 
 @androidx.annotation.OptIn(UnstableApi::class)
-private fun PlayerRuntimeController.switchToTorrentSourceStream(
+internal fun PlayerRuntimeController.switchToTorrentSourceStream(
     stream: Stream
 ) {
     val infoHash = stream.getEffectiveInfoHash() ?: return
