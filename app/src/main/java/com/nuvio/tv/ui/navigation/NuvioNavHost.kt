@@ -1212,6 +1212,10 @@ private fun PlaybackNavHost(
             )
         }
 
+        composable(com.nuvio.tv.reshaped.livetv.LIVE_TV_ROUTE) { // Live TV
+            com.nuvio.tv.ui.reshaped.livetv.LiveTvScreen(onPlay = { navController.navigate(it) }, showBuiltInHeader = !hideBuiltInHeaders)
+        }
+
         composable(Screen.Library.route) {
             LibraryScreen(
                 showBuiltInHeader = !hideBuiltInHeaders,

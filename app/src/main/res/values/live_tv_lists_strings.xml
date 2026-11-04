@@ -1,0 +1,23 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <string name="live_tv_menu_list_channels">List channels</string>
+    <string name="live_tv_menu_list_channels_description">Turn your Home lists, collections and library lists into channels with a guide</string>
+    <string name="live_tv_list_channels_title">List channels</string>
+    <string name="live_tv_list_channels_description">A list channel plays the titles of the lists you tick, one after another, like live TV. Shows play their next episode.</string>
+    <string name="live_tv_list_channel_new">New list channel</string>
+    <string name="live_tv_list_channel_edit">Edit list channel</string>
+    <string name="live_tv_list_channel_name_hint">Channel name (optional)</string>
+    <string name="live_tv_list_channel_lists_heading">Lists in this channel</string>
+    <string name="live_tv_list_channel_loading_lists">Finding your lists…</string>
+    <string name="live_tv_list_channel_no_lists">No lists found. Install an addon with catalogs, or make a collection.</string>
+    <string name="live_tv_list_channel_save">Save</string>
+    <string name="live_tv_list_channel_delete">Delete channel</string>
+    <string name="live_tv_list_channel_none">No list channels yet</string>
+    <string name="live_tv_list_channel_summary">%1$d lists</string>
+    <string name="live_tv_list_finding">Finding a stream for %1$s…</string>
+    <string name="live_tv_list_unavailable">Couldn\'t find a stream for this channel right now</string>
+    <string name="settings_live_tv_torbox_title">Download uncached titles with Torbox</string>
+    <string name="settings_live_tv_torbox_description">When a list channel\'s title is not cached, add it to your Torbox account so it can play. While you watch, the next title is prepared too; nothing is downloaded when nobody watches</string>
+    <string name="live_tv_list_torbox_wait">Torbox is downloading %1$s…</string>
+    <string name="live_tv_list_unavailable_reason">Couldn\'t play this channel: %1$s</string>
+</resources>

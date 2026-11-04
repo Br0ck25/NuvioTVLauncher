@@ -5,6 +5,8 @@ import android.accessibilityservice.AccessibilityServiceInfo
 import android.content.ComponentName
 import android.content.Context
 import android.content.Intent
+import android.os.Handler
+import android.os.Looper
 import android.os.SystemClock
 import android.provider.Settings
 import android.util.Log
@@ -28,10 +30,22 @@ class LauncherAccessibilityService : AccessibilityService() {
             serviceInfo = info
             LauncherSetup.observeNativeHome(this, LauncherSetup.isDefaultHome(this))
             operational.value = true
+            openAfterBoot()
         } catch (e: Exception) {
             operational.value = false
             Log.e(TAG, "Error configuring AccessibilityServiceInfo", e)
         }
+    }
+
+    /**
+     * After a power cycle the firmware's own launcher comes up. When Nuvio is only the accessibility
+     * fallback (not the system's default launcher), bring Nuvio to the front once the service is up
+     * shortly after boot, as a default launcher would be.
+     */
+    private fun openAfterBoot() {
+        if (SystemClock.elapsedRealtime() > BOOT_WINDOW_MS) return
+        if (LauncherSetup.isDefaultHome(this) || !LauncherSetup.accessibilityFallbackAllowed(this)) return
+        Handler(Looper.getMainLooper()).postDelayed({ launchHome(SystemClock.uptimeMillis()) }, BOOT_OPEN_DELAY_MS)
     }
 
     override fun onKeyEvent(event: KeyEvent): Boolean {
@@ -109,6 +123,8 @@ class LauncherAccessibilityService : AccessibilityService() {
 
     companion object {
         private const val TAG = "LauncherAccessibility"
+        private const val BOOT_WINDOW_MS = 5 * 60 * 1000L
+        private const val BOOT_OPEN_DELAY_MS = 4_000L
         private val operational = MutableStateFlow(false)
 
         /** Live binding/configuration, not proof this firmware actually delivers HOME keys. */

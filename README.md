@@ -14,13 +14,23 @@
 
 ## About this project
 
-**Nuvio TV Launcher** is an independent fork of [Nuvio TV](https://github.com/NuvioMedia/NuvioTV). It adds Android TV home-screen launcher support, an Apps screen for your installed apps, a shortcut to Android Settings, and an option to make the Home button open the app. When Nuvio handles the Home button through the native default-Home setting or the optional launcher accessibility service, pressing **Home** returns to the top of Home, and double-tapping **Home** opens the profile switcher (when multiple profiles or a PIN-protected profile are available). TV firmware may reserve some Home-button gestures for the system. After 30 minutes without input (and when the TV is turned on) Nuvio returns to the profile picker so the next person picks their own profile; this can be turned off in Settings → Advanced.
+**Nuvio TV Launcher** is an independent fork of [Nuvio TV](https://github.com/NuvioMedia/NuvioTV). It adds Android TV home-screen launcher support, an Apps screen for your installed apps, a shortcut to Android Settings, and an option to make the Home button open the app. When Nuvio TV Launcher handles the Home button through the native default-Home setting or the optional launcher accessibility service, pressing **Home** returns to the top of Home, and double-tapping **Home** opens the profile switcher (when multiple profiles or a PIN-protected profile are available). TV firmware may reserve some Home-button gestures for the system. After 30 minutes without input (and when the TV is turned on) Nuvio TV Launcher returns to the profile picker so the next person picks their own profile; this can be turned off in Settings → Advanced.
 
 This project is **not affiliated with, endorsed by, or supported by** the Nuvio team or NuvioMedia. Nuvio and its logo belong to their respective owners. Please report problems with this fork in this repository, not to the original project.
 
 Account sign-in and QR-code login rely on the original project's hosted services, which this fork does not have access to. Choose **Continue without account** to use the app.
 
 The website and support links above belong to the original Nuvio project.
+
+## Live TV
+
+Nuvio TV Launcher includes a Live TV guide. Add your own sources in **Live TV → menu → Sources**: M3U playlists, Xtream panels or Stalker portals. You can then:
+
+- Browse channels in a programme guide with a live preview, and set favorites (hold **OK** on a channel).
+- Make your own playlists and put channels in the order you like.
+- Create **list channels**: turn any Home catalog, collection folder or library list (movies and shows mixed) into a scheduled channel that plays through your debrid service (Torbox, Real-Debrid or Premiumize), or peer-to-peer. The guide shows what is on now and the next 24 hours. Uncached Torbox titles can be downloaded for you, only while you are watching the channel.
+
+Nuvio TV Launcher does not provide any channels or content.
 
 ## Get Nuvio TV Launcher
 
@@ -37,13 +47,13 @@ The website and support links above belong to the original Nuvio project.
 5. If Android says it can't install apps from this source, select **Settings**, turn on **Install unknown apps** for **Downloader**, go back, and select **Install** again.
 6. Select **Done** (or **Open**) when the install finishes. You can delete the downloaded APK when Downloader offers to.
 
-Nuvio is now installed, but it is **not** your Home app yet. Continue below.
+Nuvio TV Launcher is now installed, but it is **not** your Home app yet. Continue below.
 
-## Set Nuvio as your default launcher
+## Set Nuvio TV Launcher as your default launcher
 
 ### Recommended: set up from the TV and your phone (no computer)
 
-Works on TVs with **Developer options → Wireless debugging** (Android 11 and newer) with the `full` APK from the releases page. Nuvio runs the ADB steps itself, so you do not need a computer or any typed commands. You need a phone on the **same Wi-Fi network** as the TV.
+Works on TVs with **Developer options → Wireless debugging** (Android 11 and newer) with the `full` APK from the releases page. Nuvio TV Launcher runs the ADB steps itself, so you do not need a computer or any typed commands. You need a phone on the **same Wi-Fi network** as the TV.
 
 **1. Turn on Developer options and Wireless debugging**
 
@@ -51,10 +61,10 @@ Works on TVs with **Developer options → Wireless debugging** (Android 11 and n
 2. Highlight **OS Build** (or **Android TV OS Build**) and press the center remote button **7 times**, until "You are now a developer!" appears.
 3. Go back to **Settings → System → Developer options** and turn on **Wireless debugging**. Accept any prompt.
 
-**2. Open Nuvio's setup**
+**2. Open Nuvio TV Launcher's setup**
 
-1. Open Nuvio and go to **Settings → Default launcher → Set up without a computer**.
-2. A dialog shows a **Phone address** such as `http://192.168.1.50:8091`. Note it down. Nuvio keeps running in the background while this dialog is open.
+1. Open Nuvio TV Launcher and go to **Settings → Default launcher → Set up without a computer**.
+2. A dialog shows a **Phone address** such as `http://192.168.1.50:8091`. Note it down. Nuvio TV Launcher keeps running in the background while this dialog is open.
 
 **3. Get the pairing code**
 
@@ -70,30 +80,30 @@ Works on TVs with **Developer options → Wireless debugging** (Android 11 and n
 
 **5. Check the result**
 
-Go back to Nuvio. The dialog reports whether Nuvio is now the **Home app** and whether the **Home button override** is on. Press **Home** from another app to confirm Nuvio opens. You can now turn **Wireless debugging** off.
+Go back to Nuvio TV Launcher. The dialog reports whether Nuvio TV Launcher is now the **Home app** and whether the **Home button override** is on. Press **Home** from another app to confirm Nuvio TV Launcher opens. You can now turn **Wireless debugging** off.
 
 What the setup does for you:
 
 - Allows restricted settings so the accessibility switch can stay on.
-- Selects Nuvio as the Home app.
-- Grants Nuvio permission to keep its own accessibility service enabled. It re-enables it after a reboot, after an update, or if the TV turns it off. Turn this behavior off with **Settings → Default launcher → Keep Home button override on**.
+- Selects Nuvio TV Launcher as the Home app.
+- Grants Nuvio TV Launcher permission to keep its own accessibility service enabled. It re-enables it after a reboot, after an update, or if the TV turns it off. Turn this behavior off with **Settings → Default launcher → Keep Home button override on**.
 
 **Tips**
 
-- **Already paired?** If you run setup again later, leave the port and code **empty** and tap **Pair and set up**. Nuvio reconnects without a new code.
+- **Already paired?** If you run setup again later, leave the port and code **empty** and tap **Pair and set up**. Nuvio TV Launcher reconnects without a new code.
 - **Page never finishes or shows an error?** Reopen the setup dialog and try again, and make sure the phone is on the same Wi-Fi (not mobile data or a guest network).
 - You can also type the port and code on the TV in the same dialog, but the popup closes when you leave Settings, so using the phone is more reliable.
 - If your TV has no Wireless debugging option (some Fire TV and older devices), use one of the ADB methods below.
 
-### Alternative: install with Tellyscope (needs a computer)
+### Alternative: install with Tellyscope (no computer needed)
 
-Install the **release APK** using an ADB-based installer such as [Tellyscope](https://github.com/man15h/tellyscope). After connecting Tellyscope to your TV and installing the APK, open Nuvio and select **Settings → Default launcher → Make Nuvio the Home app**, then confirm the system dialog. On supported devices, no additional restricted-settings unlock or manual ADB commands are needed.
+Install the **release APK** using [Tellyscope](https://github.com/man15h/tellyscope), an ADB-based installer that runs on its own and does not need a computer. After installing the APK with it, open Nuvio TV Launcher and select **Settings → Default launcher → Make Nuvio TV Launcher the Home app**, then confirm the system dialog. On supported devices, no additional restricted-settings unlock or manual ADB commands are needed.
 
-Installation does **not** automatically select Nuvio as Home. Some TV firmware blocks third-party default launchers regardless of the installer. If native Home selection works, the accessibility service is optional.
+Installation does **not** automatically select Nuvio TV Launcher as Home. Some TV firmware blocks third-party default launchers regardless of the installer. If native Home selection works, the accessibility service is optional.
 
 ### Fallback: manual ADB from a computer
 
-Use this only if your TV has no Wireless debugging option or the phone setup above did not work. You can also first try **Settings → Default launcher → Make Nuvio the Home app** in Nuvio. If the TV blocks the change, or the accessibility switch is greyed out, restricted, or turns itself off, use the ADB setup below. Choose the connection method your TV actually provides; Android version alone does not determine which one is available.
+Use this only if your TV has no Wireless debugging option or the phone setup above did not work. You can also first try **Settings → Default launcher → Make Nuvio TV Launcher the Home app** in Nuvio TV Launcher. If the TV blocks the change, or the accessibility switch is greyed out, restricted, or turns itself off, use the ADB setup below. Choose the connection method your TV actually provides; Android version alone does not determine which one is available.
 
 **Before you start:**
 
@@ -143,9 +153,9 @@ If pairing succeeded but the TV is not listed, return to the main **Wireless deb
 
 **The connection port is usually different from the pairing port.** Replace `YOUR_DEVICE_STRING` in the following commands with the identifier from `adb devices`.
 
-**4. Unlock restricted settings and select Nuvio as Home**
+**4. Unlock restricted settings and select Nuvio TV Launcher as Home**
 
-Only if Android is blocking Nuvio's accessibility settings, allow access to restricted settings:
+Only if Android is blocking Nuvio TV Launcher's accessibility settings, allow access to restricted settings:
 
 ```powershell
 ./adb -s YOUR_DEVICE_STRING shell appops set com.nuvio.tv ACCESS_RESTRICTED_SETTINGS allow
@@ -161,9 +171,9 @@ Set the release app as the default Home activity:
 
 **5. Finish on the TV**
 
-Press **Home** to verify Nuvio opens. If the native Home setting works, no accessibility service is required.
+Press **Home** to verify Nuvio TV Launcher opens. If the native Home setting works, no accessibility service is required.
 
-If your TV still needs the accessibility override, open **Settings → System → Accessibility** (or **Device Preferences → Accessibility**) and enable Nuvio. You can also open this screen from **Nuvio → Settings → Default launcher → Home Button Override (Accessibility)**. Unlocking restricted settings only allows you to enable the service; it does not turn the service on itself.
+If your TV still needs the accessibility override, open **Settings → System → Accessibility** (or **Device Preferences → Accessibility**) and enable Nuvio TV Launcher. You can also open this screen from **Nuvio TV Launcher → Settings → Default launcher → Home Button Override (Accessibility)**. Unlocking restricted settings only allows you to enable the service; it does not turn the service on itself.
 
 #### Method B: traditional ADB without a pairing PIN
 
@@ -191,7 +201,7 @@ Verify the connection:
 
 The TV should appear as `IP_ADDRESS:5555` with status **device**. If it is **unauthorized**, accept the TV's authorization prompt. If this firmware does not expose network ADB, this method cannot be used.
 
-**3. Unlock restricted settings and select Nuvio as Home**
+**3. Unlock restricted settings and select Nuvio TV Launcher as Home**
 
 If **exactly one device** is connected, you can omit `-s`. Otherwise, add `-s IP_ADDRESS:5555` after `./adb` in each command.
 
@@ -213,14 +223,14 @@ Some Fire TV and other vendor firmware blocks replacement Home apps or this comm
 
 **4. Finish on the TV**
 
-Press **Home** to verify Nuvio opens. If needed, open the TV's **Accessibility** settings and enable the Nuvio launcher service, or use **Nuvio → Settings → Default launcher → Home Button Override (Accessibility)**.
+Press **Home** to verify Nuvio TV Launcher opens. If needed, open the TV's **Accessibility** settings and enable the Nuvio TV Launcher accessibility service, or use **Nuvio TV Launcher → Settings → Default launcher → Home Button Override (Accessibility)**.
 
 ### Accessibility and final checks
 
 - The release app's actual accessibility component is **`com.nuvio.tv/com.nuvio.tv.core.launcher.LauncherAccessibilityService`**, not `com.nuvio.tv/.AccessibilityService`.
 - Prefer enabling the service in the TV UI. Do **not** blindly run `settings put secure enabled_accessibility_services ...`: that setting replaces the entire enabled-service list and can disable TalkBack or other accessibility services. The UI preserves those services.
-- Test **Home** from another app and from a screen inside Nuvio. Test **double-Home** with multiple profiles or a PIN-protected profile. Some firmware reserves double-Home for a system action.
-- To return to the original launcher, select it in the TV's **Default apps / Home app** settings and turn off Nuvio's accessibility override if enabled.
+- Test **Home** from another app and from a screen inside Nuvio TV Launcher. Test **double-Home** with multiple profiles or a PIN-protected profile. Some firmware reserves double-Home for a system action.
+- To return to the original launcher, select it in the TV's **Default apps / Home app** settings and turn off Nuvio TV Launcher's accessibility override if enabled.
 - When finished, disconnect your ADB session and turn off network/wireless debugging if you do not need it. Do not expose ADB ports to the internet.
 
 ## Build from source
