@@ -59,13 +59,13 @@ internal class LiveTvGuideWindow(
     companion object {
         private const val HOUR = 60L * 60 * 1000
         val Regular = LiveTvGuideWindow(
-            pastMs = 3 * HOUR, maxPast = 6, aheadMs = 12 * HOUR, maxAhead = 18,
+            pastMs = 3 * HOUR, maxPast = 6, aheadMs = 24 * HOUR, maxAhead = 60,
             catchupPastMs = 24 * HOUR, maxCatchupPast = 48,
             detailsMs = 6 * HOUR, maxDescription = 320, detailsPerChannel = 4, detailsBudgetChars = 6_000_000,
             maxCatchupProgrammes = 300_000,
         )
         val LowMemory = LiveTvGuideWindow(
-            pastMs = 2 * HOUR, maxPast = 4, aheadMs = 8 * HOUR, maxAhead = 10,
+            pastMs = 2 * HOUR, maxPast = 4, aheadMs = 24 * HOUR, maxAhead = 40,
             catchupPastMs = 12 * HOUR, maxCatchupPast = 24,
             detailsMs = 3 * HOUR, maxDescription = 200, detailsPerChannel = 2, detailsBudgetChars = 1_500_000,
             maxCatchupProgrammes = 100_000,

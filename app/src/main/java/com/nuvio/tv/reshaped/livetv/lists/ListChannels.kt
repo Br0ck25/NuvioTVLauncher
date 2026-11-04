@@ -108,9 +108,9 @@ internal data class ListItem(val id: String, val type: String, val name: String,
  */
 internal object ListChannels {
     private const val TAG = "ListChannels"
-    private const val HORIZON_MS = 3L * 60 * 60 * 1000
+    private const val HORIZON_MS = 26L * 60 * 60 * 1000
     private const val KEEP_PAST_MS = 6L * 60 * 60 * 1000
-    private const val MAX_SLOTS = 40
+    private const val MAX_SLOTS = 150
     private const val MAX_PER_LIST = 60
     private const val POOL_TTL_MS = 20L * 60 * 1000
     private const val TICK_MS = 60_000L
