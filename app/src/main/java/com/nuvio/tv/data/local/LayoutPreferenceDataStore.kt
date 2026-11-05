@@ -56,8 +56,8 @@ class LayoutPreferenceDataStore @Inject constructor(
     companion object {
         private const val TAG = "LayoutPreferenceDS"
         private const val FEATURE = "layout_settings"
-        private const val DEFAULT_POSTER_CARD_WIDTH_DP = 104
-        private const val DEFAULT_POSTER_CARD_HEIGHT_DP = 156
+        private const val DEFAULT_POSTER_CARD_WIDTH_DP = 126
+        private const val DEFAULT_POSTER_CARD_HEIGHT_DP = 189
         private const val DEFAULT_POSTER_CARD_CORNER_RADIUS_DP = 12
         private const val DEFAULT_FOCUSED_POSTER_BACKDROP_EXPAND_DELAY_SECONDS = 3
         private const val MIN_FOCUSED_POSTER_BACKDROP_EXPAND_DELAY_SECONDS = 0
@@ -326,12 +326,7 @@ class LayoutPreferenceDataStore @Inject constructor(
         }
 
     val posterCardWidthDp: Flow<Int> = profileFlow { prefs ->
-        val stored = prefs[posterCardWidthDpKey]
-        if (stored == null || stored == 126) {
-            DEFAULT_POSTER_CARD_WIDTH_DP
-        } else {
-            positiveOrDefault(stored, DEFAULT_POSTER_CARD_WIDTH_DP)
-        }
+        positiveOrDefault(prefs[posterCardWidthDpKey], DEFAULT_POSTER_CARD_WIDTH_DP)
     }
 
     val posterCardHeightDp: Flow<Int> = profileFlow { prefs ->

@@ -141,7 +141,7 @@ data class LibraryUiState(
     val watchedSeriesIds: Set<String> = emptySet(),
     val isNuvioAccount: Boolean = false,
     val isTrackingAuthenticated: Boolean = false,
-    val posterCardWidthDp: Int = 104,
+    val posterCardWidthDp: Int = 126,
     val posterCardCornerRadiusDp: Int = 12,
     val isLoading: Boolean = true,
     val isSyncing: Boolean = false,

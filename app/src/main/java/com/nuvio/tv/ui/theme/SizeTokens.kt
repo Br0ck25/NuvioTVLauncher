@@ -110,7 +110,7 @@ object NuvioSizes {
             leadingVisual = 34.dp
         ),
         cards = NuvioCardSizes(
-            posterWidth = 104.dp,
+            posterWidth = 126.dp,
             posterHeight = 189.dp,
             posterCompactWidth = 112.dp,
             posterCompactHeight = 168.dp,

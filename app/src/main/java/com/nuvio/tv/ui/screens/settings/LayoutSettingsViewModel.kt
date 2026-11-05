@@ -64,8 +64,8 @@ data class LayoutSettingsUiState(
     val focusedPosterBackdropTrailerMuted: Boolean = true,
     val focusedPosterBackdropTrailerPlaybackTarget: FocusedPosterTrailerPlaybackTarget =
         FocusedPosterTrailerPlaybackTarget.HERO_MEDIA,
-    val posterCardWidthDp: Int = 104,
-    val posterCardHeightDp: Int = 156,
+    val posterCardWidthDp: Int = 126,
+    val posterCardHeightDp: Int = 189,
     val posterCardCornerRadiusDp: Int = 12,
     val cardDepthStyle: CardDepthStyle = CardDepthStyle(),
     val blurUnwatchedEpisodes: Boolean = false,
@@ -908,15 +908,15 @@ class LayoutSettingsViewModel @Inject constructor(
 
     private fun resetPosterCardStyle() {
         if (
-            _uiState.value.posterCardWidthDp == 104 &&
-            _uiState.value.posterCardHeightDp == 156 &&
+            _uiState.value.posterCardWidthDp == 126 &&
+            _uiState.value.posterCardHeightDp == 189 &&
             _uiState.value.posterCardCornerRadiusDp == 12
         ) {
             return
         }
         viewModelScope.launch {
-            layoutPreferenceDataStore.setPosterCardWidthDp(104)
-            layoutPreferenceDataStore.setPosterCardHeightDp(156)
+            layoutPreferenceDataStore.setPosterCardWidthDp(126)
+            layoutPreferenceDataStore.setPosterCardHeightDp(189)
             layoutPreferenceDataStore.setPosterCardCornerRadiusDp(12)
         }
     }

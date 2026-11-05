@@ -248,12 +248,12 @@ internal fun LayoutPosterCardSection(
     uiState: LayoutSettingsUiState,
     onEvent: (LayoutSettingsEvent) -> Unit
 ) {
-        val widthOptions = listOf(
-        PresetOption("${stringResource(R.string.layout_preset_very_small)} (64 dp)", 64),
-        PresetOption("${stringResource(R.string.layout_preset_small)} (76 dp)", 76),
-        PresetOption("${stringResource(R.string.layout_preset_medium)} (92 dp)", 92),
-        PresetOption("${stringResource(R.string.layout_preset_large)} (104 dp)", 104),
-        PresetOption("${stringResource(R.string.layout_preset_very_large)} (120 dp)", 120)
+                val widthOptions = listOf(
+        PresetOption("${stringResource(R.string.layout_preset_very_small)} (80 dp)", 80),
+        PresetOption("${stringResource(R.string.layout_preset_small)} (96 dp)", 96),
+        PresetOption("${stringResource(R.string.layout_preset_medium)} (112 dp)", 112),
+        PresetOption("${stringResource(R.string.layout_preset_large)} (126 dp)", 126),
+        PresetOption("${stringResource(R.string.layout_preset_very_large)} (140 dp)", 140)
     )
     val radiusOptions = listOf(
         PresetOption(stringResource(R.string.layout_preset_sharp), 0),
