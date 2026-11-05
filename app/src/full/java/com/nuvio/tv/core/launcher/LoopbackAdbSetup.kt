@@ -76,6 +76,20 @@ internal class LoopbackAdbSetup(private val context: Context) : LocalAdbSetup {
         runCatching { shell(manager, "appops set $pkg ACCESS_RESTRICTED_SETTINGS allow") }
         val home = ComponentName(context, MainActivity::class.java).flattenToShortString()
         runCatching { shell(manager, "cmd package set-home-activity $home") }
+
+        // Automatically enable Nuvio's Accessibility Service so Home key override works immediately
+        val serviceComp = ComponentName(context, LauncherAccessibilityService::class.java).flattenToString()
+        val currentServices = runCatching { shell(manager, "settings get secure enabled_accessibility_services") }.getOrNull()?.trim().orEmpty()
+        val updatedServices = if (currentServices.isBlank() || currentServices == "null") {
+            serviceComp
+        } else if (!currentServices.contains(serviceComp)) {
+            "$currentServices:$serviceComp"
+        } else {
+            currentServices
+        }
+        runCatching { shell(manager, "settings put secure enabled_accessibility_services $updatedServices") }
+        runCatching { shell(manager, "settings put secure accessibility_enabled 1") }
+        LauncherSetup.allowAccessibilityFallback(context)
     }
 
     /** Runs a shell command and returns its output, which is often empty. */

@@ -1,4 +1,4 @@
-package com.nuvio.tv.ui.screens.player
+﻿package com.nuvio.tv.ui.screens.player
 
 import com.nuvio.tv.ui.reshaped.livetv.keepPlayerForLiveTvZap
 import android.content.Intent
@@ -163,22 +163,25 @@ private data class SourceStreamsRequest(
     val episode: Int?
 )
 
-private fun PlayerRuntimeController.currentSourceStreamsRequest(): SourceStreamsRequest? =
-    if (contentType in listOf("series", "tv") && currentSeason != null && currentEpisode != null) {
+private fun PlayerRuntimeController.currentSourceStreamsRequest(): SourceStreamsRequest? {
+    val isSeries = (contentType in listOf("series", "tv")) ||
+        (contentType == "channel" && ((currentSeason != null && currentEpisode != null) || currentVideoId?.contains(":") == true))
+    return if (isSeries && currentSeason != null && currentEpisode != null) {
         SourceStreamsRequest(
-            type = contentType ?: return null,
+            type = if (contentType == "channel") "series" else (contentType ?: return null),
             videoId = currentVideoId ?: contentId ?: return null,
             season = currentSeason,
             episode = currentEpisode
         )
     } else {
         SourceStreamsRequest(
-            type = contentType ?: "movie",
-            videoId = contentId ?: return null,
+            type = if (contentType == "channel") "movie" else (contentType ?: "movie"),
+            videoId = currentVideoId ?: contentId ?: return null,
             season = null,
             episode = null
         )
     }
+}
 
 internal fun PlayerRuntimeController.loadSourceStreams(forceRefresh: Boolean) {
     streamRepository.setLocalPluginSearchPaused(false)

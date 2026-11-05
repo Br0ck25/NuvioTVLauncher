@@ -22,6 +22,7 @@ import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.CheckCircle
 import androidx.compose.material.icons.filled.Home
 import androidx.compose.material.icons.filled.Settings
+import androidx.compose.material.icons.filled.Tune
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
@@ -94,7 +95,9 @@ private fun loadInstalledApps(context: Context): List<InstalledApp> {
 
 @OptIn(ExperimentalTvMaterial3Api::class)
 @Composable
-fun AppsScreen() {
+fun AppsScreen(
+    onManageHomeApps: () -> Unit = {}
+) {
     val context = LocalContext.current
     val setup = rememberLauncherSetupState()
     var apps by remember { mutableStateOf<List<InstalledApp>>(emptyList()) }
@@ -157,6 +160,14 @@ fun AppsScreen() {
                     iconVector = if (setup.isAccessibilityActive) Icons.Default.CheckCircle else Icons.Default.Home,
                     icon = null,
                     onClick = setup.openAccessibilitySettings
+                )
+            }
+            item(key = "manage_home_apps") {
+                AppTile(
+                    label = stringResource(R.string.apps_manage_home_row),
+                    iconVector = Icons.Default.Tune,
+                    icon = null,
+                    onClick = onManageHomeApps
                 )
             }
             item(key = "android_settings") {

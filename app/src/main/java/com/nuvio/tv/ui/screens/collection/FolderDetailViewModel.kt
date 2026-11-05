@@ -6,6 +6,7 @@ import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
 import com.nuvio.tv.R
 import com.nuvio.tv.core.build.AppFeaturePolicy
+import com.nuvio.tv.core.mylists.MyListsDefaultSeed
 import com.nuvio.tv.core.network.NetworkResult
 import com.nuvio.tv.core.tmdb.TmdbCollectionSourceResolver
 import com.nuvio.tv.core.util.hasNoReleaseInfo
@@ -277,7 +278,7 @@ class FolderDetailViewModel @Inject constructor(
             val sourceTabs = folder.sources.map { source ->
                 val (name, typeLabel, rawType) = when (source) {
                     is AddonCatalogCollectionSource -> {
-                        val addon = addons.find { it.id == source.addonId }
+                        val addon = findMatchingAddon(addons, source.addonId)
                         val catalog = addon?.catalogs?.findCollectionCatalog(source.type, source.catalogId)
                             ?: addon?.catalogs?.findCollectionCatalog(source.type, source.catalogId.substringBefore(","))
                             ?: addons.firstNotNullOfOrNull { a -> a.catalogs.findCollectionCatalog(source.type, source.catalogId) }
@@ -291,7 +292,7 @@ class FolderDetailViewModel @Inject constructor(
                 val placeholderRow = if (useShimmerPlaceholders) {
                     val (placeholderAddonId, placeholderCatalogId, placeholderBaseUrl) = when (source) {
                         is AddonCatalogCollectionSource -> {
-                            val baseUrl = addons.find { it.id == source.addonId }?.baseUrl ?: ""
+                            val baseUrl = findMatchingAddon(addons, source.addonId)?.baseUrl ?: ""
                             Triple(source.addonId, source.catalogId, baseUrl)
                         }
                         is TmdbCollectionSource -> Triple("tmdb", buildTmdbSourceKey(source), "")
@@ -745,10 +746,24 @@ class FolderDetailViewModel @Inject constructor(
         }
     }
 
+    private fun findMatchingAddon(
+        addons: List<com.nuvio.tv.domain.model.Addon>,
+        addonId: String
+    ): com.nuvio.tv.domain.model.Addon? {
+        addons.find { it.id == addonId }?.let { return it }
+        if (
+            addonId.equals(MyListsDefaultSeed.MY_LISTS_COLLECTIONS_ADDON_ID, ignoreCase = true) ||
+            addonId.equals(MyListsDefaultSeed.MY_LISTS_ADDON_ID, ignoreCase = true)
+        ) {
+            return addons.find { MyListsDefaultSeed.isMyListsAddon(it) }
+        }
+        return null
+    }
+
     private fun loadAddonCatalogForTab(tabIndex: Int, source: AddonCatalogCollectionSource) {
         viewModelScope.launch {
             val addons = addonRepository.getInstalledAddons().first().enabledAddons()
-            val addon = addons.find { it.id == source.addonId }
+            val addon = findMatchingAddon(addons, source.addonId)
 
             if (addon == null) {
                 _uiState.update { state ->
@@ -1158,8 +1173,10 @@ class FolderDetailViewModel @Inject constructor(
             "series" -> appContext.getString(R.string.type_series_plural)
             else -> source.type.replaceFirstChar { it.uppercase() }
         }
-        val baseName = if (!catalogName.isNullOrBlank()) {
-            catalogName.replaceFirstChar { it.uppercase() }
+        val effectiveCatalogName = catalogName?.takeIf { it.isNotBlank() }
+            ?: source.title?.takeIf { it.isNotBlank() }
+        val baseName = if (!effectiveCatalogName.isNullOrBlank()) {
+            effectiveCatalogName.replaceFirstChar { it.uppercase() }
         } else {
             typeLabel
         }

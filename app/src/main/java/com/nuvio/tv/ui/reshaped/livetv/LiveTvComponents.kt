@@ -237,6 +237,16 @@ internal fun LiveTvLogo(
 ) {
     val shape = RoundedCornerShape(8.dp)
     var failed by remember(url) { mutableStateOf(false) }
+    val effectiveUrl = remember(url) {
+        if (url != null && url.contains("/api/channel-poster") && !url.contains("format=landscape")) {
+            if (url.contains("?")) "$url&format=landscape" else "$url?format=landscape"
+        } else {
+            url
+        }
+    }
+    val isCleanLogo = remember(effectiveUrl) {
+        effectiveUrl != null && (effectiveUrl.contains("/api/channel-logo") || effectiveUrl.contains(".svg") || effectiveUrl.endsWith(".png"))
+    }
     Box(
         modifier = modifier
             .size(width, height)
@@ -244,7 +254,7 @@ internal fun LiveTvLogo(
             .background(Color.White.copy(alpha = 0.06f)),
         contentAlignment = Alignment.Center,
     ) {
-        if (url.isNullOrBlank() || failed) {
+        if (effectiveUrl.isNullOrBlank() || failed) {
             Text(
                 text = name.initials(),
                 style = MaterialTheme.typography.labelLarge,
@@ -253,10 +263,10 @@ internal fun LiveTvLogo(
         } else {
             val context = LocalContext.current
             val density = LocalDensity.current
-            val request = remember(url, width, height) {
+            val request = remember(effectiveUrl, width, height) {
                 with(density) {
                     ImageRequest.Builder(context)
-                        .data(url)
+                        .data(effectiveUrl)
                         .size(width.roundToPx(), height.roundToPx())
                         // IPTV panels often serve logos only to player-like clients, as they do streams.
                         .httpHeaders(LOGO_HEADERS)
@@ -267,11 +277,13 @@ internal fun LiveTvLogo(
             AsyncImage(
                 model = request,
                 contentDescription = null,
-                contentScale = ContentScale.Fit,
+                contentScale = if (isCleanLogo) ContentScale.Fit else ContentScale.Crop,
                 onError = { failed = true },
-                modifier = Modifier
-                    .fillMaxSize()
-                    .padding(4.dp),
+                modifier = if (isCleanLogo) {
+                    Modifier.fillMaxSize().padding(horizontal = 4.dp, vertical = 2.dp)
+                } else {
+                    Modifier.fillMaxSize()
+                },
             )
         }
     }

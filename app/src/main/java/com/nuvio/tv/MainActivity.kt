@@ -306,6 +306,9 @@ open class MainActivity : ComponentActivity() {
     lateinit var startupSyncService: StartupSyncService
 
     @Inject
+    lateinit var myListsTvSyncManager: com.nuvio.tv.core.mylists.MyListsTvSyncManager
+
+    @Inject
     lateinit var androidTvChannelSyncService: com.nuvio.tv.core.sync.androidtv.AndroidTvChannelSyncService
 
     @Inject
@@ -1631,6 +1634,7 @@ open class MainActivity : ComponentActivity() {
         externalPlaybackTracker.raiseAutoNextOverlayOnReturn()
         super.onStart()
         startupSyncService.startPeriodicSurfacePulls()
+        myListsTvSyncManager.startPeriodicSync()
         androidTvChannelSyncService.onForegroundChanged(true)
     }
 
@@ -1638,6 +1642,7 @@ open class MainActivity : ComponentActivity() {
         externalPlaybackTracker.onExternalPlayerCoveredApp()
         super.onStop()
         startupSyncService.stopPeriodicSurfacePulls()
+        myListsTvSyncManager.stopPeriodicSync()
         // App going to background (e.g. user returning to the launcher): reconcile the
         // Continue Watching channel once so Projectivy repaints it with fresh progress.
         androidTvChannelSyncService.onForegroundChanged(false)
@@ -1786,19 +1791,24 @@ private fun LegacySidebarScaffold(
                         }
                 ) {
                     val isExpanded = drawerValue == DrawerValue.Open
+                    val isDense = drawerItems.size >= 7
+                    val itemSpacing = if (isDense) 6.dp else 10.dp
+                    val legacyItemHeight = if (isDense) 44.dp else sidebarTokens.itemHeight
                     val itemWidth by animateDpAsState(
                         targetValue = if (isExpanded) openDrawerItemWidth else NuvioTheme.sizes.avatars.md,
                         animationSpec = tween(durationMillis = NuvioMotion.tokens.durations.fast, easing = NuvioMotion.tokens.easings.standard),
                         label = "legacySidebarItemWidth"
                     )
 
-                    if (isExpanded) {
-                        Column(
-                            modifier = Modifier
-                                .align(Alignment.TopStart)
-                                .fillMaxWidth()
-                        ) {
-                            Spacer(modifier = Modifier.height(30.dp))
+                    Column(
+                        modifier = Modifier
+                            .fillMaxHeight()
+                            .fillMaxWidth(),
+                        verticalArrangement = if (isExpanded) Arrangement.Top else Arrangement.Center,
+                        horizontalAlignment = Alignment.Start
+                    ) {
+                        if (isExpanded) {
+                            Spacer(modifier = Modifier.height(20.dp))
                             if (showProfileSelector && activeProfileName.isNotEmpty()) {
                                 var isProfileFocused by remember { mutableStateOf(false) }
                                 val profileItemShape = NuvioTheme.shapes.navItem
@@ -1815,7 +1825,7 @@ private fun LegacySidebarScaffold(
                                     Row(
                                         modifier = Modifier
                                             .width(itemWidth)
-                                            .height(sidebarTokens.itemHeight)
+                                            .height(legacyItemHeight)
                                             .background(color = profileBgColor, shape = profileItemShape)
                                             .onFocusChanged { isProfileFocused = it.isFocused }
                                             .clickable {
@@ -1849,48 +1859,53 @@ private fun LegacySidebarScaffold(
                                     contentDescription = stringResource(R.string.app_name),
                                     modifier = Modifier
                                         .fillMaxWidth()
-                                        .height(42.dp)
+                                        .height(36.dp)
                                 )
+                            }
+                            Spacer(modifier = Modifier.height(8.dp))
+                        }
+
+                        Box(
+                            modifier = Modifier
+                                .fillMaxWidth()
+                                .then(if (isExpanded) Modifier.weight(1f) else Modifier),
+                            contentAlignment = Alignment.CenterStart
+                        ) {
+                            Column(
+                                verticalArrangement = Arrangement.spacedBy(itemSpacing),
+                                horizontalAlignment = Alignment.Start
+                            ) {
+                                drawerItems.forEach { item ->
+                                    key(item.route) {
+                                        LegacySidebarButton(
+                                            label = item.label,
+                                            iconRes = item.iconRes,
+                                            icon = item.icon,
+                                            selected = selectedDrawerRoute == item.route,
+                                            expanded = isExpanded,
+                                            itemHeight = legacyItemHeight,
+                                            onClick = {
+                                                keyboardController?.hide()
+                                                onNavigate(item.route)
+                                                navigateToDrawerRoute(
+                                                    navController = navController,
+                                                    currentRoute = currentRoute,
+                                                    targetRoute = item.route
+                                                )
+                                                drawerState.setValue(DrawerValue.Closed)
+                                                pendingContentFocusTransfer = currentRoute == item.route
+                                            },
+                                            modifier = Modifier.focusRequester(
+                                                drawerItemFocusRequesters.getValue(item.route)
+                                            )
+                                                .width(itemWidth)
+                                                .offset(x = NuvioTheme.spacing.md)
+                                        )
+                                    }
+                                }
                             }
                         }
                     }
-
-                    Column(
-                        modifier = Modifier
-                            .align(Alignment.CenterStart)
-                            .offset(y = 28.dp)
-                            .fillMaxWidth(),
-                        verticalArrangement = Arrangement.spacedBy(10.dp),
-                        horizontalAlignment = Alignment.Start
-                    ) {
-                        drawerItems.forEach { item ->
-                            key(item.route) {
-                                LegacySidebarButton(
-                                    label = item.label,
-                                    iconRes = item.iconRes,
-                                    icon = item.icon,
-                                    selected = selectedDrawerRoute == item.route,
-                                    expanded = isExpanded,
-                                    onClick = {
-                                        keyboardController?.hide()
-                                        onNavigate(item.route)
-                                        navigateToDrawerRoute(
-                                            navController = navController,
-                                            currentRoute = currentRoute,
-                                            targetRoute = item.route
-                                        )
-                                        drawerState.setValue(DrawerValue.Closed)
-                                        pendingContentFocusTransfer = currentRoute == item.route
-                                    },
-                                    modifier = Modifier.focusRequester(
-                                        drawerItemFocusRequesters.getValue(item.route)
-                                    )
-                                        .width(itemWidth)
-                                        .offset(x = NuvioTheme.spacing.md)
-                                )
-                        }
-                    }
-                }
             }
         }
         }
@@ -1975,6 +1990,7 @@ private fun LegacySidebarButton(
     selected: Boolean,
     expanded: Boolean,
     modifier: Modifier = Modifier,
+    itemHeight: androidx.compose.ui.unit.Dp = NuvioComponents.tokens.sidebar.itemHeight,
     onClick: () -> Unit
 ) {
     var isFocused by remember { mutableStateOf(false) }
@@ -2019,7 +2035,7 @@ private fun LegacySidebarButton(
     Card(
         onClick = onClick,
         modifier = modifier
-            .height(NuvioComponents.tokens.sidebar.itemHeight)
+            .height(itemHeight)
             .graphicsLayer {
                 scaleX = itemScale
                 scaleY = itemScale

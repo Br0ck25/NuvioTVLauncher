@@ -96,7 +96,8 @@ fun AuthQrSignInScreen(
     val fullAccount = uiState.authState as? AuthState.FullAccount
     val isSignedIn = fullAccount != null
     val isOnboardingMode = onContinue != null
-    val useEmailLogin = viewModel.usesEmailPasswordLogin
+    var showEmailLogin by rememberSaveable { mutableStateOf(false) }
+    val useEmailLogin = showEmailLogin
     val useQrLogin = !useEmailLogin
     val isApproved = remember(uiState.qrLoginStatus) {
         uiState.qrLoginStatus?.contains("approved", ignoreCase = true) == true
@@ -135,7 +136,7 @@ fun AuthQrSignInScreen(
         }
     }
 
-    LaunchedEffect(uiState.authState, isSignedIn, uiState.qrLoginCode, uiState.isLoading, uiState.error, exitRequested) {
+    LaunchedEffect(useQrLogin, uiState.authState, isSignedIn, uiState.qrLoginCode, uiState.isLoading, uiState.error, exitRequested) {
         if (
             useQrLogin &&
             !exitRequested &&
@@ -209,6 +210,15 @@ fun AuthQrSignInScreen(
                 isOnboardingMode = isOnboardingMode,
                 useEmailLogin = useEmailLogin,
                 onSignIn = viewModel::signIn,
+                onSignUp = viewModel::signUp,
+                onToggleAuthMode = {
+                    showEmailLogin = !showEmailLogin
+                    if (showEmailLogin) {
+                        viewModel.clearQrLoginSession()
+                    } else {
+                        viewModel.startQrLogin()
+                    }
+                },
                 onRefreshOrSignOut = {
                     if (isSignedIn) {
                         showSignOutConfirmation = true
@@ -322,6 +332,8 @@ private fun AuthQrLoginPane(
     isOnboardingMode: Boolean,
     useEmailLogin: Boolean,
     onSignIn: (String, String) -> Unit,
+    onSignUp: (String, String) -> Unit = { _, _ -> },
+    onToggleAuthMode: () -> Unit = {},
     onRefreshOrSignOut: () -> Unit,
     onBackOrContinue: () -> Unit,
     initialFocusRequester: FocusRequester
@@ -365,6 +377,7 @@ private fun AuthQrLoginPane(
             AuthEmailLoginForm(
                 uiState = uiState,
                 onSignIn = onSignIn,
+                onSignUp = onSignUp,
                 initialFocusRequester = initialFocusRequester
             )
         } else {
@@ -372,38 +385,68 @@ private fun AuthQrLoginPane(
         }
 
         Spacer(modifier = Modifier.height(28.dp))
-        Row(
-            horizontalArrangement = Arrangement.spacedBy(NuvioTheme.spacing.md),
-            verticalAlignment = Alignment.CenterVertically
+        Column(
+            horizontalAlignment = Alignment.CenterHorizontally,
+            verticalArrangement = Arrangement.spacedBy(NuvioTheme.spacing.md)
         ) {
-            if (isSignedIn || !useEmailLogin) {
-                Button(
-                    onClick = onRefreshOrSignOut,
-                    enabled = !uiState.isLoading,
-                    modifier = if (focusMainAction) Modifier.focusRequester(initialFocusRequester) else Modifier,
-                    colors = ButtonDefaults.colors(
-                        containerColor = AuthSecondaryButtonBackground,
-                        focusedContainerColor = Color.White,
-                        contentColor = AuthTextPrimary,
-                        focusedContentColor = Color.Black,
-                        disabledContainerColor = AuthSecondaryButtonBackground.copy(alpha = 0.45f)
-                    ),
-                    border = ButtonDefaults.border(
-                        border = androidx.tv.material3.Border(
-                            border = androidx.compose.foundation.BorderStroke(1.dp, AuthSecondaryButtonBorder),
-                            shape = RoundedCornerShape(16.dp)
+            Row(
+                horizontalArrangement = Arrangement.spacedBy(NuvioTheme.spacing.md),
+                verticalAlignment = Alignment.CenterVertically
+            ) {
+                if (isSignedIn || !useEmailLogin) {
+                    Button(
+                        onClick = onRefreshOrSignOut,
+                        enabled = !uiState.isLoading,
+                        modifier = if (focusMainAction) Modifier.focusRequester(initialFocusRequester) else Modifier,
+                        colors = ButtonDefaults.colors(
+                            containerColor = AuthSecondaryButtonBackground,
+                            focusedContainerColor = Color.White,
+                            contentColor = AuthTextPrimary,
+                            focusedContentColor = Color.Black,
+                            disabledContainerColor = AuthSecondaryButtonBackground.copy(alpha = 0.45f)
+                        ),
+                        border = ButtonDefaults.border(
+                            border = androidx.tv.material3.Border(
+                                border = androidx.compose.foundation.BorderStroke(1.dp, AuthSecondaryButtonBorder),
+                                shape = RoundedCornerShape(16.dp)
+                            )
                         )
-                    )
-                ) {
-                    Text(
-                        when {
-                            isSignedIn -> stringResource(R.string.account_sign_out)
-                            uiState.isLoading -> stringResource(R.string.auth_qr_please_wait)
-                            else -> stringResource(R.string.auth_qr_refresh)
-                        }
-                    )
+                    ) {
+                        Text(
+                            when {
+                                isSignedIn -> stringResource(R.string.account_sign_out)
+                                uiState.isLoading -> stringResource(R.string.auth_qr_please_wait)
+                                else -> stringResource(R.string.auth_qr_refresh)
+                            }
+                        )
+                    }
+                }
+                if (!isSignedIn) {
+                    Button(
+                        onClick = onToggleAuthMode,
+                        enabled = !uiState.isLoading,
+                        colors = ButtonDefaults.colors(
+                            containerColor = AuthSecondaryButtonBackground,
+                            focusedContainerColor = Color.White,
+                            contentColor = AuthTextPrimary,
+                            focusedContentColor = Color.Black
+                        ),
+                        border = ButtonDefaults.border(
+                            border = androidx.tv.material3.Border(
+                                border = androidx.compose.foundation.BorderStroke(1.dp, AuthSecondaryButtonBorder),
+                                shape = RoundedCornerShape(16.dp)
+                            )
+                        )
+                    ) {
+                        Text(
+                            stringResource(
+                                if (useEmailLogin) R.string.auth_switch_to_qr else R.string.auth_switch_to_email
+                            )
+                        )
+                    }
                 }
             }
+
             Button(
                 onClick = onBackOrContinue,
                 modifier = if (!focusEmail && !focusMainAction) {
@@ -440,14 +483,20 @@ private fun AuthQrLoginPane(
 private fun AuthEmailLoginForm(
     uiState: AccountUiState,
     onSignIn: (String, String) -> Unit,
+    onSignUp: (String, String) -> Unit = { _, _ -> },
     initialFocusRequester: FocusRequester
 ) {
+    var isSignUpMode by rememberSaveable { mutableStateOf(false) }
     var email by rememberSaveable { mutableStateOf("") }
     var password by rememberSaveable { mutableStateOf("") }
-    val canSignIn = email.isNotBlank() && password.isNotBlank() && !uiState.isLoading
+    val canSubmit = email.isNotBlank() && password.isNotBlank() && !uiState.isLoading
     val submit = {
-        if (canSignIn) {
-            onSignIn(email.trim(), password)
+        if (canSubmit) {
+            if (isSignUpMode) {
+                onSignUp(email.trim(), password)
+            } else {
+                onSignIn(email.trim(), password)
+            }
         }
     }
 
@@ -474,7 +523,7 @@ private fun AuthEmailLoginForm(
         )
         Button(
             onClick = submit,
-            enabled = canSignIn,
+            enabled = canSubmit,
             modifier = Modifier.fillMaxWidth(),
             colors = ButtonDefaults.colors(
                 containerColor = Color.White,
@@ -493,15 +542,34 @@ private fun AuthEmailLoginForm(
                 contentAlignment = Alignment.Center
             ) {
                 Text(
-                    text = if (uiState.isLoading) {
-                        stringResource(R.string.auth_email_signing_in)
-                    } else {
-                        stringResource(R.string.auth_email_sign_in)
+                    text = when {
+                        uiState.isLoading && isSignUpMode -> stringResource(R.string.auth_email_signing_up)
+                        uiState.isLoading -> stringResource(R.string.auth_email_signing_in)
+                        isSignUpMode -> stringResource(R.string.auth_email_sign_up)
+                        else -> stringResource(R.string.auth_email_sign_in)
                     },
                     fontWeight = FontWeight.SemiBold,
                     textAlign = TextAlign.Center
                 )
             }
+        }
+        Button(
+            onClick = { isSignUpMode = !isSignUpMode },
+            modifier = Modifier.fillMaxWidth(),
+            colors = ButtonDefaults.colors(
+                containerColor = Color.Transparent,
+                focusedContainerColor = AuthSecondaryButtonBackground,
+                contentColor = AuthTextSecondary,
+                focusedContentColor = AuthTextPrimary
+            )
+        ) {
+            Text(
+                text = stringResource(
+                    if (isSignUpMode) R.string.auth_email_switch_to_signin else R.string.auth_email_switch_to_signup
+                ),
+                style = MaterialTheme.typography.bodySmall,
+                textAlign = TextAlign.Center
+            )
         }
         AuthTermsAcknowledgement()
         uiState.error?.takeIf { it.isNotBlank() }?.let { error ->

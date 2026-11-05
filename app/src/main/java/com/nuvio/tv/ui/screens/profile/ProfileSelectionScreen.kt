@@ -16,6 +16,7 @@ import android.provider.Settings
 import android.widget.Toast
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.Settings
+import androidx.compose.material.icons.filled.Tv
 import androidx.compose.material3.Icon
 import android.view.KeyEvent as AndroidKeyEvent
 import androidx.activity.compose.BackHandler
@@ -976,31 +977,94 @@ private fun ProfileSelectionMainContent(
             )
             if (!isManagementMode) {
                 val context = LocalContext.current
-                var focused by remember { mutableStateOf(false) }
+                var settingsFocused by remember { mutableStateOf(false) }
+                var inputsFocused by remember { mutableStateOf(false) }
                 val settingsLabel = stringResource(R.string.apps_android_settings)
-                Box(
-                    modifier = Modifier.align(Alignment.CenterEnd)
-                        .size(48.dp)
-                        .onFocusChanged { focused = it.isFocused }
-                        .clip(CircleShape)
-                        .background(if (focused) NuvioTheme.colors.TextPrimary.copy(alpha = 0.2f) else Color.Transparent)
-                        .clickable(onClickLabel = settingsLabel) {
-                            try {
-                                context.startActivity(Intent(Settings.ACTION_SETTINGS).addFlags(Intent.FLAG_ACTIVITY_NEW_TASK))
-                            } catch (error: android.content.ActivityNotFoundException) {
-                                Toast.makeText(context, R.string.profile_android_settings_unavailable, Toast.LENGTH_SHORT).show()
-                            } catch (error: SecurityException) {
-                                Toast.makeText(context, R.string.profile_android_settings_unavailable, Toast.LENGTH_SHORT).show()
-                            }
-                        },
-                    contentAlignment = Alignment.Center
-                ) {
-                    Icon(
-                        imageVector = Icons.Default.Settings,
-                        contentDescription = settingsLabel,
-                        tint = if (focused) NuvioTheme.colors.TextPrimary else NuvioTheme.colors.TextTertiary,
-                        modifier = Modifier.size(24.dp)
+                val inputsLabel = stringResource(R.string.profile_tv_inputs_label)
+                val hasTvInputs = remember {
+                    val candidateIntents = listOf(
+                        Intent("com.android.tv.action.VIEW_INPUTS"),
+                        Intent("com.google.android.tv.action.VIEW_INPUTS"),
+                        Intent("android.settings.TV_INPUTS"),
+                        Intent("android.settings.TV_INPUT_SETTINGS"),
+                        Intent("android.media.tv.action.VIEW_INPUTS")
                     )
+                    candidateIntents.any { context.packageManager.resolveActivity(it, 0) != null }
+                }
+                Row(
+                    modifier = Modifier.align(Alignment.CenterEnd),
+                    horizontalArrangement = Arrangement.spacedBy(8.dp),
+                    verticalAlignment = Alignment.CenterVertically
+                ) {
+                    if (hasTvInputs) {
+                        Box(
+                            modifier = Modifier
+                                .size(48.dp)
+                                .onFocusChanged { inputsFocused = it.isFocused }
+                                .clip(CircleShape)
+                                .background(if (inputsFocused) NuvioTheme.colors.TextPrimary.copy(alpha = 0.2f) else Color.Transparent)
+                                .clickable(onClickLabel = inputsLabel) {
+                                    val intents = listOf(
+                                        Intent("com.android.tv.action.VIEW_INPUTS"),
+                                        Intent("com.google.android.tv.action.VIEW_INPUTS"),
+                                        Intent("android.settings.TV_INPUTS"),
+                                        Intent("android.settings.TV_INPUT_SETTINGS"),
+                                        Intent("android.media.tv.action.VIEW_INPUTS")
+                                    )
+                                    var launched = false
+                                    for (intent in intents) {
+                                        try {
+                                            intent.addFlags(Intent.FLAG_ACTIVITY_NEW_TASK)
+                                            if (context.packageManager.resolveActivity(intent, 0) != null) {
+                                                context.startActivity(intent)
+                                                launched = true
+                                                break
+                                            }
+                                        } catch (_: Exception) {}
+                                    }
+                                    if (!launched) {
+                                        try {
+                                            context.startActivity(Intent("com.android.tv.action.VIEW_INPUTS").addFlags(Intent.FLAG_ACTIVITY_NEW_TASK))
+                                        } catch (_: Exception) {
+                                            Toast.makeText(context, R.string.profile_tv_inputs_unavailable, Toast.LENGTH_SHORT).show()
+                                        }
+                                    }
+                                },
+                            contentAlignment = Alignment.Center
+                        ) {
+                            Icon(
+                                imageVector = Icons.Default.Tv,
+                                contentDescription = inputsLabel,
+                                tint = if (inputsFocused) NuvioTheme.colors.TextPrimary else NuvioTheme.colors.TextTertiary,
+                                modifier = Modifier.size(24.dp)
+                            )
+                        }
+                    }
+
+                    Box(
+                        modifier = Modifier
+                            .size(48.dp)
+                            .onFocusChanged { settingsFocused = it.isFocused }
+                            .clip(CircleShape)
+                            .background(if (settingsFocused) NuvioTheme.colors.TextPrimary.copy(alpha = 0.2f) else Color.Transparent)
+                            .clickable(onClickLabel = settingsLabel) {
+                                try {
+                                    context.startActivity(Intent(Settings.ACTION_SETTINGS).addFlags(Intent.FLAG_ACTIVITY_NEW_TASK))
+                                } catch (error: android.content.ActivityNotFoundException) {
+                                    Toast.makeText(context, R.string.profile_android_settings_unavailable, Toast.LENGTH_SHORT).show()
+                                } catch (error: SecurityException) {
+                                    Toast.makeText(context, R.string.profile_android_settings_unavailable, Toast.LENGTH_SHORT).show()
+                                }
+                            },
+                        contentAlignment = Alignment.Center
+                    ) {
+                        Icon(
+                            imageVector = Icons.Default.Settings,
+                            contentDescription = settingsLabel,
+                            tint = if (settingsFocused) NuvioTheme.colors.TextPrimary else NuvioTheme.colors.TextTertiary,
+                            modifier = Modifier.size(24.dp)
+                        )
+                    }
                 }
             }
         }
