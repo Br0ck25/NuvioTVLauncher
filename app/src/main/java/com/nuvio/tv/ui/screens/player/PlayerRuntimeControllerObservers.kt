@@ -310,6 +310,7 @@ internal fun PlayerRuntimeController.observeSubtitleSettings() {
     scope.launch {
         playerSettingsDataStore.playerSettings.collect { settings ->
             currentPlayerSettingsForReport = settings
+            hasObservedPlayerSettings = true
             val currentState = _uiState.value
             val showOnlyPreferredLanguagesChanged =
                 currentState.subtitleStyle.showOnlyPreferredLanguages != settings.subtitleStyle.showOnlyPreferredLanguages
@@ -1070,5 +1071,13 @@ internal fun PlayerRuntimeController.observeDeviceLocalTunneledSurfaceFill() {
                     _uiState.update { it.copy(tunneledSurfaceFill = fill) }
                 }
             }
+    }
+}
+
+internal fun PlayerRuntimeController.observeDeviceLocalReleaseDecoderOnBackground() {
+    scope.launch {
+        deviceLocalPlayerPreferences.releaseDecoderOnBackground
+            .distinctUntilChanged()
+            .collect { enabled -> releaseDecoderOnBackground = enabled }
     }
 }
