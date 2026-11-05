@@ -11,11 +11,18 @@ const val LIST_CHANNEL_SCHEME = "nuvio-list://"
 const val LIST_CHANNELS_SOURCE_ID = "lists"
 /** The category list channels are shown in. */
 const val LIST_CHANNELS_GROUP = "List channels"
+/** Prefix for list channel ids backed by My Lists Addon channels. */
+const val MY_LISTS_CHANNEL_ID_PREFIX = "mylists:"
+/** Fallback category for My Lists Addon channels without an explicit category. */
+const val MY_LISTS_CHANNELS_GROUP = "My Lists Addon Channels"
 
 fun listChannelUrl(id: String): String = LIST_CHANNEL_SCHEME + id
 fun String?.isListChannelUrl(): Boolean = this != null && startsWith(LIST_CHANNEL_SCHEME)
 fun listChannelIdOf(url: String): String = url.removePrefix(LIST_CHANNEL_SCHEME)
 fun listChannelGuideKey(id: String): String = "list:$id"
+fun myListsChannelInternalId(channelId: String): String = "$MY_LISTS_CHANNEL_ID_PREFIX$channelId"
+fun isMyListsChannelInternalId(id: String): Boolean = id.startsWith(MY_LISTS_CHANNEL_ID_PREFIX)
+fun stripMyListsChannelInternalId(id: String): String = id.removePrefix(MY_LISTS_CHANNEL_ID_PREFIX)
 
 /** A list a channel plays from. Its items are fetched when the channel is scheduled. */
 @Immutable

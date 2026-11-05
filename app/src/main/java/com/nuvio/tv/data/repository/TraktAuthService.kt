@@ -213,7 +213,7 @@ class TraktAuthService @Inject constructor(
                 TraktDeviceTokenRequestDto(
                     code = deviceCode,
                     clientId = BuildConfig.TRAKT_CLIENT_ID,
-                    clientSecret = BuildConfig.TRAKT_CLIENT_SECRET.ifBlank { null }
+                    clientSecret = BuildConfig.TRAKT_CLIENT_SECRET.takeIf { it.isNotBlank() }
                 )
             )
         } catch (e: IOException) {
@@ -276,7 +276,7 @@ class TraktAuthService @Inject constructor(
                     TraktRefreshTokenRequestDto(
                         refreshToken = refreshToken,
                         clientId = BuildConfig.TRAKT_CLIENT_ID,
-                        clientSecret = BuildConfig.TRAKT_CLIENT_SECRET.ifBlank { null },
+                        clientSecret = BuildConfig.TRAKT_CLIENT_SECRET.takeIf { it.isNotBlank() },
                         redirectUri = traktRedirectUri()
                     )
                 )
@@ -311,7 +311,7 @@ class TraktAuthService @Inject constructor(
                         TraktRevokeRequestDto(
                             token = accessToken,
                             clientId = BuildConfig.TRAKT_CLIENT_ID,
-                            clientSecret = BuildConfig.TRAKT_CLIENT_SECRET.ifBlank { null }
+                            clientSecret = BuildConfig.TRAKT_CLIENT_SECRET.takeIf { it.isNotBlank() }
                         )
                     )
                 }

@@ -96,7 +96,7 @@ fun AuthQrSignInScreen(
     val fullAccount = uiState.authState as? AuthState.FullAccount
     val isSignedIn = fullAccount != null
     val isOnboardingMode = onContinue != null
-    var showEmailLogin by rememberSaveable { mutableStateOf(viewModel.usesEmailPasswordLogin) }
+    var showEmailLogin by rememberSaveable { mutableStateOf(false) }
     val useEmailLogin = showEmailLogin
     val useQrLogin = !useEmailLogin
     val isApproved = remember(uiState.qrLoginStatus) {
@@ -136,7 +136,7 @@ fun AuthQrSignInScreen(
         }
     }
 
-    LaunchedEffect(uiState.authState, isSignedIn, uiState.qrLoginCode, uiState.isLoading, uiState.error, exitRequested) {
+    LaunchedEffect(useQrLogin, uiState.authState, isSignedIn, uiState.qrLoginCode, uiState.isLoading, uiState.error, exitRequested) {
         if (
             useQrLogin &&
             !exitRequested &&
@@ -215,6 +215,8 @@ fun AuthQrSignInScreen(
                     showEmailLogin = !showEmailLogin
                     if (showEmailLogin) {
                         viewModel.clearQrLoginSession()
+                    } else {
+                        viewModel.startQrLogin()
                     }
                 },
                 onRefreshOrSignOut = {
@@ -383,62 +385,68 @@ private fun AuthQrLoginPane(
         }
 
         Spacer(modifier = Modifier.height(28.dp))
-        Row(
-            horizontalArrangement = Arrangement.spacedBy(NuvioTheme.spacing.md),
-            verticalAlignment = Alignment.CenterVertically
+        Column(
+            horizontalAlignment = Alignment.CenterHorizontally,
+            verticalArrangement = Arrangement.spacedBy(NuvioTheme.spacing.md)
         ) {
-            if (isSignedIn || !useEmailLogin) {
-                Button(
-                    onClick = onRefreshOrSignOut,
-                    enabled = !uiState.isLoading,
-                    modifier = if (focusMainAction) Modifier.focusRequester(initialFocusRequester) else Modifier,
-                    colors = ButtonDefaults.colors(
-                        containerColor = AuthSecondaryButtonBackground,
-                        focusedContainerColor = Color.White,
-                        contentColor = AuthTextPrimary,
-                        focusedContentColor = Color.Black,
-                        disabledContainerColor = AuthSecondaryButtonBackground.copy(alpha = 0.45f)
-                    ),
-                    border = ButtonDefaults.border(
-                        border = androidx.tv.material3.Border(
-                            border = androidx.compose.foundation.BorderStroke(1.dp, AuthSecondaryButtonBorder),
-                            shape = RoundedCornerShape(16.dp)
+            Row(
+                horizontalArrangement = Arrangement.spacedBy(NuvioTheme.spacing.md),
+                verticalAlignment = Alignment.CenterVertically
+            ) {
+                if (isSignedIn || !useEmailLogin) {
+                    Button(
+                        onClick = onRefreshOrSignOut,
+                        enabled = !uiState.isLoading,
+                        modifier = if (focusMainAction) Modifier.focusRequester(initialFocusRequester) else Modifier,
+                        colors = ButtonDefaults.colors(
+                            containerColor = AuthSecondaryButtonBackground,
+                            focusedContainerColor = Color.White,
+                            contentColor = AuthTextPrimary,
+                            focusedContentColor = Color.Black,
+                            disabledContainerColor = AuthSecondaryButtonBackground.copy(alpha = 0.45f)
+                        ),
+                        border = ButtonDefaults.border(
+                            border = androidx.tv.material3.Border(
+                                border = androidx.compose.foundation.BorderStroke(1.dp, AuthSecondaryButtonBorder),
+                                shape = RoundedCornerShape(16.dp)
+                            )
                         )
-                    )
-                ) {
-                    Text(
-                        when {
-                            isSignedIn -> stringResource(R.string.account_sign_out)
-                            uiState.isLoading -> stringResource(R.string.auth_qr_please_wait)
-                            else -> stringResource(R.string.auth_qr_refresh)
-                        }
-                    )
+                    ) {
+                        Text(
+                            when {
+                                isSignedIn -> stringResource(R.string.account_sign_out)
+                                uiState.isLoading -> stringResource(R.string.auth_qr_please_wait)
+                                else -> stringResource(R.string.auth_qr_refresh)
+                            }
+                        )
+                    }
+                }
+                if (!isSignedIn) {
+                    Button(
+                        onClick = onToggleAuthMode,
+                        enabled = !uiState.isLoading,
+                        colors = ButtonDefaults.colors(
+                            containerColor = AuthSecondaryButtonBackground,
+                            focusedContainerColor = Color.White,
+                            contentColor = AuthTextPrimary,
+                            focusedContentColor = Color.Black
+                        ),
+                        border = ButtonDefaults.border(
+                            border = androidx.tv.material3.Border(
+                                border = androidx.compose.foundation.BorderStroke(1.dp, AuthSecondaryButtonBorder),
+                                shape = RoundedCornerShape(16.dp)
+                            )
+                        )
+                    ) {
+                        Text(
+                            stringResource(
+                                if (useEmailLogin) R.string.auth_switch_to_qr else R.string.auth_switch_to_email
+                            )
+                        )
+                    }
                 }
             }
-            if (!isSignedIn) {
-                Button(
-                    onClick = onToggleAuthMode,
-                    enabled = !uiState.isLoading,
-                    colors = ButtonDefaults.colors(
-                        containerColor = AuthSecondaryButtonBackground,
-                        focusedContainerColor = Color.White,
-                        contentColor = AuthTextPrimary,
-                        focusedContentColor = Color.Black
-                    ),
-                    border = ButtonDefaults.border(
-                        border = androidx.tv.material3.Border(
-                            border = androidx.compose.foundation.BorderStroke(1.dp, AuthSecondaryButtonBorder),
-                            shape = RoundedCornerShape(16.dp)
-                        )
-                    )
-                ) {
-                    Text(
-                        stringResource(
-                            if (useEmailLogin) R.string.auth_switch_to_qr else R.string.auth_switch_to_email
-                        )
-                    )
-                }
-            }
+
             Button(
                 onClick = onBackOrContinue,
                 modifier = if (!focusEmail && !focusMainAction) {

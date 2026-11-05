@@ -169,5 +169,11 @@ private fun CatalogDescriptor.shouldShowOnHomeForSync(): Boolean {
     if (isSearchOnlyCatalog()) {
         return false
     }
+    if (extraRequired.isNotEmpty()) {
+        val hasUnsatisfied = extraRequired.any { req ->
+            extra.none { it.name.equals(req, ignoreCase = true) && !it.defaultValue.isNullOrBlank() }
+        }
+        if (hasUnsatisfied) return false
+    }
     return !hasExplicitShowInHome || showInHome
 }

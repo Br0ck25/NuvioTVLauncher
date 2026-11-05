@@ -69,9 +69,18 @@ import kotlinx.coroutines.launch
 import kotlinx.coroutines.sync.Mutex
 import kotlinx.coroutines.sync.withLock
 import kotlinx.coroutines.withTimeoutOrNull
+import com.nuvio.tv.core.mylists.MyListsDefaultSeed
+import com.nuvio.tv.core.mylists.MyListsTvChannel
+import com.nuvio.tv.core.mylists.MyListsTvSyncManager
+import okhttp3.CacheControl
 import okhttp3.MediaType.Companion.toMediaType
+import okhttp3.OkHttpClient
+import okhttp3.Request
 import okhttp3.RequestBody
 import okhttp3.RequestBody.Companion.toRequestBody
+import org.json.JSONArray
+import org.json.JSONObject
+import java.net.URLEncoder
 
 @EntryPoint
 @InstallIn(SingletonComponent::class)
@@ -90,6 +99,8 @@ interface ListChannelsEntryPoint {
     fun debridSettings(): DebridSettingsDataStore
     fun torboxApi(): TorboxApi
     fun torrentSettings(): TorrentSettings
+    fun myListsTvSyncManager(): MyListsTvSyncManager
+    fun okHttpClient(): OkHttpClient
 }
 
 /** No stream could be found for what is on a list channel right now. */
@@ -97,6 +108,19 @@ class ListChannelUnavailableException(message: String) : Exception(message)
 
 /** An entry of a list, as far as scheduling needs it. */
 internal data class ListItem(val id: String, val type: String, val name: String, val poster: String?, val description: String?)
+
+/** A resolved episode or movie entry from a My Lists Addon channel lineup. */
+internal data class MyListsLineupEntry(
+    val itemId: String,
+    val itemType: String,
+    val videoId: String,
+    val season: Int? = null,
+    val episode: Int? = null,
+    val title: String,
+    val description: String? = null,
+    val image: String? = null,
+    val runtimeMinutes: Int? = null
+)
 
 /**
  * Channels made from the viewer's lists, played as if they were live. Each channel has a
@@ -134,15 +158,19 @@ internal object ListChannels {
             CoroutineExceptionHandler { _, error -> Log.w(TAG, "Background work failed", error) },
     )
     private val mutex = Mutex()
+    private val channelLocks = ConcurrentHashMap<String, Mutex>()
     private val _channels = MutableStateFlow<List<ListChannel>>(emptyList())
     val channels: StateFlow<List<ListChannel>> = _channels.asStateFlow()
+    @Volatile private var myListsChannels: List<MyListsTvChannel> = MyListsDefaultSeed.DEFAULT_QUICK_ADD_CHANNELS
 
     @Volatile private var slotsById: Map<String, List<ListSlot>> = emptyMap()
     @Volatile private var store: ListChannelStore? = null
     @Volatile private var profileId = -1
     private var appContext: Context? = null
     private var tickJob: Job? = null
+    private var myListsCollectJob: Job? = null
     private val poolCache = HashMap<String, Pair<Long, List<ListItem>>>()
+    private val myListsLineupCache = HashMap<String, Pair<Long, List<MyListsLineupEntry>>>()
     /** The programme each channel was last opened on, for where in it playback starts. */
     private val opened = ConcurrentHashMap<String, ListSlot>()
     /** Programmes already looked at ahead (by episode or film id), so each is looked at once. */
@@ -163,6 +191,9 @@ internal object ListChannels {
     private fun deps(): ListChannelsEntryPoint =
         EntryPointAccessors.fromApplication(appContext!!, ListChannelsEntryPoint::class.java)
 
+    fun myListsTvSyncManager(): com.nuvio.tv.core.mylists.MyListsTvSyncManager? =
+        appContext?.let { runCatching { deps().myListsTvSyncManager() }.getOrNull() }
+
     /** Loads [profileId]'s channels and starts keeping their schedules up to date. Reads files: not on the main thread. */
     fun attach(context: Context, profileId: Int) {
         if (this.profileId == profileId && store != null) return
@@ -173,9 +204,42 @@ internal object ListChannels {
         this.profileId = profileId
         val saved = ListChannelStore(app, profileId)
         val list = saved.channels()
-        slotsById = list.associate { it.id to saved.slots(it.id) }
+        val initialSlots = HashMap<String, List<ListSlot>>()
+        list.forEach { initialSlots[it.id] = saved.slots(it.id) }
+        myListsChannels.forEach { ch ->
+            val internalId = myListsChannelInternalId(ch.id)
+            val savedSlots = saved.slots(internalId)
+            if (savedSlots.isNotEmpty()) {
+                initialSlots[internalId] = savedSlots
+            }
+        }
+        slotsById = initialSlots
         store = saved
         _channels.value = list
+        myListsCollectJob = scope.launch {
+            runCatching {
+                deps().myListsTvSyncManager().channelsFlow.collect { synced ->
+                    val next = synced.ifEmpty { MyListsDefaultSeed.DEFAULT_QUICK_ADD_CHANNELS }
+                    myListsChannels = next
+                    val currentStore = store
+                    if (currentStore != null) {
+                        val mergedSlots = HashMap(slotsById)
+                        next.forEach { ch ->
+                            val internalId = myListsChannelInternalId(ch.id)
+                            if (internalId !in mergedSlots) {
+                                val storedSlots = currentStore.slots(internalId)
+                                if (storedSlots.isNotEmpty()) {
+                                    mergedSlots[internalId] = storedSlots
+                                }
+                            }
+                        }
+                        slotsById = mergedSlots
+                    }
+                    onChannelsChanged()
+                    onProgrammesChanged()
+                }
+            }
+        }
         tickJob = scope.launch {
             while (isActive) {
                 keepSchedulesCurrent()
@@ -187,15 +251,19 @@ internal object ListChannels {
     fun detach() {
         tickJob?.cancel()
         tickJob = null
+        myListsCollectJob?.cancel()
+        myListsCollectJob = null
         store = null
         profileId = -1
         slotsById = emptyMap()
         opened.clear()
         prepared.clear()
         torrents.clear()
+        channelLocks.clear()
         pendingTorrentChannel = null
         watchingChannelId = null
         synchronized(poolCache) { poolCache.clear() }
+        synchronized(myListsLineupCache) { myListsLineupCache.clear() }
         _channels.value = emptyList()
     }
 
@@ -237,16 +305,54 @@ internal object ListChannels {
         synchronized(poolCache) { poolCache.remove(id) }
     }
 
-    fun liveTvChannels(): List<LiveTvChannel> = _channels.value.map { channel ->
-        LiveTvChannel(
-            id = listChannelGuideKey(channel.id),
-            name = channel.name,
-            streamUrl = listChannelUrl(channel.id),
-            group = LIST_CHANNELS_GROUP,
-            sourceId = LIST_CHANNELS_SOURCE_ID,
-            hideKey = liveTvHideKey(LIST_CHANNELS_SOURCE_ID, LIST_CHANNELS_GROUP, channel.id),
-            guideKey = listChannelGuideKey(channel.id),
-        )
+    fun liveTvChannels(): List<LiveTvChannel> {
+        val syncedMyLists = myListsChannels.map { channel ->
+            val internalId = myListsChannelInternalId(channel.id)
+            val group = if (channel.category.isBlank() || channel.category.equals("Live TV", ignoreCase = true) || channel.category.equals("My Lists Channels", ignoreCase = true)) {
+                MY_LISTS_CHANNELS_GROUP
+            } else {
+                channel.category.trim()
+            }
+            LiveTvChannel(
+                id = listChannelGuideKey(internalId),
+                name = channel.name,
+                logoUrl = MyListsDefaultSeed.resolveChannelLogoUrl(channel.logoUrl, channel.name)
+                    ?: channel.backdropUrl?.takeIf { it.isNotBlank() }
+                    ?: channel.posterUrl?.takeIf { it.isNotBlank() }
+                    ?: MyListsDefaultSeed.resolveChannelBackdropUrl(channel.name),
+                streamUrl = listChannelUrl(internalId),
+                group = group,
+                sourceId = LIST_CHANNELS_SOURCE_ID,
+                hideKey = liveTvHideKey(LIST_CHANNELS_SOURCE_ID, group, internalId),
+                guideKey = listChannelGuideKey(internalId),
+            )
+        }
+        val localChannels = _channels.value.map { channel ->
+            LiveTvChannel(
+                id = listChannelGuideKey(channel.id),
+                name = channel.name,
+                streamUrl = listChannelUrl(channel.id),
+                group = LIST_CHANNELS_GROUP,
+                sourceId = LIST_CHANNELS_SOURCE_ID,
+                hideKey = liveTvHideKey(LIST_CHANNELS_SOURCE_ID, LIST_CHANNELS_GROUP, channel.id),
+                guideKey = listChannelGuideKey(channel.id),
+            )
+        }
+        return syncedMyLists + localChannels
+    }
+
+    fun channelPoster(streamUrl: String): String? {
+        if (!streamUrl.isListChannelUrl()) return null
+        val id = listChannelIdOf(streamUrl)
+        if (isMyListsChannelInternalId(id)) {
+            val rawId = stripMyListsChannelInternalId(id)
+            val ch = myListsChannels.firstOrNull { it.id == rawId } ?: return null
+            return ch.backdropUrl?.takeIf { it.isNotBlank() }
+                ?: ch.posterUrl?.takeIf { it.isNotBlank() }
+                ?: ch.logoUrl?.takeIf { it.isNotBlank() }
+                ?: MyListsDefaultSeed.resolveChannelBackdropUrl(ch.name)
+        }
+        return null
     }
 
     // endregion
@@ -270,6 +376,9 @@ internal object ListChannels {
 
     private fun ListSlot.toProgramme() = LiveTvProgramme(title, startMs, endMs, description, image)
 
+    /** The slot opened last on [channelUrl]. */
+    fun openedSlot(channelUrl: String): ListSlot? = opened[listChannelIdOf(channelUrl)]
+
     /** How far into the programme opened last on [channelUrl] playback should start. */
     fun startOffsetMs(channelUrl: String): Long {
         val slot = opened[listChannelIdOf(channelUrl)] ?: return 0L
@@ -288,6 +397,26 @@ internal object ListChannels {
                     throw cancel
                 } catch (error: Exception) {
                     Log.w(TAG, "Could not carry on the schedule of ${channel.name}", error)
+                }
+            }
+        }
+        var extendedMyListsCount = 0
+        val currentWatchingId = watchingChannelId
+        val prioritizedMyLists = myListsChannels.sortedByDescending { ch ->
+            myListsChannelInternalId(ch.id) == currentWatchingId
+        }
+        for (channel in prioritizedMyLists) {
+            if (extendedMyListsCount >= 6) break
+            val internalId = myListsChannelInternalId(channel.id)
+            val last = slotsById[internalId]?.lastOrNull()?.endMs ?: 0L
+            if (last < now + HORIZON_MS / 2) {
+                try {
+                    extendMyListsChannel(channel, now)
+                    extendedMyListsCount++
+                } catch (cancel: CancellationException) {
+                    throw cancel
+                } catch (error: Exception) {
+                    Log.w(TAG, "Could not carry on My Lists schedule of ${channel.name}", error)
                 }
             }
         }
@@ -360,6 +489,432 @@ internal object ListChannels {
         saved.saveSchedule(channel.id, slots, state)
         slotsById = slotsById + (channel.id to slots)
         slots
+    }
+
+    /**
+     * Carries a synced My Lists Addon [channel]'s schedule on until it covers [HORIZON_MS].
+     * Uses a per-channel lock so opening a channel never waits behind background extensions.
+     */
+    private suspend fun extendMyListsChannel(channel: MyListsTvChannel, now: Long): List<ListSlot> {
+        val internalId = myListsChannelInternalId(channel.id)
+        val lock = channelLocks.computeIfAbsent(internalId) { Mutex() }
+        return lock.withLock {
+            val saved = store ?: return@withLock emptyList()
+            var slots = (slotsById[internalId] ?: saved.slots(internalId)).filter { it.endMs > now - KEEP_PAST_MS }
+            if (slots.isNotEmpty() && slots.last().endMs < now) slots = emptyList()
+            if ((slots.lastOrNull()?.endMs ?: 0L) >= now + HORIZON_MS) return@withLock slots
+
+            val entries = fetchMyListsChannelLineup(channel)
+            if (entries.isEmpty()) return@withLock slots
+
+            val seed = channel.id.hashCode().toLong()
+            val orderedEntries = entries
+
+            var state = saved.state(internalId)
+            var failures = 0
+            while ((slots.lastOrNull()?.endMs ?: 0L) < now + HORIZON_MS && failures < MAX_BUILD_FAILURES && slots.size < MAX_SLOTS) {
+                val entry = orderedEntries[state.cursor % orderedEntries.size]
+                state = state.copy(cursor = state.cursor + 1)
+                val built = buildMyListsSlot(entry, state.played)
+                if (built == null) {
+                    failures++
+                    continue
+                }
+                val (slot, playedId) = built
+                if (playedId != null) state = state.copy(played = state.played + playedId)
+                val start = slots.lastOrNull()?.endMs
+                    ?: (now - (slot.durationMs * (((seed and Long.MAX_VALUE) + state.cursor) % 55) / 100))
+                slots = slots + slot.copy(startMs = start, endMs = start + slot.durationMs)
+            }
+            saved.saveSchedule(internalId, slots, state)
+            slotsById = slotsById + (internalId to slots)
+            slots
+        }
+    }
+
+    private suspend fun buildMyListsSlot(
+        entry: MyListsLineupEntry,
+        played: Set<String>
+    ): Pair<ListSlot, String?>? {
+        val type = entry.itemType.lowercase(Locale.US)
+        if (type == "movie") {
+            val minutes = (entry.runtimeMinutes ?: DEFAULT_MOVIE_MIN).coerceIn(5, 240)
+            val slot = ListSlot(
+                itemId = entry.itemId,
+                itemType = "movie",
+                videoId = entry.videoId.ifBlank { entry.itemId },
+                season = null,
+                episode = null,
+                title = entry.title.ifBlank { entry.itemId },
+                description = entry.description,
+                image = entry.image,
+                startMs = 0L,
+                endMs = minutes * 60_000L
+            )
+            return slot to null
+        }
+
+        // Pre-resolved episode entry from My Lists Addon channel lineup or channel meta videos
+        val season = entry.season
+        val episode = entry.episode
+        if ((season != null && episode != null) || entry.videoId.contains(':')) {
+            val minutes = (entry.runtimeMinutes ?: DEFAULT_EPISODE_MIN).coerceIn(5, 240)
+            val resolvedVideoId = if (entry.videoId.contains(':')) {
+                entry.videoId
+            } else {
+                "${entry.itemId}:${season ?: 1}:${episode ?: 1}"
+            }
+            val slot = ListSlot(
+                itemId = entry.itemId,
+                itemType = "series",
+                videoId = resolvedVideoId,
+                season = season,
+                episode = episode,
+                title = entry.title.ifBlank { entry.itemId },
+                description = entry.description,
+                image = entry.image,
+                startMs = 0L,
+                endMs = minutes * 60_000L
+            )
+            return slot to resolvedVideoId
+        }
+
+        // Generic series catalog item without episode numbers: resolve next unplayed episode
+        return buildSlot(
+            ListItem(
+                id = entry.itemId,
+                type = "series",
+                name = entry.title,
+                poster = entry.image,
+                description = entry.description
+            ),
+            played
+        )
+    }
+
+    /**
+     * Fetches the current lineup for a [MyListsTvChannel] from `{addonBaseUrl}/catalog/tv/{channel.catalogId}.json`
+     * (and falls back to `/meta/series/channel_{id}.json` or `POST /api/channel-lineup` for preset networks).
+     */
+    private suspend fun fetchMyListsChannelLineup(channel: MyListsTvChannel): List<MyListsLineupEntry> =
+        withContext(Dispatchers.IO) {
+            val cached = synchronized(myListsLineupCache) { myListsLineupCache[channel.id] }
+            if (cached != null && System.currentTimeMillis() - cached.first < POOL_TTL_MS && cached.second.isNotEmpty()) {
+                return@withContext cached.second
+            }
+
+            val d = deps()
+            val installedMyLists = runCatching {
+                d.addonRepository().getInstalledAddons().first().firstOrNull { addon ->
+                    MyListsDefaultSeed.isMyListsAddon(addon)
+                }
+            }.getOrNull()
+            val addonBaseUrl = (installedMyLists?.baseUrl ?: MyListsDefaultSeed.MY_LISTS_BASE_ORIGIN)
+                .trim()
+                .trimEnd('/')
+
+            val entries = ArrayList<MyListsLineupEntry>()
+            val catalogId = channel.catalogId.trim().ifBlank { "channel_${channel.id}" }
+
+            // 1. Primary path: fetch `{addonBaseUrl}/catalog/tv/{channel.catalogId}.json` (and `/catalog/series/...`)
+            val catalogUrls = listOf(
+                "$addonBaseUrl/catalog/tv/$catalogId.json",
+                "$addonBaseUrl/catalog/series/$catalogId.json"
+            )
+            for (url in catalogUrls) {
+                if (entries.isNotEmpty()) break
+                val body = executeMyListsGet(url) ?: continue
+                parseMyListsCatalogOrMetaJson(body, addonBaseUrl, entries)
+            }
+
+            // 2. If catalog returned a channel meta wrapper or wasn't directly listed, try `/meta/series/{channelMetaId}.json`
+            if (entries.isEmpty()) {
+                val metaId = if (catalogId.startsWith("channel_")) catalogId else "channel_${channel.id}"
+                val metaUrls = listOf(
+                    "$addonBaseUrl/meta/series/$metaId.json",
+                    "$addonBaseUrl/meta/tv/$metaId.json"
+                )
+                for (url in metaUrls) {
+                    if (entries.isNotEmpty()) break
+                    val body = executeMyListsGet(url) ?: continue
+                    parseMyListsCatalogOrMetaJson(body, addonBaseUrl, entries)
+                }
+            }
+
+            // 3. For Quick Add preset network channels (or custom channels before account linking),
+            // request the rotated episode lineup from `POST https://mylistsaddon.com/api/channel-lineup`.
+            if (entries.isEmpty()) {
+                val presetNetId = extractPresetNetworkId(channel)
+                if (presetNetId != null) {
+                    fetchPresetNetworkLineup(channel, presetNetId, entries)
+                }
+            }
+
+            val deduplicated = entries.distinctBy { "${it.itemType}:${it.videoId}" }
+            if (deduplicated.isNotEmpty()) {
+                synchronized(myListsLineupCache) {
+                    myListsLineupCache[channel.id] = System.currentTimeMillis() to deduplicated
+                }
+            }
+            deduplicated
+        }
+
+    private fun extractPresetNetworkId(channel: MyListsTvChannel): String? {
+        channel.catalogId.removePrefix("channel_preset_").takeIf { it.isNotEmpty() && it.all(Char::isDigit) }?.let { return it }
+        channel.id.removePrefix("ch_preset_").takeIf { it.isNotEmpty() && it.all(Char::isDigit) }?.let { return it }
+        return Regex("""[?&]netId=(\d+)""").find(channel.logoUrl.orEmpty())?.groupValues?.getOrNull(1)
+    }
+
+    private fun fetchPresetNetworkLineup(
+        channel: MyListsTvChannel,
+        presetNetId: String,
+        out: MutableList<MyListsLineupEntry>
+    ) {
+        val client = deps().okHttpClient()
+        val autoSort = "interleave"
+        val channelSpec = JSONObject()
+            .put("channelId", channel.id)
+            .put("name", channel.name)
+            .put("presetNetworkId", presetNetId)
+            .put("dailyRotate", true)
+            .put("autoSort", autoSort)
+            .put("items", JSONArray())
+        val payload = JSONObject()
+            .put("url", "channel:v1:$channelSpec")
+            .toString()
+
+        val request = Request.Builder()
+            .url("${MyListsDefaultSeed.MY_LISTS_BASE_ORIGIN}/api/channel-lineup")
+            .header("Accept", "application/json")
+            .header("Origin", MyListsDefaultSeed.MY_LISTS_BASE_ORIGIN)
+            .header("Referer", "${MyListsDefaultSeed.MY_LISTS_BASE_ORIGIN}/")
+            .post(payload.toRequestBody("application/json; charset=utf-8".toMediaType()))
+            .build()
+
+        runCatching {
+            client.newCall(request).execute().use { response ->
+                if (!response.isSuccessful) return@use
+                val body = response.body?.string().orEmpty()
+                if (body.isBlank()) return@use
+                val root = JSONObject(body)
+                val items = root.optJSONArray("items") ?: return@use
+                parseLineupItemsArray(items, channel, out)
+            }
+        }
+
+        if (out.isEmpty()) {
+            val encodedName = URLEncoder.encode(channel.name, "UTF-8")
+            val presetUrl = "${MyListsDefaultSeed.MY_LISTS_BASE_ORIGIN}/api/channel-preset?networkId=$presetNetId&name=$encodedName"
+            val body = executeMyListsGet(presetUrl) ?: return
+            runCatching {
+                val root = JSONObject(body)
+                val items = root.optJSONArray("items") ?: return@runCatching
+                for (i in 0 until items.length()) {
+                    val obj = items.optJSONObject(i) ?: continue
+                    val imdbId = obj.optString("imdbId").trim()
+                    if (imdbId.isBlank()) continue
+                    val title = obj.optString("title").trim().ifBlank { channel.name }
+                    val poster = obj.optString("poster").trim().ifBlank { null }
+                    out += MyListsLineupEntry(
+                        itemId = imdbId,
+                        itemType = "series",
+                        videoId = imdbId,
+                        title = title,
+                        image = poster ?: channel.posterUrl ?: MyListsDefaultSeed.resolveChannelLogoUrl(channel.logoUrl, channel.name)
+                    )
+                }
+            }
+        }
+    }
+
+    private fun executeMyListsGet(url: String): String? {
+        val request = Request.Builder()
+            .url(url)
+            .cacheControl(CacheControl.FORCE_NETWORK)
+            .header("Accept", "application/json")
+            .header("Origin", MyListsDefaultSeed.MY_LISTS_BASE_ORIGIN)
+            .header("Referer", "${MyListsDefaultSeed.MY_LISTS_BASE_ORIGIN}/")
+            .get()
+            .build()
+        return runCatching {
+            deps().okHttpClient().newCall(request).execute().use { response ->
+                if (!response.isSuccessful) return@use null
+                response.body?.string()?.takeIf { it.isNotBlank() }
+            }
+        }.getOrNull()
+    }
+
+    private fun parseMyListsCatalogOrMetaJson(
+        body: String,
+        addonBaseUrl: String,
+        out: MutableList<MyListsLineupEntry>
+    ) {
+        val root = runCatching { JSONObject(body) }.getOrNull() ?: return
+
+        // Handle `{ meta: { videos: [...] } }`
+        val metaObj = root.optJSONObject("meta")
+        if (metaObj != null) {
+            parseMetaVideosObject(metaObj, out)
+            if (out.isNotEmpty()) return
+        }
+
+        // Handle `{ items: [...] }` from channel lineup endpoints
+        val directItems = root.optJSONArray("items")
+        if (directItems != null && directItems.length() > 0) {
+            parseLineupItemsArray(directItems, null, out)
+            if (out.isNotEmpty()) return
+        }
+
+        // Handle `{ metas: [...] }` from `/catalog/tv/{catalogId}.json`
+        val metas = root.optJSONArray("metas") ?: return
+        for (i in 0 until metas.length()) {
+            val item = metas.optJSONObject(i) ?: continue
+            val id = item.optString("id").trim()
+            if (id.isBlank()) continue
+
+            // If the catalog item is a channel meta container (`channel_...`), expand its videos
+            if (id.startsWith("channel_")) {
+                val inlineVideos = item.optJSONArray("videos")
+                if (inlineVideos != null && inlineVideos.length() > 0) {
+                    parseMetaVideosObject(item, out)
+                } else {
+                    val channelMetaBody = executeMyListsGet("$addonBaseUrl/meta/series/$id.json")
+                        ?: executeMyListsGet("$addonBaseUrl/meta/tv/$id.json")
+                    if (channelMetaBody != null) {
+                        val nestedRoot = runCatching { JSONObject(channelMetaBody) }.getOrNull()
+                        val nestedMeta = nestedRoot?.optJSONObject("meta")
+                        if (nestedMeta != null) {
+                            parseMetaVideosObject(nestedMeta, out)
+                        }
+                    }
+                }
+                continue
+            }
+
+            val rawType = item.optString("type").trim().lowercase(Locale.US)
+            val name = item.optString("name").trim().ifBlank { item.optString("title").trim() }
+            val poster = item.optString("poster").trim().ifBlank { item.optString("thumbnail").trim() }.ifBlank { null }
+            val description = item.optString("description").trim().ifBlank { item.optString("overview").trim() }.ifBlank { null }
+            val runtime = parseRuntimeMinutes(item.optString("runtime"))
+
+            if (id.contains(':')) {
+                val parts = id.split(':')
+                val imdbId = parts.firstOrNull().orEmpty()
+                val season = parts.getOrNull(1)?.toIntOrNull()
+                val episode = parts.getOrNull(2)?.toIntOrNull()
+                out += MyListsLineupEntry(
+                    itemId = imdbId.ifBlank { id },
+                    itemType = "series",
+                    videoId = id,
+                    season = season,
+                    episode = episode,
+                    title = name.ifBlank { id },
+                    description = description,
+                    image = poster,
+                    runtimeMinutes = runtime
+                )
+            } else {
+                val itemType = if (rawType == "movie") "movie" else "series"
+                out += MyListsLineupEntry(
+                    itemId = id,
+                    itemType = itemType,
+                    videoId = id,
+                    title = name.ifBlank { id },
+                    description = description,
+                    image = poster,
+                    runtimeMinutes = runtime
+                )
+            }
+        }
+    }
+
+    private fun parseMetaVideosObject(
+        metaObj: JSONObject,
+        out: MutableList<MyListsLineupEntry>
+    ) {
+        val fallbackPoster = metaObj.optString("poster").trim().ifBlank { metaObj.optString("background").trim() }.ifBlank { null }
+        val fallbackName = metaObj.optString("name").trim()
+        val videos = metaObj.optJSONArray("videos") ?: return
+        for (i in 0 until videos.length()) {
+            val video = videos.optJSONObject(i) ?: continue
+            val rawVideoId = video.optString("id").trim()
+            if (rawVideoId.isBlank()) continue
+            val parts = rawVideoId.split(':')
+            val imdbId = parts.firstOrNull()?.takeIf { it.startsWith("tt") } ?: rawVideoId
+            val season = video.optInt("season", -1).takeIf { it >= 0 } ?: parts.getOrNull(1)?.toIntOrNull()
+            val episode = video.optInt("episode", -1).takeIf { it >= 0 } ?: parts.getOrNull(2)?.toIntOrNull()
+            val isMovie = season == null && episode == null && !rawVideoId.contains(':')
+            val title = video.optString("title").trim()
+                .ifBlank { video.optString("name").trim() }
+                .ifBlank { fallbackName }
+            val description = video.optString("overview").trim()
+                .ifBlank { video.optString("description").trim() }
+                .ifBlank { null }
+            val image = video.optString("thumbnail").trim().ifBlank { fallbackPoster }
+            val runtime = parseRuntimeMinutes(video.optString("runtime"))
+            out += MyListsLineupEntry(
+                itemId = imdbId,
+                itemType = if (isMovie) "movie" else "series",
+                videoId = if (isMovie) imdbId else if (rawVideoId.contains(':')) rawVideoId else "$imdbId:${season ?: 1}:${episode ?: 1}",
+                season = if (isMovie) null else season,
+                episode = if (isMovie) null else episode,
+                title = title,
+                description = description,
+                image = image,
+                runtimeMinutes = runtime
+            )
+        }
+    }
+
+    private fun parseLineupItemsArray(
+        items: JSONArray,
+        channel: MyListsTvChannel?,
+        out: MutableList<MyListsLineupEntry>
+    ) {
+        val fallbackImage = channel?.posterUrl?.takeIf { it.isNotBlank() }
+            ?: MyListsDefaultSeed.resolveChannelLogoUrl(channel?.logoUrl, channel?.name)
+            ?: channel?.name?.let { MyListsDefaultSeed.resolveChannelPosterUrl(it) }
+        for (i in 0 until items.length()) {
+            val obj = items.optJSONObject(i) ?: continue
+            val imdbId = obj.optString("imdbId").trim()
+                .ifBlank { obj.optString("id").trim().substringBefore(':') }
+            if (imdbId.isBlank()) continue
+            val kind = obj.optString("kind").trim().lowercase(Locale.US)
+            val season = obj.optInt("season", -1).takeIf { it > 0 }
+            val episode = obj.optInt("episode", -1).takeIf { it > 0 }
+            val isMovie = kind == "movie" || (season == null && episode == null && kind != "episode")
+            val showName = obj.optString("showName").trim()
+            val epName = obj.optString("epName").trim()
+            val rawTitle = obj.optString("title").trim()
+            val displayTitle = when {
+                !isMovie && showName.isNotBlank() && season != null && episode != null -> {
+                    val epLabel = "S${season}E${episode}"
+                    if (epName.isNotBlank()) "$showName · $epLabel $epName" else "$showName · $epLabel"
+                }
+                rawTitle.isNotBlank() -> rawTitle
+                showName.isNotBlank() -> showName
+                else -> imdbId
+            }
+            val description = obj.optString("overview").trim()
+                .ifBlank { obj.optString("description").trim() }
+                .ifBlank { null }
+            val image = obj.optString("thumbnail").trim()
+                .ifBlank { obj.optString("poster").trim() }
+                .ifBlank { fallbackImage }
+            val runtime = parseRuntimeMinutes(obj.optString("runtime"))
+            val videoId = if (isMovie) imdbId else "$imdbId:${season ?: 1}:${episode ?: 1}"
+            out += MyListsLineupEntry(
+                itemId = imdbId,
+                itemType = if (isMovie) "movie" else "series",
+                videoId = videoId,
+                season = if (isMovie) null else (season ?: 1),
+                episode = if (isMovie) null else (episode ?: 1),
+                title = displayTitle,
+                description = description,
+                image = image,
+                runtimeMinutes = runtime
+            )
+        }
     }
 
     /** The programme for [item]: a film, or the show's next unplayed episode. Times are filled in by the caller. */
@@ -575,33 +1130,62 @@ internal object ListChannels {
 
     private suspend fun resolveNow(channel: LiveTvChannel): LiveTvChannel {
         val id = listChannelIdOf(channel.streamUrl)
-        val definition = _channels.value.firstOrNull { it.id == id }
-            ?: throw ListChannelUnavailableException("The channel no longer exists")
-        toast(R.string.live_tv_list_finding, definition.name)
         val now = System.currentTimeMillis()
-        val slots = extend(definition, now)
+        val slots = if (isMyListsChannelInternalId(id)) {
+            val rawId = stripMyListsChannelInternalId(id)
+            val myListsChannel = myListsChannels.firstOrNull { it.id == rawId }
+                ?: throw ListChannelUnavailableException("The channel no longer exists")
+            toast(R.string.live_tv_list_finding, myListsChannel.name)
+            extendMyListsChannel(myListsChannel, now)
+        } else {
+            val definition = _channels.value.firstOrNull { it.id == id }
+                ?: throw ListChannelUnavailableException("The channel no longer exists")
+            toast(R.string.live_tv_list_finding, definition.name)
+            extend(definition, now)
+        }
         if (slots.isEmpty()) throw ListChannelUnavailableException("No titles could be loaded from its lists")
-        var index = slots.indexOfFirst { now in it.startMs until it.endMs }.takeIf { it >= 0 } ?: slots.lastIndex
+        val initialIndex = slots.indexOfFirst { now in it.startMs until it.endMs }.takeIf { it >= 0 } ?: slots.lastIndex
+        var index = initialIndex
         var tries = 0
         while (index in slots.indices && tries < 3) {
             val slot = slots[index]
             val stream = pickStream(slot)
             val url = stream?.getStreamUrl()
             val hash = stream?.getEffectiveInfoHash()
-            if (stream != null && url != null) {
-                torrents.remove(channel.streamUrl)
-                pendingTorrentChannel = null
-                opened[id] = slot
-                onProgrammesChanged()
-                return channel.copy(streamUrl = url, headers = stream.behaviorHints?.proxyHeaders?.request.orEmpty())
-            }
-            if (stream != null && hash != null) {
-                torrents[channel.streamUrl] = stream
-                pendingTorrentChannel = channel.streamUrl
-                pendingTorrentAtMs = SystemClock.elapsedRealtime()
-                opened[id] = slot
-                onProgrammesChanged()
-                return channel.copy(streamUrl = "torrent://$hash", headers = emptyMap())
+            if (stream != null && (url != null || hash != null)) {
+                val effectiveSlot = if (index != initialIndex) {
+                    val shiftDelta = now - slot.startMs
+                    val updatedSlots = slots.mapIndexed { idx, s ->
+                        if (idx < index) {
+                            s
+                        } else {
+                            s.copy(startMs = s.startMs + shiftDelta, endMs = s.endMs + shiftDelta)
+                        }
+                    }
+                    slotsById = slotsById + (id to updatedSlots)
+                    store?.let { s ->
+                        val state = s.state(id)
+                        s.saveSchedule(id, updatedSlots, state)
+                    }
+                    slot.copy(startMs = slot.startMs + shiftDelta, endMs = slot.endMs + shiftDelta)
+                } else {
+                    slot
+                }
+
+                if (url != null) {
+                    torrents.remove(channel.streamUrl)
+                    pendingTorrentChannel = null
+                    opened[id] = effectiveSlot
+                    onProgrammesChanged()
+                    return channel.copy(streamUrl = url, headers = stream.behaviorHints?.proxyHeaders?.request.orEmpty())
+                } else {
+                    torrents[channel.streamUrl] = stream
+                    pendingTorrentChannel = channel.streamUrl
+                    pendingTorrentAtMs = SystemClock.elapsedRealtime()
+                    opened[id] = effectiveSlot
+                    onProgrammesChanged()
+                    return channel.copy(streamUrl = "torrent://$hash", headers = emptyMap())
+                }
             }
             index++
             tries++

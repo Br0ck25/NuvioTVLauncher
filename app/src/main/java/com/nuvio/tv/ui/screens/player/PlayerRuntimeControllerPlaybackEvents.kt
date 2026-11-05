@@ -902,6 +902,12 @@ internal fun PlayerRuntimeController.currentWatchProgress(
 )
 
 internal fun PlayerRuntimeController.saveWatchProgressInternal(position: Long, duration: Long, syncRemote: Boolean = true) {
+    if (_playbackTimeline.value.isLive ||
+        LivePlaybackUiPolicy.isLiveContentType(contentType) ||
+        com.nuvio.tv.reshaped.livetv.LiveTvPlaybackRegistry.isLiveTv(initialStreamUrl)
+    ) {
+        return
+    }
     if (contentType.equals("cloud", ignoreCase = true)) {
         saveCloudLibraryProgress(position, duration, completed = false)
         return

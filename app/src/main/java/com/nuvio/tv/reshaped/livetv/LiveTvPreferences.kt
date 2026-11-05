@@ -16,7 +16,7 @@ object LiveTvPreferences {
     private const val KEY_PREVIEW_SOUND = "live_tv_preview_sound"
     private const val KEY_TORBOX_DOWNLOADS = "live_tv_torbox_downloads"
 
-    private val _enabled = MutableStateFlow(false)
+    private val _enabled = MutableStateFlow(true)
     val enabled: StateFlow<Boolean> = _enabled.asStateFlow()
 
     private val _previews = MutableStateFlow(true)
@@ -39,7 +39,7 @@ object LiveTvPreferences {
         synchronized(this) {
             if (loaded) return
             val prefs = prefs(context)
-            _enabled.value = prefs.getBoolean(KEY_ENABLED, false)
+            _enabled.value = prefs.getBoolean(KEY_ENABLED, true)
             _previews.value = prefs.getBoolean(KEY_PREVIEWS, true)
             _previewSound.value = prefs.getBoolean(KEY_PREVIEW_SOUND, true)
             _torboxDownloads.value = prefs.getBoolean(KEY_TORBOX_DOWNLOADS, true)

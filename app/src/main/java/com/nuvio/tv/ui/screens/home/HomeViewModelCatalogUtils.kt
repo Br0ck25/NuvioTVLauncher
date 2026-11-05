@@ -246,7 +246,7 @@ private fun HomeViewModel.buildDefaultCatalogOrder(addons: List<Addon>): List<St
     addons.forEach { addon ->
         addon.catalogs
             .filterNot {
-                !it.shouldShowOnHome() || isCatalogDisabled(
+                com.nuvio.tv.core.mylists.MyListsDefaultSeed.isRemovedCatalog(it.id, it.apiType) || !it.shouldShowOnHome() || isCatalogDisabled(
                     addonBaseUrl = addon.baseUrl,
                     addonId = addon.id,
                     type = it.apiType,
@@ -293,6 +293,12 @@ internal fun HomeViewModel.disableCatalogKey(
 
 internal fun CatalogDescriptor.shouldShowOnHome(): Boolean {
     if (isSearchOnlyCatalog()) return false
+    if (extraRequired.isNotEmpty()) {
+        val hasUnsatisfied = extraRequired.any { req ->
+            extra.none { it.name.equals(req, ignoreCase = true) && !it.defaultValue.isNullOrBlank() }
+        }
+        if (hasUnsatisfied) return false
+    }
     return !hasExplicitShowInHome || showInHome
 }
 

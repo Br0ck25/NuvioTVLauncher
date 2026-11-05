@@ -71,6 +71,7 @@ class AddonManagerViewModel @Inject constructor(
     private val collectionSyncService: CollectionSyncService,
     private val homeCatalogSettingsSyncService: HomeCatalogSettingsSyncService,
     private val startupSyncService: StartupSyncService,
+    private val myListsTvSyncManager: com.nuvio.tv.core.mylists.MyListsTvSyncManager,
     private val profileManager: ProfileManager,
     private val tmdbCollectionSourceResolver: TmdbCollectionSourceResolver,
     private val traktPublicListSourceResolver: TraktPublicListSourceResolver,
@@ -108,6 +109,7 @@ class AddonManagerViewModel @Inject constructor(
 
     fun requestAddonSyncNow() {
         startupSyncService.requestAddonSyncNow()
+        myListsTvSyncManager.requestSyncInBackground(force = true)
     }
 
     fun onInstallUrlChange(url: String) {
@@ -151,6 +153,9 @@ class AddonManagerViewModel @Inject constructor(
             when (val result = addonRepository.fetchAddon(normalizedUrl)) {
                 is NetworkResult.Success -> {
                     addonRepository.addAddon(normalizedUrl)
+                    if (com.nuvio.tv.core.mylists.MyListsDefaultSeed.isMyListsAddonUrl(normalizedUrl)) {
+                        myListsTvSyncManager.requestSyncInBackground(force = true)
+                    }
                     val addonName = result.data.displayName.ifBlank { result.data.baseUrl }
                     _uiState.update {
                         it.copy(
@@ -204,6 +209,9 @@ class AddonManagerViewModel @Inject constructor(
     fun removeAddon(baseUrl: String) {
         viewModelScope.launch {
             addonRepository.removeAddon(baseUrl)
+            if (com.nuvio.tv.core.mylists.MyListsDefaultSeed.isMyListsAddonUrl(baseUrl)) {
+                myListsTvSyncManager.unlinkAccount()
+            }
         }
     }
 
