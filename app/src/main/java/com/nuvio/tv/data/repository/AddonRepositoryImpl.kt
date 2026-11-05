@@ -307,14 +307,19 @@ class AddonRepositoryImpl(
 
     override fun getInstalledAddons(): Flow<List<Addon>> = installedAddonsFlow
 
-    override suspend fun fetchAddon(baseUrl: String): NetworkResult<Addon> {
+    override suspend fun fetchAddon(baseUrl: String): NetworkResult<Addon> =
+        fetchAddon(baseUrl, cacheControl = null)
+
+    override suspend fun fetchAddon(baseUrl: String, cacheControl: String?): NetworkResult<Addon> {
         val cleanBaseUrl = canonicalizeUrl(baseUrl)
         val queryStart = cleanBaseUrl.indexOf('?')
         val basePath = if (queryStart >= 0) cleanBaseUrl.substring(0, queryStart).trimEnd('/') else cleanBaseUrl
         val baseQuery = if (queryStart >= 0) cleanBaseUrl.substring(queryStart) else ""
         val manifestUrl = "$basePath/manifest.json$baseQuery"
+        val effectiveCacheControl = cacheControl
+            ?: if (MyListsDefaultSeed.isMyListsAddonUrl(cleanBaseUrl)) "no-cache" else null
 
-        return when (val result = safeApiCall(context) { api.getManifest(manifestUrl) }) {
+        return when (val result = safeApiCall(context) { api.getManifest(manifestUrl, cacheControl = effectiveCacheControl) }) {
             is NetworkResult.Success -> {
                 val addon = result.data.toDomain(cleanBaseUrl)
                 if (putCachedManifestIfChanged(cleanBaseUrl, addon)) {

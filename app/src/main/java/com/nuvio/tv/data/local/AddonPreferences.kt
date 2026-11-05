@@ -105,11 +105,21 @@ class AddonPreferences @Inject constructor(
                 targetId
             }
 
+            val installedCustomUrl = if (activePid == 1 || isExplicitlyPaired) {
+                list.firstOrNull {
+                    MyListsDefaultSeed.isMyListsAddonUrl(it) && !MyListsDefaultSeed.isMyListsDefaultUrl(it)
+                }
+            } else null
+
             val activeProfileMyListsUrl = when {
-                resolvedTargetId == MyListsDefaultSeed.DEFAULT_TARGET_ID -> MyListsDefaultSeed.MY_LISTS_DEFAULT_BASE_URL
-                customManifestUrl.isNotBlank() -> canonicalizeUrl(customManifestUrl)
-                resolvedTargetId.isNotBlank() -> "https://mylistsaddon.com/$resolvedTargetId"
-                else -> MyListsDefaultSeed.MY_LISTS_DEFAULT_BASE_URL
+                customManifestUrl.isNotBlank() && !MyListsDefaultSeed.isMyListsDefaultUrl(customManifestUrl) ->
+                    canonicalizeUrl(customManifestUrl)
+                installedCustomUrl != null ->
+                    canonicalizeUrl(installedCustomUrl)
+                resolvedTargetId.isNotBlank() && resolvedTargetId != MyListsDefaultSeed.DEFAULT_TARGET_ID ->
+                    "https://mylistsaddon.com/$resolvedTargetId"
+                else ->
+                    MyListsDefaultSeed.MY_LISTS_DEFAULT_BASE_URL
             }
 
             val withoutMyLists = list.filterNot { MyListsDefaultSeed.isMyListsAddonUrl(it) }

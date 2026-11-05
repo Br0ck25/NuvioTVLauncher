@@ -69,13 +69,14 @@ class CatalogRepositoryImpl @Inject constructor(
             "Fetching catalog addonId=$addonId addonName=$addonName type=$type catalogId=$catalogId skip=$skip skipStep=$skipStep supportsSkip=$supportsSkip url=$url"
         )
 
-        val initialResult = safeApiCall(context) { api.getCatalog(url) }
+        val cacheHeader = if (MyListsDefaultSeed.isMyListsAddonUrl(addonBaseUrl)) "no-cache" else null
+        val initialResult = safeApiCall(context) { api.getCatalog(url, cacheControl = cacheHeader) }
         val effectiveResult = if (
             initialResult is NetworkResult.Error &&
             MyListsDefaultSeed.isMyListsDefaultUrl(addonBaseUrl)
         ) {
             val fallbackUrl = buildCatalogUrl(MyListsDefaultSeed.MY_LISTS_BASE_ORIGIN, type, catalogId, skip, extraArgs)
-            safeApiCall(context) { api.getCatalog(fallbackUrl) }
+            safeApiCall(context) { api.getCatalog(fallbackUrl, cacheControl = cacheHeader) }
         } else {
             initialResult
         }

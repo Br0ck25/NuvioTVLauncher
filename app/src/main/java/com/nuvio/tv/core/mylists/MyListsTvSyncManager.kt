@@ -422,8 +422,10 @@ class MyListsTvSyncManager @Inject constructor(
             val incomingHash = syncResponse.versionHash?.takeIf { it.isNotBlank() }
             val channelIdsSig = syncResponse.channels?.joinToString(",") { it.id }.orEmpty()
             val catalogOrderSig = (syncResponse.catalogOrder ?: syncResponse.catalogIds)?.joinToString(",").orEmpty()
+            val manifestUrlSig = syncResponse.manifestUrl?.trim().orEmpty()
             val effectiveIncomingHash = listOfNotNull(
                 incomingHash,
+                manifestUrlSig.takeIf { it.isNotBlank() },
                 channelIdsSig.takeIf { it.isNotBlank() },
                 catalogOrderSig.takeIf { it.isNotBlank() }
             ).joinToString("::")
@@ -451,7 +453,7 @@ class MyListsTvSyncManager @Inject constructor(
             if (targetManifestUrl != null) {
                 val cleanBaseUrl = canonicalizeManifestBaseUrl(targetManifestUrl)
                 replaceMyListsAddonUrl(cleanBaseUrl)
-                when (val fetchResult = addonRepository.fetchAddon(cleanBaseUrl)) {
+                when (val fetchResult = addonRepository.fetchAddon(cleanBaseUrl, cacheControl = "no-cache")) {
                     is NetworkResult.Success -> refreshedAddon = fetchResult.data
                     else -> Log.w(TAG, "Manifest hot-reload failed for $cleanBaseUrl, using installed state")
                 }
