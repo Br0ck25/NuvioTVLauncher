@@ -1180,7 +1180,11 @@
     <string name="layout_preset_standard">Standard</string>
     <string name="layout_preset_balanced">Balanced</string>
     <string name="layout_preset_comfort">Comfort</string>
+    <string name="layout_preset_very_small">Very Small</string>
+    <string name="layout_preset_small">Small</string>
+    <string name="layout_preset_medium">Medium</string>
     <string name="layout_preset_large">Large</string>
+    <string name="layout_preset_very_large">Very Large</string>
     <string name="layout_memory_only_scroll">Memory-Only Vertical Scroll</string>
     <string name="layout_memory_only_scroll_sub">Skip loading new images while scrolling vertically.</string>
     <string name="layout_preset_sharp">Sharp</string>
@@ -1188,7 +1192,7 @@
     <string name="layout_preset_classic">Classic</string>
     <string name="layout_preset_rounded">Rounded</string>
     <string name="layout_preset_pill">Pill</string>
-    <string name="layout_card_width">Width</string>
+    <string name="layout_card_width">Poster Size</string>
     <string name="layout_card_radius">Corner Radius</string>
     <string name="layout_reset_default">Reset to Default</string>
     <string name="layout_custom">Custom</string>

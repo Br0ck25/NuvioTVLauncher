@@ -46,7 +46,7 @@ data class HomeUiState(
     val focusedPosterBackdropTrailerMuted: Boolean = true,
     val focusedPosterBackdropTrailerPlaybackTarget: FocusedPosterTrailerPlaybackTarget =
         FocusedPosterTrailerPlaybackTarget.HERO_MEDIA,
-    val posterCardWidthDp: Int = 126,
+    val posterCardWidthDp: Int = 104,
     val posterCardHeightDp: Int = 189,
     val posterCardCornerRadiusDp: Int = 12,
     val librarySourceMode: LibrarySourceMode = LibrarySourceMode.LOCAL,

@@ -43,7 +43,7 @@ data class SearchUiState(
     val posterLabelsEnabled: Boolean = true,
     val catalogAddonNameEnabled: Boolean = true,
     val catalogTypeSuffixEnabled: Boolean = true,
-    val posterCardWidthDp: Int = 126,
+    val posterCardWidthDp: Int = 104,
     val posterCardHeightDp: Int = 189,
     val posterCardCornerRadiusDp: Int = 12,
     val recentSearches: List<String> = emptyList(),

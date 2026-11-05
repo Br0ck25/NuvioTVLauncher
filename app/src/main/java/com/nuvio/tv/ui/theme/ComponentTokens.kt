@@ -85,7 +85,7 @@ data class NuvioComponentTokens(
 object NuvioComponents {
     val tokens = NuvioComponentTokens(
         posterCard = NuvioCardComponentTokens(
-            width = 126.dp,
+            width = 104.dp,
             height = 189.dp,
             cornerRadius = 12.dp,
             contentPadding = 8.dp,
