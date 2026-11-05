@@ -1,6 +1,7 @@
 package com.nuvio.tv.data.local
 
 import androidx.datastore.preferences.core.Preferences
+import androidx.datastore.preferences.core.booleanPreferencesKey
 import androidx.datastore.preferences.core.edit
 import androidx.datastore.preferences.core.stringPreferencesKey
 import androidx.datastore.preferences.core.stringSetPreferencesKey
@@ -71,16 +72,55 @@ class AddonPreferences @Inject constructor(
         return listOf(MyListsDefaultSeed.MY_LISTS_DEFAULT_BASE_URL) + urls
     }
 
-    val installedAddonUrls: Flow<List<String>> = effectiveProfileIdFlow.flatMapLatest { pid ->
-        factory.get(pid, FEATURE).data.map { preferences ->
-            val json = preferences[orderedUrlsKey]
+    val installedAddonUrls: Flow<List<String>> = combine(
+        effectiveProfileIdFlow,
+        profileManager.activeProfileId
+    ) { sharedAddonPid, activePid ->
+        sharedAddonPid to activePid
+    }.flatMapLatest { (sharedAddonPid, activePid) ->
+        combine(
+            factory.get(sharedAddonPid, FEATURE).data,
+            factory.get(activePid, "my_lists_tv_sync").data
+        ) { sharedPrefs, myListsPrefs ->
+            val json = sharedPrefs[orderedUrlsKey]
             val list = if (json != null) {
                 parseUrlList(json)
             } else {
-                val legacySet = preferences[legacyUrlsKey] ?: getDefaultAddons()
+                val legacySet = sharedPrefs[legacyUrlsKey] ?: getDefaultAddons()
                 legacySet.toList()
             }
-            ensureMyListsAddonPresent(list)
+
+            val targetId = myListsPrefs[stringPreferencesKey("my_lists_target_id")]?.trim().orEmpty()
+            val customManifestUrl = myListsPrefs[stringPreferencesKey("manifest_url")]?.trim().orEmpty()
+            val isExplicitlyPaired = myListsPrefs[booleanPreferencesKey("is_explicitly_paired")] == true
+
+            val resolvedTargetId = if (activePid != 1 && !isExplicitlyPaired && targetId.isNotBlank() && targetId != MyListsDefaultSeed.DEFAULT_TARGET_ID) {
+                val primaryTarget = factory.get(1, "my_lists_tv_sync").data.first()[stringPreferencesKey("my_lists_target_id")]?.trim().orEmpty()
+                if (primaryTarget.isNotBlank() && targetId == primaryTarget) {
+                    MyListsDefaultSeed.DEFAULT_TARGET_ID
+                } else {
+                    targetId
+                }
+            } else {
+                targetId
+            }
+
+            val activeProfileMyListsUrl = when {
+                resolvedTargetId == MyListsDefaultSeed.DEFAULT_TARGET_ID -> MyListsDefaultSeed.MY_LISTS_DEFAULT_BASE_URL
+                customManifestUrl.isNotBlank() -> canonicalizeUrl(customManifestUrl)
+                resolvedTargetId.isNotBlank() -> "https://mylistsaddon.com/$resolvedTargetId"
+                else -> MyListsDefaultSeed.MY_LISTS_DEFAULT_BASE_URL
+            }
+
+            val withoutMyLists = list.filterNot { MyListsDefaultSeed.isMyListsAddonUrl(it) }
+            val existingIndex = list.indexOfFirst { MyListsDefaultSeed.isMyListsAddonUrl(it) }
+            val result = withoutMyLists.toMutableList()
+            if (existingIndex in 0..result.size) {
+                result.add(existingIndex, activeProfileMyListsUrl)
+            } else {
+                result.add(0, activeProfileMyListsUrl)
+            }
+            result.distinct()
         }
     }
 

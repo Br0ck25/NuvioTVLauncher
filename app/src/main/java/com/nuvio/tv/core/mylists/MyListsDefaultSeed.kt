@@ -21,6 +21,7 @@ object MyListsDefaultSeed {
     const val MY_LISTS_DEFAULT_BASE_URL = "$MY_LISTS_BASE_ORIGIN/nuvio-default"
     const val MY_LISTS_DEFAULT_MANIFEST_URL = "$MY_LISTS_DEFAULT_BASE_URL/manifest.json"
     const val MY_LISTS_DEFAULT_SYNC_URL = "$MY_LISTS_BASE_ORIGIN/api/nuvio-tv/sync/default"
+    const val DEFAULT_TARGET_ID = "default"
     const val MY_LISTS_DEFAULT_COLLECTIONS_ASSET = "my_lists_default_collections.json"
 
     const val CINEMETA_BASE_URL = "https://v3-cinemeta.strem.io"

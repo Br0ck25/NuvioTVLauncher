@@ -38,6 +38,7 @@ import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.SupervisorJob
 import kotlinx.coroutines.flow.Flow
+import kotlinx.coroutines.flow.flowOf
 import kotlinx.coroutines.flow.SharingStarted
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.first
@@ -204,13 +205,21 @@ class LayoutPreferenceDataStore @Inject constructor(
     val homeCatalogOrderKeys: Flow<List<String>> = profileManager.activeProfileId.flatMapLatest { pid ->
         val profile = profileManager.profiles.value.find { it.id == pid }
         val usePrimary = profile != null && !profile.isPrimary && profile.usesPrimaryAddons
-        val effectivePid = if (usePrimary) 1 else pid
-        factory.get(effectivePid, FEATURE).data.map { prefs ->
+        factory.get(pid, FEATURE).data.flatMapLatest { prefs ->
             val raw = prefs.getStringOrMigrateSet(homeCatalogOrderKeysKey)
             if (raw != null) {
-                parseCatalogKeys(raw).filterNot { MyListsDefaultSeed.isRemovedCatalogKey(it) }
+                flowOf(parseCatalogKeys(raw).filterNot { MyListsDefaultSeed.isRemovedCatalogKey(it) })
+            } else if (usePrimary) {
+                factory.get(1, FEATURE).data.map { primaryPrefs ->
+                    val primaryRaw = primaryPrefs.getStringOrMigrateSet(homeCatalogOrderKeysKey)
+                    if (primaryRaw != null) {
+                        parseCatalogKeys(primaryRaw).filterNot { MyListsDefaultSeed.isRemovedCatalogKey(it) }
+                    } else {
+                        MyListsDefaultSeed.DEFAULT_HOME_CATALOG_ORDER_KEYS
+                    }
+                }
             } else {
-                MyListsDefaultSeed.DEFAULT_HOME_CATALOG_ORDER_KEYS
+                flowOf(MyListsDefaultSeed.DEFAULT_HOME_CATALOG_ORDER_KEYS)
             }
         }
     }
@@ -218,18 +227,32 @@ class LayoutPreferenceDataStore @Inject constructor(
     val disabledHomeCatalogKeys: Flow<List<String>> = profileManager.activeProfileId.flatMapLatest { pid ->
         val profile = profileManager.profiles.value.find { it.id == pid }
         val usePrimary = profile != null && !profile.isPrimary && profile.usesPrimaryAddons
-        val effectivePid = if (usePrimary) 1 else pid
-        factory.get(effectivePid, FEATURE).data.map { prefs ->
+        factory.get(pid, FEATURE).data.flatMapLatest { prefs ->
             val raw = prefs.getStringOrMigrateSet(disabledHomeCatalogKeysKey)
             if (raw != null) {
                 val list = parseCatalogKeys(raw).filterNot { MyListsDefaultSeed.isRemovedCatalogKey(it) }
-                if (prefs[cinemetaVideosDisabledMigratedKey] != true) {
+                val result = if (prefs[cinemetaVideosDisabledMigratedKey] != true) {
                     (list + MyListsDefaultSeed.CINEMETA_VIDEO_CATALOG_KEYS).distinct()
                 } else {
                     list
                 }
+                flowOf(result)
+            } else if (usePrimary) {
+                factory.get(1, FEATURE).data.map { primaryPrefs ->
+                    val primaryRaw = primaryPrefs.getStringOrMigrateSet(disabledHomeCatalogKeysKey)
+                    if (primaryRaw != null) {
+                        val list = parseCatalogKeys(primaryRaw).filterNot { MyListsDefaultSeed.isRemovedCatalogKey(it) }
+                        if (primaryPrefs[cinemetaVideosDisabledMigratedKey] != true) {
+                            (list + MyListsDefaultSeed.CINEMETA_VIDEO_CATALOG_KEYS).distinct()
+                        } else {
+                            list
+                        }
+                    } else {
+                        MyListsDefaultSeed.DEFAULT_DISABLED_STOCK_CATALOG_KEYS
+                    }
+                }
             } else {
-                MyListsDefaultSeed.DEFAULT_DISABLED_STOCK_CATALOG_KEYS
+                flowOf(MyListsDefaultSeed.DEFAULT_DISABLED_STOCK_CATALOG_KEYS)
             }
         }
     }
@@ -237,9 +260,17 @@ class LayoutPreferenceDataStore @Inject constructor(
     val customCatalogTitles: Flow<Map<String, String>> = profileManager.activeProfileId.flatMapLatest { pid ->
         val profile = profileManager.profiles.value.find { it.id == pid }
         val usePrimary = profile != null && !profile.isPrimary && profile.usesPrimaryAddons
-        val effectivePid = if (usePrimary) 1 else pid
-        factory.get(effectivePid, FEATURE).data.map { prefs ->
-            parseCustomTitles(prefs.getStringOrMigrateSet(customCatalogTitlesKey))
+        factory.get(pid, FEATURE).data.flatMapLatest { prefs ->
+            val raw = prefs.getStringOrMigrateSet(customCatalogTitlesKey)
+            if (raw != null) {
+                flowOf(parseCustomTitles(raw))
+            } else if (usePrimary) {
+                factory.get(1, FEATURE).data.map { primaryPrefs ->
+                    parseCustomTitles(primaryPrefs.getStringOrMigrateSet(customCatalogTitlesKey))
+                }
+            } else {
+                flowOf(emptyMap())
+            }
         }
     }
 

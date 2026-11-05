@@ -4,6 +4,7 @@ import android.os.SystemClock
 import android.util.Log
 import androidx.annotation.Keep
 import androidx.datastore.preferences.core.Preferences
+import androidx.datastore.preferences.core.booleanPreferencesKey
 import androidx.datastore.preferences.core.edit
 import androidx.datastore.preferences.core.stringPreferencesKey
 import com.google.gson.Gson
@@ -30,6 +31,7 @@ import kotlinx.coroutines.flow.Flow
 import kotlinx.coroutines.flow.MutableSharedFlow
 import kotlinx.coroutines.flow.SharedFlow
 import kotlinx.coroutines.flow.asSharedFlow
+import kotlinx.coroutines.flow.combine
 import kotlinx.coroutines.flow.first
 import kotlinx.coroutines.flow.flatMapLatest
 import kotlinx.coroutines.flow.map
@@ -121,6 +123,8 @@ class MyListsTvSyncManager @Inject constructor(
     private var lastSyncAttemptElapsedMs: Long = 0L
 
     private val targetIdKey = stringPreferencesKey("my_lists_target_id")
+    private val manifestUrlKey = stringPreferencesKey("manifest_url")
+    private val isExplicitlyPairedKey = booleanPreferencesKey("is_explicitly_paired")
     private val lastVersionHashKey = stringPreferencesKey("last_version_hash")
     private val knownCatalogKeysKey = stringPreferencesKey("known_catalog_keys_json")
     private val knownCollectionIdsKey = stringPreferencesKey("known_collection_ids_json")
@@ -129,27 +133,48 @@ class MyListsTvSyncManager @Inject constructor(
     private val _syncRefreshEvents = MutableSharedFlow<Unit>(extraBufferCapacity = 1)
     val syncRefreshEvents: SharedFlow<Unit> = _syncRefreshEvents.asSharedFlow()
 
-    private fun effectiveProfileId(): Int {
-        val active = profileManager.activeProfile
-        return if (active != null && active.usesPrimaryAddons) 1 else profileManager.activeProfileId.value
-    }
-
-    private fun store(profileId: Int = effectiveProfileId()) =
-        factory.get(profileId, FEATURE)
-
-    val targetIdFlow: Flow<String> = profileManager.activeProfileId.flatMapLatest { pid ->
-        val profile = profileManager.profiles.value.find { it.id == pid }
-        val effectivePid = if (profile != null && !profile.isPrimary && profile.usesPrimaryAddons) 1 else pid
-        factory.get(effectivePid, FEATURE).data.map { prefs ->
-            prefs[targetIdKey]?.takeIf { it.isNotBlank() } ?: DEFAULT_TARGET_ID
+    init {
+        scope.launch {
+            profileManager.activeProfileId.collect { profileId ->
+                Log.d(TAG, "Active profile changed to $profileId: resetting rate limit and requesting sync")
+                lastSyncAttemptElapsedMs = 0L
+                runCatching {
+                    syncIfNeeded(force = true)
+                }
+            }
         }
     }
 
-    val channelsFlow: Flow<List<MyListsTvChannel>> = profileManager.activeProfileId.flatMapLatest { pid ->
-        val profile = profileManager.profiles.value.find { it.id == pid }
-        val effectivePid = if (profile != null && !profile.isPrimary && profile.usesPrimaryAddons) 1 else pid
-        factory.get(effectivePid, FEATURE).data.map { prefs ->
-            val isCustom = (prefs[targetIdKey]?.trim() ?: DEFAULT_TARGET_ID) != DEFAULT_TARGET_ID
+    private fun currentProfileId(): Int = profileManager.activeProfileId.value
+
+    private fun store(profileId: Int = currentProfileId()) =
+        factory.get(profileId, FEATURE)
+
+    val targetIdFlow: Flow<String> = profileManager.activeProfileId.flatMapLatest { pid ->
+        factory.get(pid, FEATURE).data.map { prefs ->
+            val stored = prefs[targetIdKey]?.trim().orEmpty()
+            if (stored.isNotBlank() && stored != DEFAULT_TARGET_ID) {
+                if (pid != 1 && prefs[isExplicitlyPairedKey] != true) {
+                    val primaryTarget = factory.get(1, FEATURE).data.first()[targetIdKey]?.trim().orEmpty()
+                    if (primaryTarget.isNotBlank() && primaryTarget != DEFAULT_TARGET_ID && stored == primaryTarget) {
+                        return@map DEFAULT_TARGET_ID
+                    }
+                }
+                stored
+            } else {
+                DEFAULT_TARGET_ID
+            }
+        }
+    }
+
+    val channelsFlow: Flow<List<MyListsTvChannel>> = combine(
+        profileManager.activeProfileId,
+        targetIdFlow
+    ) { pid, targetId ->
+        pid to targetId
+    }.flatMapLatest { (pid, targetId) ->
+        factory.get(pid, FEATURE).data.map { prefs ->
+            val isCustom = targetId.isNotBlank() && targetId != DEFAULT_TARGET_ID
             parseChannels(prefs[channelsJsonKey], isCustomAccount = isCustom)
         }
     }
@@ -183,25 +208,36 @@ class MyListsTvSyncManager @Inject constructor(
             prefs[targetIdKey] = normalized
             if (previous != normalized) {
                 prefs.remove(lastVersionHashKey)
+                if (normalized == DEFAULT_TARGET_ID) {
+                    prefs.remove(manifestUrlKey)
+                    prefs.remove(isExplicitlyPairedKey)
+                }
             }
         }
     }
 
     suspend fun linkAccount(targetId: String, manifestUrl: String? = null) {
         val normalizedTarget = targetId.trim().ifBlank { DEFAULT_TARGET_ID }
+        val cleanManifest = manifestUrl?.takeIf { it.isNotBlank() }?.let(::canonicalizeManifestBaseUrl)
         store().edit { prefs ->
             prefs[targetIdKey] = normalizedTarget
+            prefs[isExplicitlyPairedKey] = true
+            if (cleanManifest != null) {
+                prefs[manifestUrlKey] = cleanManifest
+            } else {
+                prefs.remove(manifestUrlKey)
+            }
             prefs.remove(lastVersionHashKey)
         }
-        if (!manifestUrl.isNullOrBlank()) {
-            replaceMyListsAddonUrl(manifestUrl)
-        }
+        replaceMyListsAddonUrl(cleanManifest ?: "https://mylistsaddon.com/$normalizedTarget")
         syncIfNeeded(force = true)
     }
 
     suspend fun unlinkAccount() {
         store().edit { prefs ->
             prefs[targetIdKey] = DEFAULT_TARGET_ID
+            prefs.remove(manifestUrlKey)
+            prefs.remove(isExplicitlyPairedKey)
             prefs.remove(lastVersionHashKey)
             prefs[channelsJsonKey] = gson.toJson(MyListsDefaultSeed.DEFAULT_QUICK_ADD_CHANNELS)
         }
@@ -256,20 +292,24 @@ class MyListsTvSyncManager @Inject constructor(
     }
 
     suspend fun syncIfNeeded(force: Boolean = false): Boolean = withContext(Dispatchers.IO) {
+        val syncProfileId = profileManager.activeProfileId.value
         val nowElapsed = SystemClock.elapsedRealtime()
         if (!force && lastSyncAttemptElapsedMs > 0L && nowElapsed - lastSyncAttemptElapsedMs < MIN_AUTO_SYNC_INTERVAL_MS) {
             return@withContext false
         }
         syncMutex.withLock {
+            if (profileManager.activeProfileId.value != syncProfileId) {
+                return@withLock false
+            }
             val lockedNow = SystemClock.elapsedRealtime()
             if (!force && lastSyncAttemptElapsedMs > 0L && lockedNow - lastSyncAttemptElapsedMs < MIN_AUTO_SYNC_INTERVAL_MS) {
                 return@withLock false
             }
             lastSyncAttemptElapsedMs = lockedNow
 
-            val currentStore = store()
+            val currentStore = factory.get(syncProfileId, FEATURE)
             val prefs = currentStore.data.first()
-            val effectiveTarget = resolveEffectiveTargetId(prefs)
+            val effectiveTarget = resolveEffectiveTargetId(prefs, syncProfileId)
             val lastHash = prefs[lastVersionHashKey]
 
             val syncResponse = fetchSyncPayload(effectiveTarget) ?: return@withLock false
@@ -283,17 +323,18 @@ class MyListsTvSyncManager @Inject constructor(
             ).joinToString("::")
 
             if (!force && effectiveIncomingHash.isNotBlank() && effectiveIncomingHash == lastHash) {
-                Log.d(TAG, "My Lists sync up-to-date (target=$effectiveTarget hash=$effectiveIncomingHash)")
+                Log.d(TAG, "My Lists sync up-to-date (profile=$syncProfileId target=$effectiveTarget hash=$effectiveIncomingHash)")
                 return@withLock false
             }
 
             Log.d(
                 TAG,
-                "Applying My Lists sync update target=$effectiveTarget oldHash=$lastHash newHash=$effectiveIncomingHash force=$force"
+                "Applying My Lists sync update profile=$syncProfileId target=$effectiveTarget oldHash=$lastHash newHash=$effectiveIncomingHash force=$force"
             )
 
             // 1. Hot-reload manifest & update installed My Lists addon URL in-place if needed
             val targetManifestUrl = syncResponse.manifestUrl?.takeIf { it.isNotBlank() }
+                ?: prefs[manifestUrlKey]?.takeIf { it.isNotBlank() }
                 ?: if (effectiveTarget == DEFAULT_TARGET_ID) {
                     MyListsDefaultSeed.MY_LISTS_DEFAULT_MANIFEST_URL
                 } else {
@@ -308,6 +349,11 @@ class MyListsTvSyncManager @Inject constructor(
                     is NetworkResult.Success -> refreshedAddon = fetchResult.data
                     else -> Log.w(TAG, "Manifest hot-reload failed for $cleanBaseUrl, using installed state")
                 }
+            }
+
+            if (profileManager.activeProfileId.value != syncProfileId) {
+                Log.d(TAG, "Profile changed during sync ($syncProfileId -> ${profileManager.activeProfileId.value}), aborting commit")
+                return@withLock false
             }
 
             if (refreshedAddon == null) {
@@ -368,6 +414,12 @@ class MyListsTvSyncManager @Inject constructor(
             } else {
                 normalizeChannels((channelsFromSync + extraChannels).distinctBy { it.id })
             }
+
+            if (profileManager.activeProfileId.value != syncProfileId) {
+                Log.d(TAG, "Profile changed before edit commit ($syncProfileId -> ${profileManager.activeProfileId.value}), aborting")
+                return@withLock false
+            }
+
             currentStore.edit { editPrefs ->
                 editPrefs[targetIdKey] = effectiveTarget
                 if (effectiveIncomingHash.isNotBlank()) {
@@ -383,21 +435,26 @@ class MyListsTvSyncManager @Inject constructor(
         }
     }
 
-    private suspend fun resolveEffectiveTargetId(prefs: Preferences): String {
+    private suspend fun resolveEffectiveTargetId(prefs: Preferences, profileId: Int): String {
         val storedTarget = prefs[targetIdKey]?.trim().orEmpty()
         if (storedTarget.isNotBlank() && storedTarget != DEFAULT_TARGET_ID) {
-            return storedTarget
-        }
-        // If the user installed a personal mylistsaddon.com URL in AddonManager, infer its token.
-        val installedUrls = addonPreferences.installedAddonUrls.first()
-        val customMyListsUrl = installedUrls.firstOrNull {
-            MyListsDefaultSeed.isMyListsAddonUrl(it) && !MyListsDefaultSeed.isMyListsDefaultUrl(it)
-        }
-        if (customMyListsUrl != null) {
-            val extracted = extractTargetFromManifestUrl(customMyListsUrl)
-            if (!extracted.isNullOrBlank()) {
-                return extracted
+            // Guard against legacy leak: if this is a secondary profile with the same targetId as profile 1
+            // and it was never explicitly paired by the user on this profile, reset to DEFAULT_TARGET_ID.
+            if (profileId != 1 && prefs[isExplicitlyPairedKey] != true) {
+                val primaryStore = factory.get(1, FEATURE)
+                val primaryTarget = primaryStore.data.first()[targetIdKey]?.trim().orEmpty()
+                if (primaryTarget.isNotBlank() && primaryTarget != DEFAULT_TARGET_ID && storedTarget == primaryTarget) {
+                    Log.w(TAG, "Profile $profileId had leaked targetId from primary profile ($storedTarget), resetting to default")
+                    store(profileId).edit {
+                        it[targetIdKey] = DEFAULT_TARGET_ID
+                        it.remove(manifestUrlKey)
+                        it.remove(lastVersionHashKey)
+                        it.remove(isExplicitlyPairedKey)
+                    }
+                    return DEFAULT_TARGET_ID
+                }
             }
+            return storedTarget
         }
         return DEFAULT_TARGET_ID
     }
@@ -468,19 +525,26 @@ class MyListsTvSyncManager @Inject constructor(
 
     private suspend fun replaceMyListsAddonUrl(newUrl: String) {
         val cleanNew = canonicalizeManifestBaseUrl(newUrl)
-        val currentUrls = addonPreferences.installedAddonUrls.first()
-        val existingMyListsIndex = currentUrls.indexOfFirst { MyListsDefaultSeed.isMyListsAddonUrl(it) }
-        if (existingMyListsIndex == -1) {
-            addonPreferences.addAddon(cleanNew)
-            return
+        val profileId = profileManager.activeProfileId.value
+        store(profileId).edit { prefs ->
+            prefs[manifestUrlKey] = cleanNew
         }
-        val existingUrl = canonicalizeManifestBaseUrl(currentUrls[existingMyListsIndex])
-        if (existingUrl.equals(cleanNew, ignoreCase = true)) {
-            return
+        val active = profileManager.activeProfile
+        if (active == null || active.isPrimary || !active.usesPrimaryAddons) {
+            val currentUrls = addonPreferences.installedAddonUrls.first()
+            val existingMyListsIndex = currentUrls.indexOfFirst { MyListsDefaultSeed.isMyListsAddonUrl(it) }
+            if (existingMyListsIndex == -1) {
+                addonPreferences.addAddon(cleanNew)
+                return
+            }
+            val existingUrl = canonicalizeManifestBaseUrl(currentUrls[existingMyListsIndex])
+            if (existingUrl.equals(cleanNew, ignoreCase = true)) {
+                return
+            }
+            val updatedUrls = currentUrls.toMutableList()
+            updatedUrls[existingMyListsIndex] = cleanNew
+            addonPreferences.setAddonOrder(updatedUrls.distinct())
         }
-        val updatedUrls = currentUrls.toMutableList()
-        updatedUrls[existingMyListsIndex] = cleanNew
-        addonPreferences.setAddonOrder(updatedUrls.distinct())
     }
 
     private suspend fun applyCollectionsSync(
