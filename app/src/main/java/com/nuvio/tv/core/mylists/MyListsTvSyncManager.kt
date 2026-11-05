@@ -604,7 +604,15 @@ class MyListsTvSyncManager @Inject constructor(
         syncedCollectionIds: List<String>,
         previousKnownCollectionIds: List<String>
     ): List<String> {
-        val homeCatalogs = addon.catalogs.filterNot { it.isSearchOnlyCatalog() }
+        val isCustom = !MyListsDefaultSeed.isMyListsDefaultUrl(addon.baseUrl)
+        val homeCatalogs = if (syncCatalogOrder != null && isCustom) {
+            val allowedIds = syncCatalogOrder.toSet()
+            addon.catalogs
+                .filterNot { it.isSearchOnlyCatalog() }
+                .filter { it.id in allowedIds }
+        } else {
+            addon.catalogs.filterNot { it.isSearchOnlyCatalog() }
+        }
         val orderRank = syncCatalogOrder
             ?.withIndex()
             ?.associate { (idx, id) -> id to idx }
@@ -630,7 +638,6 @@ class MyListsTvSyncManager @Inject constructor(
             "${addon.id}_series_chart:trakt:boxoffice_tv",
             "${addon.baseUrl}_series_chart:trakt:boxoffice_tv_Trakt Box Office"
         )
-        val isCustom = !MyListsDefaultSeed.isMyListsDefaultUrl(addon.baseUrl)
         val defaultSeedKeys = MyListsDefaultSeed.DEFAULT_HOME_CATALOG_KEYS.toSet()
         val removedCatalogKeys = (
             previousKnownCatalogKeys.filter { it !in newSet } +
