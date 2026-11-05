@@ -313,13 +313,19 @@ internal object ListChannels {
             } else {
                 channel.category.trim()
             }
+            val rawLogo = channel.logoUrl?.trim().orEmpty()
+            val isLikelyPoster = rawLogo.contains("format=poster") ||
+                (rawLogo.contains("/p/w") && !rawLogo.contains("logo", ignoreCase = true))
+            val resolvedLogo = if (isLikelyPoster) null else MyListsDefaultSeed.resolveChannelLogoUrl(channel.logoUrl, channel.name)
+            val backdrop = channel.backdropUrl?.takeIf { it.isNotBlank() }
+            val fallbackLandscape = MyListsDefaultSeed.resolveChannelBackdropUrl(channel.name)
+
             LiveTvChannel(
                 id = listChannelGuideKey(internalId),
                 name = channel.name,
-                logoUrl = MyListsDefaultSeed.resolveChannelLogoUrl(channel.logoUrl, channel.name)
-                    ?: channel.backdropUrl?.takeIf { it.isNotBlank() }
-                    ?: channel.posterUrl?.takeIf { it.isNotBlank() }
-                    ?: MyListsDefaultSeed.resolveChannelBackdropUrl(channel.name),
+                logoUrl = resolvedLogo
+                    ?: backdrop
+                    ?: fallbackLandscape,
                 streamUrl = listChannelUrl(internalId),
                 group = group,
                 sourceId = LIST_CHANNELS_SOURCE_ID,
@@ -331,6 +337,7 @@ internal object ListChannels {
             LiveTvChannel(
                 id = listChannelGuideKey(channel.id),
                 name = channel.name,
+                logoUrl = MyListsDefaultSeed.resolveChannelBackdropUrl(channel.name),
                 streamUrl = listChannelUrl(channel.id),
                 group = LIST_CHANNELS_GROUP,
                 sourceId = LIST_CHANNELS_SOURCE_ID,
@@ -348,11 +355,10 @@ internal object ListChannels {
             val rawId = stripMyListsChannelInternalId(id)
             val ch = myListsChannels.firstOrNull { it.id == rawId } ?: return null
             return ch.backdropUrl?.takeIf { it.isNotBlank() }
-                ?: ch.posterUrl?.takeIf { it.isNotBlank() }
-                ?: ch.logoUrl?.takeIf { it.isNotBlank() }
                 ?: MyListsDefaultSeed.resolveChannelBackdropUrl(ch.name)
         }
-        return null
+        val local = _channels.value.firstOrNull { it.id == id } ?: return null
+        return MyListsDefaultSeed.resolveChannelBackdropUrl(local.name)
     }
 
     // endregion

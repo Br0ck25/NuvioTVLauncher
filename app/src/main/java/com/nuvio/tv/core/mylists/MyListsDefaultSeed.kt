@@ -184,11 +184,15 @@ object MyListsDefaultSeed {
     fun resolveChannelBackdropUrl(channelName: String, fallbackUrl: String? = null): String {
         val clean = fallbackUrl?.trim()?.takeIf { it.isNotEmpty() }
         if (clean != null) {
-            return when {
+            val resolved = when {
                 clean.startsWith("http://", ignoreCase = true) || clean.startsWith("https://", ignoreCase = true) -> clean.replace("https://prewarm.internal", MY_LISTS_BASE_ORIGIN)
                 clean.startsWith("/") -> "$MY_LISTS_BASE_ORIGIN$clean"
                 else -> "$MY_LISTS_BASE_ORIGIN/$clean"
             }
+            if (resolved.contains("/api/channel-poster") && !resolved.contains("format=landscape")) {
+                return if (resolved.contains("?")) "$resolved&format=landscape" else "$resolved?format=landscape"
+            }
+            return resolved
         }
         val encoded = URLEncoder.encode(channelName.trim().ifBlank { "Channel" }, "UTF-8")
         return "$MY_LISTS_BASE_ORIGIN/api/channel-poster?name=$encoded&format=landscape&v=6"
