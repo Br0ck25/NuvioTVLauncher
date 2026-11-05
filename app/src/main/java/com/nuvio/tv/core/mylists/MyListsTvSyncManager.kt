@@ -577,7 +577,7 @@ class MyListsTvSyncManager @Inject constructor(
         // Auto-enable any newly added My Lists catalogs and ensure removed keys are disabled
         val currentDisabled = layoutPreferenceDataStore.disabledHomeCatalogKeys.first().toMutableSet()
         val disabledRemoved = currentDisabled.removeAll(addedCatalogKeys.toSet())
-        val disabledAdded = currentDisabled.addAll(extraRemovedCatalogKeys)
+        val disabledAdded = currentDisabled.addAll(removedCatalogKeys)
         if (disabledRemoved || disabledAdded) {
             layoutPreferenceDataStore.setDisabledHomeCatalogKeys(currentDisabled.toList())
         }
