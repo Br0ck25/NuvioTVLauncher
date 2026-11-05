@@ -142,6 +142,7 @@ class WatchProgressRepositoryImpl @Inject constructor(
     private val trackingHistoryWriters: TrackingHistoryWriterRegistry,
     private val mutationStore: WatchStateMutationStore,
     private val serverWatched: ServerWatched,
+    private val myListsTvSyncManager: dagger.Lazy<com.nuvio.tv.core.mylists.MyListsTvSyncManager>? = null
 ) : WatchProgressRepository {
     companion object {
         private const val TAG = "WatchProgressRepo"
@@ -833,6 +834,7 @@ class WatchProgressRepositoryImpl @Inject constructor(
         if (progress.isCompleted()) {
             val watchedItem = progress.toWatchedItem()
             watchedItemsPreferences.markAsWatched(watchedItem, profileId = profileId)
+            reportMyListsWatchHistory(progress, profileId)
             if (syncRemote) {
                 mutationStore.queueWatchedUpserts(listOf(watchedItem), profileId)
             }
@@ -872,6 +874,9 @@ class WatchProgressRepositoryImpl @Inject constructor(
             .map { progress -> progress.toWatchedItem() }
         if (completedWatchedItems.isNotEmpty()) {
             watchedItemsPreferences.markAsWatchedBatch(completedWatchedItems, profileId = profileId)
+            progressList.filter { it.isCompleted() }.forEach { progress ->
+                reportMyListsWatchHistory(progress, profileId)
+            }
             if (syncRemote) {
                 mutationStore.queueWatchedUpserts(completedWatchedItems, profileId)
             }
@@ -897,6 +902,13 @@ class WatchProgressRepositoryImpl @Inject constructor(
             }.forEach { operation -> operation.await() }
         }
         watchProgressPreferences.removeProgress(contentId, season, episode, profileId)
+        reportMyListsWatchHistoryRemoval(
+            type = if (season != null || episode != null) "series" else "movie",
+            contentId = contentId,
+            season = season,
+            episode = episode,
+            profileId = profileId
+        )
         if (authManager.isAuthenticated && remoteDeleteKeys.isNotEmpty()) {
             watchProgressSyncService.deleteFromRemote(remoteDeleteKeys, profileId)
                 .onFailure { error ->
@@ -930,6 +942,13 @@ class WatchProgressRepositoryImpl @Inject constructor(
         )
         watchProgressPreferences.removeProgress(contentId, season, episode, profileId)
         watchedItemsPreferences.unmarkAsWatched(contentId, season, episode, profileId = profileId)
+        reportMyListsWatchHistoryRemoval(
+            type = if (season != null || episode != null) "series" else "movie",
+            contentId = contentId,
+            season = season,
+            episode = episode,
+            profileId = profileId
+        )
         if (authManager.isAuthenticated && remoteDeleteKeys.isNotEmpty()) {
             watchProgressSyncService.deleteFromRemote(remoteDeleteKeys, profileId)
                 .onFailure { error ->
@@ -986,6 +1005,15 @@ class WatchProgressRepositoryImpl @Inject constructor(
             played = false,
             profileId = profileId
         )
+        episodes.forEach { (season, episode, _) ->
+            reportMyListsWatchHistoryRemoval(
+                type = "series",
+                contentId = contentId,
+                season = season,
+                episode = episode,
+                profileId = profileId
+            )
+        }
         if (authManager.isAuthenticated) {
             watchProgressSyncService.deleteFromRemote(remoteDeleteKeys.distinct(), profileId)
                 .onFailure { error -> Log.w(TAG, "removeFromHistoryBatch remote delete failed", error) }
@@ -1034,6 +1062,7 @@ class WatchProgressRepositoryImpl @Inject constructor(
         val watchedItem = completed.toWatchedItem(watchedAt = now)
         watchedItemsPreferences.markAsWatched(watchedItem, profileId = profileId)
         mutationStore.queueWatchedUpserts(listOf(watchedItem), profileId)
+        reportMyListsWatchHistory(completed, profileId)
         if (broadcastTrackingHistory) {
             broadcastHistoryAdd(profileId, listOf(completed.toTrackingHistoryItem(now)))
             syncServerWatched(listOf(completed.toServerWatchMark()), played = true, profileId = profileId)
@@ -1078,10 +1107,39 @@ class WatchProgressRepositoryImpl @Inject constructor(
         val watchedItems = completedList.map { progress -> progress.toWatchedItem(watchedAt = now) }
         watchedItemsPreferences.markAsWatchedBatch(watchedItems, profileId = profileId)
         mutationStore.queueWatchedUpserts(watchedItems, profileId)
+        completedList.forEach { reportMyListsWatchHistory(it, profileId) }
         broadcastHistoryAdd(profileId, completedList.map { it.toTrackingHistoryItem(now) })
         syncServerWatched(completedList.map { it.toServerWatchMark() }, played = true, profileId = profileId)
         triggerRemoteSync(profileId = profileId)
         triggerWatchedItemsSync(watchedItems, profileId = profileId)
+    }
+
+    private fun reportMyListsWatchHistory(progress: WatchProgress, profileId: Int) {
+        myListsTvSyncManager?.get()?.reportWatchHistory(
+            type = progress.contentType,
+            contentId = progress.contentId,
+            season = progress.season,
+            episode = progress.episode,
+            progressPercent = (progress.progressPercent ?: (progress.progressPercentage * 100f)).toDouble(),
+            completed = true,
+            profileId = profileId
+        )
+    }
+
+    private fun reportMyListsWatchHistoryRemoval(
+        type: String,
+        contentId: String,
+        season: Int?,
+        episode: Int?,
+        profileId: Int
+    ) {
+        myListsTvSyncManager?.get()?.reportWatchHistoryRemoval(
+            type = type,
+            contentId = contentId,
+            season = season,
+            episode = episode,
+            profileId = profileId
+        )
     }
 
     private fun syncServerWatched(marks: List<ServerWatchMark>, played: Boolean, profileId: Int) {

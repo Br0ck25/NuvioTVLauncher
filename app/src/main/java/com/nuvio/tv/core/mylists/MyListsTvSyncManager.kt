@@ -245,6 +245,112 @@ class MyListsTvSyncManager @Inject constructor(
         syncIfNeeded(force = true)
     }
 
+    fun reportWatchHistory(
+        type: String,
+        contentId: String,
+        season: Int? = null,
+        episode: Int? = null,
+        progressPercent: Double = 100.0,
+        completed: Boolean = true,
+        profileId: Int = profileManager.activeProfileId.value
+    ) {
+        scope.launch {
+            runCatching {
+                val store = store(profileId)
+                val prefs = store.data.first()
+                val targetId = prefs[targetIdKey]?.trim().orEmpty()
+                if (targetId.isBlank() || targetId == DEFAULT_TARGET_ID) {
+                    return@runCatching
+                }
+
+                val imdbId = if (contentId.startsWith("tt", ignoreCase = true)) {
+                    contentId.substringBefore(':')
+                } else null
+                val tmdbId = if (!contentId.startsWith("tt", ignoreCase = true)) {
+                    contentId.substringBefore(':').toIntOrNull()
+                } else null
+
+                val json = JSONObject().apply {
+                    put("targetId", targetId)
+                    put("type", if (type.equals("series", ignoreCase = true) || type.equals("tv", ignoreCase = true)) "series" else "movie")
+                    put("contentId", contentId)
+                    if (imdbId != null) put("imdbId", imdbId)
+                    if (tmdbId != null) put("tmdbId", tmdbId)
+                    if (season != null) put("season", season)
+                    if (episode != null) put("episode", episode)
+                    put("progress", progressPercent)
+                    put("completed", completed)
+                    put("watchedAt", System.currentTimeMillis())
+                }
+
+                val body = json.toString().toRequestBody("application/json; charset=utf-8".toMediaType())
+                val request = Request.Builder()
+                    .url("${MyListsDefaultSeed.MY_LISTS_BASE_ORIGIN}/api/nuvio-tv/history")
+                    .header("Origin", MyListsDefaultSeed.MY_LISTS_BASE_ORIGIN)
+                    .header("Referer", "${MyListsDefaultSeed.MY_LISTS_BASE_ORIGIN}/")
+                    .header("X-Nuvio-Client", "NuvioTVLauncher")
+                    .post(body)
+                    .build()
+
+                okHttpClient.newCall(request).execute().use { response ->
+                    if (!response.isSuccessful) {
+                        Log.d(TAG, "Watch history report returned HTTP ${response.code} for $contentId")
+                    } else {
+                        Log.d(TAG, "Watch history successfully reported for $contentId (completed=$completed progress=$progressPercent)")
+                    }
+                }
+            }
+        }
+    }
+
+    fun reportWatchHistoryRemoval(
+        type: String,
+        contentId: String,
+        season: Int? = null,
+        episode: Int? = null,
+        profileId: Int = profileManager.activeProfileId.value
+    ) {
+        scope.launch {
+            runCatching {
+                val store = store(profileId)
+                val prefs = store.data.first()
+                val targetId = prefs[targetIdKey]?.trim().orEmpty()
+                if (targetId.isBlank() || targetId == DEFAULT_TARGET_ID) {
+                    return@runCatching
+                }
+
+                val imdbId = if (contentId.startsWith("tt", ignoreCase = true)) {
+                    contentId.substringBefore(':')
+                } else null
+                val tmdbId = if (!contentId.startsWith("tt", ignoreCase = true)) {
+                    contentId.substringBefore(':').toIntOrNull()
+                } else null
+
+                val json = JSONObject().apply {
+                    put("targetId", targetId)
+                    put("type", if (type.equals("series", ignoreCase = true) || type.equals("tv", ignoreCase = true)) "series" else "movie")
+                    put("contentId", contentId)
+                    if (imdbId != null) put("imdbId", imdbId)
+                    if (tmdbId != null) put("tmdbId", tmdbId)
+                    if (season != null) put("season", season)
+                    if (episode != null) put("episode", episode)
+                    put("action", "remove")
+                }
+
+                val body = json.toString().toRequestBody("application/json; charset=utf-8".toMediaType())
+                val request = Request.Builder()
+                    .url("${MyListsDefaultSeed.MY_LISTS_BASE_ORIGIN}/api/nuvio-tv/history/remove")
+                    .header("Origin", MyListsDefaultSeed.MY_LISTS_BASE_ORIGIN)
+                    .header("Referer", "${MyListsDefaultSeed.MY_LISTS_BASE_ORIGIN}/")
+                    .header("X-Nuvio-Client", "NuvioTVLauncher")
+                    .post(body)
+                    .build()
+
+                okHttpClient.newCall(request).execute().close()
+            }
+        }
+    }
+
     suspend fun requestDeviceCode(): Result<MyListsDeviceCodeResponse> = withContext(Dispatchers.IO) {
         runCatching {
             val url = "${MyListsDefaultSeed.MY_LISTS_BASE_ORIGIN}/api/nuvio-tv/device/code"
