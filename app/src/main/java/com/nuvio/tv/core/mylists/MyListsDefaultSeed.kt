@@ -412,6 +412,43 @@ object MyListsDefaultSeed {
         }.distinct()
     }
 
+    fun isCollectionCatalogSource(
+        collections: List<Collection>,
+        addonId: String,
+        type: String,
+        catalogId: String
+    ): Boolean {
+        if (addonId.equals(MY_LISTS_COLLECTIONS_ADDON_ID, ignoreCase = true)) {
+            return true
+        }
+        return collections.any { col ->
+            col.folders.any { folder ->
+                folder.catalogSources.any { src ->
+                    (src.catalogId.equals(catalogId, ignoreCase = true) ||
+                        src.catalogId.replace("-", "").equals(catalogId.replace("-", ""), ignoreCase = true)) &&
+                        src.type.equals(type, ignoreCase = true)
+                }
+            }
+        }
+    }
+
+    fun extractCollectionCatalogKeys(collections: List<Collection>, addonId: String = MY_LISTS_ADDON_ID): Set<String> {
+        val keys = mutableSetOf<String>()
+        collections.forEach { col ->
+            col.folders.forEach { folder ->
+                folder.catalogSources.forEach { src ->
+                    keys.add(homeCatalogKey(src.addonId, src.type, src.catalogId))
+                    keys.add(homeCatalogKey(addonId, src.type, src.catalogId))
+                    keys.add(homeCatalogKey(MY_LISTS_COLLECTIONS_ADDON_ID, src.type, src.catalogId))
+                    keys.add("${src.addonId}_${src.type}_${src.catalogId}")
+                    keys.add("${addonId}_${src.type}_${src.catalogId}")
+                    keys.add("${MY_LISTS_COLLECTIONS_ADDON_ID}_${src.type}_${src.catalogId}")
+                }
+            }
+        }
+        return keys
+    }
+
     fun buildDefaultMyListsAddon(
         baseUrl: String = MY_LISTS_DEFAULT_BASE_URL,
         enabled: Boolean = true

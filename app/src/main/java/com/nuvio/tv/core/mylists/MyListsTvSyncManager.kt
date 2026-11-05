@@ -710,14 +710,20 @@ class MyListsTvSyncManager @Inject constructor(
         syncedCollectionIds: List<String>,
         previousKnownCollectionIds: List<String>
     ): List<String> {
+        val allCollections = collectionsDataStore.getCurrentCollections()
+        val collectionCatalogKeys = MyListsDefaultSeed.extractCollectionCatalogKeys(allCollections, addon.id)
+
         val isCustom = !MyListsDefaultSeed.isMyListsDefaultUrl(addon.baseUrl)
         val homeCatalogs = if (syncCatalogOrder != null && isCustom) {
             val allowedIds = syncCatalogOrder.toSet()
             addon.catalogs
                 .filterNot { it.isSearchOnlyCatalog() }
                 .filter { it.id in allowedIds }
+                .filterNot { MyListsDefaultSeed.isCollectionCatalogSource(allCollections, addon.id, it.apiType, it.id) }
         } else {
-            addon.catalogs.filterNot { it.isSearchOnlyCatalog() }
+            addon.catalogs
+                .filterNot { it.isSearchOnlyCatalog() }
+                .filterNot { MyListsDefaultSeed.isCollectionCatalogSource(allCollections, addon.id, it.apiType, it.id) }
         }
         val orderRank = syncCatalogOrder
             ?.withIndex()
@@ -754,7 +760,7 @@ class MyListsTvSyncManager @Inject constructor(
         // Auto-enable any newly added My Lists catalogs and ensure removed keys are disabled
         val currentDisabled = layoutPreferenceDataStore.disabledHomeCatalogKeys.first().toMutableSet()
         val disabledRemoved = currentDisabled.removeAll(addedCatalogKeys.toSet())
-        val disabledAdded = currentDisabled.addAll(extraRemovedCatalogKeys)
+        val disabledAdded = currentDisabled.addAll(extraRemovedCatalogKeys + collectionCatalogKeys)
         if (disabledRemoved || disabledAdded) {
             layoutPreferenceDataStore.setDisabledHomeCatalogKeys(currentDisabled.toList())
         }
@@ -775,6 +781,8 @@ class MyListsTvSyncManager @Inject constructor(
         val prunedOrder = currentOrder.filterNot { key ->
             key in removedCatalogKeys ||
                 key in removedCollectionKeys ||
+                key in collectionCatalogKeys ||
+                key.startsWith("${MyListsDefaultSeed.MY_LISTS_COLLECTIONS_ADDON_ID}_") ||
                 (isCustom && newSet.isEmpty() && (
                     MyListsDefaultSeed.isMyListsDefaultCatalogKey(key) ||
                     key.startsWith("app.my-list") ||
