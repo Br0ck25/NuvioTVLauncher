@@ -25,6 +25,7 @@ import com.nuvio.tv.data.local.ContinueWatchingEnrichmentCache
 import com.nuvio.tv.data.mediaserver.ServerCatalog
 import com.nuvio.tv.data.trailer.TrailerService
 import com.nuvio.tv.domain.model.Addon
+import com.nuvio.tv.domain.model.enabledAddons
 import com.nuvio.tv.domain.model.CatalogDescriptor
 import com.nuvio.tv.domain.model.CatalogRow
 import com.nuvio.tv.domain.model.Collection
@@ -45,6 +46,7 @@ import dagger.hilt.android.qualifiers.ApplicationContext
 import dagger.hilt.android.lifecycle.HiltViewModel
 import kotlinx.coroutines.Job
 import kotlinx.coroutines.delay
+import kotlinx.coroutines.flow.Flow
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.update
@@ -67,6 +69,7 @@ class HomeViewModel @Inject constructor(
     @ApplicationContext internal val appContext: Context,
     internal val addonRepository: AddonRepository,
     internal val startupSyncService: com.nuvio.tv.core.sync.StartupSyncService,
+    internal val myListsTvSyncManager: com.nuvio.tv.core.mylists.MyListsTvSyncManager? = null,
     internal val catalogRepository: CatalogRepository,
     internal val watchProgressRepository: WatchProgressRepository,
     internal val libraryRepository: LibraryRepository,
@@ -147,6 +150,8 @@ class HomeViewModel @Inject constructor(
     val effectiveAutoplayEnabled = playerSettingsDataStore.playerSettings
         .map(StreamAutoPlayPolicy::isEffectivelyEnabled)
         .distinctUntilChanged()
+    val myListsTargetId: Flow<String> = myListsTvSyncManager?.targetIdFlow
+        ?: kotlinx.coroutines.flow.flowOf(com.nuvio.tv.core.mylists.MyListsTvSyncManager.DEFAULT_TARGET_ID)
     internal val _fullCatalogRows = MutableStateFlow<List<CatalogRow>>(emptyList())
     val fullCatalogRows: StateFlow<List<CatalogRow>> = _fullCatalogRows.asStateFlow()
 
@@ -858,6 +863,33 @@ class HomeViewModel @Inject constructor(
                 refreshVisibleCatalogsPipeline(requestedByUser = true)
             }
         }
+        if (myListsTvSyncManager != null) {
+            viewModelScope.launch {
+                myListsTvSyncManager.syncRefreshEvents.collect {
+                    val freshAddons = runCatching { addonRepository.getInstalledAddons().first().enabledAddons() }.getOrNull()
+                    val targetAddons = if (!freshAddons.isNullOrEmpty()) {
+                        addonsCache = freshAddons
+                        freshAddons
+                    } else {
+                        addonsCache.enabledAddons()
+                    }
+                    if (targetAddons.isEmpty()) {
+                        clearCatalogData()
+                        synchronized(catalogStateLock) {
+                            catalogOrder.clear()
+                        }
+                        scheduleUpdateCatalogRows()
+                        return@collect
+                    }
+                    lastHomeCatalogRefreshAtMs = android.os.SystemClock.elapsedRealtime()
+                    loadAllCatalogs(targetAddons, forceReload = true)
+                }
+            }
+        }
+    }
+
+    fun syncMyListsIfNeeded() {
+        myListsTvSyncManager?.requestSyncInBackground(force = false)
     }
 
     fun refreshHomeCatalogsIfStale() {

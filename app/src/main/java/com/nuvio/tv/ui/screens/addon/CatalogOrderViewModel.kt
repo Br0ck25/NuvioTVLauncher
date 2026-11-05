@@ -194,8 +194,8 @@ class CatalogOrderViewModel @Inject constructor(
             addonName = context.getString(R.string.installed_apps_catalog_subtitle),
             typeLabel = "apps"
         )
-        // Installed Apps leads the list until the user moves it, matching its default Home position.
-        val allEntries = listOf(installedAppsEntry) + defaultEntries + collectionEntries
+        // Premade and user collections lead the list by default, followed by addon catalogs and Installed Apps.
+        val allEntries = collectionEntries + defaultEntries + listOf(installedAppsEntry)
         val availableMap = allEntries.associateBy { it.key }
         val defaultOrderKeys = allEntries.map { it.key }
 

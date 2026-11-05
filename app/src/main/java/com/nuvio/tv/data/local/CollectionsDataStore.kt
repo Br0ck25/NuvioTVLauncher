@@ -6,6 +6,7 @@ import androidx.datastore.preferences.core.stringPreferencesKey
 import com.google.gson.Gson
 import com.google.gson.reflect.TypeToken
 import com.nuvio.tv.R
+import com.nuvio.tv.core.mylists.MyListsDefaultSeed
 import com.nuvio.tv.core.profile.ProfileManager
 import com.nuvio.tv.domain.model.AddonCatalogCollectionSource
 import com.nuvio.tv.domain.model.Collection
@@ -42,7 +43,8 @@ data class ValidationResult(
 class CollectionsDataStore @Inject constructor(
     @ApplicationContext private val appContext: Context,
     private val factory: ProfileDataStoreFactory,
-    private val profileManager: ProfileManager
+    private val profileManager: ProfileManager,
+    private val authManager: dagger.Lazy<com.nuvio.tv.core.auth.AuthManager>? = null
 ) {
     companion object {
         private const val FEATURE = "collections"
@@ -55,26 +57,43 @@ class CollectionsDataStore @Inject constructor(
     private val collectionsKey = stringPreferencesKey("collections_json")
     private fun string(resId: Int, vararg args: Any): String = appContext.getString(resId, *args)
 
+    private val defaultPremadeCollections: List<Collection> by lazy {
+        runCatching {
+            val json = appContext.assets
+                .open(MyListsDefaultSeed.MY_LISTS_DEFAULT_COLLECTIONS_ASSET)
+                .bufferedReader()
+                .use { it.readText() }
+            parseCollections(json)
+        }.getOrDefault(emptyList())
+    }
+
+    private fun parseCollectionsOrDefault(json: String?): List<Collection> {
+        if (authManager?.get()?.isAuthenticated == true) {
+            // When user is logged into a Nuvio account, all collections go through the Nuvio account.
+            if (json.isNullOrBlank() || json.trim() == "[]") return emptyList()
+            return parseCollections(json)
+        }
+        // If not signed in, display collections from My Lists addon.
+        if (json == null) return defaultPremadeCollections
+        return parseCollections(json)
+    }
+
     val collections: Flow<List<Collection>> =
         profileManager.activeProfileId.flatMapLatest { pid ->
             factory.get(pid, FEATURE).data.map { prefs ->
-                parseCollections(prefs[collectionsKey])
+                parseCollectionsOrDefault(prefs[collectionsKey])
             }
         }
 
     suspend fun setCollections(collections: List<Collection>) {
         store().edit { prefs ->
-            if (collections.isEmpty()) {
-                prefs.remove(collectionsKey)
-            } else {
-                prefs[collectionsKey] = gson.toJson(collections.map { it.toSerializable() })
-            }
+            prefs[collectionsKey] = gson.toJson(collections.map { it.toSerializable() })
         }
     }
 
     suspend fun addCollection(collection: Collection) {
         store().edit { prefs ->
-            val current = parseCollections(prefs[collectionsKey]).toMutableList()
+            val current = parseCollectionsOrDefault(prefs[collectionsKey]).toMutableList()
             current.add(collection)
             prefs[collectionsKey] = gson.toJson(current.map { it.toSerializable() })
         }
@@ -82,7 +101,7 @@ class CollectionsDataStore @Inject constructor(
 
     suspend fun updateCollection(collection: Collection) {
         store().edit { prefs ->
-            val current = parseCollections(prefs[collectionsKey]).toMutableList()
+            val current = parseCollectionsOrDefault(prefs[collectionsKey]).toMutableList()
             val index = current.indexOfFirst { it.id == collection.id }
             if (index >= 0) {
                 current[index] = collection
@@ -93,13 +112,9 @@ class CollectionsDataStore @Inject constructor(
 
     suspend fun removeCollection(collectionId: String) {
         store().edit { prefs ->
-            val current = parseCollections(prefs[collectionsKey]).toMutableList()
+            val current = parseCollectionsOrDefault(prefs[collectionsKey]).toMutableList()
             current.removeAll { it.id == collectionId }
-            if (current.isEmpty()) {
-                prefs.remove(collectionsKey)
-            } else {
-                prefs[collectionsKey] = gson.toJson(current.map { it.toSerializable() })
-            }
+            prefs[collectionsKey] = gson.toJson(current.map { it.toSerializable() })
         }
     }
 
@@ -115,7 +130,7 @@ class CollectionsDataStore @Inject constructor(
 
     suspend fun getCurrentCollections(): List<Collection> {
         val prefs = store().data.first()
-        return parseCollections(prefs[collectionsKey])
+        return parseCollectionsOrDefault(prefs[collectionsKey])
     }
 
     suspend fun exportCurrentProfileJson(): String? {
@@ -269,7 +284,9 @@ class CollectionsDataStore @Inject constructor(
         val addonId: String,
         val type: String,
         val catalogId: String,
-        val genre: String? = null
+        val genre: String? = null,
+        val title: String? = null,
+        val name: String? = null
     )
 
     private fun Collection.toSerializable() = SerializableCollection(
@@ -299,7 +316,8 @@ class CollectionsDataStore @Inject constructor(
                         addonId = source.addonId,
                         type = source.type,
                         catalogId = source.catalogId,
-                        genre = source.genre
+                        genre = source.genre,
+                        title = source.title
                     )
                 }
             )
@@ -313,7 +331,8 @@ class CollectionsDataStore @Inject constructor(
                 addonId = addonId,
                 type = type,
                 catalogId = catalogId,
-                genre = genre
+                genre = genre,
+                title = title
             )
             is TmdbCollectionSource -> SerializableSource(
                 provider = "tmdb",
@@ -356,10 +375,27 @@ class CollectionsDataStore @Inject constructor(
         withoutWatchProviders = withoutWatchProviders
     )
 
+    private fun normalizeCollectionAddonId(addonId: String): String {
+        return if (addonId.equals(MyListsDefaultSeed.MY_LISTS_COLLECTIONS_ADDON_ID, ignoreCase = true)) {
+            MyListsDefaultSeed.MY_LISTS_ADDON_ID
+        } else {
+            addonId
+        }
+    }
+
+    private fun resolveRelativeMyListsUrl(url: String?): String? {
+        if (url.isNullOrBlank()) return null
+        return if (url.startsWith("/")) {
+            "${MyListsDefaultSeed.MY_LISTS_BASE_ORIGIN}$url"
+        } else {
+            url
+        }
+    }
+
     private fun SerializableCollection.toDomain() = Collection(
         id = id,
         title = title,
-        backdropImageUrl = backdropImageUrl,
+        backdropImageUrl = resolveRelativeMyListsUrl(backdropImageUrl),
         pinToTop = pinToTop,
         focusGlowEnabled = focusGlowEnabled ?: true,
         viewMode = FolderViewMode.fromString(viewMode),
@@ -368,22 +404,23 @@ class CollectionsDataStore @Inject constructor(
             CollectionFolder(
                 id = folder.id,
                 title = folder.title,
-                coverImageUrl = folder.coverImageUrl,
-                focusGifUrl = folder.focusGifUrl,
+                coverImageUrl = resolveRelativeMyListsUrl(folder.coverImageUrl),
+                focusGifUrl = resolveRelativeMyListsUrl(folder.focusGifUrl),
                 focusGifEnabled = folder.focusGifEnabled ?: true,
                 coverEmoji = folder.coverEmoji,
                 tileShape = PosterShape.fromString(folder.tileShape),
                 hideTitle = folder.hideTitle,
-                heroBackdropUrl = folder.heroBackdropUrl,
-                heroVideoUrl = folder.heroVideoUrl,
-                titleLogoUrl = folder.titleLogoUrl,
+                heroBackdropUrl = resolveRelativeMyListsUrl(folder.heroBackdropUrl),
+                heroVideoUrl = resolveRelativeMyListsUrl(folder.heroVideoUrl),
+                titleLogoUrl = resolveRelativeMyListsUrl(folder.titleLogoUrl),
                 sources = folder.sources?.mapNotNull { it.toDomainSource() }
                     ?: folder.catalogSources.map { source ->
                         AddonCatalogCollectionSource(
-                            addonId = source.addonId,
+                            addonId = normalizeCollectionAddonId(source.addonId),
                             type = source.type,
                             catalogId = source.catalogId,
-                            genre = source.genre
+                            genre = source.genre,
+                            title = (source.title ?: source.name)?.takeIf { it.isNotBlank() }
                         )
                     }
             )
@@ -430,14 +467,15 @@ class CollectionsDataStore @Inject constructor(
                 )
             }
             else -> {
-                val sourceAddonId = addonId?.takeIf { it.isNotBlank() } ?: return null
+                val sourceAddonId = addonId?.takeIf { it.isNotBlank() }?.let(::normalizeCollectionAddonId) ?: return null
                 val sourceType = type?.takeIf { it.isNotBlank() } ?: return null
                 val sourceCatalogId = catalogId?.takeIf { it.isNotBlank() } ?: return null
                 AddonCatalogCollectionSource(
                     addonId = sourceAddonId,
                     type = sourceType,
                     catalogId = sourceCatalogId,
-                    genre = genre
+                    genre = genre,
+                    title = title?.takeIf { it.isNotBlank() }
                 )
             }
         }

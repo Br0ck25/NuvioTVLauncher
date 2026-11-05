@@ -244,7 +244,7 @@ internal fun LiveTvLogo(
             .background(Color.White.copy(alpha = 0.06f)),
         contentAlignment = Alignment.Center,
     ) {
-        if (url.isNullOrBlank() || failed) {
+        if (url.isNullOrBlank() || failed || url.contains("/api/channel-poster")) {
             Text(
                 text = name.initials(),
                 style = MaterialTheme.typography.labelLarge,

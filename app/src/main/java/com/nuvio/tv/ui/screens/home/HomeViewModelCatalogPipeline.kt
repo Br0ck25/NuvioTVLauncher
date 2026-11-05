@@ -158,7 +158,7 @@ internal fun HomeViewModel.observeInstalledAddonsPipeline() {
             .distinctUntilChanged()
             .collectLatest { addons ->
                 addonsCache = addons
-                loadAllCatalogsPipeline(addons)
+                loadAllCatalogsPipeline(addons, forceReload = true)
             }
     }
 }
@@ -186,7 +186,7 @@ internal suspend fun HomeViewModel.loadAllCatalogsPipeline(
 
     // On reload (not first load), keep existing UI data visible while new
     // catalogs load in the background to avoid a flash of empty content.
-    val isReload = _uiState.value.catalogRows.isNotEmpty() || _uiState.value.homeRows.isNotEmpty()
+    val isReload = !forceReload && (_uiState.value.catalogRows.isNotEmpty() || _uiState.value.homeRows.isNotEmpty())
     if (!isReload) {
         _uiState.update { it.copy(isLoading = true, error = null, installedAddonsCount = addons.size) }
         synchronized(catalogStateLock) {
@@ -246,7 +246,7 @@ internal suspend fun HomeViewModel.loadAllCatalogsPipeline(
         val catalogsToLoad = addons.flatMap { addon ->
             addon.catalogs
                 .filterNot {
-                    !it.shouldShowOnHome() || isCatalogDisabled(
+                    com.nuvio.tv.core.mylists.MyListsDefaultSeed.isRemovedCatalog(it.id, it.apiType) || !it.shouldShowOnHome() || isCatalogDisabled(
                         addonBaseUrl = addon.baseUrl,
                         addonId = addon.id,
                         type = it.apiType,
@@ -755,7 +755,7 @@ internal suspend fun HomeViewModel.updateCatalogRowsPipeline() {
             }
         }
         for (key in orderedKeys) {
-            if (key in disabledHomeCatalogKeys) continue
+            if (key in disabledHomeCatalogKeys || com.nuvio.tv.core.mylists.MyListsDefaultSeed.isRemovedCatalogKey(key)) continue
             if (key == INSTALLED_APPS_CATALOG_KEY) {
                 installedAppsCache.takeIf { it.isNotEmpty() }?.let { add(HomeRow.InstalledApps(it)) }
                 continue

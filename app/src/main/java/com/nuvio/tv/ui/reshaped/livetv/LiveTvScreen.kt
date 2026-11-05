@@ -213,6 +213,7 @@ fun LiveTvScreen(
     var showMenu by remember { mutableStateOf(false) }
     var showPlaylists by remember { mutableStateOf(false) }
     var showListChannels by remember { mutableStateOf(false) }
+    var showMyListsAccountDialog by remember { mutableStateOf(false) }
     // Naming a new playlist (from "+ New playlist" in the categories).
     var naming by remember { mutableStateOf(false) }
     // Categories, search and settings slide in beside the channels on ◀ (or Back), and away again
@@ -464,7 +465,7 @@ fun LiveTvScreen(
                     preview = if (previewsEnabled) preview else null,
                     playVideo = (gridFocused || settingsFocused || categoriesOpen) && started && !launching &&
                         !showSourceDialog && !showCategoryDialog && !showMenu && !showPlaylists && !showListChannels &&
-                        !naming && editingList == null,
+                        !showMyListsAccountDialog && !naming && editingList == null,
                 )
                 Spacer(Modifier.height(NuvioTheme.spacing.sm))
                 LaunchedEffect(gridFocused) { if (gridFocused) categoriesOpen = false }
@@ -583,6 +584,11 @@ fun LiveTvScreen(
     if (showListChannels) {
         LiveTvListChannelsDialog(onDismiss = { showListChannels = false })
     }
+    if (showMyListsAccountDialog) {
+        com.nuvio.tv.ui.components.mylists.MyListsLinkAccountDialog(
+            onDismiss = { showMyListsAccountDialog = false }
+        )
+    }
     editingList?.let { id ->
         LiveTvPlaylistsDialog(onDismiss = { editingList = null }, openOnly = id)
     }
@@ -605,8 +611,8 @@ fun LiveTvScreen(
         )
     }
     // A closed dialog gives the focus back where the viewer was, so ◀▶ never find nothing focused.
-    val anyDialog = showSourceDialog || showCategoryDialog || showPlaylists || showListChannels || editingList != null || naming ||
-        showMenu
+    val anyDialog = showSourceDialog || showCategoryDialog || showPlaylists || showListChannels ||
+        showMyListsAccountDialog || editingList != null || naming || showMenu
     var hadDialog by remember { mutableStateOf(false) }
     LaunchedEffect(anyDialog) {
         if (anyDialog) {
@@ -644,6 +650,10 @@ fun LiveTvScreen(
             onListChannels = {
                 showMenu = false
                 showListChannels = true
+            },
+            onMyListsAccount = {
+                showMenu = false
+                showMyListsAccountDialog = true
             },
             onDismiss = { showMenu = false },
         )
@@ -695,6 +705,7 @@ private fun LiveTvMenuDialog(
     onSources: () -> Unit,
     onPlaylists: () -> Unit,
     onListChannels: () -> Unit,
+    onMyListsAccount: () -> Unit,
     onDismiss: () -> Unit,
 ) {
     val context = LocalContext.current
@@ -714,10 +725,15 @@ private fun LiveTvMenuDialog(
         contentSpacing = NuvioTheme.spacing.sm,
     ) {
         LiveTvMenuRow(
+            title = "My Lists Addon Account",
+            description = "Scan QR code to create or sign into your My Lists Addon account",
+            onClick = onMyListsAccount,
+            modifier = Modifier.focusRequester(first),
+        )
+        LiveTvMenuRow(
             title = stringResource(R.string.live_tv_menu_sources),
             description = stringResource(R.string.live_tv_menu_sources_description),
             onClick = onSources,
-            modifier = Modifier.focusRequester(first),
         )
         LiveTvMenuRow(
             title = stringResource(R.string.live_tv_menu_categories),
@@ -794,6 +810,7 @@ private fun LiveTvHeader(
     gridFocused: Boolean,
     clock: State<Long>,
     showTitle: Boolean,
+    showPoster: Boolean = true,
     preview: LiveTvPreviewPlayer?,
     playVideo: Boolean,
 ) {
@@ -824,6 +841,7 @@ private fun LiveTvHeader(
             status = status,
             statusIsError = (failedSource != null || uiState.error != null) && !uiState.isLoading,
             showTitle = showTitle && shownChannel == null,
+            showPoster = preview == null,
             modifier = Modifier.weight(1f).fillMaxHeight(),
         )
         if (preview != null) {
@@ -832,8 +850,10 @@ private fun LiveTvHeader(
                 channel = shownChannel,
                 logo = shownChannel?.let { channel ->
                     // A list channel is not previewed live: it shows the picture of what is on.
-                    (if (channel.streamUrl.startsWith(com.nuvio.tv.reshaped.livetv.lists.LIST_CHANNEL_SCHEME)) uiState.currentProgrammes[channel.guideKey]?.image else null)
-                        ?: uiState.logoFor(channel)
+                    (if (channel.streamUrl.startsWith(com.nuvio.tv.reshaped.livetv.lists.LIST_CHANNEL_SCHEME)) {
+                        uiState.currentProgrammes[channel.guideKey]?.image
+                            ?: com.nuvio.tv.reshaped.livetv.lists.ListChannels.channelPoster(channel.streamUrl)
+                    } else null) ?: uiState.logoFor(channel)
                 },
                 playVideo = playVideo,
                 modifier = Modifier.padding(start = NuvioTheme.spacing.xl).fillMaxHeight(),
@@ -845,7 +865,7 @@ private fun LiveTvHeader(
 private val HEADER_HEIGHT = 116.dp
 
 private const val POSTER_DELAY_MS = 250L
-private val POSTER_WIDTH = HEADER_HEIGHT * 2 / 3
+private val POSTER_WIDTH = HEADER_HEIGHT * 16 / 9
 
 /** "Wed, Sep 30 · 9:43 AM": the day the guide shows, and the time now. */
 @Composable
@@ -877,12 +897,17 @@ private fun LiveTvGuideInfo(
     status: String?,
     statusIsError: Boolean,
     showTitle: Boolean,
+    showPoster: Boolean = true,
     modifier: Modifier = Modifier,
 ) {
     Row(modifier = modifier) {
         // Loaded once the selection rests, so holding ▼ through channels starts no image loads;
         // once a guide has given a picture its place stays, so the text does not jump between rows.
-        val image = programme?.image
+        val image = programme?.image ?: channel?.let {
+            if (it.streamUrl.startsWith(com.nuvio.tv.reshaped.livetv.lists.LIST_CHANNEL_SCHEME)) {
+                com.nuvio.tv.reshaped.livetv.lists.ListChannels.channelPoster(it.streamUrl)
+            } else null
+        }
         val poster by produceState<String?>(null, image) {
             value = null
             if (image == null) return@produceState
@@ -891,7 +916,7 @@ private fun LiveTvGuideInfo(
         }
         var posterSlot by remember { mutableStateOf(false) }
         LaunchedEffect(image != null) { if (image != null) posterSlot = true }
-        if (posterSlot) {
+        if (showPoster && posterSlot) {
             Box(modifier = Modifier.padding(end = NuvioTheme.spacing.lg).size(POSTER_WIDTH, HEADER_HEIGHT)) {
                 LiveTvPoster(url = poster, width = POSTER_WIDTH, height = HEADER_HEIGHT)
             }
@@ -1072,7 +1097,13 @@ private fun LiveTvCategoryColumn(
                     if (!folded) section.groups.forEach { add(LiveTvCategoryEntry(sourceGroupKey(section.source.id, it), label(it), indent = true)) }
                 }
             } else if (uiState.sources.size <= 1) {
-                visibleGroups.forEach { add(LiveTvCategoryEntry(it, label(it))) }
+                val hasLiveCategory = visibleGroups.any {
+                    it.equals("Live TV", ignoreCase = true) ||
+                        it.equals("List channels", ignoreCase = true) ||
+                        it.equals("Live channels", ignoreCase = true)
+                }
+                val baseGroups = if (hasLiveCategory) visibleGroups else listOf("Live TV") + visibleGroups
+                baseGroups.distinct().forEach { add(LiveTvCategoryEntry(it, label(it), count = uiState.groupCounts[it])) }
             }
         }
     }

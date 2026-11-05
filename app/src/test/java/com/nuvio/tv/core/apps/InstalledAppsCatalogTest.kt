@@ -9,7 +9,7 @@ class InstalledAppsCatalogTest {
     @Test
     fun `new row is enabled and leads the home order by default`() {
         val order = mergeHomeCatalogOrder(listOf("movies", "shows"), listOf(INSTALLED_APPS_CATALOG_KEY), emptyList(), false)
-        assertEquals(listOf(INSTALLED_APPS_CATALOG_KEY, "movies", "shows"), order)
+        assertEquals(listOf("movies", "shows", INSTALLED_APPS_CATALOG_KEY), order)
     }
 
     @Test
@@ -20,7 +20,7 @@ class InstalledAppsCatalogTest {
             savedOrderKeys = listOf("shows", "collection_favorites", "movies"),
             followAddonsOrder = false
         )
-        assertEquals(listOf(INSTALLED_APPS_CATALOG_KEY, "shows", "collection_favorites", "movies"), order)
+        assertEquals(listOf("shows", "collection_favorites", "movies", INSTALLED_APPS_CATALOG_KEY), order)
     }
 
     @Test
@@ -28,11 +28,11 @@ class InstalledAppsCatalogTest {
         val addons = listOf("a_movies", "a_shows", "b_movies")
         val owner = { key: String -> key.substringBefore('_') }
         assertEquals(
-            listOf(INSTALLED_APPS_CATALOG_KEY) + addons,
+            addons + listOf(INSTALLED_APPS_CATALOG_KEY),
             mergeHomeCatalogOrder(addons, listOf(INSTALLED_APPS_CATALOG_KEY), emptyList(), true, owner)
         )
         assertEquals(
-            listOf(INSTALLED_APPS_CATALOG_KEY) + addons,
+            addons + listOf(INSTALLED_APPS_CATALOG_KEY),
             mergeHomeCatalogOrder(addons, listOf(INSTALLED_APPS_CATALOG_KEY), listOf("b_movies"), true, owner)
         )
     }

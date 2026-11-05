@@ -135,8 +135,8 @@ android {
         testInstrumentationRunner = "androidx.test.runner.AndroidJUnitRunner"
         minSdk = 24
         targetSdk = 36
-        versionCode = 1102
-        versionName = "1.1.7"
+        versionCode = 1103
+        versionName = "1.1.8"
 
         buildConfigField("String", "PARENTAL_GUIDE_API_URL", "\"${localProperties.getProperty("PARENTAL_GUIDE_API_URL", "")}\"")
         buildConfigField("String", "INTRODB_API_URL", "\"${localProperties.getProperty("INTRODB_API_URL", "")}\"")
@@ -212,18 +212,25 @@ android {
         }
     }
 
+    val resolvedReleaseStoreFile = releaseStoreFilePath?.let(::file) ?: file("../nuviotv.jks")
+    val hasReleaseKeystore = !useDebugReleaseSigning && resolvedReleaseStoreFile.exists()
+
     signingConfigs {
         create("release") {
             keyAlias = releaseKeyAliasValue
             keyPassword = releaseKeyPasswordValue
-            storeFile = releaseStoreFilePath?.let(::file) ?: file("../nuviotv.jks")
+            storeFile = resolvedReleaseStoreFile
             storePassword = releaseStorePasswordValue
         }
     }
 
     buildTypes {
         debug {
-            signingConfig = signingConfigs.getByName("release")
+            signingConfig = if (hasReleaseKeystore) {
+                signingConfigs.getByName("release")
+            } else {
+                signingConfigs.getByName("debug")
+            }
             isDebuggable = parseBooleanProperty(providers.gradleProperty("debuggable").orNull)
             isMinifyEnabled = false
 

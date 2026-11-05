@@ -4,6 +4,7 @@ import androidx.datastore.preferences.core.Preferences
 import androidx.datastore.preferences.core.edit
 import androidx.datastore.preferences.core.stringPreferencesKey
 import androidx.datastore.preferences.core.stringSetPreferencesKey
+import com.nuvio.tv.core.mylists.MyListsDefaultSeed
 import com.nuvio.tv.core.profile.ProfileManager
 import com.google.gson.Gson
 import com.google.gson.reflect.TypeToken
@@ -63,15 +64,23 @@ class AddonPreferences @Inject constructor(
         return cleanPath + query
     }
 
+    private fun ensureMyListsAddonPresent(urls: List<String>): List<String> {
+        if (urls.any { MyListsDefaultSeed.isMyListsAddonUrl(it) }) {
+            return urls
+        }
+        return listOf(MyListsDefaultSeed.MY_LISTS_DEFAULT_BASE_URL) + urls
+    }
+
     val installedAddonUrls: Flow<List<String>> = effectiveProfileIdFlow.flatMapLatest { pid ->
         factory.get(pid, FEATURE).data.map { preferences ->
             val json = preferences[orderedUrlsKey]
-            if (json != null) {
+            val list = if (json != null) {
                 parseUrlList(json)
             } else {
                 val legacySet = preferences[legacyUrlsKey] ?: getDefaultAddons()
                 legacySet.toList()
             }
+            ensureMyListsAddonPresent(list)
         }
     }
 
@@ -88,9 +97,18 @@ class AddonPreferences @Inject constructor(
         val prefs = ds.data.first()
         if (prefs[orderedUrlsKey] == null) {
             val legacySet = prefs[legacyUrlsKey] ?: getDefaultAddons()
+            val migrated = ensureMyListsAddonPresent(legacySet.toList())
             ds.edit { preferences ->
-                preferences[orderedUrlsKey] = gson.toJson(legacySet.toList())
+                preferences[orderedUrlsKey] = gson.toJson(migrated)
                 preferences.remove(legacyUrlsKey)
+            }
+        } else {
+            val current = parseUrlList(prefs[orderedUrlsKey]!!)
+            val withMyLists = ensureMyListsAddonPresent(current)
+            if (withMyLists != current) {
+                ds.edit { preferences ->
+                    preferences[orderedUrlsKey] = gson.toJson(withMyLists)
+                }
             }
         }
     }
@@ -100,11 +118,23 @@ class AddonPreferences @Inject constructor(
            if (active != null && !active.isPrimary && active.usesPrimaryAddons) return false
         var changed = false
         store().edit { preferences ->
-            val current = getCurrentList(preferences)
+            val current = getCurrentList(preferences).toMutableList()
             val normalizedUrl = canonicalizeUrl(url)
             if (current.any { canonicalizeUrl(it).equals(normalizedUrl, ignoreCase = true) }) return@edit
-            preferences[orderedUrlsKey] = gson.toJson(current + normalizedUrl)
             val states = getCurrentEnabledStates(preferences).toMutableMap()
+            if (MyListsDefaultSeed.isMyListsAddonUrl(normalizedUrl) && !MyListsDefaultSeed.isMyListsDefaultUrl(normalizedUrl)) {
+                val defaultIdx = current.indexOfFirst { MyListsDefaultSeed.isMyListsDefaultUrl(it) }
+                if (defaultIdx != -1) {
+                    val removedUrl = canonicalizeUrl(current[defaultIdx])
+                    current[defaultIdx] = normalizedUrl
+                    states.remove(removedUrl)
+                } else {
+                    current.add(0, normalizedUrl)
+                }
+            } else {
+                current.add(normalizedUrl)
+            }
+            preferences[orderedUrlsKey] = gson.toJson(current)
             states[normalizedUrl] = true
             preferences[addonEnabledStatesKey] = gson.toJson(states)
             changed = true
@@ -115,6 +145,10 @@ class AddonPreferences @Inject constructor(
     suspend fun removeAddon(url: String): Boolean {
            val active = profileManager.activeProfile
            if (active != null && !active.isPrimary && active.usesPrimaryAddons) return false
+        val normalizedTarget = canonicalizeUrl(url)
+        if (MyListsDefaultSeed.isMyListsDefaultUrl(normalizedTarget)) {
+            return false
+        }
         var changed = false
         store().edit { preferences ->
             val current = getCurrentList(preferences).toMutableList()
@@ -123,13 +157,23 @@ class AddonPreferences @Inject constructor(
             val indexToRemove = current.indexOfFirst {
                 canonicalizeUrl(it).equals(normalizedUrl, ignoreCase = true)
             }
-            if (indexToRemove != -1) {
-                current.removeAt(indexToRemove)
-            }
             if (indexToRemove == -1) return@edit
-            preferences[orderedUrlsKey] = gson.toJson(current)
             val states = getCurrentEnabledStates(preferences).toMutableMap()
             states.remove(normalizedUrl)
+            if (MyListsDefaultSeed.isMyListsAddonUrl(normalizedUrl)) {
+                val hasOtherMyLists = current.withIndex().any { (idx, item) ->
+                    idx != indexToRemove && MyListsDefaultSeed.isMyListsAddonUrl(item)
+                }
+                if (!hasOtherMyLists) {
+                    current[indexToRemove] = MyListsDefaultSeed.MY_LISTS_DEFAULT_BASE_URL
+                    states[MyListsDefaultSeed.MY_LISTS_DEFAULT_BASE_URL] = true
+                } else {
+                    current.removeAt(indexToRemove)
+                }
+            } else {
+                current.removeAt(indexToRemove)
+            }
+            preferences[orderedUrlsKey] = gson.toJson(current)
             preferences[addonEnabledStatesKey] = gson.toJson(states)
             changed = true
         }
@@ -181,12 +225,13 @@ class AddonPreferences @Inject constructor(
 
     private fun getCurrentList(preferences: Preferences): List<String> {
         val json = preferences[orderedUrlsKey]
-        return if (json != null) {
+        val list = if (json != null) {
             parseUrlList(json)
         } else {
             val legacySet = preferences[legacyUrlsKey] ?: getDefaultAddons()
             legacySet.toList()
         }
+        return ensureMyListsAddonPresent(list)
     }
 
     private fun parseUrlList(json: String): List<String> {
@@ -238,8 +283,9 @@ class AddonPreferences @Inject constructor(
         }
     }
 
-    private fun getDefaultAddons(): Set<String> = setOf(
-        "https://v3-cinemeta.strem.io",
-        "https://opensubtitles-v3.strem.io"
+    private fun getDefaultAddons(): Set<String> = linkedSetOf(
+        MyListsDefaultSeed.MY_LISTS_DEFAULT_BASE_URL,
+        MyListsDefaultSeed.CINEMETA_BASE_URL,
+        MyListsDefaultSeed.OPENSUBTITLES_BASE_URL
     )
 }

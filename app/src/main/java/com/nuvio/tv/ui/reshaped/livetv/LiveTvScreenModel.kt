@@ -1,4 +1,4 @@
-package com.nuvio.tv.ui.reshaped.livetv
+﻿package com.nuvio.tv.ui.reshaped.livetv
 
 import com.nuvio.tv.reshaped.livetv.lists.ListChannels
 import com.nuvio.tv.reshaped.livetv.lists.isListChannelUrl
@@ -156,13 +156,25 @@ internal suspend fun liveTvPlayerRoute(channel: LiveTvChannel, profileId: Int): 
         return null
     }
     val isListChannel = channel.streamUrl.isListChannelUrl()
+    val slot = if (isListChannel) ListChannels.openedSlot(channel.streamUrl) else null
+    val programmeTitle = slot?.title
+        ?: LiveTvRepository.uiState.value.currentProgrammes[channel.guideKey]?.title
+        ?: channel.name
+
     // A peer-to-peer title: the player starts its torrent and the local link is registered once known.
     ListChannels.torrentStreamFor(channel.streamUrl)?.takeIf { isListChannel }?.let { torrent ->
         return Screen.Player.createRoute(
             streamUrl = playback.streamUrl,
-            title = LiveTvRepository.uiState.value.currentProgrammes[channel.guideKey]?.title ?: channel.name,
+            title = programmeTitle,
             streamName = channel.name,
             contentType = LIVE_TV_CONTENT_TYPE,
+            contentId = slot?.itemId,
+            contentName = slot?.title,
+            poster = slot?.image,
+            videoId = slot?.videoId,
+            season = slot?.season,
+            episode = slot?.episode,
+            episodeTitle = slot?.title,
             logo = LiveTvRepository.uiState.value.logoFor(channel),
             filename = torrent.behaviorHints?.filename,
             addonName = LIVE_TV_ADDON_NAME,
@@ -178,10 +190,17 @@ internal suspend fun liveTvPlayerRoute(channel: LiveTvChannel, profileId: Int): 
     LiveTvPlaybackRegistry.register(playerUrl, listUrl = channel.streamUrl, catchup = isListChannel)
     return Screen.Player.createRoute(
         streamUrl = playback.streamUrl,
-        title = channel.name,
+        title = programmeTitle,
         streamName = channel.name,
         headers = playback.headers,
         contentType = LIVE_TV_CONTENT_TYPE,
+        contentId = slot?.itemId,
+        contentName = slot?.title,
+        poster = slot?.image,
+        videoId = slot?.videoId,
+        season = slot?.season,
+        episode = slot?.episode,
+        episodeTitle = slot?.title,
         logo = LiveTvRepository.uiState.value.logoFor(channel),
         addonName = LIVE_TV_ADDON_NAME,
         streamDescription = (liveTvGroupName(channel.group, LiveTvRepository.uiState.value.groupNames) ?: channel.group).takeIf(String::isNotBlank),

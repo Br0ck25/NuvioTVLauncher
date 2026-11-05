@@ -1250,7 +1250,9 @@ private fun PlaybackNavHost(
         }
 
         composable(Screen.Apps.route) {
-            AppsScreen()
+            AppsScreen(
+                onManageHomeApps = { navController.navigate(Screen.InstalledAppsOrder.route) }
+            )
         }
 
         composable(Screen.Settings.route) {

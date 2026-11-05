@@ -18,17 +18,17 @@ fun mergeHomeCatalogOrder(
     val independent = independentKeys.distinct().filterNot { it in addons }
     val available = (addons + independent).toSet()
     val saved = savedOrderKeys.asSequence().filter { it in available }.distinct().toList()
-    // Never saved, or the key appeared after the order was stored: lead with it.
-    val unsavedDefaultFirst = independent.filter {
-        it == INSTALLED_APPS_CATALOG_KEY && it !in saved
+    // Collections lead by default before addon catalogs; Installed Apps trails unless saved otherwise.
+    val unsavedCollectionsFirst = independent.filter {
+        it != INSTALLED_APPS_CATALOG_KEY && it !in saved
     }
     if (!followAddonsOrder) {
-        return unsavedDefaultFirst +
+        return unsavedCollectionsFirst +
             saved +
-            (addons + independent).filterNot { it in saved || it in unsavedDefaultFirst }
+            (addons + independent).filterNot { it in saved || it in unsavedCollectionsFirst }
     }
     if (saved.isEmpty()) {
-        return unsavedDefaultFirst + addons + independent.filterNot { it in unsavedDefaultFirst }
+        return unsavedCollectionsFirst + addons + independent.filterNot { it in unsavedCollectionsFirst }
     }
 
     val independentSet = independent.toSet()
@@ -50,10 +50,9 @@ fun mergeHomeCatalogOrder(
         pointer++
     }
     independent.forEach { if (it !in result) result.add(it) }
-    // Still above everything when it was never given a saved position.
-    if (unsavedDefaultFirst.isNotEmpty()) {
-        result.removeAll(unsavedDefaultFirst.toSet())
-        result.addAll(0, unsavedDefaultFirst)
+    if (unsavedCollectionsFirst.isNotEmpty()) {
+        result.removeAll(unsavedCollectionsFirst.toSet())
+        result.addAll(0, unsavedCollectionsFirst)
     }
     return normalizeIndependentRows(result, independentSet, addonOwner)
 }
