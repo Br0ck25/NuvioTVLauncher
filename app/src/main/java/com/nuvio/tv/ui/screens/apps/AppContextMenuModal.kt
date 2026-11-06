@@ -24,6 +24,7 @@ import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.lazy.LazyColumn
+import androidx.compose.foundation.lazy.rememberLazyListState
 import androidx.compose.foundation.lazy.grid.GridCells
 import androidx.compose.foundation.lazy.grid.LazyVerticalGrid
 import androidx.compose.foundation.lazy.grid.items
@@ -340,69 +341,74 @@ private fun MainMenuContent(
     onResetClick: () -> Unit,
     initialFocusRequester: FocusRequester
 ) {
-    LazyColumn(
+    Column(
         modifier = Modifier
             .fillMaxSize()
-            .padding(20.dp),
-        verticalArrangement = Arrangement.spacedBy(8.dp)
+            .padding(20.dp)
     ) {
-        item {
-            Row(
+        Row(
+            modifier = Modifier
+                .fillMaxWidth()
+                .padding(bottom = 16.dp),
+            verticalAlignment = Alignment.CenterVertically,
+            horizontalArrangement = Arrangement.spacedBy(16.dp)
+        ) {
+            Box(
                 modifier = Modifier
-                    .fillMaxWidth()
-                    .padding(bottom = 16.dp),
-                verticalAlignment = Alignment.CenterVertically,
-                horizontalArrangement = Arrangement.spacedBy(16.dp)
+                    .size(60.dp)
+                    .clip(RoundedCornerShape(14.dp))
+                    .background(Color.White.copy(alpha = 0.05f))
+                    .border(1.dp, Color.White.copy(alpha = 0.1f), RoundedCornerShape(14.dp)),
+                contentAlignment = Alignment.Center
             ) {
-                Box(
-                    modifier = Modifier
-                        .size(60.dp)
-                        .clip(RoundedCornerShape(14.dp))
-                        .background(Color.White.copy(alpha = 0.05f))
-                        .border(1.dp, Color.White.copy(alpha = 0.1f), RoundedCornerShape(14.dp)),
-                    contentAlignment = Alignment.Center
-                ) {
-                    if (isShortcutTile && shortcutIconVector != null) {
-                        Icon(
-                            imageVector = shortcutIconVector,
-                            contentDescription = null,
-                            tint = Color.White,
-                            modifier = Modifier.size(32.dp)
-                        )
-                    } else {
-                        InstalledAppArtwork(app = app, modifier = Modifier.size(48.dp))
-                    }
+                if (isShortcutTile && shortcutIconVector != null) {
+                    Icon(
+                        imageVector = shortcutIconVector,
+                        contentDescription = null,
+                        tint = Color.White,
+                        modifier = Modifier.size(32.dp)
+                    )
+                } else {
+                    InstalledAppArtwork(app = app, modifier = Modifier.size(48.dp))
                 }
-                Column(modifier = Modifier.weight(1f)) {
+            }
+            Column(modifier = Modifier.weight(1f)) {
+                Text(
+                    text = app.displayLabel,
+                    style = MaterialTheme.typography.titleMedium.copy(fontWeight = FontWeight.Bold),
+                    color = Color.White,
+                    maxLines = 1,
+                    overflow = TextOverflow.Ellipsis
+                )
+                if (!isShortcutTile) {
                     Text(
-                        text = app.displayLabel,
-                        style = MaterialTheme.typography.titleMedium.copy(fontWeight = FontWeight.Bold),
-                        color = Color.White,
+                        text = app.packageName,
+                        style = MaterialTheme.typography.bodySmall,
+                        color = Color.White.copy(alpha = 0.55f),
                         maxLines = 1,
                         overflow = TextOverflow.Ellipsis
                     )
-                    if (!isShortcutTile) {
-                        Text(
-                            text = app.packageName,
-                            style = MaterialTheme.typography.bodySmall,
-                            color = Color.White.copy(alpha = 0.55f),
-                            maxLines = 1,
-                            overflow = TextOverflow.Ellipsis
-                        )
-                    }
                 }
             }
         }
 
-        item {
-            MenuItemRow(
-                title = stringResource(R.string.app_menu_open),
-                icon = Icons.AutoMirrored.Filled.OpenInNew,
-                onClick = onOpen,
-                canExecute = canExecuteAction,
-                modifier = Modifier.focusRequester(initialFocusRequester)
-            )
-        }
+        val listState = rememberLazyListState()
+        LazyColumn(
+            state = listState,
+            modifier = Modifier
+                .fillMaxWidth()
+                .weight(1f),
+            verticalArrangement = Arrangement.spacedBy(8.dp)
+        ) {
+            item {
+                MenuItemRow(
+                    title = stringResource(R.string.app_menu_open),
+                    icon = Icons.AutoMirrored.Filled.OpenInNew,
+                    onClick = onOpen,
+                    canExecute = canExecuteAction,
+                    modifier = Modifier.focusRequester(initialFocusRequester)
+                )
+            }
         if (!isShortcutTile) {
             item {
                 MenuItemRow(
@@ -516,6 +522,7 @@ private fun MainMenuContent(
         }
     }
 }
+}
 
 @Composable
 private fun RenameDialogContent(
@@ -626,33 +633,38 @@ private fun IconPickerContent(
     onBack: () -> Unit,
     initialFocusRequester: FocusRequester
 ) {
-    LazyColumn(
+    Column(
         modifier = Modifier
             .fillMaxSize()
-            .padding(20.dp),
-        verticalArrangement = Arrangement.spacedBy(8.dp)
+            .padding(20.dp)
     ) {
-        item {
-            Row(
-                verticalAlignment = Alignment.CenterVertically,
-                modifier = Modifier.padding(bottom = 12.dp)
-            ) {
-                Text(
-                    text = stringResource(R.string.app_menu_change_icon),
-                    style = MaterialTheme.typography.titleLarge.copy(fontWeight = FontWeight.Bold),
-                    color = Color.White
-                )
-            }
-        }
-
-        item {
-            MenuItemRow(
-                title = stringResource(R.string.app_menu_icon_default),
-                icon = Icons.Default.Refresh,
-                onClick = { onSelectOption("default") },
-                modifier = Modifier.focusRequester(initialFocusRequester)
+        Row(
+            verticalAlignment = Alignment.CenterVertically,
+            modifier = Modifier.padding(bottom = 12.dp)
+        ) {
+            Text(
+                text = stringResource(R.string.app_menu_change_icon),
+                style = MaterialTheme.typography.titleLarge.copy(fontWeight = FontWeight.Bold),
+                color = Color.White
             )
         }
+
+        val listState = rememberLazyListState()
+        LazyColumn(
+            state = listState,
+            modifier = Modifier
+                .fillMaxWidth()
+                .weight(1f),
+            verticalArrangement = Arrangement.spacedBy(8.dp)
+        ) {
+            item {
+                MenuItemRow(
+                    title = stringResource(R.string.app_menu_icon_default),
+                    icon = Icons.Default.Refresh,
+                    onClick = { onSelectOption("default") },
+                    modifier = Modifier.focusRequester(initialFocusRequester)
+                )
+            }
 
         if (app.bannerBitmap != null) {
             item {
@@ -752,6 +764,7 @@ private fun IconPickerContent(
             }
         }
     }
+}
 }
 
 @Composable
