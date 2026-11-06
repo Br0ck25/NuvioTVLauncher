@@ -68,7 +68,7 @@ import androidx.tv.material3.Text
 import com.nuvio.tv.R
 import com.nuvio.tv.core.notification.LauncherNotificationItem
 import com.nuvio.tv.core.notification.LauncherNotificationListenerService
-import com.nuvio.tv.ui.components.AmbientDialogEffect
+import com.nuvio.tv.ui.screens.ambient.AmbientDialogEffect
 import com.nuvio.tv.ui.theme.NuvioTheme
 import java.time.Instant
 import java.time.ZoneId

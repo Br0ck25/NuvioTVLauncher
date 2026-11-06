@@ -65,15 +65,15 @@ import androidx.tv.material3.Text
 import com.nuvio.tv.R
 import com.nuvio.tv.core.apps.InstalledApp
 import com.nuvio.tv.core.apps.launchInstalledApp
-import com.nuvio.tv.ui.components.AmbientDialogEffect
 import com.nuvio.tv.ui.components.InstalledAppArtwork
-import com.nuvio.tv.ui.components.LongPressKeyOutcome
-import com.nuvio.tv.ui.components.rememberLongPressKeyTracker
+import com.nuvio.tv.ui.screens.ambient.AmbientDialogEffect
 import com.nuvio.tv.ui.screens.apps.AppContextMenuModal
 import com.nuvio.tv.ui.screens.apps.AppContextMenuViewModel
 import com.nuvio.tv.ui.screens.apps.AppsViewModel
 import com.nuvio.tv.ui.screens.apps.LocalNavigateToManageHomeApps
 import com.nuvio.tv.ui.theme.NuvioTheme
+import com.nuvio.tv.ui.util.LongPressKeyOutcome
+import com.nuvio.tv.ui.util.rememberLongPressKeyTracker
 import java.time.LocalDate
 import java.time.format.DateTimeFormatter
 

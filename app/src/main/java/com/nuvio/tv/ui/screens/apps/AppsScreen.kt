@@ -2,6 +2,7 @@
 
 package com.nuvio.tv.ui.screens.apps
 
+import android.content.ComponentName
 import android.content.Intent
 import androidx.compose.foundation.BorderStroke
 import androidx.compose.foundation.Image
@@ -52,10 +53,10 @@ import com.nuvio.tv.R
 import com.nuvio.tv.core.apps.InstalledApp
 import com.nuvio.tv.core.apps.launchInstalledApp
 import com.nuvio.tv.core.apps.orderInstalledApps
-import com.nuvio.tv.ui.components.LongPressKeyOutcome
 import com.nuvio.tv.ui.components.rememberLauncherSetupState
-import com.nuvio.tv.ui.components.rememberLongPressKeyTracker
 import com.nuvio.tv.ui.theme.NuvioTheme
+import com.nuvio.tv.ui.util.LongPressKeyOutcome
+import com.nuvio.tv.ui.util.rememberLongPressKeyTracker
 
 private sealed interface AppsGridItem {
     val key: String
@@ -156,8 +157,8 @@ fun AppsScreen(
         val itemByKey = defaultItems.associateBy { it.key }
         val orderedKeys = orderInstalledApps(
             availablePackages = defaultItems.map { it.key },
-            customOrder = appsState.order,
-            hiddenPackages = emptySet()
+            savedOrder = appsState.order,
+            removedPackages = emptySet<String>()
         )
         orderedKeys.mapNotNull { itemByKey[it] }
     }
@@ -246,12 +247,10 @@ fun AppsScreen(
                     val shortcutDummyApp = remember(activeTarget.key, activeTarget.label) {
                         InstalledApp(
                             packageName = activeTarget.key,
-                            activityName = "",
                             label = activeTarget.label,
-                            customLabel = null,
+                            componentName = ComponentName(activeTarget.key, ""),
                             icon = null,
-                            customIcon = null,
-                            isBanner = false
+                            hasBanner = false
                         )
                     }
                     AppContextMenuModal(
