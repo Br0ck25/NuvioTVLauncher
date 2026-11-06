@@ -1098,6 +1098,7 @@ internal fun ModernRowSection(
         val allPackages = remember(row.items.list) {
             row.items.list.mapNotNull { (it.payload as? ModernPayload.InstalledApp)?.app?.packageName }
         }
+        val currentIndex = allPackages.indexOfFirst { it == app.packageName }
         val menuViewModel: AppContextMenuViewModel = hiltViewModel()
         AppContextMenuModal(
             app = app,
@@ -1105,12 +1106,12 @@ internal fun ModernRowSection(
                 contextMenuApp = null
                 contextMenuIndex = -1
             },
-            onMoveLeft = if (contextMenuIndex > 0) {
+            onMoveLeft = if (currentIndex > 0) {
                 {
                     menuViewModel.moveApp(app.packageName, -1, allPackages)
                 }
             } else null,
-            onMoveRight = if (contextMenuIndex >= 0 && contextMenuIndex < allPackages.size - 1) {
+            onMoveRight = if (currentIndex in 0 until allPackages.size - 1) {
                 {
                     menuViewModel.moveApp(app.packageName, 1, allPackages)
                 }

@@ -39,11 +39,13 @@ import androidx.compose.material.icons.filled.Image
 import androidx.compose.material.icons.filled.Refresh
 import androidx.compose.material.icons.filled.Settings
 import androidx.compose.material.icons.filled.TextFields
+import androidx.compose.material.icons.filled.Tune
 import androidx.compose.material.icons.filled.VisibilityOff
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.collectAsState
 import androidx.compose.runtime.getValue
+import androidx.compose.runtime.mutableLongStateOf
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
 import androidx.compose.runtime.setValue
@@ -99,13 +101,17 @@ fun AppContextMenuModal(
     onMoveLeft: (() -> Unit)? = null,
     onMoveRight: (() -> Unit)? = null,
     onRemoveFromRow: (() -> Unit)? = null,
+    onManageOrder: (() -> Unit)? = null,
     viewModel: AppContextMenuViewModel = hiltViewModel()
 ) {
     val uiState by viewModel.uiState.collectAsState()
     var currentMode by remember { mutableStateOf(MenuScreenMode.MAIN) }
     var renameText by remember(app.displayLabel) { mutableStateOf(app.displayLabel) }
     val initialFocusRequester = remember { FocusRequester() }
-    var hasReceivedKeyDown by remember { mutableStateOf(false) }
+    var isInitialPressReleased by remember { mutableStateOf(false) }
+    var hasFreshKeyDown by remember { mutableStateOf(false) }
+    var lastKeyDownTimestamp by remember { mutableLongStateOf(System.currentTimeMillis()) }
+    val modalOpenTime = remember { System.currentTimeMillis() }
 
     BackHandler {
         when (currentMode) {
@@ -120,8 +126,25 @@ fun AppContextMenuModal(
     }
 
     LaunchedEffect(currentMode) {
-        hasReceivedKeyDown = false
-        delay(300)
+        if (currentMode != MenuScreenMode.MAIN) {
+            isInitialPressReleased = true
+            hasFreshKeyDown = true
+            delay(100)
+            runCatching { initialFocusRequester.requestFocus() }
+        }
+    }
+
+    LaunchedEffect(Unit) {
+        // While the button is physically held down from the long press that opened this modal,
+        // Android TV will dispatch repeated KeyDown events. Wait until the key is released.
+        while (!isInitialPressReleased) {
+            delay(100)
+            val now = System.currentTimeMillis()
+            if (now - lastKeyDownTimestamp > 350 && now - modalOpenTime > 450) {
+                isInitialPressReleased = true
+            }
+        }
+        delay(60)
         runCatching { initialFocusRequester.requestFocus() }
     }
 
@@ -135,11 +158,23 @@ fun AppContextMenuModal(
                     keyEvent.key == Key.NumPadEnter
                 if (isCenterOrEnter) {
                     if (keyEvent.type == KeyEventType.KeyDown) {
-                        hasReceivedKeyDown = true
-                        false
+                        lastKeyDownTimestamp = System.currentTimeMillis()
+                        if (!isInitialPressReleased) {
+                            // Key is still held down from the long-press that opened this modal.
+                            // Swallow it completely so focused child never receives repeat KeyDown events.
+                            true
+                        } else {
+                            hasFreshKeyDown = true
+                            false
+                        }
                     } else if (keyEvent.type == KeyEventType.KeyUp) {
-                        if (!hasReceivedKeyDown) {
-                            // Swallow the initial KeyUp event from the long-press that opened this modal
+                        if (!isInitialPressReleased) {
+                            // This is the release of the long press that opened this modal.
+                            // Mark as released and swallow the event so nothing inside gets clicked!
+                            isInitialPressReleased = true
+                            true
+                        } else if (!hasFreshKeyDown) {
+                            // Rogue KeyUp without a preceding fresh KeyDown inside this modal.
                             true
                         } else {
                             false
@@ -161,27 +196,6 @@ fun AppContextMenuModal(
                 .fillMaxHeight()
                 .width(420.dp)
                 .padding(24.dp)
-                .onPreviewKeyEvent { keyEvent ->
-                    val isCenterOrEnter = keyEvent.key == Key.DirectionCenter ||
-                        keyEvent.key == Key.Enter ||
-                        keyEvent.key == Key.NumPadEnter
-                    if (isCenterOrEnter) {
-                        if (keyEvent.type == KeyEventType.KeyDown) {
-                            hasReceivedKeyDown = true
-                            false
-                        } else if (keyEvent.type == KeyEventType.KeyUp) {
-                            if (!hasReceivedKeyDown) {
-                                true
-                            } else {
-                                false
-                            }
-                        } else {
-                            false
-                        }
-                    } else {
-                        false
-                    }
-                }
                 .clickable(interactionSource = remember { MutableInteractionSource() }, indication = null) { /* swallow click */ },
             shape = RoundedCornerShape(24.dp),
             colors = SurfaceDefaults.colors(
@@ -195,47 +209,55 @@ fun AppContextMenuModal(
                 MenuScreenMode.MAIN -> {
                     MainMenuContent(
                         app = app,
-                        canExecuteAction = hasReceivedKeyDown,
+                        canExecuteAction = hasFreshKeyDown,
                         onOpen = {
-                            if (hasReceivedKeyDown) {
+                            if (hasFreshKeyDown) {
                                 viewModel.launchApp(app)
                                 onDismiss()
                             }
                         },
                         onSettings = {
-                            if (hasReceivedKeyDown) {
+                            if (hasFreshKeyDown) {
                                 viewModel.openAppSettings(app.packageName)
                                 onDismiss()
                             }
                         },
                         onUninstall = {
-                            if (hasReceivedKeyDown) {
+                            if (hasFreshKeyDown) {
                                 viewModel.uninstallApp(app.packageName)
                                 onDismiss()
                             }
                         },
                         onMoveLeft = onMoveLeft?.let { move ->
                             {
-                                if (hasReceivedKeyDown) move()
+                                if (hasFreshKeyDown) move()
                             }
                         },
                         onMoveRight = onMoveRight?.let { move ->
                             {
-                                if (hasReceivedKeyDown) move()
+                                if (hasFreshKeyDown) move()
                             }
                         },
                         onRemoveFromRow = onRemoveFromRow?.let { remove ->
                             {
-                                if (hasReceivedKeyDown) {
+                                if (hasFreshKeyDown) {
                                     remove()
                                     onDismiss()
                                 }
                             }
                         },
-                        onRenameClick = { if (hasReceivedKeyDown) currentMode = MenuScreenMode.RENAME },
-                        onChangeIconClick = { if (hasReceivedKeyDown) currentMode = MenuScreenMode.ICON_PICKER },
+                        onManageOrder = onManageOrder?.let { manage ->
+                            {
+                                if (hasFreshKeyDown) {
+                                    manage()
+                                    onDismiss()
+                                }
+                            }
+                        },
+                        onRenameClick = { if (hasFreshKeyDown) currentMode = MenuScreenMode.RENAME },
+                        onChangeIconClick = { if (hasFreshKeyDown) currentMode = MenuScreenMode.ICON_PICKER },
                         onResetClick = {
-                            if (hasReceivedKeyDown) {
+                            if (hasFreshKeyDown) {
                                 viewModel.resetAppCustomization(app.packageName)
                                 onDismiss()
                             }
@@ -310,6 +332,7 @@ private fun MainMenuContent(
     onMoveLeft: (() -> Unit)?,
     onMoveRight: (() -> Unit)?,
     onRemoveFromRow: (() -> Unit)?,
+    onManageOrder: (() -> Unit)?,
     onRenameClick: () -> Unit,
     onChangeIconClick: () -> Unit,
     onResetClick: () -> Unit,
@@ -390,27 +413,36 @@ private fun MainMenuContent(
                     modifier = Modifier.fillMaxWidth(),
                     horizontalArrangement = Arrangement.spacedBy(8.dp)
                 ) {
-                    if (onMoveLeft != null) {
-                        Box(modifier = Modifier.weight(1f)) {
-                            MenuItemRow(
-                                title = stringResource(R.string.app_menu_move_left),
-                                icon = Icons.AutoMirrored.Filled.ArrowBack,
-                                onClick = onMoveLeft,
-                                canExecute = canExecuteAction
-                            )
-                        }
+                    Box(modifier = Modifier.weight(1f)) {
+                        MenuItemRow(
+                            title = stringResource(R.string.app_menu_move_left),
+                            icon = Icons.AutoMirrored.Filled.ArrowBack,
+                            onClick = { onMoveLeft?.invoke() },
+                            canExecute = canExecuteAction,
+                            enabled = onMoveLeft != null
+                        )
                     }
-                    if (onMoveRight != null) {
-                        Box(modifier = Modifier.weight(1f)) {
-                            MenuItemRow(
-                                title = stringResource(R.string.app_menu_move_right),
-                                icon = Icons.AutoMirrored.Filled.ArrowForward,
-                                onClick = onMoveRight,
-                                canExecute = canExecuteAction
-                            )
-                        }
+                    Box(modifier = Modifier.weight(1f)) {
+                        MenuItemRow(
+                            title = stringResource(R.string.app_menu_move_right),
+                            icon = Icons.AutoMirrored.Filled.ArrowForward,
+                            onClick = { onMoveRight?.invoke() },
+                            canExecute = canExecuteAction,
+                            enabled = onMoveRight != null
+                        )
                     }
                 }
+            }
+        }
+
+        if (onManageOrder != null) {
+            item {
+                MenuItemRow(
+                    title = stringResource(R.string.installed_apps_manage_title),
+                    icon = Icons.Default.Tune,
+                    onClick = onManageOrder,
+                    canExecute = canExecuteAction
+                )
             }
         }
 
@@ -793,21 +825,23 @@ private fun MenuItemRow(
     onClick: () -> Unit,
     modifier: Modifier = Modifier,
     subtitle: String? = null,
-    canExecute: Boolean = true
+    canExecute: Boolean = true,
+    enabled: Boolean = true
 ) {
     Surface(
-        onClick = { if (canExecute) onClick() },
+        onClick = { if (canExecute && enabled) onClick() },
+        enabled = enabled,
         modifier = modifier.fillMaxWidth().height(if (subtitle != null) 60.dp else 48.dp),
         shape = ClickableSurfaceDefaults.shape(RoundedCornerShape(12.dp)),
         colors = ClickableSurfaceDefaults.colors(
-            containerColor = Color.White.copy(alpha = 0.04f),
+            containerColor = if (enabled) Color.White.copy(alpha = 0.04f) else Color.White.copy(alpha = 0.02f),
             focusedContainerColor = Color.White.copy(alpha = 0.18f),
-            contentColor = Color.White,
+            contentColor = if (enabled) Color.White else Color.White.copy(alpha = 0.35f),
             focusedContentColor = Color.White
         ),
         scale = ClickableSurfaceDefaults.scale(focusedScale = 1f),
         border = ClickableSurfaceDefaults.border(
-            border = Border(BorderStroke(1.dp, Color.White.copy(alpha = 0.08f))),
+            border = Border(BorderStroke(1.dp, Color.White.copy(alpha = if (enabled) 0.08f else 0.03f))),
             focusedBorder = Border(BorderStroke(2.dp, Color.White))
         )
     ) {

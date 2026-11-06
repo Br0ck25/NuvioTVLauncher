@@ -52,7 +52,8 @@ class InstalledAppsPreferencesDataStore @Inject constructor(
     }
 
     suspend fun moveApp(packageName: String, direction: Int, availablePackages: List<String>) = mutate { prefs ->
-        prefs.copy(order = moveInstalledApp(orderInstalledApps(availablePackages, prefs.order, prefs.removedPackages), packageName, direction))
+        val effectiveRemoved = if (availablePackages.any { it in prefs.removedPackages }) emptySet() else prefs.removedPackages
+        prefs.copy(order = moveInstalledApp(orderInstalledApps(availablePackages, prefs.order, effectiveRemoved), packageName, direction))
     }
 
     suspend fun removeFromRow(packageName: String, availablePackages: List<String>) = mutate { prefs ->

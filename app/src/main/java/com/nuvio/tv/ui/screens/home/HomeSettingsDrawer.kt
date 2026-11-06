@@ -63,6 +63,7 @@ import com.nuvio.tv.core.apps.InstalledApp
 import com.nuvio.tv.core.apps.launchInstalledApp
 import com.nuvio.tv.ui.components.InstalledAppArtwork
 import com.nuvio.tv.ui.screens.apps.AppContextMenuModal
+import com.nuvio.tv.ui.screens.apps.AppContextMenuViewModel
 import com.nuvio.tv.ui.screens.apps.AppsViewModel
 import com.nuvio.tv.ui.theme.NuvioTheme
 import java.time.LocalDate
@@ -158,9 +159,23 @@ fun HomeSettingsDrawer(
         }
 
         contextMenuApp?.let { app ->
+            val currentIndex = appsState.apps.indexOfFirst { it.packageName == app.packageName }
+            val allPackages = remember(appsState.apps) { appsState.apps.map { it.packageName } }
+            val menuViewModel: AppContextMenuViewModel = hiltViewModel()
             AppContextMenuModal(
                 app = app,
-                onDismiss = { contextMenuApp = null }
+                onDismiss = { contextMenuApp = null },
+                onMoveLeft = if (currentIndex > 0) {
+                    {
+                        menuViewModel.moveApp(app.packageName, -1, allPackages)
+                    }
+                } else null,
+                onMoveRight = if (currentIndex in 0 until appsState.apps.size - 1) {
+                    {
+                        menuViewModel.moveApp(app.packageName, 1, allPackages)
+                    }
+                } else null,
+                viewModel = menuViewModel
             )
         }
     }

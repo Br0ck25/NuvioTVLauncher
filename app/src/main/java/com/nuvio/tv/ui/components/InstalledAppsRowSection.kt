@@ -222,6 +222,7 @@ fun InstalledAppsRowSection(
     }
 
     contextMenuApp?.let { app ->
+        val currentIndex = apps.indexOfFirst { it.packageName == app.packageName }
         val allPackages = remember(apps) { apps.map { it.packageName } }
         AppContextMenuModal(
             app = app,
@@ -229,12 +230,12 @@ fun InstalledAppsRowSection(
                 contextMenuApp = null
                 contextMenuIndex = -1
             },
-            onMoveLeft = if (contextMenuIndex > 0) {
+            onMoveLeft = if (currentIndex > 0) {
                 {
                     menuViewModel.moveApp(app.packageName, -1, allPackages)
                 }
             } else null,
-            onMoveRight = if (contextMenuIndex >= 0 && contextMenuIndex < apps.size - 1) {
+            onMoveRight = if (currentIndex in 0 until apps.size - 1) {
                 {
                     menuViewModel.moveApp(app.packageName, 1, allPackages)
                 }

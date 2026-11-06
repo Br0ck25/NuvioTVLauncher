@@ -162,10 +162,28 @@ fun AppsScreen(
             }
         }
 
-        if (contextMenuApp != null) {
+        contextMenuApp?.let { app ->
+            val currentIndex = apps.indexOfFirst { it.packageName == app.packageName }
+            val allPackages = remember(apps) { apps.map { it.packageName } }
+            val menuViewModel: AppContextMenuViewModel = hiltViewModel()
             AppContextMenuModal(
-                app = contextMenuApp!!,
-                onDismiss = { contextMenuApp = null }
+                app = app,
+                onDismiss = { contextMenuApp = null },
+                onMoveLeft = if (currentIndex > 0) {
+                    {
+                        menuViewModel.moveApp(app.packageName, -1, allPackages)
+                    }
+                } else null,
+                onMoveRight = if (currentIndex in 0 until apps.size - 1) {
+                    {
+                        menuViewModel.moveApp(app.packageName, 1, allPackages)
+                    }
+                } else null,
+                onManageOrder = {
+                    contextMenuApp = null
+                    onManageHomeApps()
+                },
+                viewModel = menuViewModel
             )
         }
     }
