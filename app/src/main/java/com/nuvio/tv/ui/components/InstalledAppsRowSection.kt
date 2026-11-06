@@ -58,6 +58,7 @@ import androidx.tv.material3.CardDefaults
 import androidx.tv.material3.Icon
 import androidx.tv.material3.MaterialTheme
 import androidx.tv.material3.Text
+import android.view.KeyEvent as AndroidKeyEvent
 import com.nuvio.tv.R
 import com.nuvio.tv.core.apps.InstalledApp
 import com.nuvio.tv.core.apps.launchInstalledApp
@@ -65,13 +66,18 @@ import com.nuvio.tv.ui.screens.apps.AppContextMenuModal
 import com.nuvio.tv.ui.screens.apps.AppContextMenuViewModel
 import com.nuvio.tv.ui.screens.apps.LocalNavigateToManageHomeApps
 import com.nuvio.tv.ui.theme.NuvioTheme
-import com.nuvio.tv.ui.util.LongPressKeyOutcome
 import com.nuvio.tv.ui.util.rememberLongPressKeyTracker
 
 val InstalledAppTileWidth = 180.dp
 
 /** Artwork-only tile, 16:9 so TV banners fill it without letterboxing. */
 val InstalledAppTileHeight = 101.dp
+
+private fun isSelectKey(keyCode: Int): Boolean {
+    return keyCode == AndroidKeyEvent.KEYCODE_DPAD_CENTER ||
+        keyCode == AndroidKeyEvent.KEYCODE_ENTER ||
+        keyCode == AndroidKeyEvent.KEYCODE_NUMPAD_ENTER
+}
 
 @Composable
 fun InstalledAppArtwork(
@@ -125,12 +131,14 @@ fun InstalledAppTile(
             .width(InstalledAppTileWidth)
             .height(InstalledAppTileHeight)
             .onPreviewKeyEvent { event ->
-                if (onLongClick != null) {
-                    val outcome = longPressKeyTracker.handle(event.nativeKeyEvent) {
+                val native = event.nativeKeyEvent
+                if (onLongClick != null &&
+                    longPressKeyTracker.handle(native, ::isSelectKey) {
                         longPressTriggered = true
                         onLongClick()
                     }
-                    if (outcome == LongPressKeyOutcome.Consume) return@onPreviewKeyEvent true
+                ) {
+                    return@onPreviewKeyEvent true
                 }
                 false
             }

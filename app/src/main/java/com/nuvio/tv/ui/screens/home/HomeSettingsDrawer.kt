@@ -72,10 +72,15 @@ import com.nuvio.tv.ui.screens.apps.AppContextMenuViewModel
 import com.nuvio.tv.ui.screens.apps.AppsViewModel
 import com.nuvio.tv.ui.screens.apps.LocalNavigateToManageHomeApps
 import com.nuvio.tv.ui.theme.NuvioTheme
-import com.nuvio.tv.ui.util.LongPressKeyOutcome
 import com.nuvio.tv.ui.util.rememberLongPressKeyTracker
 import java.time.LocalDate
 import java.time.format.DateTimeFormatter
+
+private fun isSelectKey(keyCode: Int): Boolean {
+    return keyCode == AndroidKeyEvent.KEYCODE_DPAD_CENTER ||
+        keyCode == AndroidKeyEvent.KEYCODE_ENTER ||
+        keyCode == AndroidKeyEvent.KEYCODE_NUMPAD_ENTER
+}
 
 private enum class DrawerScreenMode {
     MENU,
@@ -368,11 +373,15 @@ private fun AllAppsContent(
                     .height(56.dp)
                     .then(if (isFirst) Modifier.focusRequester(initialFocusRequester) else Modifier)
                     .onPreviewKeyEvent { event ->
-                        val outcome = longPressKeyTracker.handle(event.nativeKeyEvent) {
-                            longPressTriggered = true
-                            onAppLongClick(app)
+                        val native = event.nativeKeyEvent
+                        if (longPressKeyTracker.handle(native, ::isSelectKey) {
+                                longPressTriggered = true
+                                onAppLongClick(app)
+                            }
+                        ) {
+                            return@onPreviewKeyEvent true
                         }
-                        outcome == LongPressKeyOutcome.Consume
+                        false
                     },
                 shape = ClickableSurfaceDefaults.shape(RoundedCornerShape(12.dp)),
                 colors = ClickableSurfaceDefaults.colors(

@@ -47,6 +47,7 @@ import androidx.tv.material3.ClickableSurfaceDefaults
 import androidx.tv.material3.ExperimentalTvMaterial3Api
 import androidx.tv.material3.Icon
 import androidx.tv.material3.MaterialTheme
+import android.view.KeyEvent as AndroidKeyEvent
 import androidx.tv.material3.Surface
 import androidx.tv.material3.Text
 import com.nuvio.tv.R
@@ -55,8 +56,13 @@ import com.nuvio.tv.core.apps.launchInstalledApp
 import com.nuvio.tv.core.apps.orderInstalledApps
 import com.nuvio.tv.ui.components.rememberLauncherSetupState
 import com.nuvio.tv.ui.theme.NuvioTheme
-import com.nuvio.tv.ui.util.LongPressKeyOutcome
 import com.nuvio.tv.ui.util.rememberLongPressKeyTracker
+
+private fun isSelectKey(keyCode: Int): Boolean {
+    return keyCode == AndroidKeyEvent.KEYCODE_DPAD_CENTER ||
+        keyCode == AndroidKeyEvent.KEYCODE_ENTER ||
+        keyCode == AndroidKeyEvent.KEYCODE_NUMPAD_ENTER
+}
 
 private sealed interface AppsGridItem {
     val key: String
@@ -307,12 +313,14 @@ private fun AppTile(
             .fillMaxWidth()
             .height(130.dp)
             .onPreviewKeyEvent { event ->
-                if (onLongClick != null) {
-                    val outcome = longPressKeyTracker.handle(event.nativeKeyEvent) {
+                val native = event.nativeKeyEvent
+                if (onLongClick != null &&
+                    longPressKeyTracker.handle(native, ::isSelectKey) {
                         longPressTriggered = true
                         onLongClick()
                     }
-                    if (outcome == LongPressKeyOutcome.Consume) return@onPreviewKeyEvent true
+                ) {
+                    return@onPreviewKeyEvent true
                 }
                 false
             },
