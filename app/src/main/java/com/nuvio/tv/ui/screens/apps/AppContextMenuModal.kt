@@ -2,6 +2,7 @@
 
 package com.nuvio.tv.ui.screens.apps
 
+import android.view.KeyEvent as AndroidKeyEvent
 import androidx.activity.compose.BackHandler
 import androidx.compose.foundation.BorderStroke
 import androidx.compose.foundation.Image
@@ -44,11 +45,12 @@ import androidx.compose.material.icons.filled.VisibilityOff
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.collectAsState
+import androidx.compose.runtime.compositionLocalOf
 import androidx.compose.runtime.getValue
-import androidx.compose.runtime.mutableLongStateOf
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
 import androidx.compose.runtime.setValue
+import androidx.compose.runtime.withFrameNanos
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
@@ -57,18 +59,14 @@ import androidx.compose.ui.focus.focusRequester
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.SolidColor
 import androidx.compose.ui.graphics.vector.ImageVector
-import androidx.compose.ui.input.key.Key
-import androidx.compose.ui.input.key.KeyEventType
-import androidx.compose.ui.input.key.key
-import androidx.compose.ui.input.key.onKeyEvent
 import androidx.compose.ui.input.key.onPreviewKeyEvent
-import androidx.compose.ui.input.key.type
 import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.input.ImeAction
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
-import androidx.compose.ui.unit.sp
+import androidx.compose.ui.window.Dialog
+import androidx.compose.ui.window.DialogProperties
 import androidx.hilt.navigation.compose.hiltViewModel
 import androidx.tv.material3.Border
 import androidx.tv.material3.Button
@@ -83,8 +81,10 @@ import com.nuvio.tv.R
 import com.nuvio.tv.core.apps.InstalledApp
 import com.nuvio.tv.ui.components.InstalledAppArtwork
 import com.nuvio.tv.ui.components.LoadingIndicator
+import com.nuvio.tv.ui.screens.ambient.AmbientDialogEffect
 import com.nuvio.tv.ui.theme.NuvioTheme
-import kotlinx.coroutines.delay
+
+val LocalNavigateToManageHomeApps = compositionLocalOf<(() -> Unit)?> { null }
 
 private enum class MenuScreenMode {
     MAIN,
@@ -102,18 +102,21 @@ fun AppContextMenuModal(
     onMoveRight: (() -> Unit)? = null,
     onRemoveFromRow: (() -> Unit)? = null,
     onManageOrder: (() -> Unit)? = null,
+    isShortcutTile: Boolean = false,
+    shortcutIconVector: ImageVector? = null,
+    onCustomOpen: (() -> Unit)? = null,
     viewModel: AppContextMenuViewModel = hiltViewModel()
 ) {
     val uiState by viewModel.uiState.collectAsState()
     var currentMode by remember { mutableStateOf(MenuScreenMode.MAIN) }
     var renameText by remember(app.displayLabel) { mutableStateOf(app.displayLabel) }
     val initialFocusRequester = remember { FocusRequester() }
-    var isInitialPressReleased by remember { mutableStateOf(false) }
-    var hasFreshKeyDown by remember { mutableStateOf(false) }
-    var lastKeyDownTimestamp by remember { mutableLongStateOf(System.currentTimeMillis()) }
-    val modalOpenTime = remember { System.currentTimeMillis() }
+    var isReady by remember(currentMode) { mutableStateOf(false) }
+    var backDownSeen by remember(currentMode) { mutableStateOf(false) }
+    val fallbackManageOrder = LocalNavigateToManageHomeApps.current
+    val effectiveOnManageOrder = onManageOrder ?: fallbackManageOrder
 
-    BackHandler {
+    val handleBack = {
         when (currentMode) {
             MenuScreenMode.MAIN -> onDismiss()
             MenuScreenMode.RENAME -> currentMode = MenuScreenMode.MAIN
@@ -126,205 +129,204 @@ fun AppContextMenuModal(
     }
 
     LaunchedEffect(currentMode) {
-        if (currentMode != MenuScreenMode.MAIN) {
-            isInitialPressReleased = true
-            hasFreshKeyDown = true
-            delay(100)
-            runCatching { initialFocusRequester.requestFocus() }
-        }
-    }
-
-    LaunchedEffect(Unit) {
-        // While the button is physically held down from the long press that opened this modal,
-        // Android TV will dispatch repeated KeyDown events. Wait until the key is released.
-        while (!isInitialPressReleased) {
-            delay(100)
-            val now = System.currentTimeMillis()
-            if (now - lastKeyDownTimestamp > 350 && now - modalOpenTime > 450) {
-                isInitialPressReleased = true
-            }
-        }
-        delay(60)
+        repeat(2) { withFrameNanos { } }
         runCatching { initialFocusRequester.requestFocus() }
     }
 
-    Box(
-        modifier = modifier
-            .fillMaxSize()
-            .background(Color.Black.copy(alpha = 0.65f))
-            .onPreviewKeyEvent { keyEvent ->
-                val isCenterOrEnter = keyEvent.key == Key.DirectionCenter ||
-                    keyEvent.key == Key.Enter ||
-                    keyEvent.key == Key.NumPadEnter
-                if (isCenterOrEnter) {
-                    if (keyEvent.type == KeyEventType.KeyDown) {
-                        lastKeyDownTimestamp = System.currentTimeMillis()
-                        if (!isInitialPressReleased) {
-                            // Key is still held down from the long-press that opened this modal.
-                            // Swallow it completely so focused child never receives repeat KeyDown events.
-                            true
-                        } else {
-                            hasFreshKeyDown = true
-                            false
+    Dialog(
+        onDismissRequest = handleBack,
+        properties = DialogProperties(usePlatformDefaultWidth = false)
+    ) {
+        AmbientDialogEffect(onDismiss)
+        BackHandler(onBack = handleBack)
+
+        Box(
+            modifier = modifier
+                .fillMaxSize()
+                .background(Color.Black.copy(alpha = 0.65f))
+                .onPreviewKeyEvent { keyEvent ->
+                    val native = keyEvent.nativeKeyEvent
+                    if (native.keyCode == AndroidKeyEvent.KEYCODE_HOME) {
+                        if (native.action == AndroidKeyEvent.ACTION_UP && !native.isCanceled) {
+                            onDismiss()
                         }
-                    } else if (keyEvent.type == KeyEventType.KeyUp) {
-                        if (!isInitialPressReleased) {
-                            // This is the release of the long press that opened this modal.
-                            // Mark as released and swallow the event so nothing inside gets clicked!
-                            isInitialPressReleased = true
-                            true
-                        } else if (!hasFreshKeyDown) {
-                            // Rogue KeyUp without a preceding fresh KeyDown inside this modal.
-                            true
-                        } else {
-                            false
-                        }
-                    } else {
-                        false
+                        return@onPreviewKeyEvent true
                     }
-                } else {
+                    if (native.keyCode == AndroidKeyEvent.KEYCODE_BACK ||
+                        native.keyCode == AndroidKeyEvent.KEYCODE_ESCAPE
+                    ) {
+                        if (native.action == AndroidKeyEvent.ACTION_DOWN && native.repeatCount == 0) {
+                            backDownSeen = true
+                        } else if (native.action == AndroidKeyEvent.ACTION_UP && backDownSeen) {
+                            backDownSeen = false
+                            handleBack()
+                        }
+                        return@onPreviewKeyEvent true
+                    }
+                    if (isSelectKey(native.keyCode) || native.keyCode == AndroidKeyEvent.KEYCODE_MENU) {
+                        if (native.action == AndroidKeyEvent.ACTION_DOWN && native.repeatCount == 0) {
+                            isReady = true
+                        }
+                        if (!isReady) {
+                            return@onPreviewKeyEvent true
+                        }
+                    }
                     false
                 }
-            }
-            .clickable(interactionSource = remember { MutableInteractionSource() }, indication = null) {
-                onDismiss()
-            }
-    ) {
-        Surface(
-            modifier = Modifier
-                .align(Alignment.CenterEnd)
-                .fillMaxHeight()
-                .width(420.dp)
-                .padding(24.dp)
-                .clickable(interactionSource = remember { MutableInteractionSource() }, indication = null) { /* swallow click */ },
-            shape = RoundedCornerShape(24.dp),
-            colors = SurfaceDefaults.colors(
-                containerColor = Color(0xFF16191E).copy(alpha = 0.96f)
-            ),
-            border = Border(
-                border = BorderStroke(1.dp, Color.White.copy(alpha = 0.12f))
-            )
+                .clickable(interactionSource = remember { MutableInteractionSource() }, indication = null) {
+                    onDismiss()
+                }
         ) {
-            when (currentMode) {
-                MenuScreenMode.MAIN -> {
-                    MainMenuContent(
-                        app = app,
-                        canExecuteAction = hasFreshKeyDown,
-                        onOpen = {
-                            if (hasFreshKeyDown) {
-                                viewModel.launchApp(app)
-                                onDismiss()
-                            }
-                        },
-                        onSettings = {
-                            if (hasFreshKeyDown) {
-                                viewModel.openAppSettings(app.packageName)
-                                onDismiss()
-                            }
-                        },
-                        onUninstall = {
-                            if (hasFreshKeyDown) {
-                                viewModel.uninstallApp(app.packageName)
-                                onDismiss()
-                            }
-                        },
-                        onMoveLeft = onMoveLeft?.let { move ->
-                            {
-                                if (hasFreshKeyDown) move()
-                            }
-                        },
-                        onMoveRight = onMoveRight?.let { move ->
-                            {
-                                if (hasFreshKeyDown) move()
-                            }
-                        },
-                        onRemoveFromRow = onRemoveFromRow?.let { remove ->
-                            {
-                                if (hasFreshKeyDown) {
-                                    remove()
+            Surface(
+                modifier = Modifier
+                    .align(Alignment.CenterEnd)
+                    .fillMaxHeight()
+                    .width(420.dp)
+                    .padding(24.dp)
+                    .clickable(interactionSource = remember { MutableInteractionSource() }, indication = null) { /* swallow click */ },
+                shape = RoundedCornerShape(24.dp),
+                colors = SurfaceDefaults.colors(
+                    containerColor = Color(0xFF16191E).copy(alpha = 0.96f)
+                ),
+                border = Border(
+                    border = BorderStroke(1.dp, Color.White.copy(alpha = 0.12f))
+                )
+            ) {
+                when (currentMode) {
+                    MenuScreenMode.MAIN -> {
+                        MainMenuContent(
+                            app = app,
+                            isShortcutTile = isShortcutTile,
+                            shortcutIconVector = shortcutIconVector,
+                            canExecuteAction = isReady,
+                            onOpen = {
+                                if (isReady) {
+                                    if (onCustomOpen != null) {
+                                        onCustomOpen()
+                                    } else {
+                                        viewModel.launchApp(app)
+                                    }
                                     onDismiss()
                                 }
-                            }
-                        },
-                        onManageOrder = onManageOrder?.let { manage ->
-                            {
-                                if (hasFreshKeyDown) {
-                                    manage()
+                            },
+                            onSettings = {
+                                if (isReady) {
+                                    viewModel.openAppSettings(app.packageName)
                                     onDismiss()
                                 }
-                            }
-                        },
-                        onRenameClick = { if (hasFreshKeyDown) currentMode = MenuScreenMode.RENAME },
-                        onChangeIconClick = { if (hasFreshKeyDown) currentMode = MenuScreenMode.ICON_PICKER },
-                        onResetClick = {
-                            if (hasFreshKeyDown) {
-                                viewModel.resetAppCustomization(app.packageName)
+                            },
+                            onUninstall = {
+                                if (isReady) {
+                                    viewModel.uninstallApp(app.packageName)
+                                    onDismiss()
+                                }
+                            },
+                            onMoveLeft = onMoveLeft?.let { move ->
+                                {
+                                    if (isReady) move()
+                                }
+                            },
+                            onMoveRight = onMoveRight?.let { move ->
+                                {
+                                    if (isReady) move()
+                                }
+                            },
+                            onRemoveFromRow = onRemoveFromRow?.let { remove ->
+                                {
+                                    if (isReady) {
+                                        remove()
+                                        onDismiss()
+                                    }
+                                }
+                            },
+                            onManageOrder = effectiveOnManageOrder?.let { manage ->
+                                {
+                                    if (isReady) {
+                                        onDismiss()
+                                        manage()
+                                    }
+                                }
+                            },
+                            onRenameClick = { if (isReady) currentMode = MenuScreenMode.RENAME },
+                            onChangeIconClick = { if (isReady) currentMode = MenuScreenMode.ICON_PICKER },
+                            onResetClick = {
+                                if (isReady) {
+                                    viewModel.resetAppCustomization(app.packageName)
+                                    onDismiss()
+                                }
+                            },
+                            initialFocusRequester = initialFocusRequester
+                        )
+                    }
+                    MenuScreenMode.RENAME -> {
+                        RenameDialogContent(
+                            currentText = renameText,
+                            onTextChange = { renameText = it },
+                            onSave = {
+                                viewModel.renameApp(app.packageName, renameText)
                                 onDismiss()
-                            }
-                        },
-                        initialFocusRequester = initialFocusRequester
-                    )
-                }
-                MenuScreenMode.RENAME -> {
-                    RenameDialogContent(
-                        currentText = renameText,
-                        onTextChange = { renameText = it },
-                        onSave = {
-                            viewModel.renameApp(app.packageName, renameText)
-                            onDismiss()
-                        },
-                        onReset = {
-                            viewModel.renameApp(app.packageName, "")
-                            onDismiss()
-                        },
-                        onCancel = { currentMode = MenuScreenMode.MAIN },
-                        initialFocusRequester = initialFocusRequester
-                    )
-                }
-                MenuScreenMode.ICON_PICKER -> {
-                    IconPickerContent(
-                        app = app,
-                        uiState = uiState,
-                        onSelectOption = { iconRef ->
-                            viewModel.setAppIcon(app.packageName, iconRef)
-                            onDismiss()
-                        },
-                        onSelectPack = { pack ->
-                            viewModel.loadPackIcons(pack.packageName)
-                            currentMode = MenuScreenMode.PACK_ICONS
-                        },
-                        onBack = { currentMode = MenuScreenMode.MAIN },
-                        initialFocusRequester = initialFocusRequester
-                    )
-                }
-                MenuScreenMode.PACK_ICONS -> {
-                    PackIconsContent(
-                        packPackage = uiState.selectedPackPackage.orEmpty(),
-                        icons = uiState.selectedPackIcons,
-                        isLoading = uiState.isLoadingPackIcons,
-                        onSelectIcon = { drawableName ->
-                            viewModel.applyIconPackToApp(
-                                packageName = app.packageName,
-                                iconPackPackage = uiState.selectedPackPackage.orEmpty(),
-                                drawableName = drawableName
-                            )
-                            onDismiss()
-                        },
-                        onBack = {
-                            viewModel.clearSelectedPack()
-                            currentMode = MenuScreenMode.ICON_PICKER
-                        },
-                        initialFocusRequester = initialFocusRequester
-                    )
+                            },
+                            onReset = {
+                                viewModel.renameApp(app.packageName, "")
+                                onDismiss()
+                            },
+                            onCancel = { currentMode = MenuScreenMode.MAIN },
+                            initialFocusRequester = initialFocusRequester
+                        )
+                    }
+                    MenuScreenMode.ICON_PICKER -> {
+                        IconPickerContent(
+                            app = app,
+                            uiState = uiState,
+                            onSelectOption = { iconRef ->
+                                viewModel.setAppIcon(app.packageName, iconRef)
+                                onDismiss()
+                            },
+                            onSelectPack = { pack ->
+                                viewModel.loadPackIcons(pack.packageName)
+                                currentMode = MenuScreenMode.PACK_ICONS
+                            },
+                            onBack = { currentMode = MenuScreenMode.MAIN },
+                            initialFocusRequester = initialFocusRequester
+                        )
+                    }
+                    MenuScreenMode.PACK_ICONS -> {
+                        PackIconsContent(
+                            packPackage = uiState.selectedPackPackage.orEmpty(),
+                            icons = uiState.selectedPackIcons,
+                            isLoading = uiState.isLoadingPackIcons,
+                            onSelectIcon = { drawableName ->
+                                viewModel.applyIconPackToApp(
+                                    packageName = app.packageName,
+                                    iconPackPackage = uiState.selectedPackPackage.orEmpty(),
+                                    drawableName = drawableName
+                                )
+                                onDismiss()
+                            },
+                            onBack = {
+                                viewModel.clearSelectedPack()
+                                currentMode = MenuScreenMode.ICON_PICKER
+                            },
+                            initialFocusRequester = initialFocusRequester
+                        )
+                    }
                 }
             }
         }
     }
 }
 
+private fun isSelectKey(keyCode: Int): Boolean {
+    return keyCode == AndroidKeyEvent.KEYCODE_DPAD_CENTER ||
+        keyCode == AndroidKeyEvent.KEYCODE_ENTER ||
+        keyCode == AndroidKeyEvent.KEYCODE_NUMPAD_ENTER
+}
+
 @Composable
 private fun MainMenuContent(
     app: InstalledApp,
+    isShortcutTile: Boolean,
+    shortcutIconVector: ImageVector?,
     canExecuteAction: Boolean,
     onOpen: () -> Unit,
     onSettings: () -> Unit,
@@ -360,7 +362,16 @@ private fun MainMenuContent(
                         .border(1.dp, Color.White.copy(alpha = 0.1f), RoundedCornerShape(14.dp)),
                     contentAlignment = Alignment.Center
                 ) {
-                    InstalledAppArtwork(app = app, modifier = Modifier.size(48.dp))
+                    if (isShortcutTile && shortcutIconVector != null) {
+                        Icon(
+                            imageVector = shortcutIconVector,
+                            contentDescription = null,
+                            tint = Color.White,
+                            modifier = Modifier.size(32.dp)
+                        )
+                    } else {
+                        InstalledAppArtwork(app = app, modifier = Modifier.size(48.dp))
+                    }
                 }
                 Column(modifier = Modifier.weight(1f)) {
                     Text(
@@ -370,13 +381,15 @@ private fun MainMenuContent(
                         maxLines = 1,
                         overflow = TextOverflow.Ellipsis
                     )
-                    Text(
-                        text = app.packageName,
-                        style = MaterialTheme.typography.bodySmall,
-                        color = Color.White.copy(alpha = 0.55f),
-                        maxLines = 1,
-                        overflow = TextOverflow.Ellipsis
-                    )
+                    if (!isShortcutTile) {
+                        Text(
+                            text = app.packageName,
+                            style = MaterialTheme.typography.bodySmall,
+                            color = Color.White.copy(alpha = 0.55f),
+                            maxLines = 1,
+                            overflow = TextOverflow.Ellipsis
+                        )
+                    }
                 }
             }
         }
@@ -390,21 +403,23 @@ private fun MainMenuContent(
                 modifier = Modifier.focusRequester(initialFocusRequester)
             )
         }
-        item {
-            MenuItemRow(
-                title = stringResource(R.string.app_menu_settings),
-                icon = Icons.Default.Settings,
-                onClick = onSettings,
-                canExecute = canExecuteAction
-            )
-        }
-        item {
-            MenuItemRow(
-                title = stringResource(R.string.app_menu_uninstall),
-                icon = Icons.Default.Delete,
-                onClick = onUninstall,
-                canExecute = canExecuteAction
-            )
+        if (!isShortcutTile) {
+            item {
+                MenuItemRow(
+                    title = stringResource(R.string.app_menu_settings),
+                    icon = Icons.Default.Settings,
+                    onClick = onSettings,
+                    canExecute = canExecuteAction
+                )
+            }
+            item {
+                MenuItemRow(
+                    title = stringResource(R.string.app_menu_uninstall),
+                    icon = Icons.Default.Delete,
+                    onClick = onUninstall,
+                    canExecute = canExecuteAction
+                )
+            }
         }
 
         if (onMoveLeft != null || onMoveRight != null) {
@@ -446,7 +461,7 @@ private fun MainMenuContent(
             }
         }
 
-        if (onRemoveFromRow != null) {
+        if (onRemoveFromRow != null && !isShortcutTile) {
             item {
                 MenuItemRow(
                     title = stringResource(R.string.app_menu_hide_from_row),
@@ -457,44 +472,46 @@ private fun MainMenuContent(
             }
         }
 
-        item {
-            Spacer(modifier = Modifier.height(12.dp))
-            Text(
-                text = stringResource(R.string.app_menu_appearance),
-                style = MaterialTheme.typography.labelMedium.copy(fontWeight = FontWeight.SemiBold),
-                color = Color.White.copy(alpha = 0.6f),
-                modifier = Modifier.padding(start = 8.dp, bottom = 4.dp)
-            )
-        }
+        if (!isShortcutTile) {
+            item {
+                Spacer(modifier = Modifier.height(12.dp))
+                Text(
+                    text = stringResource(R.string.app_menu_appearance),
+                    style = MaterialTheme.typography.labelMedium.copy(fontWeight = FontWeight.SemiBold),
+                    color = Color.White.copy(alpha = 0.6f),
+                    modifier = Modifier.padding(start = 8.dp, bottom = 4.dp)
+                )
+            }
 
-        item {
-            MenuItemRow(
-                title = stringResource(R.string.app_menu_title),
-                subtitle = app.displayLabel,
-                icon = Icons.Default.TextFields,
-                onClick = onRenameClick,
-                canExecute = canExecuteAction
-            )
-        }
-
-        item {
-            MenuItemRow(
-                title = stringResource(R.string.app_menu_change_icon),
-                subtitle = if (app.customIcon != null) "Customized" else stringResource(R.string.app_menu_icon_default),
-                icon = Icons.Default.Image,
-                onClick = onChangeIconClick,
-                canExecute = canExecuteAction
-            )
-        }
-
-        if (app.customLabel != null || app.customIcon != null) {
             item {
                 MenuItemRow(
-                    title = stringResource(R.string.app_menu_reset),
-                    icon = Icons.Default.Refresh,
-                    onClick = onResetClick,
+                    title = stringResource(R.string.app_menu_title),
+                    subtitle = app.displayLabel,
+                    icon = Icons.Default.TextFields,
+                    onClick = onRenameClick,
                     canExecute = canExecuteAction
                 )
+            }
+
+            item {
+                MenuItemRow(
+                    title = stringResource(R.string.app_menu_change_icon),
+                    subtitle = if (app.customIcon != null) "Customized" else stringResource(R.string.app_menu_icon_default),
+                    icon = Icons.Default.Image,
+                    onClick = onChangeIconClick,
+                    canExecute = canExecuteAction
+                )
+            }
+
+            if (app.customLabel != null || app.customIcon != null) {
+                item {
+                    MenuItemRow(
+                        title = stringResource(R.string.app_menu_reset),
+                        icon = Icons.Default.Refresh,
+                        onClick = onResetClick,
+                        canExecute = canExecuteAction
+                    )
+                }
             }
         }
     }

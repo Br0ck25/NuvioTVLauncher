@@ -43,6 +43,7 @@ import androidx.compose.ui.focus.focusRequester
 import androidx.compose.ui.focus.focusRestorer
 import androidx.compose.ui.focus.onFocusChanged
 import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.input.key.onPreviewKeyEvent
 import androidx.compose.ui.layout.ContentScale
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.res.stringResource
@@ -62,6 +63,7 @@ import com.nuvio.tv.core.apps.InstalledApp
 import com.nuvio.tv.core.apps.launchInstalledApp
 import com.nuvio.tv.ui.screens.apps.AppContextMenuModal
 import com.nuvio.tv.ui.screens.apps.AppContextMenuViewModel
+import com.nuvio.tv.ui.screens.apps.LocalNavigateToManageHomeApps
 import com.nuvio.tv.ui.theme.NuvioTheme
 
 val InstalledAppTileWidth = 180.dp
@@ -106,12 +108,30 @@ fun InstalledAppTile(
     onFocused: () -> Unit = {}
 ) {
     val shape = RoundedCornerShape(NuvioTheme.radii.md)
+    val longPressKeyTracker = rememberLongPressKeyTracker()
+    var longPressTriggered by remember { mutableStateOf(false) }
+
     Card(
-        onClick = onClick,
-        onLongClick = onLongClick,
+        onClick = {
+            if (longPressTriggered) {
+                longPressTriggered = false
+            } else {
+                onClick()
+            }
+        },
         modifier = modifier
             .width(InstalledAppTileWidth)
             .height(InstalledAppTileHeight)
+            .onPreviewKeyEvent { event ->
+                if (onLongClick != null) {
+                    val outcome = longPressKeyTracker.handle(event.nativeKeyEvent) {
+                        longPressTriggered = true
+                        onLongClick()
+                    }
+                    if (outcome == LongPressKeyOutcome.Consume) return@onPreviewKeyEvent true
+                }
+                false
+            }
             .onFocusChanged { if (it.isFocused) onFocused() },
         shape = CardDefaults.shape(shape),
         colors = CardDefaults.colors(
@@ -165,6 +185,7 @@ fun InstalledAppsRowSection(
     val context = LocalContext.current
     val launchError = stringResource(R.string.installed_apps_launch_error)
     val currentOnItemFocused by rememberUpdatedState(onItemFocused)
+    val navigateToManageHomeApps = LocalNavigateToManageHomeApps.current
     var lastIndex by remember { mutableIntStateOf(-1) }
     var contextMenuApp by remember { mutableStateOf<InstalledApp?>(null) }
     var contextMenuIndex by remember { mutableIntStateOf(-1) }
@@ -242,6 +263,13 @@ fun InstalledAppsRowSection(
             } else null,
             onRemoveFromRow = {
                 menuViewModel.removeFromRow(app.packageName, allPackages)
+            },
+            onManageOrder = navigateToManageHomeApps?.let { navAction ->
+                {
+                    contextMenuApp = null
+                    contextMenuIndex = -1
+                    navAction()
+                }
             },
             viewModel = menuViewModel
         )

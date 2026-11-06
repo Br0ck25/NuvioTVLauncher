@@ -30,6 +30,7 @@ class AppsViewModel @Inject constructor(
         ).mapNotNull(byPackage::get)
         InstalledAppsState(
             apps = ordered,
+            order = prefs.order,
             isLoading = repoState.isLoading
         )
     }.stateIn(viewModelScope, SharingStarted.WhileSubscribed(5_000), InstalledAppsState())

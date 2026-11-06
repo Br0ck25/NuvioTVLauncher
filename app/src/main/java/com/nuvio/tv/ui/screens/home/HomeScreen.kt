@@ -100,8 +100,8 @@ fun HomeScreen(
 ) {
     val uiState by viewModel.uiState.collectAsStateWithLifecycle()
 
-    var showSettingsDrawer by remember { mutableStateOf(false) }
-    var showNotificationsDrawer by remember { mutableStateOf(false) }
+    var showSettingsDrawer by rememberSaveable { mutableStateOf(false) }
+    var showNotificationsDrawer by rememberSaveable { mutableStateOf(false) }
 
     // Home was the only major screen without a lifecycle observer, so nothing ever told it to
     // look at its catalogs again.
@@ -121,6 +121,7 @@ fun HomeScreen(
     val modernPresentation by viewModel.modernHomePresentation.collectAsStateWithLifecycle()
     val initialCwResolved by viewModel.initialCwResolved.collectAsStateWithLifecycle()
     val scrollToTopTrigger by viewModel.scrollToTopTrigger.collectAsStateWithLifecycle()
+    var handledDrawerDismissTrigger by rememberSaveable { mutableStateOf(scrollToTopTrigger) }
     val effectiveAutoplayEnabled by viewModel.effectiveAutoplayEnabled.collectAsStateWithLifecycle(
         initialValue = false
     )
@@ -139,6 +140,15 @@ fun HomeScreen(
     // Track that catalog loading has started at least once (isLoading went true→false).
     var catalogLoadingStarted by rememberSaveable { mutableStateOf(false) }
     var posterOptionsTarget by remember { mutableStateOf<HomePosterOptionsTarget?>(null) }
+
+    LaunchedEffect(scrollToTopTrigger) {
+        if (scrollToTopTrigger != handledDrawerDismissTrigger) {
+            handledDrawerDismissTrigger = scrollToTopTrigger
+            showNotificationsDrawer = false
+            showSettingsDrawer = false
+            posterOptionsTarget = null
+        }
+    }
 
     LaunchedEffect(uiState.homeLayout) {
         if (uiState.homeLayout != HomeLayout.MODERN) {

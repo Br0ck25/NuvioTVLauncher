@@ -53,23 +53,31 @@ class InstalledAppsPreferencesDataStore @Inject constructor(
 
     suspend fun moveApp(packageName: String, direction: Int, availablePackages: List<String>) = mutate { prefs ->
         val effectiveRemoved = if (availablePackages.any { it in prefs.removedPackages }) emptySet() else prefs.removedPackages
-        prefs.copy(order = moveInstalledApp(orderInstalledApps(availablePackages, prefs.order, effectiveRemoved), packageName, direction))
+        val visibleOrder = orderInstalledApps(availablePackages, prefs.order, effectiveRemoved)
+        val movedVisible = moveInstalledApp(visibleOrder, packageName, direction)
+        val visibleSet = movedVisible.toSet()
+        val baseFull = (prefs.order + availablePackages).distinct()
+        val iterator = movedVisible.iterator()
+        val mergedOrder = baseFull.map { item ->
+            if (item in visibleSet && iterator.hasNext()) iterator.next() else item
+        }
+        prefs.copy(order = mergedOrder)
     }
 
     suspend fun removeFromRow(packageName: String, availablePackages: List<String>) = mutate { prefs ->
         prefs.copy(
-            order = orderInstalledApps(availablePackages, prefs.order, prefs.removedPackages).filterNot { it == packageName },
+            order = (prefs.order + availablePackages).distinct().filterNot { it == packageName },
             removedPackages = prefs.removedPackages + packageName
         )
     }
 
     suspend fun restoreToRow(packageName: String, availablePackages: List<String>) = mutate { prefs ->
         val removed = prefs.removedPackages - packageName
-        prefs.copy(order = orderInstalledApps(availablePackages, prefs.order, removed), removedPackages = removed)
+        prefs.copy(order = (prefs.order + availablePackages).distinct(), removedPackages = removed)
     }
 
     suspend fun restoreAll(availablePackages: List<String>) = mutate { prefs ->
-        prefs.copy(order = orderInstalledApps(availablePackages, prefs.order, emptySet()), removedPackages = emptySet())
+        prefs.copy(order = (prefs.order + availablePackages).distinct(), removedPackages = emptySet())
     }
 
     suspend fun setCustomTitle(packageName: String, title: String?) = mutate { prefs ->

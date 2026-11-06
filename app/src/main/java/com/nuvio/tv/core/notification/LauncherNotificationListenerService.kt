@@ -33,12 +33,21 @@ class LauncherNotificationListenerService : NotificationListenerService() {
 
     companion object {
         private const val TAG = "NotificationListener"
+        private const val PREFS_NAME = "nuvio_dismissed_notifications"
+        private const val PREFS_KEY_SIGNATURES = "dismissed_signatures"
+
         @Volatile
         var instance: LauncherNotificationListenerService? = null
             private set
 
         private val _notifications = MutableStateFlow<List<LauncherNotificationItem>>(emptyList())
         val notifications: StateFlow<List<LauncherNotificationItem>> = _notifications.asStateFlow()
+
+        private val dismissedSignatures = java.util.Collections.synchronizedSet(mutableSetOf<String>())
+
+        private fun signatureFor(key: String, title: String, text: String): String {
+            return "$key|$title|$text"
+        }
 
         fun isAccessGranted(context: Context): Boolean {
             return runCatching {
@@ -56,9 +65,28 @@ class LauncherNotificationListenerService : NotificationListenerService() {
         }
     }
 
+    private fun loadDismissedSignatures() {
+        runCatching {
+            val prefs = getSharedPreferences(PREFS_NAME, Context.MODE_PRIVATE)
+            val saved = prefs.getStringSet(PREFS_KEY_SIGNATURES, emptySet()).orEmpty()
+            synchronized(dismissedSignatures) {
+                dismissedSignatures.addAll(saved)
+            }
+        }
+    }
+
+    private fun saveDismissedSignatures() {
+        runCatching {
+            val prefs = getSharedPreferences(PREFS_NAME, Context.MODE_PRIVATE)
+            val copy = synchronized(dismissedSignatures) { dismissedSignatures.toSet() }
+            prefs.edit().putStringSet(PREFS_KEY_SIGNATURES, copy).apply()
+        }
+    }
+
     override fun onListenerConnected() {
         super.onListenerConnected()
         instance = this
+        loadDismissedSignatures()
         Log.d(TAG, "Notification listener connected")
         refreshActiveNotifications()
     }
@@ -80,6 +108,10 @@ class LauncherNotificationListenerService : NotificationListenerService() {
     override fun onNotificationRemoved(sbn: StatusBarNotification?) {
         super.onNotificationRemoved(sbn)
         sbn ?: return
+        synchronized(dismissedSignatures) {
+            dismissedSignatures.removeAll { it.startsWith("${sbn.key}|") }
+        }
+        saveDismissedSignatures()
         refreshActiveNotifications()
     }
 
@@ -87,6 +119,13 @@ class LauncherNotificationListenerService : NotificationListenerService() {
         runCatching {
             val sbns = activeNotifications ?: return
             val pm = packageManager
+            val activeKeys = sbns.map { it.key }.toSet()
+            synchronized(dismissedSignatures) {
+                dismissedSignatures.removeAll { sig ->
+                    val key = sig.substringBefore('|')
+                    key !in activeKeys
+                }
+            }
             val items = sbns.mapNotNull { sbn ->
                 val notif = sbn.notification ?: return@mapNotNull null
                 val extras = notif.extras
@@ -104,6 +143,11 @@ class LauncherNotificationListenerService : NotificationListenerService() {
                     pm.getApplicationLabel(appInfo).toString()
                 }.getOrDefault(sbn.packageName)
 
+                val effectiveTitle = title.ifBlank { appName }
+                val sig = signatureFor(sbn.key, effectiveTitle, text)
+                val isDismissed = synchronized(dismissedSignatures) { sig in dismissedSignatures }
+                if (isDismissed) return@mapNotNull null
+
                 val appIcon = runCatching {
                     pm.getApplicationIcon(sbn.packageName).toBitmap(width = 64, height = 64).asImageBitmap()
                 }.getOrNull()
@@ -113,7 +157,7 @@ class LauncherNotificationListenerService : NotificationListenerService() {
                     packageName = sbn.packageName,
                     appName = appName,
                     appIcon = appIcon,
-                    title = title.ifBlank { appName },
+                    title = effectiveTitle,
                     text = text,
                     postTime = sbn.postTime,
                     isClearable = sbn.isClearable,
@@ -128,14 +172,28 @@ class LauncherNotificationListenerService : NotificationListenerService() {
 
     fun dismiss(key: String) {
         runCatching {
-            cancelNotification(key)
+            val currentItem = _notifications.value.firstOrNull { it.key == key }
+            if (currentItem != null) {
+                synchronized(dismissedSignatures) {
+                    dismissedSignatures.add(signatureFor(currentItem.key, currentItem.title, currentItem.text))
+                }
+                saveDismissedSignatures()
+            }
+            runCatching { cancelNotification(key) }
             _notifications.update { list -> list.filterNot { it.key == key } }
         }
     }
 
     fun dismissAll() {
         runCatching {
-            cancelAllNotifications()
+            val currentItems = _notifications.value
+            synchronized(dismissedSignatures) {
+                currentItems.forEach { item ->
+                    dismissedSignatures.add(signatureFor(item.key, item.title, item.text))
+                }
+            }
+            saveDismissedSignatures()
+            runCatching { cancelAllNotifications() }
             _notifications.value = emptyList()
         }
     }

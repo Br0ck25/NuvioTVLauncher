@@ -49,6 +49,7 @@ import androidx.tv.material3.Surface
 import androidx.tv.material3.Text
 import com.nuvio.tv.R
 import com.nuvio.tv.core.notification.LauncherNotificationListenerService
+import com.nuvio.tv.ui.theme.NuvioTheme
 
 @Composable
 fun HomeTopBarHeader(
@@ -180,7 +181,7 @@ fun HomeTopBarHeader(
                         modifier = Modifier
                             .defaultMinSize(minWidth = 18.dp, minHeight = 18.dp)
                             .clip(CircleShape)
-                            .background(Color(0xFFE50914))
+                            .background(NuvioTheme.colors.Secondary)
                             .padding(horizontal = 5.dp, vertical = 1.dp),
                         contentAlignment = Alignment.Center
                     ) {
@@ -191,7 +192,7 @@ fun HomeTopBarHeader(
                                 fontSize = 11.sp,
                                 lineHeight = 11.sp
                             ),
-                            color = Color.White
+                            color = NuvioTheme.colors.OnSecondary
                         )
                     }
                 }

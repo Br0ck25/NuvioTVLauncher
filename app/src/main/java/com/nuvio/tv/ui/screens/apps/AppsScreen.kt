@@ -2,7 +2,6 @@
 
 package com.nuvio.tv.ui.screens.apps
 
-import android.content.Context
 import android.content.Intent
 import androidx.compose.foundation.BorderStroke
 import androidx.compose.foundation.Image
@@ -34,6 +33,7 @@ import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.ImageBitmap
 import androidx.compose.ui.graphics.vector.ImageVector
+import androidx.compose.ui.input.key.onPreviewKeyEvent
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.text.font.FontWeight
@@ -51,8 +51,28 @@ import androidx.tv.material3.Text
 import com.nuvio.tv.R
 import com.nuvio.tv.core.apps.InstalledApp
 import com.nuvio.tv.core.apps.launchInstalledApp
+import com.nuvio.tv.core.apps.orderInstalledApps
+import com.nuvio.tv.ui.components.LongPressKeyOutcome
 import com.nuvio.tv.ui.components.rememberLauncherSetupState
+import com.nuvio.tv.ui.components.rememberLongPressKeyTracker
 import com.nuvio.tv.ui.theme.NuvioTheme
+
+private sealed interface AppsGridItem {
+    val key: String
+
+    data class Shortcut(
+        override val key: String,
+        val label: String,
+        val iconVector: ImageVector,
+        val onClick: () -> Unit
+    ) : AppsGridItem
+
+    data class App(
+        val app: InstalledApp
+    ) : AppsGridItem {
+        override val key: String get() = app.packageName
+    }
+}
 
 @Composable
 fun AppsScreen(
@@ -63,10 +83,83 @@ fun AppsScreen(
     val setup = rememberLauncherSetupState()
     val appsState by viewModel.state.collectAsState()
     val apps = appsState.apps
-    var contextMenuApp by remember { mutableStateOf<InstalledApp?>(null) }
+    var contextMenuTargetKey by remember { mutableStateOf<String?>(null) }
 
     fun launch(intent: Intent) {
         runCatching { context.startActivity(intent) }
+    }
+
+    val defaultLauncherLabel = if (setup.isDefaultHome) {
+        stringResource(R.string.apps_default_launcher_active)
+    } else {
+        stringResource(R.string.apps_set_default_launcher)
+    }
+    val systemHomeSettingsLabel = stringResource(R.string.settings_open_home_settings)
+    val homeOverrideLabel = stringResource(
+        if (setup.isAccessibilityActive) R.string.apps_home_override_active
+        else if (setup.isAccessibilityEnabled) R.string.apps_home_override_pending
+        else R.string.apps_home_override
+    )
+    val manageHomeAppsLabel = stringResource(R.string.apps_manage_home_row)
+
+    val orderedGridItems = remember(
+        apps,
+        appsState.order,
+        setup.isDefaultHome,
+        setup.showFallback,
+        setup.isAccessibilityActive,
+        setup.isAccessibilityEnabled,
+        defaultLauncherLabel,
+        systemHomeSettingsLabel,
+        homeOverrideLabel,
+        manageHomeAppsLabel
+    ) {
+        val defaultItems = buildList<AppsGridItem> {
+            add(
+                AppsGridItem.Shortcut(
+                    key = "__shortcut_default_launcher__",
+                    label = defaultLauncherLabel,
+                    iconVector = if (setup.isDefaultHome) Icons.Default.CheckCircle else Icons.Default.Home,
+                    onClick = setup.requestDefaultHome
+                )
+            )
+            if (setup.showFallback) {
+                add(
+                    AppsGridItem.Shortcut(
+                        key = "__shortcut_system_home_settings__",
+                        label = systemHomeSettingsLabel,
+                        iconVector = Icons.Default.Settings,
+                        onClick = setup.openHomeSettings
+                    )
+                )
+            }
+            add(
+                AppsGridItem.Shortcut(
+                    key = "__shortcut_home_override__",
+                    label = homeOverrideLabel,
+                    iconVector = if (setup.isAccessibilityActive) Icons.Default.CheckCircle else Icons.Default.Home,
+                    onClick = setup.openAccessibilitySettings
+                )
+            )
+            add(
+                AppsGridItem.Shortcut(
+                    key = "__shortcut_manage_home_apps__",
+                    label = manageHomeAppsLabel,
+                    iconVector = Icons.Default.Tune,
+                    onClick = onManageHomeApps
+                )
+            )
+            apps.forEach { app ->
+                add(AppsGridItem.App(app))
+            }
+        }
+        val itemByKey = defaultItems.associateBy { it.key }
+        val orderedKeys = orderInstalledApps(
+            availablePackages = defaultItems.map { it.key },
+            customOrder = appsState.order,
+            hiddenPackages = emptySet()
+        )
+        orderedKeys.mapNotNull { itemByKey[it] }
     }
 
     Box(modifier = Modifier.fillMaxSize()) {
@@ -87,104 +180,107 @@ fun AppsScreen(
                 verticalArrangement = Arrangement.spacedBy(NuvioTheme.spacing.md),
                 modifier = Modifier.fillMaxSize()
             ) {
-                item(key = "default_launcher_toggle") {
-                    AppTile(
-                        label = if (setup.isDefaultHome) {
-                            stringResource(R.string.apps_default_launcher_active)
-                        } else {
-                            stringResource(R.string.apps_set_default_launcher)
-                        },
-                        iconVector = if (setup.isDefaultHome) Icons.Default.CheckCircle else Icons.Default.Home,
-                        icon = null,
-                        onClick = setup.requestDefaultHome
-                    )
-                }
-                if (setup.showFallback) {
-                    item(key = "system_home_settings") {
-                        AppTile(
-                            label = stringResource(R.string.settings_open_home_settings),
-                            iconVector = Icons.Default.Settings,
-                            icon = null,
-                            onClick = setup.openHomeSettings
-                        )
-                    }
-                }
-                // Some TV firmware blocks third-party default HOME apps. Keep the accessibility
-                // workaround reachable even when Home settings opens but offers no usable picker.
-                item(key = "home_button_override") {
-                    AppTile(
-                        label = stringResource(
-                            if (setup.isAccessibilityActive) R.string.apps_home_override_active
-                            else if (setup.isAccessibilityEnabled) R.string.apps_home_override_pending
-                            else R.string.apps_home_override
-                        ),
-                        iconVector = if (setup.isAccessibilityActive) Icons.Default.CheckCircle else Icons.Default.Home,
-                        icon = null,
-                        onClick = setup.openAccessibilitySettings
-                    )
-                }
-                item(key = "manage_home_apps") {
-                    AppTile(
-                        label = stringResource(R.string.apps_manage_home_row),
-                        iconVector = Icons.Default.Tune,
-                        icon = null,
-                        onClick = onManageHomeApps
-                    )
-                }
-                item(key = "android_settings") {
-                    AppTile(
-                        label = stringResource(R.string.apps_android_settings),
-                        iconVector = Icons.Default.Settings,
-                        icon = null,
-                        onClick = {
-                            launch(
-                                Intent(android.provider.Settings.ACTION_SETTINGS)
-                                    .addFlags(Intent.FLAG_ACTIVITY_NEW_TASK)
+                items(orderedGridItems, key = { it.key }) { gridItem ->
+                    when (gridItem) {
+                        is AppsGridItem.Shortcut -> {
+                            AppTile(
+                                label = gridItem.label,
+                                iconVector = gridItem.iconVector,
+                                icon = null,
+                                onClick = gridItem.onClick,
+                                onLongClick = {
+                                    contextMenuTargetKey = gridItem.key
+                                }
                             )
                         }
-                    )
-                }
-                items(apps, key = { it.packageName }) { app ->
-                    AppTile(
-                        label = app.displayLabel,
-                        iconVector = null,
-                        icon = app.displayIcon,
-                        onClick = {
-                            if (!launchInstalledApp(context, app)) {
-                                launch(app.launchIntent())
-                            }
-                        },
-                        onLongClick = {
-                            contextMenuApp = app
+                        is AppsGridItem.App -> {
+                            val app = gridItem.app
+                            AppTile(
+                                label = app.displayLabel,
+                                iconVector = null,
+                                icon = app.displayIcon,
+                                onClick = {
+                                    if (!launchInstalledApp(context, app)) {
+                                        launch(app.launchIntent())
+                                    }
+                                },
+                                onLongClick = {
+                                    contextMenuTargetKey = app.packageName
+                                }
+                            )
                         }
-                    )
+                    }
                 }
             }
         }
 
-        contextMenuApp?.let { app ->
-            val currentIndex = apps.indexOfFirst { it.packageName == app.packageName }
-            val allPackages = remember(apps) { apps.map { it.packageName } }
+        val activeTarget = orderedGridItems.firstOrNull { it.key == contextMenuTargetKey }
+        if (activeTarget != null) {
+            val currentIndex = orderedGridItems.indexOfFirst { it.key == activeTarget.key }
+            val allKeys = remember(orderedGridItems) { orderedGridItems.map { it.key } }
             val menuViewModel: AppContextMenuViewModel = hiltViewModel()
-            AppContextMenuModal(
-                app = app,
-                onDismiss = { contextMenuApp = null },
-                onMoveLeft = if (currentIndex > 0) {
-                    {
-                        menuViewModel.moveApp(app.packageName, -1, allPackages)
+            when (activeTarget) {
+                is AppsGridItem.App -> {
+                    val app = activeTarget.app
+                    AppContextMenuModal(
+                        app = app,
+                        onDismiss = { contextMenuTargetKey = null },
+                        onMoveLeft = if (currentIndex > 0) {
+                            {
+                                menuViewModel.moveApp(app.packageName, -1, allKeys)
+                            }
+                        } else null,
+                        onMoveRight = if (currentIndex in 0 until orderedGridItems.size - 1) {
+                            {
+                                menuViewModel.moveApp(app.packageName, 1, allKeys)
+                            }
+                        } else null,
+                        onManageOrder = {
+                            contextMenuTargetKey = null
+                            onManageHomeApps()
+                        },
+                        viewModel = menuViewModel
+                    )
+                }
+                is AppsGridItem.Shortcut -> {
+                    val shortcutDummyApp = remember(activeTarget.key, activeTarget.label) {
+                        InstalledApp(
+                            packageName = activeTarget.key,
+                            activityName = "",
+                            label = activeTarget.label,
+                            customLabel = null,
+                            icon = null,
+                            customIcon = null,
+                            isBanner = false
+                        )
                     }
-                } else null,
-                onMoveRight = if (currentIndex in 0 until apps.size - 1) {
-                    {
-                        menuViewModel.moveApp(app.packageName, 1, allPackages)
-                    }
-                } else null,
-                onManageOrder = {
-                    contextMenuApp = null
-                    onManageHomeApps()
-                },
-                viewModel = menuViewModel
-            )
+                    AppContextMenuModal(
+                        app = shortcutDummyApp,
+                        onDismiss = { contextMenuTargetKey = null },
+                        isShortcutTile = true,
+                        shortcutIconVector = activeTarget.iconVector,
+                        onCustomOpen = {
+                            contextMenuTargetKey = null
+                            activeTarget.onClick()
+                        },
+                        onMoveLeft = if (currentIndex > 0) {
+                            {
+                                menuViewModel.moveApp(activeTarget.key, -1, allKeys)
+                            }
+                        } else null,
+                        onMoveRight = if (currentIndex in 0 until orderedGridItems.size - 1) {
+                            {
+                                menuViewModel.moveApp(activeTarget.key, 1, allKeys)
+                            }
+                        } else null,
+                        onManageOrder = {
+                            contextMenuTargetKey = null
+                            onManageHomeApps()
+                        },
+                        viewModel = menuViewModel
+                    )
+                }
+            }
         }
     }
 }
@@ -197,12 +293,30 @@ private fun AppTile(
     onClick: () -> Unit,
     onLongClick: (() -> Unit)? = null
 ) {
+    val longPressKeyTracker = rememberLongPressKeyTracker()
+    var longPressTriggered by remember { mutableStateOf(false) }
+
     Surface(
-        onClick = onClick,
-        onLongClick = onLongClick,
+        onClick = {
+            if (longPressTriggered) {
+                longPressTriggered = false
+            } else {
+                onClick()
+            }
+        },
         modifier = Modifier
             .fillMaxWidth()
-            .height(130.dp),
+            .height(130.dp)
+            .onPreviewKeyEvent { event ->
+                if (onLongClick != null) {
+                    val outcome = longPressKeyTracker.handle(event.nativeKeyEvent) {
+                        longPressTriggered = true
+                        onLongClick()
+                    }
+                    if (outcome == LongPressKeyOutcome.Consume) return@onPreviewKeyEvent true
+                }
+                false
+            },
         colors = ClickableSurfaceDefaults.colors(
             containerColor = NuvioTheme.colors.BackgroundCard,
             focusedContainerColor = NuvioTheme.colors.FocusBackground

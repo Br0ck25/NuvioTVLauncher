@@ -2,9 +2,9 @@
 
 package com.nuvio.tv.ui.screens.home
 
-import android.content.Context
 import android.content.Intent
 import android.provider.Settings
+import android.view.KeyEvent as AndroidKeyEvent
 import androidx.activity.compose.BackHandler
 import androidx.compose.foundation.BorderStroke
 import androidx.compose.foundation.background
@@ -37,6 +37,7 @@ import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
 import androidx.compose.runtime.setValue
+import androidx.compose.runtime.withFrameNanos
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
@@ -44,12 +45,15 @@ import androidx.compose.ui.focus.FocusRequester
 import androidx.compose.ui.focus.focusRequester
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.vector.ImageVector
+import androidx.compose.ui.input.key.onPreviewKeyEvent
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
+import androidx.compose.ui.window.Dialog
+import androidx.compose.ui.window.DialogProperties
 import androidx.hilt.navigation.compose.hiltViewModel
 import androidx.tv.material3.Border
 import androidx.tv.material3.ClickableSurfaceDefaults
@@ -61,10 +65,14 @@ import androidx.tv.material3.Text
 import com.nuvio.tv.R
 import com.nuvio.tv.core.apps.InstalledApp
 import com.nuvio.tv.core.apps.launchInstalledApp
+import com.nuvio.tv.ui.components.AmbientDialogEffect
 import com.nuvio.tv.ui.components.InstalledAppArtwork
+import com.nuvio.tv.ui.components.LongPressKeyOutcome
+import com.nuvio.tv.ui.components.rememberLongPressKeyTracker
 import com.nuvio.tv.ui.screens.apps.AppContextMenuModal
 import com.nuvio.tv.ui.screens.apps.AppContextMenuViewModel
 import com.nuvio.tv.ui.screens.apps.AppsViewModel
+import com.nuvio.tv.ui.screens.apps.LocalNavigateToManageHomeApps
 import com.nuvio.tv.ui.theme.NuvioTheme
 import java.time.LocalDate
 import java.time.format.DateTimeFormatter
@@ -83,11 +91,12 @@ fun HomeSettingsDrawer(
 ) {
     val context = LocalContext.current
     val appsState by appsViewModel.state.collectAsState()
+    val navigateToManageHomeApps = LocalNavigateToManageHomeApps.current
     var currentMode by remember { mutableStateOf(DrawerScreenMode.MENU) }
     var contextMenuApp by remember { mutableStateOf<InstalledApp?>(null) }
     val initialFocusRequester = remember { FocusRequester() }
 
-    BackHandler {
+    val handleBack = {
         if (contextMenuApp != null) {
             contextMenuApp = null
         } else if (currentMode == DrawerScreenMode.ALL_APPS) {
@@ -97,86 +106,121 @@ fun HomeSettingsDrawer(
         }
     }
 
-    LaunchedEffect(currentMode) {
-        runCatching { initialFocusRequester.requestFocus() }
-    }
+    AmbientDialogEffect(onDismiss)
 
-    Box(
-        modifier = modifier
-            .fillMaxSize()
-            .background(Color.Black.copy(alpha = 0.65f))
-            .clickable(interactionSource = remember { MutableInteractionSource() }, indication = null) {
-                onDismiss()
-            }
+    Dialog(
+        onDismissRequest = handleBack,
+        properties = DialogProperties(
+            usePlatformDefaultWidth = false,
+            dismissOnBackPress = true,
+            dismissOnClickOutside = true
+        )
     ) {
-        Surface(
-            modifier = Modifier
-                .align(Alignment.CenterEnd)
-                .fillMaxHeight()
-                .width(420.dp)
-                .padding(24.dp)
-                .clickable(interactionSource = remember { MutableInteractionSource() }, indication = null) { /* swallow click */ },
-            shape = RoundedCornerShape(24.dp),
-            colors = SurfaceDefaults.colors(
-                containerColor = Color(0xFF16191E).copy(alpha = 0.96f)
-            ),
-            border = Border(BorderStroke(1.dp, Color.White.copy(alpha = 0.12f)))
-        ) {
-            when (currentMode) {
-                DrawerScreenMode.MENU -> {
-                    SettingsMenuContent(
-                        onOpenAllApps = { currentMode = DrawerScreenMode.ALL_APPS },
-                        onOpenNuvioSettings = {
-                            onOpenNuvioSettings()
-                            onDismiss()
-                        },
-                        onOpenAndroidSettings = {
-                            runCatching {
-                                context.startActivity(
-                                    Intent(Settings.ACTION_SETTINGS).addFlags(Intent.FLAG_ACTIVITY_NEW_TASK)
-                                )
-                            }
-                            onDismiss()
-                        },
-                        initialFocusRequester = initialFocusRequester
-                    )
-                }
-                DrawerScreenMode.ALL_APPS -> {
-                    AllAppsContent(
-                        apps = appsState.apps,
-                        onAppClick = { app ->
-                            if (launchInstalledApp(context, app)) {
-                                onDismiss()
-                            }
-                        },
-                        onAppLongClick = { app ->
-                            contextMenuApp = app
-                        },
-                        initialFocusRequester = initialFocusRequester
-                    )
-                }
-            }
+        BackHandler(onBack = handleBack)
+
+        LaunchedEffect(currentMode) {
+            repeat(2) { withFrameNanos { } }
+            runCatching { initialFocusRequester.requestFocus() }
         }
 
-        contextMenuApp?.let { app ->
-            val currentIndex = appsState.apps.indexOfFirst { it.packageName == app.packageName }
-            val allPackages = remember(appsState.apps) { appsState.apps.map { it.packageName } }
-            val menuViewModel: AppContextMenuViewModel = hiltViewModel()
-            AppContextMenuModal(
-                app = app,
-                onDismiss = { contextMenuApp = null },
-                onMoveLeft = if (currentIndex > 0) {
-                    {
-                        menuViewModel.moveApp(app.packageName, -1, allPackages)
+        Box(
+            modifier = modifier
+                .fillMaxSize()
+                .background(Color.Black.copy(alpha = 0.65f))
+                .onPreviewKeyEvent { event ->
+                    val native = event.nativeKeyEvent
+                    if (native.keyCode == AndroidKeyEvent.KEYCODE_BACK ||
+                        native.keyCode == AndroidKeyEvent.KEYCODE_ESCAPE
+                    ) {
+                        if (native.action == AndroidKeyEvent.ACTION_UP) {
+                            handleBack()
+                        }
+                        return@onPreviewKeyEvent true
                     }
-                } else null,
-                onMoveRight = if (currentIndex in 0 until appsState.apps.size - 1) {
-                    {
-                        menuViewModel.moveApp(app.packageName, 1, allPackages)
+                    if (native.keyCode == AndroidKeyEvent.KEYCODE_HOME) {
+                        onDismiss()
+                        return@onPreviewKeyEvent false
                     }
-                } else null,
-                viewModel = menuViewModel
-            )
+                    false
+                }
+                .clickable(interactionSource = remember { MutableInteractionSource() }, indication = null) {
+                    onDismiss()
+                }
+        ) {
+            Surface(
+                modifier = Modifier
+                    .align(Alignment.CenterEnd)
+                    .fillMaxHeight()
+                    .width(420.dp)
+                    .padding(24.dp)
+                    .clickable(interactionSource = remember { MutableInteractionSource() }, indication = null) { /* swallow click */ },
+                shape = RoundedCornerShape(24.dp),
+                colors = SurfaceDefaults.colors(
+                    containerColor = Color(0xFF16191E).copy(alpha = 0.96f)
+                ),
+                border = Border(BorderStroke(1.dp, Color.White.copy(alpha = 0.12f)))
+            ) {
+                when (currentMode) {
+                    DrawerScreenMode.MENU -> {
+                        SettingsMenuContent(
+                            onOpenAllApps = { currentMode = DrawerScreenMode.ALL_APPS },
+                            onOpenNuvioSettings = {
+                                onOpenNuvioSettings()
+                            },
+                            onOpenAndroidSettings = {
+                                runCatching {
+                                    context.startActivity(
+                                        Intent(Settings.ACTION_SETTINGS).addFlags(Intent.FLAG_ACTIVITY_NEW_TASK)
+                                    )
+                                }
+                            },
+                            initialFocusRequester = initialFocusRequester
+                        )
+                    }
+                    DrawerScreenMode.ALL_APPS -> {
+                        AllAppsContent(
+                            apps = appsState.apps,
+                            onAppClick = { app ->
+                                if (launchInstalledApp(context, app)) {
+                                    onDismiss()
+                                }
+                            },
+                            onAppLongClick = { app ->
+                                contextMenuApp = app
+                            },
+                            initialFocusRequester = initialFocusRequester
+                        )
+                    }
+                }
+            }
+
+            contextMenuApp?.let { app ->
+                val currentIndex = appsState.apps.indexOfFirst { it.packageName == app.packageName }
+                val allPackages = remember(appsState.apps) { appsState.apps.map { it.packageName } }
+                val menuViewModel: AppContextMenuViewModel = hiltViewModel()
+                AppContextMenuModal(
+                    app = app,
+                    onDismiss = { contextMenuApp = null },
+                    onMoveLeft = if (currentIndex > 0) {
+                        {
+                            menuViewModel.moveApp(app.packageName, -1, allPackages)
+                        }
+                    } else null,
+                    onMoveRight = if (currentIndex in 0 until appsState.apps.size - 1) {
+                        {
+                            menuViewModel.moveApp(app.packageName, 1, allPackages)
+                        }
+                    } else null,
+                    onManageOrder = navigateToManageHomeApps?.let { navAction ->
+                        {
+                            contextMenuApp = null
+                            onDismiss()
+                            navAction()
+                        }
+                    },
+                    viewModel = menuViewModel
+                )
+            }
         }
     }
 }
@@ -308,13 +352,28 @@ private fun AllAppsContent(
 
         items(apps, key = { it.packageName }) { app ->
             val isFirst = app == apps.firstOrNull()
+            val longPressKeyTracker = rememberLongPressKeyTracker()
+            var longPressTriggered by remember { mutableStateOf(false) }
+
             Surface(
-                onClick = { onAppClick(app) },
-                onLongClick = { onAppLongClick(app) },
+                onClick = {
+                    if (longPressTriggered) {
+                        longPressTriggered = false
+                    } else {
+                        onAppClick(app)
+                    }
+                },
                 modifier = Modifier
                     .fillMaxWidth()
                     .height(56.dp)
-                    .then(if (isFirst) Modifier.focusRequester(initialFocusRequester) else Modifier),
+                    .then(if (isFirst) Modifier.focusRequester(initialFocusRequester) else Modifier)
+                    .onPreviewKeyEvent { event ->
+                        val outcome = longPressKeyTracker.handle(event.nativeKeyEvent) {
+                            longPressTriggered = true
+                            onAppLongClick(app)
+                        }
+                        outcome == LongPressKeyOutcome.Consume
+                    },
                 shape = ClickableSurfaceDefaults.shape(RoundedCornerShape(12.dp)),
                 colors = ClickableSurfaceDefaults.colors(
                     containerColor = Color.White.copy(alpha = 0.05f),

@@ -174,6 +174,7 @@ private fun settingsSectionSpec(category: SettingsCategory): SettingsSectionSpec
 @Composable
 fun SettingsScreen(
     showBuiltInHeader: Boolean = true,
+    onBackPress: (() -> Unit)? = null,
     onNavigateToAddons: () -> Unit = {},
     onNavigateToPlugins: () -> Unit = {},
     onNavigateToAuthQrSignIn: () -> Unit = {},
@@ -358,6 +359,10 @@ fun SettingsScreen(
     // Back inside the options pane returns to the category rail before it leaves settings, the
     // way back inside a row returns to the start of that row. Anything the pane declares itself,
     // such as the integrations sub sections, composes later and so is asked first.
+    BackHandler(enabled = !detailHasFocus && onBackPress != null) {
+        onBackPress?.invoke()
+    }
+
     BackHandler(enabled = detailHasFocus) {
         // Cleared up front rather than after the request. The rail reports its own focus a frame
         // later, and until it does a second quick press would be consumed here again instead of

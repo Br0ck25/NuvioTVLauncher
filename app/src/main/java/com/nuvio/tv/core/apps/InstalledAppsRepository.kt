@@ -25,6 +25,7 @@ import kotlinx.coroutines.flow.stateIn
 
 data class InstalledAppsState(
     val apps: List<InstalledApp> = emptyList(),
+    val order: List<String> = emptyList(),
     val isLoading: Boolean = true
 )
 

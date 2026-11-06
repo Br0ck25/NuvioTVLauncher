@@ -16,6 +16,9 @@ import androidx.compose.animation.fadeOut
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.CompositionLocalProvider
 import androidx.compose.runtime.getValue
+import androidx.compose.runtime.mutableStateOf
+import androidx.compose.runtime.saveable.rememberSaveable
+import androidx.compose.runtime.setValue
 import androidx.compose.runtime.collectAsState
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import androidx.lifecycle.viewmodel.compose.LocalViewModelStoreOwner
@@ -36,6 +39,7 @@ import com.nuvio.tv.ui.screens.home.HomeScreen
 import com.nuvio.tv.ui.screens.addon.AddonManagerScreen
 import com.nuvio.tv.ui.screens.addon.CatalogOrderScreen
 import com.nuvio.tv.ui.screens.apps.AppsScreen
+import com.nuvio.tv.ui.screens.apps.LocalNavigateToManageHomeApps
 import com.nuvio.tv.ui.screens.library.LibraryScreen
 import com.nuvio.tv.ui.screens.player.PlayerExitReason
 import com.nuvio.tv.ui.screens.player.PlayerScreen
@@ -74,7 +78,10 @@ fun NuvioNavHost(
         // composed under, so use the session store when MainActivity provides one.
         val navViewModelStoreOwner = LocalNavViewModelStoreOwner.current
             ?: checkNotNull(LocalViewModelStoreOwner.current)
-        CompositionLocalProvider(LocalViewModelStoreOwner provides navViewModelStoreOwner) {
+        CompositionLocalProvider(
+            LocalViewModelStoreOwner provides navViewModelStoreOwner,
+            LocalNavigateToManageHomeApps provides { navController.navigate(Screen.InstalledAppsOrder.route) }
+        ) {
             PlaybackNavHost(navController, startDestination, hideBuiltInHeaders)
         }
     }
@@ -88,6 +95,7 @@ private fun PlaybackNavHost(
 ) {
     val playbackAvailability = LocalPlaybackAvailability.current
     val context = LocalContext.current
+    var settingsOpenedFromDrawer by rememberSaveable { mutableStateOf(false) }
     fun isStreamToPlayer(from: String, to: String): Boolean {
         return from.startsWith("stream/") && to.startsWith("player/")
     }
@@ -289,6 +297,7 @@ private fun PlaybackNavHost(
                     navController.navigate(Screen.FolderDetail.createRoute(collectionId, folderId))
                 },
                 onNavigateToSettings = {
+                    settingsOpenedFromDrawer = true
                     navController.navigate(Screen.Settings.route)
                 }
             )
@@ -1275,6 +1284,12 @@ private fun PlaybackNavHost(
         composable(Screen.Settings.route) {
             SettingsScreen(
                 showBuiltInHeader = !hideBuiltInHeaders,
+                onBackPress = if (settingsOpenedFromDrawer) {
+                    {
+                        settingsOpenedFromDrawer = false
+                        navController.popBackStack()
+                    }
+                } else null,
                 onNavigateToAddons = { navController.navigate(Screen.AddonManager.route) },
                 onNavigateToPlugins = { navController.navigate(Screen.Plugins.route) },
                 onNavigateToAuthQrSignIn = { navController.navigate(Screen.AuthQrSignIn.route) },
