@@ -137,8 +137,8 @@ fun HomeTopBarHeader(
                     focusedContainerColor = Color.White
                 ),
                 border = ClickableSurfaceDefaults.border(
-                    border = Border(BorderStroke(1.dp, Color.White.copy(alpha = 0.12f)), RoundedCornerShape(10.dp)),
-                    focusedBorder = Border(BorderStroke(2.dp, NuvioTheme.colors.Primary), RoundedCornerShape(10.dp))
+                    border = Border(BorderStroke(1.dp, Color.White.copy(alpha = 0.12f))),
+                    focusedBorder = Border(BorderStroke(2.dp, NuvioTheme.colors.Primary))
                 )
             ) {
                 Box(
@@ -164,8 +164,8 @@ fun HomeTopBarHeader(
                 focusedContainerColor = Color.White
             ),
             border = ClickableSurfaceDefaults.border(
-                border = Border(BorderStroke(1.dp, Color.White.copy(alpha = 0.12f)), RoundedCornerShape(10.dp)),
-                focusedBorder = Border(BorderStroke(2.dp, NuvioTheme.colors.Primary), RoundedCornerShape(10.dp))
+                border = Border(BorderStroke(1.dp, Color.White.copy(alpha = 0.12f))),
+                focusedBorder = Border(BorderStroke(2.dp, NuvioTheme.colors.Primary))
             )
         ) {
             Row(
@@ -211,8 +211,8 @@ fun HomeTopBarHeader(
                 focusedContainerColor = Color.White
             ),
             border = ClickableSurfaceDefaults.border(
-                border = Border(BorderStroke(1.dp, Color.White.copy(alpha = 0.12f)), RoundedCornerShape(10.dp)),
-                focusedBorder = Border(BorderStroke(2.dp, NuvioTheme.colors.Primary), RoundedCornerShape(10.dp))
+                border = Border(BorderStroke(1.dp, Color.White.copy(alpha = 0.12f))),
+                focusedBorder = Border(BorderStroke(2.dp, NuvioTheme.colors.Primary))
             )
         ) {
             Box(

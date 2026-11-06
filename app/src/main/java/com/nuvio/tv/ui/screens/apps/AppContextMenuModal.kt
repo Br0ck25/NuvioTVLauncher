@@ -69,6 +69,7 @@ import androidx.tv.material3.ClickableSurfaceDefaults
 import androidx.tv.material3.Icon
 import androidx.tv.material3.MaterialTheme
 import androidx.tv.material3.Surface
+import androidx.tv.material3.SurfaceDefaults
 import androidx.tv.material3.Text
 import com.nuvio.tv.R
 import com.nuvio.tv.core.apps.InstalledApp
@@ -129,15 +130,12 @@ fun AppContextMenuModal(
                 .width(420.dp)
                 .padding(24.dp)
                 .clickable(interactionSource = remember { MutableInteractionSource() }, indication = null) { /* swallow click */ },
-            shape = ClickableSurfaceDefaults.shape(RoundedCornerShape(24.dp)),
-            colors = ClickableSurfaceDefaults.colors(
+            shape = RoundedCornerShape(24.dp),
+            colors = SurfaceDefaults.colors(
                 containerColor = Color(0xFF16191E).copy(alpha = 0.96f)
             ),
-            border = ClickableSurfaceDefaults.border(
-                border = Border(
-                    border = BorderStroke(1.dp, Color.White.copy(alpha = 0.12f)),
-                    shape = RoundedCornerShape(24.dp)
-                )
+            border = Border(
+                border = BorderStroke(1.dp, Color.White.copy(alpha = 0.12f))
             )
         ) {
             when (currentMode) {
@@ -410,13 +408,11 @@ private fun RenameDialogContent(
         )
 
         Surface(
-            shape = ClickableSurfaceDefaults.shape(RoundedCornerShape(14.dp)),
-            colors = ClickableSurfaceDefaults.colors(
+            shape = RoundedCornerShape(14.dp),
+            colors = SurfaceDefaults.colors(
                 containerColor = Color.White.copy(alpha = 0.06f)
             ),
-            border = ClickableSurfaceDefaults.border(
-                border = Border(BorderStroke(1.dp, Color.White.copy(alpha = 0.15f)), RoundedCornerShape(14.dp))
-            ),
+            border = Border(BorderStroke(1.dp, Color.White.copy(alpha = 0.15f))),
             modifier = Modifier.fillMaxWidth().height(60.dp)
         ) {
             Box(
@@ -686,8 +682,8 @@ private fun PackIconsContent(
                             focusedContainerColor = Color.White
                         ),
                         border = ClickableSurfaceDefaults.border(
-                            border = Border(BorderStroke(1.dp, Color.White.copy(alpha = 0.08f)), RoundedCornerShape(12.dp)),
-                            focusedBorder = Border(BorderStroke(2.dp, NuvioTheme.colors.Primary), RoundedCornerShape(12.dp))
+                            border = Border(BorderStroke(1.dp, Color.White.copy(alpha = 0.08f))),
+                            focusedBorder = Border(BorderStroke(2.dp, NuvioTheme.colors.Primary))
                         )
                     ) {
                         Box(modifier = Modifier.fillMaxSize(), contentAlignment = Alignment.Center) {

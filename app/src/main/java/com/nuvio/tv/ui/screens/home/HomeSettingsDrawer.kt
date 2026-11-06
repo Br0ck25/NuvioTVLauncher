@@ -56,6 +56,7 @@ import androidx.tv.material3.ClickableSurfaceDefaults
 import androidx.tv.material3.Icon
 import androidx.tv.material3.MaterialTheme
 import androidx.tv.material3.Surface
+import androidx.tv.material3.SurfaceDefaults
 import androidx.tv.material3.Text
 import com.nuvio.tv.R
 import com.nuvio.tv.core.apps.InstalledApp
@@ -114,13 +115,11 @@ fun HomeSettingsDrawer(
                 .width(420.dp)
                 .padding(24.dp)
                 .clickable(interactionSource = remember { MutableInteractionSource() }, indication = null) { /* swallow click */ },
-            shape = ClickableSurfaceDefaults.shape(RoundedCornerShape(24.dp)),
-            colors = ClickableSurfaceDefaults.colors(
+            shape = RoundedCornerShape(24.dp),
+            colors = SurfaceDefaults.colors(
                 containerColor = Color(0xFF16191E).copy(alpha = 0.96f)
             ),
-            border = ClickableSurfaceDefaults.border(
-                border = Border(BorderStroke(1.dp, Color.White.copy(alpha = 0.12f)), RoundedCornerShape(24.dp))
-            )
+            border = Border(BorderStroke(1.dp, Color.White.copy(alpha = 0.12f)))
         ) {
             when (currentMode) {
                 DrawerScreenMode.MENU -> {
