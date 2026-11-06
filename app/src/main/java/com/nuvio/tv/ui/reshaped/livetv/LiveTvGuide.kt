@@ -11,6 +11,7 @@ import androidx.compose.animation.animateColorAsState
 import androidx.compose.animation.core.AnimationVector1D
 import androidx.compose.animation.core.spring
 import androidx.compose.foundation.background
+import androidx.compose.foundation.border
 import androidx.compose.foundation.focusable
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.BoxWithConstraints
@@ -131,6 +132,9 @@ internal class LiveTvGuideState(
     /** How much time fits in view; set once laid out. */
     var viewSpanMs = 3 * 60 * MINUTE
 
+    var focusOnChannel by mutableStateOf(false)
+        internal set
+
     val channel: LiveTvChannel? get() = channels.getOrNull(row)
 
     /**
@@ -187,6 +191,7 @@ internal class LiveTvGuideState(
         Snapshot.withMutableSnapshot {
             channels = list
             row = list.indexOfFirst { it.streamUrl == keepUrl }.coerceAtLeast(0)
+            focusOnChannel = false
             if (toNow) backToNow()
         }
     }
@@ -194,6 +199,7 @@ internal class LiveTvGuideState(
     /** Selects the channel at [index] (focus coming back from the player). */
     fun selectRow(index: Int) {
         row = index.coerceIn(0, (channels.size - 1).coerceAtLeast(0))
+        focusOnChannel = false
     }
 
     fun backToNow() {
@@ -201,6 +207,7 @@ internal class LiveTvGuideState(
         anchorMs = now
         viewStartMs = floorSlot(now - leadMs)
         followsNow = true
+        focusOnChannel = false
     }
 
     /**
@@ -239,6 +246,10 @@ internal class LiveTvGuideState(
                             togglePicked(picked)
                             return true
                         }
+                        if (focusOnChannel) {
+                            LiveTvRepository.toggleFavorite(picked)
+                            return true
+                        }
                         // A programme that has ended plays again where the provider keeps it; anything else plays live.
                         val programme = selected()
                         if (programme != null && programme.stopEpochMs <= LiveTvClock.nowEpochMs() &&
@@ -252,6 +263,7 @@ internal class LiveTvGuideState(
                     KeyEvent.KEYCODE_BACK, KeyEvent.KEYCODE_ESCAPE -> when {
                         moving -> moving = false
                         selecting -> stopSelecting()
+                        focusOnChannel -> focusOnChannel = false
                         else -> onClose()
                     }
                 }
@@ -286,8 +298,24 @@ internal class LiveTvGuideState(
             KeyEvent.KEYCODE_DPAD_DOWN -> moveRow(1)
             KeyEvent.KEYCODE_CHANNEL_UP, KeyEvent.KEYCODE_PAGE_UP -> moveRow(-PAGE)
             KeyEvent.KEYCODE_CHANNEL_DOWN, KeyEvent.KEYCODE_PAGE_DOWN -> moveRow(PAGE)
-            KeyEvent.KEYCODE_DPAD_LEFT -> moveProgramme(-1, event.repeatCount > 0)
-            KeyEvent.KEYCODE_DPAD_RIGHT -> moveProgramme(1, event.repeatCount > 0)
+            KeyEvent.KEYCODE_DPAD_LEFT -> {
+                if (focusOnChannel) {
+                    if (event.repeatCount == 0 && onExitLeft != null) {
+                        onExitLeft.invoke()
+                    }
+                    true
+                } else {
+                    moveProgramme(-1, event.repeatCount > 0)
+                }
+            }
+            KeyEvent.KEYCODE_DPAD_RIGHT -> {
+                if (focusOnChannel) {
+                    focusOnChannel = false
+                    true
+                } else {
+                    moveProgramme(1, event.repeatCount > 0)
+                }
+            }
             KeyEvent.KEYCODE_DPAD_CENTER, KeyEvent.KEYCODE_ENTER, KeyEvent.KEYCODE_NUMPAD_ENTER -> {
                 if (event.repeatCount == 0) longPressed = false
                 // Held: a long press, once, instead of playing on release.
@@ -321,16 +349,11 @@ internal class LiveTvGuideState(
             step > 0 -> programmes.firstOrNull { it.startEpochMs > anchorMs }
             else -> programmes.lastOrNull { it.stopEpochMs <= anchorMs }
         }
-        // Embedded: from now (or the past), ◀ goes on into the past only where it can be played again.
-        if (step < 0 && onExitLeft != null && anchorMs <= now &&
+        // Embedded: from now (or the past), ◀ goes into the channel name column first before exiting left to categories.
+        if (step < 0 && anchorMs <= now &&
             (target == null || !LiveTvCatchupLinks.isPlayable(channel?.catchup, target, now))
         ) {
-            // A held ◀ pauses on what is on now, then goes on to the categories: it never
-            // needs letting go and pressing again, which felt stuck.
-            if (!repeating || ++heldAtEdge >= EXIT_AFTER_REPEATS) {
-                heldAtEdge = 0
-                onExitLeft.invoke()
-            }
+            focusOnChannel = true
             return true
         }
         heldAtEdge = 0
@@ -518,16 +541,19 @@ internal fun LiveTvGuideGrid(
 private fun GuideHeader(state: LiveTvGuideState, guideVersion: Int, clock: State<Long>) {
     val channel = state.channel
     val selected = remember(state.row, state.anchorMs, guideVersion) { state.selected() }
+    val liveState by LiveTvRepository.uiState.collectAsStateWithLifecycle()
+    val isFavorite = channel != null && channel.streamUrl in liveState.favoriteUrls
+
     Row(verticalAlignment = Alignment.Bottom, modifier = Modifier.fillMaxWidth().height(96.dp)) {
         Column(modifier = Modifier.weight(1f)) {
             Text(
-                text = stringResource(R.string.live_tv_guide).uppercase(),
+                text = (if (state.focusOnChannel) stringResource(R.string.live_tv_title) else stringResource(R.string.live_tv_guide)).uppercase(),
                 style = MaterialTheme.typography.labelSmall,
                 letterSpacing = 1.5.sp,
                 color = Color.White.copy(alpha = 0.5f),
             )
             Text(
-                text = selected?.title ?: channel?.name.orEmpty(),
+                text = if (state.focusOnChannel) channel?.name.orEmpty() else (selected?.title ?: channel?.name.orEmpty()),
                 style = MaterialTheme.typography.headlineSmall,
                 fontWeight = FontWeight.SemiBold,
                 color = Color.White,
@@ -535,28 +561,43 @@ private fun GuideHeader(state: LiveTvGuideState, guideVersion: Int, clock: State
                 overflow = TextOverflow.Ellipsis,
                 modifier = Modifier.padding(top = 4.dp),
             )
-            val timing = selected?.let { programme ->
-                val status = when {
-                    programme.stopEpochMs <= clock.value -> stringResource(R.string.live_tv_guide_ended)
-                    programme.startEpochMs <= clock.value -> liveTvTimeLeft(programme, clock)
-                    else -> null
+            if (state.focusOnChannel) {
+                Text(
+                    text = if (isFavorite) stringResource(R.string.live_tv_favorite_remove) else stringResource(R.string.live_tv_favorite_add),
+                    style = MaterialTheme.typography.bodyMedium.copy(fontWeight = FontWeight.Medium),
+                    color = if (isFavorite) Color(0xFFFFD700) else Color.White.copy(alpha = 0.75f),
+                    maxLines = 1,
+                    overflow = TextOverflow.Ellipsis,
+                    modifier = Modifier.padding(top = 2.dp),
+                )
+            } else {
+                val timing = selected?.let { programme ->
+                    val status = when {
+                        programme.stopEpochMs <= clock.value -> stringResource(R.string.live_tv_guide_ended)
+                        programme.startEpochMs <= clock.value -> liveTvTimeLeft(programme, clock)
+                        else -> null
+                    }
+                    val catchup = channel?.catchup?.takeIf { programme.startEpochMs < clock.value }
+                        ?.takeIf { LiveTvCatchupLinks.isPlayable(it, programme, clock.value) }
+                        ?.let { stringResource(R.string.live_tv_catchup) }
+                    listOfNotNull(LiveTvClock.formatSpan(programme), status, catchup).joinToString("  ·  ")
                 }
-                val catchup = channel?.catchup?.takeIf { programme.startEpochMs < clock.value }
-                    ?.takeIf { LiveTvCatchupLinks.isPlayable(it, programme, clock.value) }
-                    ?.let { stringResource(R.string.live_tv_catchup) }
-                listOfNotNull(LiveTvClock.formatSpan(programme), status, catchup).joinToString("  ·  ")
+                Text(
+                    text = listOfNotNull(channel?.name?.takeIf { selected != null }, timing).joinToString("  ·  "),
+                    style = MaterialTheme.typography.bodyMedium,
+                    color = Color.White.copy(alpha = 0.65f),
+                    maxLines = 1,
+                    overflow = TextOverflow.Ellipsis,
+                    modifier = Modifier.padding(top = 2.dp),
+                )
             }
-            Text(
-                text = listOfNotNull(channel?.name?.takeIf { selected != null }, timing).joinToString("  ·  "),
-                style = MaterialTheme.typography.bodyMedium,
-                color = Color.White.copy(alpha = 0.65f),
-                maxLines = 1,
-                overflow = TextOverflow.Ellipsis,
-                modifier = Modifier.padding(top = 2.dp),
-            )
         }
         Text(
-            text = stringResource(R.string.live_tv_guide_hint),
+            text = if (state.focusOnChannel) {
+                if (isFavorite) stringResource(R.string.live_tv_favorite_remove) else stringResource(R.string.live_tv_favorite_add)
+            } else {
+                stringResource(R.string.live_tv_guide_hint)
+            },
             style = MaterialTheme.typography.labelSmall,
             color = Color.White.copy(alpha = 0.42f),
         )
@@ -612,58 +653,92 @@ private fun GuideRow(
     rowHeight: Dp,
 ) {
     Row(modifier = Modifier.fillMaxWidth().height(rowHeight).padding(vertical = 3.dp)) {
-        val rowHighlight by animateColorAsState(if (selectedRow) CHANNEL_SELECTED else Color.Transparent, SELECTION_FADE, label = "guideRow")
-        Row(
+        val isChannelFocused = selectedRow && active && state.focusOnChannel
+        val channelHighlight by animateColorAsState(
+            when {
+                isChannelFocused -> Color.White.copy(alpha = 0.22f)
+                selectedRow -> CHANNEL_SELECTED
+                else -> Color.Transparent
+            },
+            SELECTION_FADE,
+            label = "channelHighlight"
+        )
+        Column(
             modifier = Modifier
                 .width(channelColumn)
                 .fillMaxHeight()
                 .padding(end = 8.dp)
                 .clip(RoundedCornerShape(10.dp))
-                .drawBehind { drawRect(rowHighlight) }
-                .padding(horizontal = 8.dp),
-            verticalAlignment = Alignment.CenterVertically,
+                .border(
+                    width = if (isChannelFocused) 2.dp else 1.dp,
+                    color = if (isChannelFocused) Color.White else if (selectedRow) Color.White.copy(alpha = 0.12f) else Color.Transparent,
+                    shape = RoundedCornerShape(10.dp)
+                )
+                .drawBehind { drawRect(channelHighlight) }
+                .padding(horizontal = 8.dp, vertical = 4.dp),
+            verticalArrangement = Arrangement.Center,
         ) {
-            if (moving) {
-                Icon(Icons.Filled.UnfoldMore, contentDescription = null, tint = Color.White, modifier = Modifier.padding(end = 6.dp).size(18.dp))
-            }
-            if (picked != null) {
-                Box(
-                    modifier = Modifier
-                        .padding(end = 8.dp)
-                        .size(18.dp)
-                        .clip(RoundedCornerShape(5.dp))
-                        .background(if (picked) Color.White else Color.White.copy(alpha = 0.14f)),
-                    contentAlignment = Alignment.Center,
+            Row(
+                modifier = Modifier.fillMaxWidth(),
+                verticalAlignment = Alignment.CenterVertically,
+                horizontalArrangement = Arrangement.SpaceBetween,
+            ) {
+                Row(
+                    verticalAlignment = Alignment.CenterVertically,
+                    horizontalArrangement = Arrangement.spacedBy(6.dp),
+                    modifier = Modifier.weight(1f, fill = false)
                 ) {
-                    if (picked) Icon(Icons.Filled.Check, contentDescription = null, tint = Color.Black, modifier = Modifier.size(14.dp))
+                    if (moving) {
+                        Icon(Icons.Filled.UnfoldMore, contentDescription = null, tint = Color.White, modifier = Modifier.size(16.dp))
+                    }
+                    if (picked != null) {
+                        Box(
+                            modifier = Modifier
+                                .size(16.dp)
+                                .clip(RoundedCornerShape(4.dp))
+                                .background(if (picked) Color.White else Color.White.copy(alpha = 0.14f)),
+                            contentAlignment = Alignment.Center,
+                        ) {
+                            if (picked) Icon(Icons.Filled.Check, contentDescription = null, tint = Color.Black, modifier = Modifier.size(12.dp))
+                        }
+                    }
+                    LiveTvLogo(url = logo, name = channel.name, width = 36.dp, height = 20.dp)
+                }
+
+                Row(
+                    verticalAlignment = Alignment.CenterVertically,
+                    horizontalArrangement = Arrangement.spacedBy(4.dp),
+                ) {
+                    if (isFavorite) {
+                        Icon(
+                            imageVector = Icons.Filled.Star,
+                            contentDescription = stringResource(R.string.live_tv_favorites),
+                            tint = if (isChannelFocused) Color(0xFFFFD700) else Color.White.copy(alpha = 0.7f),
+                            modifier = Modifier.size(14.dp),
+                        )
+                    }
+                    if (channel.catchup != null) {
+                        Icon(
+                            imageVector = Icons.Default.History,
+                            contentDescription = stringResource(R.string.live_tv_catchup),
+                            tint = Color.White.copy(alpha = 0.55f),
+                            modifier = Modifier.size(14.dp),
+                        )
+                    }
                 }
             }
-            LiveTvLogo(url = logo, name = channel.name, width = 44.dp, height = 26.dp)
+
             Text(
                 text = channel.name,
-                style = MaterialTheme.typography.bodyMedium,
-                fontWeight = if (selectedRow) FontWeight.SemiBold else FontWeight.Normal,
-                color = Color.White.copy(alpha = if (selectedRow) 1f else 0.75f),
+                style = MaterialTheme.typography.bodySmall,
+                fontWeight = if (isChannelFocused || selectedRow) FontWeight.SemiBold else FontWeight.Normal,
+                color = Color.White.copy(alpha = if (isChannelFocused) 1f else if (selectedRow) 0.95f else 0.75f),
                 maxLines = 1,
                 overflow = TextOverflow.Ellipsis,
-                modifier = Modifier.padding(start = 10.dp).weight(1f),
+                modifier = Modifier
+                    .fillMaxWidth()
+                    .padding(top = 2.dp),
             )
-            if (isFavorite) {
-                Icon(
-                    imageVector = Icons.Filled.Star,
-                    contentDescription = stringResource(R.string.live_tv_favorites),
-                    tint = Color.White.copy(alpha = 0.55f),
-                    modifier = Modifier.padding(start = 4.dp).size(14.dp),
-                )
-            }
-            if (channel.catchup != null) {
-                Icon(
-                    imageVector = Icons.Default.History,
-                    contentDescription = stringResource(R.string.live_tv_catchup),
-                    tint = Color.White.copy(alpha = 0.55f),
-                    modifier = Modifier.padding(start = 4.dp).size(16.dp),
-                )
-            }
         }
         // Programmes in view and two hours either side: the rows recompose only when the timeline
         // moves into another two hours, not on each step.
@@ -678,7 +753,7 @@ private fun GuideRow(
             if (programmes.isEmpty()) {
                 GuideCell(
                     title = stringResource(R.string.live_tv_guide_none),
-                    selected = selectedRow && active,
+                    selected = selectedRow && active && !state.focusOnChannel,
                     state = GuideCellState.Future,
                     modifier = Modifier.fillMaxSize(),
                 )
@@ -691,7 +766,7 @@ private fun GuideRow(
             gaps.forEach { (gapStart, gapStop) ->
                 GuideCell(
                     title = noGuide,
-                    selected = selectedRow && active && selected == null && state.anchorMs >= gapStart && state.anchorMs < gapStop,
+                    selected = selectedRow && active && !state.focusOnChannel && selected == null && state.anchorMs >= gapStart && state.anchorMs < gapStop,
                     state = GuideCellState.Future,
                     modifier = Modifier
                         .offset { IntOffset(timeline.x(gapStart).roundToInt(), 0) }
@@ -714,7 +789,7 @@ private fun GuideRow(
                 }
                 GuideCell(
                     title = programme.title,
-                    selected = programme === selected && active,
+                    selected = programme === selected && active && !state.focusOnChannel,
                     state = cellState,
                     progress = if (cellState == GuideCellState.Now) programme else null,
                     clock = clock,

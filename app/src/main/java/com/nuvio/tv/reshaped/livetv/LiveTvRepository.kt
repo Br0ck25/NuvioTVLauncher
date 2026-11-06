@@ -433,6 +433,12 @@ object LiveTvRepository {
         scope.launch(writer) { store.saveFavoriteUrls(favorites) }
     }
 
+    fun categoryRailOrder(): List<String> = storage?.categoryRailOrder().orEmpty()
+
+    fun saveCategoryRailOrder(order: List<String>) {
+        storage?.let { store -> scope.launch(writer) { store.saveCategoryRailOrder(order) } }
+    }
+
     // region Own playlists
 
     /** Makes a playlist named [name], with [channel] in it when given; returns its id. */

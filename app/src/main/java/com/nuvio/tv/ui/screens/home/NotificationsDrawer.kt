@@ -30,6 +30,7 @@ import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.items
+import androidx.compose.foundation.lazy.itemsIndexed
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.Android
@@ -395,122 +396,148 @@ private fun NotificationsDrawerContent(
                 }
             }
         } else {
+            val focusRequesters = remember { mutableMapOf<String, FocusRequester>() }
+
             LazyColumn(
                 modifier = Modifier.fillMaxSize(),
                 verticalArrangement = Arrangement.spacedBy(10.dp)
             ) {
-                items(notifications, key = { it.key }) { item ->
-                    Row(
+                itemsIndexed(notifications, key = { _, it -> it.key }) { index, item ->
+                    val closeRequester = focusRequesters.getOrPut(item.key) { FocusRequester() }
+
+                    Surface(
                         modifier = Modifier.fillMaxWidth(),
-                        verticalAlignment = Alignment.CenterVertically,
-                        horizontalArrangement = Arrangement.spacedBy(8.dp)
+                        shape = RoundedCornerShape(16.dp),
+                        colors = SurfaceDefaults.colors(
+                            containerColor = Color.White.copy(alpha = 0.05f)
+                        ),
+                        border = Border(BorderStroke(1.dp, Color.White.copy(alpha = 0.09f)))
                     ) {
-                        Surface(
-                            onClick = { onNotificationClick(item) },
-                            modifier = Modifier.weight(1f),
-                            shape = ClickableSurfaceDefaults.shape(RoundedCornerShape(14.dp)),
-                            colors = ClickableSurfaceDefaults.colors(
-                                containerColor = Color.White.copy(alpha = 0.06f),
-                                focusedContainerColor = Color.White.copy(alpha = 0.18f)
-                            ),
-                            scale = ClickableSurfaceDefaults.scale(focusedScale = 1f),
-                            border = ClickableSurfaceDefaults.border(
-                                border = Border(BorderStroke(1.dp, Color.White.copy(alpha = 0.08f))),
-                                focusedBorder = Border(BorderStroke(2.dp, Color.White))
-                            )
+                        Row(
+                            modifier = Modifier
+                                .fillMaxWidth()
+                                .padding(8.dp),
+                            verticalAlignment = Alignment.CenterVertically,
+                            horizontalArrangement = Arrangement.spacedBy(8.dp)
                         ) {
-                            Column(
-                                modifier = Modifier
-                                    .fillMaxWidth()
-                                    .padding(14.dp),
-                                verticalArrangement = Arrangement.spacedBy(6.dp)
+                            Surface(
+                                onClick = { onNotificationClick(item) },
+                                modifier = Modifier.weight(1f),
+                                shape = ClickableSurfaceDefaults.shape(RoundedCornerShape(10.dp)),
+                                colors = ClickableSurfaceDefaults.colors(
+                                    containerColor = Color.Transparent,
+                                    focusedContainerColor = Color.White.copy(alpha = 0.16f)
+                                ),
+                                scale = ClickableSurfaceDefaults.scale(focusedScale = 1f),
+                                border = ClickableSurfaceDefaults.border(
+                                    border = Border.None,
+                                    focusedBorder = Border(BorderStroke(2.dp, Color.White))
+                                )
                             ) {
-                                Row(
-                                    modifier = Modifier.fillMaxWidth(),
-                                    verticalAlignment = Alignment.CenterVertically,
-                                    horizontalArrangement = Arrangement.SpaceBetween
+                                Column(
+                                    modifier = Modifier
+                                        .fillMaxWidth()
+                                        .padding(8.dp),
+                                    verticalArrangement = Arrangement.spacedBy(4.dp)
                                 ) {
                                     Row(
+                                        modifier = Modifier.fillMaxWidth(),
                                         verticalAlignment = Alignment.CenterVertically,
-                                        horizontalArrangement = Arrangement.spacedBy(8.dp),
-                                        modifier = Modifier.weight(1f)
+                                        horizontalArrangement = Arrangement.SpaceBetween
                                     ) {
-                                        if (item.appIcon != null) {
-                                            Image(
-                                                bitmap = item.appIcon,
-                                                contentDescription = null,
-                                                modifier = Modifier
-                                                    .size(20.dp)
-                                                    .clip(RoundedCornerShape(4.dp))
-                                            )
-                                        } else {
-                                            Icon(
-                                                imageVector = Icons.Default.Android,
-                                                contentDescription = null,
-                                                modifier = Modifier.size(20.dp)
+                                        Row(
+                                            verticalAlignment = Alignment.CenterVertically,
+                                            horizontalArrangement = Arrangement.spacedBy(8.dp),
+                                            modifier = Modifier.weight(1f)
+                                        ) {
+                                            if (item.appIcon != null) {
+                                                Image(
+                                                    bitmap = item.appIcon,
+                                                    contentDescription = null,
+                                                    modifier = Modifier
+                                                        .size(20.dp)
+                                                        .clip(RoundedCornerShape(4.dp))
+                                                )
+                                            } else {
+                                                Icon(
+                                                    imageVector = Icons.Default.Android,
+                                                    contentDescription = null,
+                                                    modifier = Modifier.size(20.dp)
+                                                )
+                                            }
+                                            Text(
+                                                text = item.appName,
+                                                style = MaterialTheme.typography.labelMedium.copy(fontWeight = FontWeight.SemiBold),
+                                                color = Color.White.copy(alpha = 0.7f),
+                                                maxLines = 1,
+                                                overflow = TextOverflow.Ellipsis
                                             )
                                         }
+
                                         Text(
-                                            text = item.appName,
-                                            style = MaterialTheme.typography.labelMedium.copy(fontWeight = FontWeight.SemiBold),
-                                            color = Color.White.copy(alpha = 0.7f),
+                                            text = formatPostTime(item.postTime),
+                                            style = MaterialTheme.typography.labelSmall,
+                                            color = Color.White.copy(alpha = 0.45f)
+                                        )
+                                    }
+
+                                    if (item.title.isNotBlank()) {
+                                        Text(
+                                            text = item.title,
+                                            style = MaterialTheme.typography.bodyMedium.copy(fontWeight = FontWeight.Bold),
                                             maxLines = 1,
                                             overflow = TextOverflow.Ellipsis
                                         )
                                     }
 
-                                    Text(
-                                        text = formatPostTime(item.postTime),
-                                        style = MaterialTheme.typography.labelSmall,
-                                        color = Color.White.copy(alpha = 0.45f)
-                                    )
-                                }
-
-                                if (item.title.isNotBlank()) {
-                                    Text(
-                                        text = item.title,
-                                        style = MaterialTheme.typography.bodyMedium.copy(fontWeight = FontWeight.Bold),
-                                        maxLines = 1,
-                                        overflow = TextOverflow.Ellipsis
-                                    )
-                                }
-
-                                if (item.text.isNotBlank()) {
-                                    Text(
-                                        text = item.text,
-                                        style = MaterialTheme.typography.bodySmall,
-                                        color = Color.White.copy(alpha = 0.7f),
-                                        maxLines = 2,
-                                        overflow = TextOverflow.Ellipsis
-                                    )
+                                    if (item.text.isNotBlank()) {
+                                        Text(
+                                            text = item.text,
+                                            style = MaterialTheme.typography.bodySmall,
+                                            color = Color.White.copy(alpha = 0.7f),
+                                            maxLines = 2,
+                                            overflow = TextOverflow.Ellipsis
+                                        )
+                                    }
                                 }
                             }
-                        }
 
-                        Surface(
-                            onClick = { onDismissItem(item) },
-                            modifier = Modifier.size(40.dp),
-                            shape = ClickableSurfaceDefaults.shape(RoundedCornerShape(10.dp)),
-                            colors = ClickableSurfaceDefaults.colors(
-                                containerColor = Color.White.copy(alpha = 0.06f),
-                                focusedContainerColor = Color.White.copy(alpha = 0.22f)
-                            ),
-                            scale = ClickableSurfaceDefaults.scale(focusedScale = 1f),
-                            border = ClickableSurfaceDefaults.border(
-                                border = Border(BorderStroke(1.dp, Color.White.copy(alpha = 0.08f))),
-                                focusedBorder = Border(BorderStroke(2.dp, Color.White))
-                            )
-                        ) {
-                            Box(
-                                modifier = Modifier.fillMaxSize(),
-                                contentAlignment = Alignment.Center
-                            ) {
-                                Icon(
-                                    imageVector = Icons.Default.Close,
-                                    contentDescription = stringResource(R.string.action_cancel),
-                                    tint = Color.White.copy(alpha = 0.75f),
-                                    modifier = Modifier.size(18.dp)
+                            Surface(
+                                onClick = {
+                                    val nextIndex = if (index < notifications.size - 1) index + 1 else index - 1
+                                    val nextRequester = if (nextIndex >= 0 && nextIndex < notifications.size) {
+                                        focusRequesters[notifications[nextIndex].key]
+                                    } else null
+                                    onDismissItem(item)
+                                    runCatching {
+                                        (nextRequester ?: initialFocusRequester).requestFocus()
+                                    }
+                                },
+                                modifier = Modifier
+                                    .size(32.dp)
+                                    .focusRequester(closeRequester),
+                                shape = ClickableSurfaceDefaults.shape(RoundedCornerShape(8.dp)),
+                                colors = ClickableSurfaceDefaults.colors(
+                                    containerColor = Color.White.copy(alpha = 0.08f),
+                                    focusedContainerColor = Color.White.copy(alpha = 0.35f)
+                                ),
+                                scale = ClickableSurfaceDefaults.scale(focusedScale = 1.05f),
+                                border = ClickableSurfaceDefaults.border(
+                                    border = Border(BorderStroke(1.dp, Color.White.copy(alpha = 0.1f))),
+                                    focusedBorder = Border(BorderStroke(2.dp, Color.White))
                                 )
+                            ) {
+                                Box(
+                                    modifier = Modifier.fillMaxSize(),
+                                    contentAlignment = Alignment.Center
+                                ) {
+                                    Icon(
+                                        imageVector = Icons.Default.Close,
+                                        contentDescription = stringResource(R.string.action_cancel),
+                                        tint = Color.White,
+                                        modifier = Modifier.size(16.dp)
+                                    )
+                                }
                             }
                         }
                     }

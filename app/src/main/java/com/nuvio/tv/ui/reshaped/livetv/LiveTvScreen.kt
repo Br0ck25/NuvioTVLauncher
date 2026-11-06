@@ -28,8 +28,11 @@ import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.automirrored.filled.VolumeOff
 import androidx.compose.material.icons.automirrored.filled.VolumeUp
+import androidx.compose.foundation.BorderStroke
 import androidx.compose.material.icons.filled.KeyboardArrowDown
+import androidx.compose.material.icons.filled.UnfoldMore
 import androidx.compose.material.icons.automirrored.filled.KeyboardArrowRight
+import androidx.tv.material3.Border
 import androidx.compose.runtime.Composable
 import androidx.compose.foundation.lazy.rememberLazyListState
 import androidx.compose.runtime.snapshotFlow
@@ -495,7 +498,7 @@ fun LiveTvScreen(
                             active = gridFocused,
                             clock = minuteClock,
                             channelColumn = 210.dp,
-                            rowHeight = 45.dp,
+                            rowHeight = 54.dp,
                             modifier = Modifier.fillMaxSize(),
                             corner = { LiveTvGuideDate(guide.viewStartMs, minuteClock) },
                         )
@@ -1069,19 +1072,26 @@ private fun LiveTvCategoryColumn(
     val favoritesLabel = stringResource(R.string.live_tv_favorites)
     val newListLabel = stringResource(R.string.live_tv_playlist_new)
     val uncategorised = liveTvGroupLabel(LIVE_TV_UNGROUPED)
-    val pickEntries = remember(newListLabel, uiState.customLists, favoritesLabel) {
+    val customLists = uiState.customLists
+    var customOrder by remember { mutableStateOf(LiveTvRepository.categoryRailOrder()) }
+    var movingKey by remember { mutableStateOf<String?>(null) }
+
+    val allLabel = stringResource(R.string.live_tv_all_channels)
+    val favoritesLabel = stringResource(R.string.live_tv_favorites)
+    val newListLabel = stringResource(R.string.live_tv_playlist_new)
+    val uncategorised = liveTvGroupLabel(LIVE_TV_UNGROUPED)
+    val pickEntries = remember(newListLabel, customLists, favoritesLabel) {
         buildList {
             add(LiveTvCategoryEntry(FILTER_FAVORITES, favoritesLabel))
-            uiState.customLists.forEach { add(LiveTvCategoryEntry(FILTER_LIST_PREFIX + it.id, it.name, count = it.urls.size, listId = it.id)) }
+            customLists.forEach { add(LiveTvCategoryEntry(FILTER_LIST_PREFIX + it.id, it.name, count = it.urls.size, listId = it.id)) }
             add(LiveTvCategoryEntry(NEW_LIST_KEY, newListLabel, action = true))
         }
     }
-    val entries = remember(newListLabel, sections, visibleGroups, uiState.groupNames, uiState.customLists, collapsed.toMap(), allLabel, favoritesLabel, uncategorised) {
+    val baseEntries = remember(sections, visibleGroups, uiState.groupNames, customLists, collapsed.toMap(), allLabel, favoritesLabel, uncategorised) {
         fun label(group: String) = liveTvGroupName(group, uiState.groupNames) ?: if (group == LIVE_TV_UNGROUPED) uncategorised else group
         buildList {
             add(LiveTvCategoryEntry(FILTER_FAVORITES, favoritesLabel))
-            uiState.customLists.forEach { add(LiveTvCategoryEntry(FILTER_LIST_PREFIX + it.id, it.name, count = it.urls.size, listId = it.id)) }
-            add(LiveTvCategoryEntry(NEW_LIST_KEY, newListLabel, action = true))
+            customLists.forEach { add(LiveTvCategoryEntry(FILTER_LIST_PREFIX + it.id, it.name, count = it.urls.size, listId = it.id)) }
             add(LiveTvCategoryEntry(FILTER_ALL, allLabel, count = sections?.total))
             val bySource = sections?.sources
             if (bySource != null && bySource.size > 1) {
@@ -1108,6 +1118,14 @@ private fun LiveTvCategoryColumn(
                 val baseGroups = if (hasLiveCategory) visibleGroups else listOf("Live TV") + visibleGroups
                 baseGroups.distinct().forEach { add(LiveTvCategoryEntry(it, label(it), count = uiState.groupCounts[it])) }
             }
+        }
+    }
+    val entries = remember(baseEntries, customOrder) {
+        if (customOrder.isEmpty()) {
+            baseEntries
+        } else {
+            val orderMap = customOrder.mapIndexed { index, key -> key to index }.toMap()
+            baseEntries.sortedBy { orderMap[it.key] ?: (1000 + baseEntries.indexOf(it)) }
         }
     }
     // Item 0 is the search field: the guide's ◀ and Back find a category by this list.
@@ -1178,6 +1196,7 @@ private fun LiveTvCategoryColumn(
             }
         }
         items(entries, key = { it.key }, contentType = { if (it.heading) "heading" else "category" }) { entry ->
+            val isMoving = movingKey == entry.key
             LiveTvCategoryItem(
                 label = entry.label,
                 selected = selectedKey == entry.key,
@@ -1187,15 +1206,35 @@ private fun LiveTvCategoryColumn(
                 heading = entry.heading,
                 folded = entry.folded,
                 indent = entry.indent,
-                icon = if (entry.action) Icons.Filled.Add else null,
-                onClick = entry.sourceId?.let { id -> { collapsed[id] = !entry.folded } } ?: if (entry.action) onNewList else {
-                    {
-                        onSelect(entry.key)
-                        onPicked()
+                moving = isMoving,
+                onMove = { step ->
+                    val currentIdx = entries.indexOfFirst { it.key == entry.key }
+                    val targetIdx = (currentIdx + step).coerceIn(0, entries.lastIndex)
+                    if (currentIdx != targetIdx && currentIdx >= 0) {
+                        val newOrder = entries.map { it.key }.toMutableList()
+                        val moved = newOrder.removeAt(currentIdx)
+                        newOrder.add(targetIdx, moved)
+                        customOrder = newOrder
+                        LiveTvRepository.saveCategoryRailOrder(newOrder)
                     }
                 },
-                onLongClick = entry.listId?.let { id -> { onEditList(id) } },
-            ) { if (!entry.action) onSelect(entry.key) }
+                onDrop = { movingKey = null },
+                icon = if (entry.action) Icons.Filled.Add else null,
+                onClick = if (isMoving) {
+                    { movingKey = null }
+                } else {
+                    entry.sourceId?.let { id -> { collapsed[id] = !entry.folded } } ?: if (entry.action) onNewList else {
+                        {
+                            onSelect(entry.key)
+                            onPicked()
+                        }
+                    }
+                },
+                onLongClick = {
+                    movingKey = entry.key
+                    holdSelection?.value = true
+                },
+            ) { if (!entry.action && !isMoving) onSelect(entry.key) }
         }
     }
     }
@@ -1216,6 +1255,9 @@ private fun LiveTvCategoryItem(
     heading: Boolean = false,
     folded: Boolean = false,
     indent: Boolean = false,
+    moving: Boolean = false,
+    onMove: ((Int) -> Unit)? = null,
+    onDrop: (() -> Unit)? = null,
     holdSelection: androidx.compose.runtime.MutableState<Boolean>? = null,
     icon: androidx.compose.ui.graphics.vector.ImageVector? = null,
     onClick: (() -> Unit)? = null,
@@ -1224,7 +1266,7 @@ private fun LiveTvCategoryItem(
 ) {
     var focused by remember { mutableStateOf(false) }
     LaunchedEffect(focused) {
-        if (!focused) return@LaunchedEffect
+        if (!focused || moving) return@LaunchedEffect
         // Focus the guide put here (Back, ◀) only shows where the viewer is.
         if (holdSelection?.value == true) {
             holdSelection.value = false
@@ -1237,25 +1279,63 @@ private fun LiveTvCategoryItem(
     }
     val shape = RoundedCornerShape(10.dp)
     Card(
-        onClick = onClick ?: onSelect,
-        onLongClick = onLongClick,
+        onClick = if (moving) (onDrop ?: {}) else (onClick ?: onSelect),
+        onLongClick = if (moving) null else onLongClick,
         modifier = (if (selected || anchor) selectedModifier else Modifier)
             .fillMaxWidth()
             .padding(top = if (heading) 8.dp else 0.dp)
-            .onFocusChanged { focused = it.isFocused },
+            .onFocusChanged { focused = it.isFocused }
+            .then(
+                if (moving && onMove != null && onDrop != null) {
+                    Modifier.onPreviewKeyEvent { event ->
+                        if (event.type == KeyEventType.KeyDown) {
+                            when (event.key) {
+                                Key.DirectionUp -> {
+                                    onMove(-1)
+                                    true
+                                }
+                                Key.DirectionDown -> {
+                                    onMove(1)
+                                    true
+                                }
+                                Key.DirectionCenter, Key.Enter, Key.NumPadEnter, Key.Back, Key.Escape -> {
+                                    onDrop()
+                                    true
+                                }
+                                else -> false
+                            }
+                        } else false
+                    }
+                } else Modifier
+            ),
         shape = CardDefaults.shape(shape),
-        colors = CardDefaults.colors(
-            containerColor = if (selected) NuvioTheme.colors.TextPrimary.copy(alpha = 0.08f) else Color.Transparent,
-            focusedContainerColor = NuvioTheme.colors.TextPrimary,
+        border = CardDefaults.border(
+            border = if (moving) Border(BorderStroke(2.dp, NuvioTheme.colors.Primary)) else Border.None,
+            focusedBorder = if (moving) Border(BorderStroke(2.dp, Color.White)) else Border.None
         ),
-        scale = CardDefaults.scale(focusedScale = 1.02f),
+        colors = CardDefaults.colors(
+            containerColor = when {
+                moving -> NuvioTheme.colors.Primary.copy(alpha = 0.25f)
+                selected -> NuvioTheme.colors.TextPrimary.copy(alpha = 0.08f)
+                else -> Color.Transparent
+            },
+            focusedContainerColor = if (moving) NuvioTheme.colors.Primary else NuvioTheme.colors.TextPrimary,
+        ),
+        scale = CardDefaults.scale(focusedScale = if (moving) 1.05f else 1.02f),
     ) {
-        val content = if (focused) Color.Black else if (selected) NuvioTheme.colors.TextPrimary else NuvioTheme.colors.TextSecondary
+        val content = if (focused) Color.Black else if (selected || moving) NuvioTheme.colors.TextPrimary else NuvioTheme.colors.TextSecondary
         Row(
             modifier = Modifier.padding(start = if (indent) 22.dp else 12.dp, end = 12.dp, top = 8.dp, bottom = 8.dp),
             verticalAlignment = Alignment.CenterVertically,
         ) {
-            if (icon != null) {
+            if (moving) {
+                Icon(
+                    imageVector = Icons.Filled.UnfoldMore,
+                    contentDescription = null,
+                    tint = content,
+                    modifier = Modifier.padding(end = 6.dp).size(18.dp),
+                )
+            } else if (icon != null) {
                 Icon(
                     imageVector = icon,
                     contentDescription = null,
@@ -1274,14 +1354,14 @@ private fun LiveTvCategoryItem(
             Text(
                 text = label,
                 style = if (heading) MaterialTheme.typography.labelLarge else MaterialTheme.typography.bodyMedium,
-                fontWeight = if (selected || heading) FontWeight.SemiBold else FontWeight.Normal,
+                fontWeight = if (selected || heading || moving) FontWeight.SemiBold else FontWeight.Normal,
                 letterSpacing = if (heading) 1.sp else androidx.compose.ui.unit.TextUnit.Unspecified,
                 color = content,
                 maxLines = 1,
                 overflow = TextOverflow.Ellipsis,
                 modifier = Modifier.weight(1f),
             )
-            if (count != null) {
+            if (count != null && !moving) {
                 Text(
                     text = count.toString(),
                     style = MaterialTheme.typography.labelMedium,
@@ -1292,6 +1372,8 @@ private fun LiveTvCategoryItem(
         }
     }
 }
+
+
 
 @Composable
 private fun LiveTvEmptyState(onAddSource: () -> Unit) {

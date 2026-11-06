@@ -213,6 +213,13 @@ internal class LiveTvStorage(context: Context, private val profileId: Int) {
         prefs.edit().putOrRemove(GROUP_ORDER, encodeGroups(groups)).apply()
     }
 
+    /** Categories in the sidebar rail in the viewer's custom order. */
+    fun categoryRailOrder(): List<String> = decodeGroups(CATEGORY_RAIL_ORDER).toList()
+
+    fun saveCategoryRailOrder(order: List<String>) {
+        prefs.edit().putOrRemove(CATEGORY_RAIL_ORDER, encodeGroups(order)).apply()
+    }
+
     /** The viewer's own playlists, oldest first. */
     fun customLists(): List<LiveTvCustomList> = runCatching {
         val array = JSONArray(string(CUSTOM_LISTS) ?: return emptyList())
@@ -266,6 +273,7 @@ internal class LiveTvStorage(context: Context, private val profileId: Int) {
         private const val SOURCES = "sources"
         private const val HIDDEN_GROUPS = "hidden_groups"
         private const val GROUP_ORDER = "group_order"
+        private const val CATEGORY_RAIL_ORDER = "category_rail_order"
         private const val GROUP_NAMES = "group_names"
         private const val LEGACY_HIDDEN_CHANNELS = "hidden_channel_urls"
         private const val UNGROUPED_LINE = "\uE000"
