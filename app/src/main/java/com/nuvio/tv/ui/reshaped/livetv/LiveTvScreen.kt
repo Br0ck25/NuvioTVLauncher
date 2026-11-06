@@ -1076,10 +1076,6 @@ private fun LiveTvCategoryColumn(
     var customOrder by remember { mutableStateOf(LiveTvRepository.categoryRailOrder()) }
     var movingKey by remember { mutableStateOf<String?>(null) }
 
-    val allLabel = stringResource(R.string.live_tv_all_channels)
-    val favoritesLabel = stringResource(R.string.live_tv_favorites)
-    val newListLabel = stringResource(R.string.live_tv_playlist_new)
-    val uncategorised = liveTvGroupLabel(LIVE_TV_UNGROUPED)
     val pickEntries = remember(newListLabel, customLists, favoritesLabel) {
         buildList {
             add(LiveTvCategoryEntry(FILTER_FAVORITES, favoritesLabel))
