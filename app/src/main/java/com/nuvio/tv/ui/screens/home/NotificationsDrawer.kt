@@ -160,7 +160,7 @@ private fun NotificationPermissionDialog(
                 Icon(
                     imageVector = Icons.Default.Notifications,
                     contentDescription = null,
-                    tint = Color(0xFFE67E22),
+                    tint = Color.White,
                     modifier = Modifier.size(28.dp)
                 )
                 Text(
@@ -246,7 +246,7 @@ private fun NotificationsDrawerContent(
                 Icon(
                     imageVector = Icons.Default.Notifications,
                     contentDescription = null,
-                    tint = Color(0xFFE67E22),
+                    tint = Color.White,
                     modifier = Modifier.size(24.dp)
                 )
                 Text(
@@ -262,13 +262,18 @@ private fun NotificationsDrawerContent(
                     shape = ClickableSurfaceDefaults.shape(RoundedCornerShape(8.dp)),
                     colors = ClickableSurfaceDefaults.colors(
                         containerColor = Color.White.copy(alpha = 0.08f),
-                        focusedContainerColor = Color.White
+                        focusedContainerColor = Color.White.copy(alpha = 0.22f)
+                    ),
+                    border = ClickableSurfaceDefaults.border(
+                        border = Border(BorderStroke(1.dp, Color.White.copy(alpha = 0.12f))),
+                        focusedBorder = Border(BorderStroke(2.dp, Color.White))
                     ),
                     modifier = Modifier.focusRequester(initialFocusRequester)
                 ) {
                     Text(
                         text = stringResource(R.string.notifications_clear_all),
                         style = MaterialTheme.typography.bodySmall.copy(fontWeight = FontWeight.SemiBold),
+                        color = Color.White,
                         modifier = Modifier.padding(horizontal = 10.dp, vertical = 6.dp)
                     )
                 }
@@ -309,7 +314,11 @@ private fun NotificationsDrawerContent(
                         shape = ClickableSurfaceDefaults.shape(RoundedCornerShape(14.dp)),
                         colors = ClickableSurfaceDefaults.colors(
                             containerColor = Color.White.copy(alpha = 0.06f),
-                            focusedContainerColor = Color.White
+                            focusedContainerColor = Color.White.copy(alpha = 0.18f)
+                        ),
+                        border = ClickableSurfaceDefaults.border(
+                            border = Border(BorderStroke(1.dp, Color.White.copy(alpha = 0.08f))),
+                            focusedBorder = Border(BorderStroke(2.dp, Color.White))
                         )
                     ) {
                         Column(

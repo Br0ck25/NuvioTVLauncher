@@ -55,6 +55,11 @@ import androidx.compose.ui.focus.focusRequester
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.SolidColor
 import androidx.compose.ui.graphics.vector.ImageVector
+import androidx.compose.ui.input.key.Key
+import androidx.compose.ui.input.key.KeyEventType
+import androidx.compose.ui.input.key.key
+import androidx.compose.ui.input.key.onKeyEvent
+import androidx.compose.ui.input.key.type
 import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.input.ImeAction
@@ -76,6 +81,7 @@ import com.nuvio.tv.core.apps.InstalledApp
 import com.nuvio.tv.ui.components.InstalledAppArtwork
 import com.nuvio.tv.ui.components.LoadingIndicator
 import com.nuvio.tv.ui.theme.NuvioTheme
+import kotlinx.coroutines.delay
 
 private enum class MenuScreenMode {
     MAIN,
@@ -98,6 +104,8 @@ fun AppContextMenuModal(
     var currentMode by remember { mutableStateOf(MenuScreenMode.MAIN) }
     var renameText by remember(app.displayLabel) { mutableStateOf(app.displayLabel) }
     val initialFocusRequester = remember { FocusRequester() }
+    var canExecuteAction by remember { mutableStateOf(false) }
+    var hasReceivedKeyDown by remember { mutableStateOf(false) }
 
     BackHandler {
         when (currentMode) {
@@ -112,7 +120,11 @@ fun AppContextMenuModal(
     }
 
     LaunchedEffect(currentMode) {
+        canExecuteAction = false
+        hasReceivedKeyDown = false
         runCatching { initialFocusRequester.requestFocus() }
+        delay(350)
+        canExecuteAction = true
     }
 
     Box(
@@ -129,6 +141,28 @@ fun AppContextMenuModal(
                 .fillMaxHeight()
                 .width(420.dp)
                 .padding(24.dp)
+                .onKeyEvent { keyEvent ->
+                    val isCenterOrEnter = keyEvent.key == Key.DirectionCenter ||
+                        keyEvent.key == Key.Enter ||
+                        keyEvent.key == Key.NumPadEnter
+                    if (isCenterOrEnter) {
+                        if (keyEvent.type == KeyEventType.KeyDown) {
+                            hasReceivedKeyDown = true
+                            false
+                        } else if (keyEvent.type == KeyEventType.KeyUp) {
+                            if (!hasReceivedKeyDown) {
+                                // Swallow the KeyUp event that was initiated by the long-press on the app tile
+                                true
+                            } else {
+                                false
+                            }
+                        } else {
+                            false
+                        }
+                    } else {
+                        false
+                    }
+                }
                 .clickable(interactionSource = remember { MutableInteractionSource() }, indication = null) { /* swallow click */ },
             shape = RoundedCornerShape(24.dp),
             colors = SurfaceDefaults.colors(
@@ -142,31 +176,50 @@ fun AppContextMenuModal(
                 MenuScreenMode.MAIN -> {
                     MainMenuContent(
                         app = app,
+                        canExecuteAction = canExecuteAction,
                         onOpen = {
-                            viewModel.launchApp(app)
-                            onDismiss()
-                        },
-                        onSettings = {
-                            viewModel.openAppSettings(app.packageName)
-                            onDismiss()
-                        },
-                        onUninstall = {
-                            viewModel.uninstallApp(app.packageName)
-                            onDismiss()
-                        },
-                        onMoveLeft = onMoveLeft,
-                        onMoveRight = onMoveRight,
-                        onRemoveFromRow = onRemoveFromRow?.let { remove ->
-                            {
-                                remove()
+                            if (canExecuteAction) {
+                                viewModel.launchApp(app)
                                 onDismiss()
                             }
                         },
-                        onRenameClick = { currentMode = MenuScreenMode.RENAME },
-                        onChangeIconClick = { currentMode = MenuScreenMode.ICON_PICKER },
+                        onSettings = {
+                            if (canExecuteAction) {
+                                viewModel.openAppSettings(app.packageName)
+                                onDismiss()
+                            }
+                        },
+                        onUninstall = {
+                            if (canExecuteAction) {
+                                viewModel.uninstallApp(app.packageName)
+                                onDismiss()
+                            }
+                        },
+                        onMoveLeft = onMoveLeft?.let { move ->
+                            {
+                                if (canExecuteAction) move()
+                            }
+                        },
+                        onMoveRight = onMoveRight?.let { move ->
+                            {
+                                if (canExecuteAction) move()
+                            }
+                        },
+                        onRemoveFromRow = onRemoveFromRow?.let { remove ->
+                            {
+                                if (canExecuteAction) {
+                                    remove()
+                                    onDismiss()
+                                }
+                            }
+                        },
+                        onRenameClick = { if (canExecuteAction) currentMode = MenuScreenMode.RENAME },
+                        onChangeIconClick = { if (canExecuteAction) currentMode = MenuScreenMode.ICON_PICKER },
                         onResetClick = {
-                            viewModel.resetAppCustomization(app.packageName)
-                            onDismiss()
+                            if (canExecuteAction) {
+                                viewModel.resetAppCustomization(app.packageName)
+                                onDismiss()
+                            }
                         },
                         initialFocusRequester = initialFocusRequester
                     )
@@ -231,6 +284,7 @@ fun AppContextMenuModal(
 @Composable
 private fun MainMenuContent(
     app: InstalledApp,
+    canExecuteAction: Boolean,
     onOpen: () -> Unit,
     onSettings: () -> Unit,
     onUninstall: () -> Unit,
@@ -290,6 +344,7 @@ private fun MainMenuContent(
                 title = stringResource(R.string.app_menu_settings),
                 icon = Icons.Default.Settings,
                 onClick = onSettings,
+                canExecute = canExecuteAction,
                 modifier = Modifier.focusRequester(initialFocusRequester)
             )
         }
@@ -297,14 +352,16 @@ private fun MainMenuContent(
             MenuItemRow(
                 title = stringResource(R.string.app_menu_open),
                 icon = Icons.AutoMirrored.Filled.OpenInNew,
-                onClick = onOpen
+                onClick = onOpen,
+                canExecute = canExecuteAction
             )
         }
         item {
             MenuItemRow(
                 title = stringResource(R.string.app_menu_uninstall),
                 icon = Icons.Default.Delete,
-                onClick = onUninstall
+                onClick = onUninstall,
+                canExecute = canExecuteAction
             )
         }
 
@@ -319,7 +376,8 @@ private fun MainMenuContent(
                             MenuItemRow(
                                 title = stringResource(R.string.app_menu_move_left),
                                 icon = Icons.AutoMirrored.Filled.ArrowBack,
-                                onClick = onMoveLeft
+                                onClick = onMoveLeft,
+                                canExecute = canExecuteAction
                             )
                         }
                     }
@@ -328,7 +386,8 @@ private fun MainMenuContent(
                             MenuItemRow(
                                 title = stringResource(R.string.app_menu_move_right),
                                 icon = Icons.AutoMirrored.Filled.ArrowForward,
-                                onClick = onMoveRight
+                                onClick = onMoveRight,
+                                canExecute = canExecuteAction
                             )
                         }
                     }
@@ -341,7 +400,8 @@ private fun MainMenuContent(
                 MenuItemRow(
                     title = stringResource(R.string.app_menu_hide_from_row),
                     icon = Icons.Default.VisibilityOff,
-                    onClick = onRemoveFromRow
+                    onClick = onRemoveFromRow,
+                    canExecute = canExecuteAction
                 )
             }
         }
@@ -351,7 +411,7 @@ private fun MainMenuContent(
             Text(
                 text = stringResource(R.string.app_menu_appearance),
                 style = MaterialTheme.typography.labelMedium.copy(fontWeight = FontWeight.SemiBold),
-                color = Color(0xFFE67E22),
+                color = Color.White.copy(alpha = 0.6f),
                 modifier = Modifier.padding(start = 8.dp, bottom = 4.dp)
             )
         }
@@ -361,7 +421,8 @@ private fun MainMenuContent(
                 title = stringResource(R.string.app_menu_title),
                 subtitle = app.displayLabel,
                 icon = Icons.Default.TextFields,
-                onClick = onRenameClick
+                onClick = onRenameClick,
+                canExecute = canExecuteAction
             )
         }
 
@@ -370,7 +431,8 @@ private fun MainMenuContent(
                 title = stringResource(R.string.app_menu_change_icon),
                 subtitle = if (app.customIcon != null) "Customized" else stringResource(R.string.app_menu_icon_default),
                 icon = Icons.Default.Image,
-                onClick = onChangeIconClick
+                onClick = onChangeIconClick,
+                canExecute = canExecuteAction
             )
         }
 
@@ -379,7 +441,8 @@ private fun MainMenuContent(
                 MenuItemRow(
                     title = stringResource(R.string.app_menu_reset),
                     icon = Icons.Default.Refresh,
-                    onClick = onResetClick
+                    onClick = onResetClick,
+                    canExecute = canExecuteAction
                 )
             }
         }
@@ -548,7 +611,7 @@ private fun IconPickerContent(
             Text(
                 text = stringResource(R.string.app_menu_icon_packs),
                 style = MaterialTheme.typography.labelMedium.copy(fontWeight = FontWeight.SemiBold),
-                color = Color(0xFFE67E22),
+                color = Color.White.copy(alpha = 0.6f),
                 modifier = Modifier.padding(start = 8.dp, bottom = 4.dp)
             )
         }
@@ -573,7 +636,11 @@ private fun IconPickerContent(
                     shape = ClickableSurfaceDefaults.shape(RoundedCornerShape(12.dp)),
                     colors = ClickableSurfaceDefaults.colors(
                         containerColor = Color.White.copy(alpha = 0.05f),
-                        focusedContainerColor = Color.White
+                        focusedContainerColor = Color.White.copy(alpha = 0.18f)
+                    ),
+                    border = ClickableSurfaceDefaults.border(
+                        border = Border(BorderStroke(1.dp, Color.White.copy(alpha = 0.08f))),
+                        focusedBorder = Border(BorderStroke(2.dp, Color.White))
                     )
                 ) {
                     Row(
@@ -679,11 +746,11 @@ private fun PackIconsContent(
                         shape = ClickableSurfaceDefaults.shape(RoundedCornerShape(12.dp)),
                         colors = ClickableSurfaceDefaults.colors(
                             containerColor = Color.White.copy(alpha = 0.06f),
-                            focusedContainerColor = Color.White
+                            focusedContainerColor = Color.White.copy(alpha = 0.22f)
                         ),
                         border = ClickableSurfaceDefaults.border(
                             border = Border(BorderStroke(1.dp, Color.White.copy(alpha = 0.08f))),
-                            focusedBorder = Border(BorderStroke(2.dp, NuvioTheme.colors.Primary))
+                            focusedBorder = Border(BorderStroke(2.dp, Color.White))
                         )
                     ) {
                         Box(modifier = Modifier.fillMaxSize(), contentAlignment = Alignment.Center) {
@@ -706,15 +773,22 @@ private fun MenuItemRow(
     icon: ImageVector,
     onClick: () -> Unit,
     modifier: Modifier = Modifier,
-    subtitle: String? = null
+    subtitle: String? = null,
+    canExecute: Boolean = true
 ) {
     Surface(
-        onClick = onClick,
+        onClick = { if (canExecute) onClick() },
         modifier = modifier.fillMaxWidth().height(if (subtitle != null) 60.dp else 48.dp),
         shape = ClickableSurfaceDefaults.shape(RoundedCornerShape(12.dp)),
         colors = ClickableSurfaceDefaults.colors(
             containerColor = Color.White.copy(alpha = 0.04f),
-            focusedContainerColor = Color.White
+            focusedContainerColor = Color.White.copy(alpha = 0.18f),
+            contentColor = Color.White,
+            focusedContentColor = Color.White
+        ),
+        border = ClickableSurfaceDefaults.border(
+            border = Border(BorderStroke(1.dp, Color.White.copy(alpha = 0.08f))),
+            focusedBorder = Border(BorderStroke(2.dp, Color.White))
         )
     ) {
         Row(

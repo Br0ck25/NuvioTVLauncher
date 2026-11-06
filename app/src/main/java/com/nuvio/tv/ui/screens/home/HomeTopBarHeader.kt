@@ -13,11 +13,13 @@ import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.Spacer
+import androidx.compose.foundation.layout.fillMaxHeight
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.width
+import androidx.compose.foundation.layout.wrapContentWidth
 import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
@@ -134,11 +136,11 @@ fun HomeTopBarHeader(
                 shape = ClickableSurfaceDefaults.shape(RoundedCornerShape(10.dp)),
                 colors = ClickableSurfaceDefaults.colors(
                     containerColor = Color.White.copy(alpha = 0.08f),
-                    focusedContainerColor = Color.White
+                    focusedContainerColor = Color.White.copy(alpha = 0.22f)
                 ),
                 border = ClickableSurfaceDefaults.border(
                     border = Border(BorderStroke(1.dp, Color.White.copy(alpha = 0.12f))),
-                    focusedBorder = Border(BorderStroke(2.dp, NuvioTheme.colors.Primary))
+                    focusedBorder = Border(BorderStroke(2.dp, Color.White))
                 )
             ) {
                 Box(
@@ -148,6 +150,7 @@ fun HomeTopBarHeader(
                     Icon(
                         imageVector = Icons.Default.Tv,
                         contentDescription = stringResource(R.string.profile_tv_inputs_label),
+                        tint = Color.White,
                         modifier = Modifier.size(18.dp)
                     )
                 }
@@ -157,20 +160,23 @@ fun HomeTopBarHeader(
         // Notifications Button
         Surface(
             onClick = onNotificationsClick,
-            modifier = Modifier.height(36.dp),
+            modifier = Modifier
+                .height(36.dp)
+                .wrapContentWidth(),
             shape = ClickableSurfaceDefaults.shape(RoundedCornerShape(10.dp)),
             colors = ClickableSurfaceDefaults.colors(
                 containerColor = Color.White.copy(alpha = 0.08f),
-                focusedContainerColor = Color.White
+                focusedContainerColor = Color.White.copy(alpha = 0.22f)
             ),
             border = ClickableSurfaceDefaults.border(
                 border = Border(BorderStroke(1.dp, Color.White.copy(alpha = 0.12f))),
-                focusedBorder = Border(BorderStroke(2.dp, NuvioTheme.colors.Primary))
+                focusedBorder = Border(BorderStroke(2.dp, Color.White))
             )
         ) {
             Row(
                 modifier = Modifier
-                    .fillMaxSize()
+                    .wrapContentWidth()
+                    .fillMaxHeight()
                     .padding(horizontal = 10.dp),
                 verticalAlignment = Alignment.CenterVertically,
                 horizontalArrangement = Arrangement.spacedBy(6.dp)
@@ -178,13 +184,14 @@ fun HomeTopBarHeader(
                 Icon(
                     imageVector = Icons.Default.Notifications,
                     contentDescription = stringResource(R.string.top_bar_notifications),
+                    tint = Color.White,
                     modifier = Modifier.size(18.dp)
                 )
                 if (notificationCount > 0) {
                     Box(
                         modifier = Modifier
                             .clip(CircleShape)
-                            .background(Color(0xFFE67E22))
+                            .background(NuvioTheme.colors.Secondary)
                             .padding(horizontal = 6.dp, vertical = 1.dp),
                         contentAlignment = Alignment.Center
                     ) {
@@ -208,11 +215,11 @@ fun HomeTopBarHeader(
             shape = ClickableSurfaceDefaults.shape(RoundedCornerShape(10.dp)),
             colors = ClickableSurfaceDefaults.colors(
                 containerColor = Color.White.copy(alpha = 0.08f),
-                focusedContainerColor = Color.White
+                focusedContainerColor = Color.White.copy(alpha = 0.22f)
             ),
             border = ClickableSurfaceDefaults.border(
                 border = Border(BorderStroke(1.dp, Color.White.copy(alpha = 0.12f))),
-                focusedBorder = Border(BorderStroke(2.dp, NuvioTheme.colors.Primary))
+                focusedBorder = Border(BorderStroke(2.dp, Color.White))
             )
         ) {
             Box(
@@ -222,6 +229,7 @@ fun HomeTopBarHeader(
                 Icon(
                     imageVector = Icons.Default.Settings,
                     contentDescription = stringResource(R.string.top_bar_settings),
+                    tint = Color.White,
                     modifier = Modifier.size(18.dp)
                 )
             }

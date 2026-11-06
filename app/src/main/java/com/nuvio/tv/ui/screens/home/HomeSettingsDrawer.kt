@@ -197,12 +197,12 @@ private fun SettingsMenuContent(
                     Text(
                         text = "NUVIO TV ",
                         style = MaterialTheme.typography.titleMedium.copy(fontWeight = FontWeight.Bold),
-                        color = Color(0xFFE67E22)
+                        color = Color.White
                     )
                     Text(
                         text = "launcher",
                         style = MaterialTheme.typography.titleMedium,
-                        color = Color.White.copy(alpha = 0.8f)
+                        color = Color.White.copy(alpha = 0.7f)
                     )
                 }
                 Text(
@@ -217,7 +217,7 @@ private fun SettingsMenuContent(
             Text(
                 text = stringResource(R.string.settings_menu_settings_header),
                 style = MaterialTheme.typography.labelMedium.copy(fontWeight = FontWeight.SemiBold),
-                color = Color(0xFFE67E22),
+                color = Color.White.copy(alpha = 0.6f),
                 modifier = Modifier.padding(start = 6.dp, bottom = 4.dp)
             )
         }
@@ -271,7 +271,7 @@ private fun AllAppsContent(
                 Icon(
                     imageVector = Icons.Default.GridView,
                     contentDescription = null,
-                    tint = Color(0xFFE67E22),
+                    tint = Color.White,
                     modifier = Modifier.size(24.dp)
                 )
                 Text(
@@ -286,7 +286,7 @@ private fun AllAppsContent(
             Text(
                 text = stringResource(R.string.settings_menu_tv_apps),
                 style = MaterialTheme.typography.labelMedium.copy(fontWeight = FontWeight.SemiBold),
-                color = Color(0xFFE67E22),
+                color = Color.White.copy(alpha = 0.6f),
                 modifier = Modifier.padding(start = 6.dp, bottom = 4.dp)
             )
         }
@@ -303,7 +303,11 @@ private fun AllAppsContent(
                 shape = ClickableSurfaceDefaults.shape(RoundedCornerShape(12.dp)),
                 colors = ClickableSurfaceDefaults.colors(
                     containerColor = Color.White.copy(alpha = 0.05f),
-                    focusedContainerColor = Color.White
+                    focusedContainerColor = Color.White.copy(alpha = 0.18f)
+                ),
+                border = ClickableSurfaceDefaults.border(
+                    border = Border(BorderStroke(1.dp, Color.White.copy(alpha = 0.08f))),
+                    focusedBorder = Border(BorderStroke(2.dp, Color.White))
                 )
             ) {
                 Row(
@@ -350,7 +354,11 @@ private fun DrawerActionRow(
         shape = ClickableSurfaceDefaults.shape(RoundedCornerShape(12.dp)),
         colors = ClickableSurfaceDefaults.colors(
             containerColor = Color.White.copy(alpha = 0.05f),
-            focusedContainerColor = Color.White
+            focusedContainerColor = Color.White.copy(alpha = 0.18f)
+        ),
+        border = ClickableSurfaceDefaults.border(
+            border = Border(BorderStroke(1.dp, Color.White.copy(alpha = 0.08f))),
+            focusedBorder = Border(BorderStroke(2.dp, Color.White))
         )
     ) {
         Row(
