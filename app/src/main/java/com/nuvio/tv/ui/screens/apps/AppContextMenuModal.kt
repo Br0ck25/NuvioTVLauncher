@@ -59,6 +59,7 @@ import androidx.compose.ui.input.key.Key
 import androidx.compose.ui.input.key.KeyEventType
 import androidx.compose.ui.input.key.key
 import androidx.compose.ui.input.key.onKeyEvent
+import androidx.compose.ui.input.key.onPreviewKeyEvent
 import androidx.compose.ui.input.key.type
 import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.text.font.FontWeight
@@ -104,7 +105,6 @@ fun AppContextMenuModal(
     var currentMode by remember { mutableStateOf(MenuScreenMode.MAIN) }
     var renameText by remember(app.displayLabel) { mutableStateOf(app.displayLabel) }
     val initialFocusRequester = remember { FocusRequester() }
-    var canExecuteAction by remember { mutableStateOf(false) }
     var hasReceivedKeyDown by remember { mutableStateOf(false) }
 
     BackHandler {
@@ -120,17 +120,37 @@ fun AppContextMenuModal(
     }
 
     LaunchedEffect(currentMode) {
-        canExecuteAction = false
         hasReceivedKeyDown = false
+        delay(300)
         runCatching { initialFocusRequester.requestFocus() }
-        delay(350)
-        canExecuteAction = true
     }
 
     Box(
         modifier = modifier
             .fillMaxSize()
             .background(Color.Black.copy(alpha = 0.65f))
+            .onPreviewKeyEvent { keyEvent ->
+                val isCenterOrEnter = keyEvent.key == Key.DirectionCenter ||
+                    keyEvent.key == Key.Enter ||
+                    keyEvent.key == Key.NumPadEnter
+                if (isCenterOrEnter) {
+                    if (keyEvent.type == KeyEventType.KeyDown) {
+                        hasReceivedKeyDown = true
+                        false
+                    } else if (keyEvent.type == KeyEventType.KeyUp) {
+                        if (!hasReceivedKeyDown) {
+                            // Swallow the initial KeyUp event from the long-press that opened this modal
+                            true
+                        } else {
+                            false
+                        }
+                    } else {
+                        false
+                    }
+                } else {
+                    false
+                }
+            }
             .clickable(interactionSource = remember { MutableInteractionSource() }, indication = null) {
                 onDismiss()
             }
@@ -141,7 +161,7 @@ fun AppContextMenuModal(
                 .fillMaxHeight()
                 .width(420.dp)
                 .padding(24.dp)
-                .onKeyEvent { keyEvent ->
+                .onPreviewKeyEvent { keyEvent ->
                     val isCenterOrEnter = keyEvent.key == Key.DirectionCenter ||
                         keyEvent.key == Key.Enter ||
                         keyEvent.key == Key.NumPadEnter
@@ -151,7 +171,6 @@ fun AppContextMenuModal(
                             false
                         } else if (keyEvent.type == KeyEventType.KeyUp) {
                             if (!hasReceivedKeyDown) {
-                                // Swallow the KeyUp event that was initiated by the long-press on the app tile
                                 true
                             } else {
                                 false
@@ -176,47 +195,47 @@ fun AppContextMenuModal(
                 MenuScreenMode.MAIN -> {
                     MainMenuContent(
                         app = app,
-                        canExecuteAction = canExecuteAction,
+                        canExecuteAction = hasReceivedKeyDown,
                         onOpen = {
-                            if (canExecuteAction) {
+                            if (hasReceivedKeyDown) {
                                 viewModel.launchApp(app)
                                 onDismiss()
                             }
                         },
                         onSettings = {
-                            if (canExecuteAction) {
+                            if (hasReceivedKeyDown) {
                                 viewModel.openAppSettings(app.packageName)
                                 onDismiss()
                             }
                         },
                         onUninstall = {
-                            if (canExecuteAction) {
+                            if (hasReceivedKeyDown) {
                                 viewModel.uninstallApp(app.packageName)
                                 onDismiss()
                             }
                         },
                         onMoveLeft = onMoveLeft?.let { move ->
                             {
-                                if (canExecuteAction) move()
+                                if (hasReceivedKeyDown) move()
                             }
                         },
                         onMoveRight = onMoveRight?.let { move ->
                             {
-                                if (canExecuteAction) move()
+                                if (hasReceivedKeyDown) move()
                             }
                         },
                         onRemoveFromRow = onRemoveFromRow?.let { remove ->
                             {
-                                if (canExecuteAction) {
+                                if (hasReceivedKeyDown) {
                                     remove()
                                     onDismiss()
                                 }
                             }
                         },
-                        onRenameClick = { if (canExecuteAction) currentMode = MenuScreenMode.RENAME },
-                        onChangeIconClick = { if (canExecuteAction) currentMode = MenuScreenMode.ICON_PICKER },
+                        onRenameClick = { if (hasReceivedKeyDown) currentMode = MenuScreenMode.RENAME },
+                        onChangeIconClick = { if (hasReceivedKeyDown) currentMode = MenuScreenMode.ICON_PICKER },
                         onResetClick = {
-                            if (canExecuteAction) {
+                            if (hasReceivedKeyDown) {
                                 viewModel.resetAppCustomization(app.packageName)
                                 onDismiss()
                             }
@@ -341,18 +360,18 @@ private fun MainMenuContent(
 
         item {
             MenuItemRow(
-                title = stringResource(R.string.app_menu_settings),
-                icon = Icons.Default.Settings,
-                onClick = onSettings,
+                title = stringResource(R.string.app_menu_open),
+                icon = Icons.AutoMirrored.Filled.OpenInNew,
+                onClick = onOpen,
                 canExecute = canExecuteAction,
                 modifier = Modifier.focusRequester(initialFocusRequester)
             )
         }
         item {
             MenuItemRow(
-                title = stringResource(R.string.app_menu_open),
-                icon = Icons.AutoMirrored.Filled.OpenInNew,
-                onClick = onOpen,
+                title = stringResource(R.string.app_menu_settings),
+                icon = Icons.Default.Settings,
+                onClick = onSettings,
                 canExecute = canExecuteAction
             )
         }
