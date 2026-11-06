@@ -71,6 +71,7 @@ import androidx.compose.ui.focus.focusRequester
 import androidx.compose.ui.focus.onFocusChanged
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.input.key.onPreviewKeyEvent
+import com.nuvio.tv.ui.util.rememberLongPressKeyTracker
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.platform.LocalFocusManager
 import androidx.compose.ui.res.stringResource
@@ -497,7 +498,7 @@ fun LiveTvScreen(
                             state = guide,
                             active = gridFocused,
                             clock = minuteClock,
-                            channelColumn = 210.dp,
+                            channelColumn = 224.dp,
                             rowHeight = 54.dp,
                             modifier = Modifier.fillMaxSize(),
                             corner = { LiveTvGuideDate(guide.viewStartMs, minuteClock) },
@@ -882,8 +883,7 @@ private fun LiveTvGuideDate(viewStartMs: Long, clock: State<Long>) {
     }
     Text(
         text = "$day  ·  ${LiveTvClock.formatClock(clock.value)}",
-        style = MaterialTheme.typography.labelMedium,
-        fontWeight = FontWeight.Medium,
+        style = MaterialTheme.typography.bodyMedium.copy(fontSize = 14.sp, fontWeight = FontWeight.SemiBold),
         color = NuvioTheme.colors.TextSecondary,
         maxLines = 1,
         overflow = TextOverflow.Ellipsis,
@@ -1073,6 +1073,7 @@ private fun LiveTvCategoryColumn(
     val newListLabel = stringResource(R.string.live_tv_playlist_new)
     val uncategorised = liveTvGroupLabel(LIVE_TV_UNGROUPED)
     val customLists = uiState.customLists
+    val coroutineScope = rememberCoroutineScope()
     var customOrder by remember { mutableStateOf(LiveTvRepository.categoryRailOrder()) }
     var movingKey by remember { mutableStateOf<String?>(null) }
 
@@ -1212,6 +1213,7 @@ private fun LiveTvCategoryColumn(
                         newOrder.add(targetIdx, moved)
                         customOrder = newOrder
                         LiveTvRepository.saveCategoryRailOrder(newOrder)
+                        coroutineScope.launch { listState.scrollToItem((targetIdx + 1).coerceIn(0, entries.size)) }
                     }
                 },
                 onDrop = { movingKey = null },
@@ -1261,6 +1263,8 @@ private fun LiveTvCategoryItem(
     onSelect: () -> Unit,
 ) {
     var focused by remember { mutableStateOf(false) }
+    val longPressKeyTracker = rememberLongPressKeyTracker()
+    var longPressTriggered by remember { mutableStateOf(false) }
     LaunchedEffect(focused) {
         if (!focused || moving) return@LaunchedEffect
         // Focus the guide put here (Back, ◀) only shows where the viewer is.
@@ -1275,35 +1279,50 @@ private fun LiveTvCategoryItem(
     }
     val shape = RoundedCornerShape(10.dp)
     Card(
-        onClick = if (moving) (onDrop ?: {}) else (onClick ?: onSelect),
+        onClick = {
+            if (longPressTriggered) {
+                longPressTriggered = false
+            } else if (moving) {
+                (onDrop ?: {})()
+            } else {
+                (onClick ?: onSelect)()
+            }
+        },
         onLongClick = if (moving) null else onLongClick,
         modifier = (if (selected || anchor) selectedModifier else Modifier)
             .fillMaxWidth()
             .padding(top = if (heading) 8.dp else 0.dp)
             .onFocusChanged { focused = it.isFocused }
-            .then(
+            .onPreviewKeyEvent { event ->
                 if (moving && onMove != null && onDrop != null) {
-                    Modifier.onPreviewKeyEvent { event ->
-                        if (event.type == KeyEventType.KeyDown) {
-                            when (event.key) {
-                                Key.DirectionUp -> {
-                                    onMove(-1)
-                                    true
-                                }
-                                Key.DirectionDown -> {
-                                    onMove(1)
-                                    true
-                                }
-                                Key.DirectionCenter, Key.Enter, Key.NumPadEnter, Key.Back, Key.Escape -> {
-                                    onDrop()
-                                    true
-                                }
-                                else -> false
+                    if (event.type == KeyEventType.KeyDown) {
+                        when (event.key) {
+                            Key.DirectionUp -> {
+                                onMove(-1)
+                                true
                             }
-                        } else false
+                            Key.DirectionDown -> {
+                                onMove(1)
+                                true
+                            }
+                            Key.DirectionCenter, Key.Enter, Key.NumPadEnter, Key.Back, Key.Escape -> {
+                                onDrop()
+                                true
+                            }
+                            else -> false
+                        }
+                    } else false
+                } else if (onLongClick != null &&
+                    longPressKeyTracker.handle(event.nativeKeyEvent, ::isSelectKey) {
+                        longPressTriggered = true
+                        onLongClick()
                     }
-                } else Modifier
-            ),
+                ) {
+                    true
+                } else {
+                    false
+                }
+            },
         shape = CardDefaults.shape(shape),
         border = CardDefaults.border(
             border = if (moving) Border(BorderStroke(2.dp, NuvioTheme.colors.Primary)) else Border.None,
@@ -1400,3 +1419,10 @@ private fun LiveTvEmptyState(onAddSource: () -> Unit) {
         )
     }
 }
+
+private fun isSelectKey(keyCode: Int): Boolean {
+    return keyCode == android.view.KeyEvent.KEYCODE_DPAD_CENTER ||
+        keyCode == android.view.KeyEvent.KEYCODE_ENTER ||
+        keyCode == android.view.KeyEvent.KEYCODE_NUMPAD_ENTER
+}
+

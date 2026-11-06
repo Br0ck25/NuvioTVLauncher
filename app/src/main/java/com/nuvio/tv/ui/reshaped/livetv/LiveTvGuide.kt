@@ -88,7 +88,7 @@ private const val SLOT = 30 * MINUTE
 private const val BLOCK = 4 * SLOT
 private val MINUTE_WIDTH = 6.dp
 private val ROW_HEIGHT = 56.dp
-private val CHANNEL_COLUMN = 220.dp
+private val CHANNEL_COLUMN = 224.dp
 private val GUIDE_BACKGROUND = Color(0xFF0B0B0D)
 private val CELL = Color(0xFF1A1A1D)
 private val CELL_PAST = Color(0xFF141416)
@@ -585,7 +585,7 @@ private fun GuideHeader(state: LiveTvGuideState, guideVersion: Int, clock: State
                 }
                 Text(
                     text = listOfNotNull(channel?.name?.takeIf { selected != null }, timing).joinToString("  ·  "),
-                    style = MaterialTheme.typography.bodyMedium,
+                    style = MaterialTheme.typography.bodyMedium.copy(fontSize = 15.sp),
                     color = Color.White.copy(alpha = 0.65f),
                     maxLines = 1,
                     overflow = TextOverflow.Ellipsis,
@@ -627,8 +627,11 @@ private fun TimeRuler(
         slots.forEach { slot ->
             Text(
                 text = LiveTvClock.formatClock(slot),
-                style = MaterialTheme.typography.labelMedium,
-                color = Color.White.copy(alpha = if (slot <= clock.value && clock.value < slot + SLOT) 0.9f else 0.5f),
+                style = MaterialTheme.typography.bodyMedium.copy(
+                    fontSize = 14.sp,
+                    fontWeight = if (slot <= clock.value && clock.value < slot + SLOT) FontWeight.Bold else FontWeight.SemiBold
+                ),
+                color = Color.White.copy(alpha = if (slot <= clock.value && clock.value < slot + SLOT) 0.95f else 0.6f),
                 modifier = Modifier.offset { IntOffset(timeline.x(slot).roundToInt() + 8, 0) },
             )
         }
@@ -664,82 +667,95 @@ private fun GuideRow(
             SELECTION_FADE,
             label = "channelHighlight"
         )
-        Column(
+        val shape = RoundedCornerShape(10.dp)
+        Row(
             modifier = Modifier
                 .width(channelColumn)
                 .fillMaxHeight()
                 .padding(end = 8.dp)
-                .clip(RoundedCornerShape(10.dp))
+                .clip(shape)
                 .border(
                     width = if (isChannelFocused) 2.dp else 1.dp,
-                    color = if (isChannelFocused) Color.White else if (selectedRow) Color.White.copy(alpha = 0.12f) else Color.Transparent,
-                    shape = RoundedCornerShape(10.dp)
+                    color = if (isChannelFocused) Color.White else if (selectedRow) Color.White.copy(alpha = 0.15f) else Color.Transparent,
+                    shape = shape
                 )
                 .drawBehind { drawRect(channelHighlight) }
                 .padding(horizontal = 8.dp, vertical = 4.dp),
-            verticalArrangement = Arrangement.Center,
+            verticalAlignment = Alignment.CenterVertically,
         ) {
-            Row(
-                modifier = Modifier.fillMaxWidth(),
-                verticalAlignment = Alignment.CenterVertically,
-                horizontalArrangement = Arrangement.SpaceBetween,
-            ) {
-                Row(
-                    verticalAlignment = Alignment.CenterVertically,
-                    horizontalArrangement = Arrangement.spacedBy(6.dp),
-                    modifier = Modifier.weight(1f, fill = false)
+            if (moving) {
+                Icon(
+                    imageVector = Icons.Filled.UnfoldMore,
+                    contentDescription = null,
+                    tint = Color.White,
+                    modifier = Modifier.padding(end = 6.dp).size(16.dp)
+                )
+            }
+            if (picked != null) {
+                Box(
+                    modifier = Modifier
+                        .padding(end = 6.dp)
+                        .size(16.dp)
+                        .clip(RoundedCornerShape(4.dp))
+                        .background(if (picked) Color.White else Color.White.copy(alpha = 0.14f)),
+                    contentAlignment = Alignment.Center,
                 ) {
-                    if (moving) {
-                        Icon(Icons.Filled.UnfoldMore, contentDescription = null, tint = Color.White, modifier = Modifier.size(16.dp))
-                    }
-                    if (picked != null) {
-                        Box(
-                            modifier = Modifier
-                                .size(16.dp)
-                                .clip(RoundedCornerShape(4.dp))
-                                .background(if (picked) Color.White else Color.White.copy(alpha = 0.14f)),
-                            contentAlignment = Alignment.Center,
-                        ) {
-                            if (picked) Icon(Icons.Filled.Check, contentDescription = null, tint = Color.Black, modifier = Modifier.size(12.dp))
-                        }
-                    }
-                    LiveTvLogo(url = logo, name = channel.name, width = 36.dp, height = 20.dp)
-                }
-
-                Row(
-                    verticalAlignment = Alignment.CenterVertically,
-                    horizontalArrangement = Arrangement.spacedBy(4.dp),
-                ) {
-                    if (isFavorite) {
-                        Icon(
-                            imageVector = Icons.Filled.Star,
-                            contentDescription = stringResource(R.string.live_tv_favorites),
-                            tint = if (isChannelFocused) Color(0xFFFFD700) else Color.White.copy(alpha = 0.7f),
-                            modifier = Modifier.size(14.dp),
-                        )
-                    }
-                    if (channel.catchup != null) {
-                        Icon(
-                            imageVector = Icons.Default.History,
-                            contentDescription = stringResource(R.string.live_tv_catchup),
-                            tint = Color.White.copy(alpha = 0.55f),
-                            modifier = Modifier.size(14.dp),
-                        )
-                    }
+                    if (picked) Icon(Icons.Filled.Check, contentDescription = null, tint = Color.Black, modifier = Modifier.size(12.dp))
                 }
             }
 
-            Text(
-                text = channel.name,
-                style = MaterialTheme.typography.bodySmall,
-                fontWeight = if (isChannelFocused || selectedRow) FontWeight.SemiBold else FontWeight.Normal,
-                color = Color.White.copy(alpha = if (isChannelFocused) 1f else if (selectedRow) 0.95f else 0.75f),
-                maxLines = 1,
-                overflow = TextOverflow.Ellipsis,
+            Box(
                 modifier = Modifier
-                    .fillMaxWidth()
-                    .padding(top = 2.dp),
-            )
+                    .size(width = 46.dp, height = 34.dp)
+                    .clip(RoundedCornerShape(6.dp))
+                    .background(Color.White.copy(alpha = 0.08f)),
+                contentAlignment = Alignment.Center,
+            ) {
+                LiveTvLogo(url = logo, name = channel.name, width = 46.dp, height = 34.dp)
+            }
+
+            Column(
+                modifier = Modifier
+                    .weight(1f)
+                    .padding(start = 8.dp, end = 2.dp),
+                verticalArrangement = Arrangement.Center,
+            ) {
+                Text(
+                    text = channel.name,
+                    style = MaterialTheme.typography.bodyMedium.copy(
+                        fontSize = 13.5.sp,
+                        lineHeight = 16.5.sp,
+                        fontWeight = if (isChannelFocused || selectedRow) FontWeight.Bold else FontWeight.SemiBold
+                    ),
+                    color = Color.White.copy(alpha = if (isChannelFocused) 1f else if (selectedRow) 0.95f else 0.8f),
+                    maxLines = 2,
+                    overflow = TextOverflow.Ellipsis,
+                )
+                if (isFavorite || channel.catchup != null) {
+                    Row(
+                        verticalAlignment = Alignment.CenterVertically,
+                        horizontalArrangement = Arrangement.spacedBy(4.dp),
+                        modifier = Modifier.padding(top = 1.dp)
+                    ) {
+                        if (isFavorite) {
+                            Icon(
+                                imageVector = Icons.Filled.Star,
+                                contentDescription = stringResource(R.string.live_tv_favorites),
+                                tint = Color(0xFFFFD700),
+                                modifier = Modifier.size(11.dp),
+                            )
+                        }
+                        if (channel.catchup != null) {
+                            Icon(
+                                imageVector = Icons.Default.History,
+                                contentDescription = stringResource(R.string.live_tv_catchup),
+                                tint = Color.White.copy(alpha = 0.55f),
+                                modifier = Modifier.size(11.dp),
+                            )
+                        }
+                    }
+                }
+            }
         }
         // Programmes in view and two hours either side: the rows recompose only when the timeline
         // moves into another two hours, not on each step.
@@ -885,8 +901,8 @@ private fun GuideCell(
         Text(
             // Drawn only while the title is pushed in from the cell's start (it began earlier).
             text = "‹",
-            style = MaterialTheme.typography.bodySmall,
-            color = if (selected) Color.Black else Color.White.copy(alpha = 0.6f),
+            style = MaterialTheme.typography.bodyMedium.copy(fontSize = 15.sp, fontWeight = FontWeight.Bold),
+            color = if (selected) Color.Black else Color.White.copy(alpha = 0.7f),
             modifier = Modifier
                 .offset { IntOffset(titleShift(), 0) }
                 .padding(start = 6.dp)
@@ -894,8 +910,10 @@ private fun GuideCell(
         )
         Text(
             text = title,
-            style = MaterialTheme.typography.bodySmall,
-            fontWeight = if (selected || state == GuideCellState.Now) FontWeight.Medium else FontWeight.Normal,
+            style = MaterialTheme.typography.bodyMedium.copy(
+                fontSize = 15.sp,
+                fontWeight = if (selected) FontWeight.Bold else if (state == GuideCellState.Now) FontWeight.SemiBold else FontWeight.Medium
+            ),
             color = textColor,
             maxLines = 1,
             overflow = TextOverflow.Ellipsis,
