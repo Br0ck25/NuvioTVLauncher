@@ -3524,4 +3524,19 @@
     <string name="app_menu_reset">Reset to default</string>
     <string name="app_menu_save">Save</string>
     <string name="app_menu_cancel">Cancel</string>
+
+    <!-- Top Status Bar & Settings Menu -->
+    <string name="top_bar_settings">Settings</string>
+    <string name="top_bar_notifications">Notifications</string>
+    <string name="settings_menu_settings_header">Settings</string>
+    <string name="settings_menu_all_apps">All apps</string>
+    <string name="settings_menu_nuvio_settings">Nuvio Launcher Settings</string>
+    <string name="settings_menu_android_settings">Android Settings</string>
+    <string name="settings_menu_tv_apps">TV Apps</string>
+    <string name="notification_access_title">Notification Access Required</string>
+    <string name="notification_access_prompt">Notification access is required in order to:\n• Display the notifications panel\n• Display the apps notifications counter</string>
+    <string name="notification_open_settings">Open Notification Settings</string>
+    <string name="notifications_title">Notifications</string>
+    <string name="notifications_none">No notifications</string>
+    <string name="notifications_clear_all">Clear all</string>
 </resources>

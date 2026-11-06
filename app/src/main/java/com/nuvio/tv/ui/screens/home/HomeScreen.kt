@@ -95,9 +95,13 @@ fun HomeScreen(
     onContinueWatchingStartFromBeginning: (ContinueWatchingItem) -> Unit = onContinueWatchingClick,
     onContinueWatchingPlayManually: (ContinueWatchingItem) -> Unit = onContinueWatchingClick,
     onNavigateToCatalogSeeAll: (String, String, String) -> Unit = { _, _, _ -> },
-    onNavigateToFolderDetail: (String, String) -> Unit = { _, _ -> }
+    onNavigateToFolderDetail: (String, String) -> Unit = { _, _ -> },
+    onNavigateToSettings: () -> Unit = {}
 ) {
     val uiState by viewModel.uiState.collectAsStateWithLifecycle()
+
+    var showSettingsDrawer by remember { mutableStateOf(false) }
+    var showNotificationsDrawer by remember { mutableStateOf(false) }
 
     // Home was the only major screen without a lifecycle observer, so nothing ever told it to
     // look at its catalogs again.
@@ -449,6 +453,26 @@ fun HomeScreen(
             }
         }
 
+        if (!showStartupLoader) {
+            HomeTopBarHeader(
+                onNotificationsClick = { showNotificationsDrawer = true },
+                onSettingsClick = { showSettingsDrawer = true },
+                modifier = Modifier.align(Alignment.TopEnd)
+            )
+        }
+
+        if (showSettingsDrawer) {
+            HomeSettingsDrawer(
+                onDismiss = { showSettingsDrawer = false },
+                onOpenNuvioSettings = onNavigateToSettings
+            )
+        }
+
+        if (showNotificationsDrawer) {
+            NotificationsDrawer(
+                onDismiss = { showNotificationsDrawer = false }
+            )
+        }
     }
 
     val selectedPoster = posterOptionsTarget
