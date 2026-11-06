@@ -3,8 +3,10 @@
 package com.nuvio.tv.ui.screens.home
 
 import android.content.Context
+import android.content.Intent
 import android.net.ConnectivityManager
 import android.net.NetworkCapabilities
+import android.widget.Toast
 import androidx.compose.foundation.BorderStroke
 import androidx.compose.foundation.background
 import androidx.compose.foundation.layout.Arrangement
@@ -21,6 +23,7 @@ import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.Notifications
 import androidx.compose.material.icons.filled.Settings
+import androidx.compose.material.icons.filled.Tv
 import androidx.compose.material.icons.filled.Wifi
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
@@ -61,6 +64,17 @@ fun HomeTopBarHeader(
     val notifications by LauncherNotificationListenerService.notifications.collectAsState()
     val notificationCount = notifications.size
 
+    val hasTvInputs = remember {
+        val candidateIntents = listOf(
+            Intent("com.android.tv.action.VIEW_INPUTS"),
+            Intent("com.google.android.tv.action.VIEW_INPUTS"),
+            Intent("android.settings.TV_INPUTS"),
+            Intent("android.settings.TV_INPUT_SETTINGS"),
+            Intent("android.media.tv.action.VIEW_INPUTS")
+        )
+        candidateIntents.any { context.packageManager.resolveActivity(it, 0) != null }
+    }
+
     var timeText by remember { mutableStateOf(currentTimeString()) }
     LaunchedEffect(Unit) {
         while (true) {
@@ -84,6 +98,60 @@ fun HomeTopBarHeader(
                 tint = Color.White.copy(alpha = 0.7f),
                 modifier = Modifier.size(20.dp)
             )
+        }
+
+        // TV Inputs Button
+        if (hasTvInputs) {
+            Surface(
+                onClick = {
+                    val intents = listOf(
+                        Intent("com.android.tv.action.VIEW_INPUTS"),
+                        Intent("com.google.android.tv.action.VIEW_INPUTS"),
+                        Intent("android.settings.TV_INPUTS"),
+                        Intent("android.settings.TV_INPUT_SETTINGS"),
+                        Intent("android.media.tv.action.VIEW_INPUTS")
+                    )
+                    var launched = false
+                    for (intent in intents) {
+                        try {
+                            intent.addFlags(Intent.FLAG_ACTIVITY_NEW_TASK)
+                            if (context.packageManager.resolveActivity(intent, 0) != null) {
+                                context.startActivity(intent)
+                                launched = true
+                                break
+                            }
+                        } catch (_: Exception) {}
+                    }
+                    if (!launched) {
+                        try {
+                            context.startActivity(Intent("com.android.tv.action.VIEW_INPUTS").addFlags(Intent.FLAG_ACTIVITY_NEW_TASK))
+                        } catch (_: Exception) {
+                            Toast.makeText(context, R.string.profile_tv_inputs_unavailable, Toast.LENGTH_SHORT).show()
+                        }
+                    }
+                },
+                modifier = Modifier.size(36.dp),
+                shape = ClickableSurfaceDefaults.shape(RoundedCornerShape(10.dp)),
+                colors = ClickableSurfaceDefaults.colors(
+                    containerColor = Color.White.copy(alpha = 0.08f),
+                    focusedContainerColor = Color.White
+                ),
+                border = ClickableSurfaceDefaults.border(
+                    border = Border(BorderStroke(1.dp, Color.White.copy(alpha = 0.12f)), RoundedCornerShape(10.dp)),
+                    focusedBorder = Border(BorderStroke(2.dp, NuvioTheme.colors.Primary), RoundedCornerShape(10.dp))
+                )
+            ) {
+                Box(
+                    modifier = Modifier.fillMaxSize(),
+                    contentAlignment = Alignment.Center
+                ) {
+                    Icon(
+                        imageVector = Icons.Default.Tv,
+                        contentDescription = stringResource(R.string.profile_tv_inputs_label),
+                        modifier = Modifier.size(18.dp)
+                    )
+                }
+            }
         }
 
         // Notifications Button
