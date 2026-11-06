@@ -168,6 +168,7 @@ class IconPackManager @Inject constructor(
             val res = pm.getResourcesForApplication(iconPackPackage)
             val resId = res.getIdentifier(drawableName, "drawable", iconPackPackage)
             if (resId == 0) return null
+            val drawable = res.getDrawable(resId, null) ?: return null
             val intrinsicW = drawable.intrinsicWidth.coerceAtLeast(1)
             val intrinsicH = drawable.intrinsicHeight.coerceAtLeast(1)
             val maxDim = 160f
