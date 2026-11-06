@@ -30,17 +30,18 @@ import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableIntStateOf
+import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
 import androidx.compose.runtime.rememberUpdatedState
 import androidx.compose.runtime.setValue
 import androidx.compose.runtime.withFrameNanos
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.draw.clip
 import androidx.compose.ui.focus.FocusRequester
 import androidx.compose.ui.focus.focusRequester
 import androidx.compose.ui.focus.focusRestorer
 import androidx.compose.ui.focus.onFocusChanged
-import androidx.compose.ui.draw.clip
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.layout.ContentScale
 import androidx.compose.ui.platform.LocalContext
@@ -49,6 +50,7 @@ import androidx.compose.ui.semantics.contentDescription
 import androidx.compose.ui.semantics.semantics
 import androidx.compose.ui.unit.Dp
 import androidx.compose.ui.unit.dp
+import androidx.hilt.navigation.compose.hiltViewModel
 import androidx.tv.material3.Border
 import androidx.tv.material3.Card
 import androidx.tv.material3.CardDefaults
@@ -58,6 +60,8 @@ import androidx.tv.material3.Text
 import com.nuvio.tv.R
 import com.nuvio.tv.core.apps.InstalledApp
 import com.nuvio.tv.core.apps.launchInstalledApp
+import com.nuvio.tv.ui.screens.apps.AppContextMenuModal
+import com.nuvio.tv.ui.screens.apps.AppContextMenuViewModel
 import com.nuvio.tv.ui.theme.NuvioTheme
 
 val InstalledAppTileWidth = 180.dp
@@ -71,9 +75,10 @@ fun InstalledAppArtwork(
     modifier: Modifier = Modifier,
     contentScale: ContentScale = ContentScale.Fit
 ) {
-    if (app.icon != null) {
+    val artwork = app.displayIcon
+    if (artwork != null) {
         Image(
-            bitmap = app.icon,
+            bitmap = artwork,
             contentDescription = null,
             contentScale = contentScale,
             modifier = modifier
@@ -97,11 +102,13 @@ fun InstalledAppTile(
     app: InstalledApp,
     onClick: () -> Unit,
     modifier: Modifier = Modifier,
+    onLongClick: (() -> Unit)? = null,
     onFocused: () -> Unit = {}
 ) {
     val shape = RoundedCornerShape(NuvioTheme.radii.md)
     Card(
         onClick = onClick,
+        onLongClick = onLongClick,
         modifier = modifier
             .width(InstalledAppTileWidth)
             .height(InstalledAppTileHeight)
@@ -125,10 +132,10 @@ fun InstalledAppTile(
         Box(
             modifier = Modifier
                 .fillMaxSize()
-                .semantics { contentDescription = app.label },
+                .semantics { contentDescription = app.displayLabel },
             contentAlignment = Alignment.Center
         ) {
-            if (app.hasBanner) {
+            if (app.isBanner) {
                 InstalledAppArtwork(
                     app = app,
                     contentScale = ContentScale.Crop,
@@ -152,12 +159,15 @@ fun InstalledAppsRowSection(
     onItemFocused: (Int) -> Unit = {},
     horizontalPadding: Dp = 52.dp,
     showTitle: Boolean = true,
-    focusRequesterForPackage: ((String) -> FocusRequester)? = null
+    focusRequesterForPackage: ((String) -> FocusRequester)? = null,
+    menuViewModel: AppContextMenuViewModel = hiltViewModel()
 ) {
     val context = LocalContext.current
     val launchError = stringResource(R.string.installed_apps_launch_error)
     val currentOnItemFocused by rememberUpdatedState(onItemFocused)
     var lastIndex by remember { mutableIntStateOf(-1) }
+    var contextMenuApp by remember { mutableStateOf<InstalledApp?>(null) }
+    var contextMenuIndex by remember { mutableIntStateOf(-1) }
     val requesters = remember { mutableMapOf<String, FocusRequester>() }
     LaunchedEffect(apps) { requesters.keys.retainAll(apps.map { it.packageName }.toSet()) }
     LaunchedEffect(focusedItemIndex, apps) {
@@ -201,9 +211,38 @@ fun InstalledAppsRowSection(
                         if (!launchInstalledApp(context, app)) {
                             Toast.makeText(context, launchError, Toast.LENGTH_SHORT).show()
                         }
+                    },
+                    onLongClick = {
+                        contextMenuApp = app
+                        contextMenuIndex = index
                     }
                 )
             }
         }
+    }
+
+    contextMenuApp?.let { app ->
+        val allPackages = remember(apps) { apps.map { it.packageName } }
+        AppContextMenuModal(
+            app = app,
+            onDismiss = {
+                contextMenuApp = null
+                contextMenuIndex = -1
+            },
+            onMoveLeft = if (contextMenuIndex > 0) {
+                {
+                    menuViewModel.moveApp(app.packageName, -1, allPackages)
+                }
+            } else null,
+            onMoveRight = if (contextMenuIndex >= 0 && contextMenuIndex < apps.size - 1) {
+                {
+                    menuViewModel.moveApp(app.packageName, 1, allPackages)
+                }
+            } else null,
+            onRemoveFromRow = {
+                menuViewModel.removeFromRow(app.packageName, allPackages)
+            },
+            viewModel = menuViewModel
+        )
     }
 }

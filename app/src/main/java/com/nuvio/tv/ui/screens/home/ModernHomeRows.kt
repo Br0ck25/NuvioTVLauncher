@@ -4,6 +4,10 @@ package com.nuvio.tv.ui.screens.home
 
 import com.nuvio.tv.ui.theme.NuvioTheme
 
+import androidx.hilt.navigation.compose.hiltViewModel
+import com.nuvio.tv.core.apps.InstalledApp
+import com.nuvio.tv.ui.screens.apps.AppContextMenuModal
+import com.nuvio.tv.ui.screens.apps.AppContextMenuViewModel
 import android.view.KeyEvent as AndroidKeyEvent
 import androidx.compose.animation.core.AnimationSpec
 import androidx.compose.animation.core.animateDpAsState
@@ -501,6 +505,9 @@ internal fun ModernRowSection(
         derivedStateOf { focusedItemByRow[rowKey] ?: 0 }
     }
 
+    var contextMenuApp by remember { mutableStateOf<InstalledApp?>(null) }
+    var contextMenuIndex by remember { mutableIntStateOf(-1) }
+
     // Blocks vertical focus exit during placeholder→data transition.
     val blockingFocusExit = remember { mutableStateOf(false) }
 
@@ -981,6 +988,10 @@ internal fun ModernRowSection(
                                     if (!com.nuvio.tv.core.apps.launchInstalledApp(context, payload.app)) {
                                         android.widget.Toast.makeText(context, error, android.widget.Toast.LENGTH_SHORT).show()
                                     }
+                                },
+                                onLongClick = {
+                                    contextMenuApp = payload.app
+                                    contextMenuIndex = index
                                 }
                             )
                         }
@@ -1081,6 +1092,34 @@ internal fun ModernRowSection(
                 }
             }
         }
+    }
+
+    contextMenuApp?.let { app ->
+        val allPackages = remember(row.items.list) {
+            row.items.list.mapNotNull { (it.payload as? ModernPayload.InstalledApp)?.app?.packageName }
+        }
+        val menuViewModel: AppContextMenuViewModel = hiltViewModel()
+        AppContextMenuModal(
+            app = app,
+            onDismiss = {
+                contextMenuApp = null
+                contextMenuIndex = -1
+            },
+            onMoveLeft = if (contextMenuIndex > 0) {
+                {
+                    menuViewModel.moveApp(app.packageName, -1, allPackages)
+                }
+            } else null,
+            onMoveRight = if (contextMenuIndex >= 0 && contextMenuIndex < allPackages.size - 1) {
+                {
+                    menuViewModel.moveApp(app.packageName, 1, allPackages)
+                }
+            } else null,
+            onRemoveFromRow = {
+                menuViewModel.removeFromRow(app.packageName, allPackages)
+            },
+            viewModel = menuViewModel
+        )
     }
 }
 

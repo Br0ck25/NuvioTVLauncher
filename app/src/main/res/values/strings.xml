@@ -3503,4 +3503,25 @@
     <string name="installed_apps_restore_all">Restore all</string>
     <string name="installed_apps_launch_error">This app could not be opened. It may have been disabled or uninstalled.</string>
     <string name="apps_home_override_pending">Home override authorized — inactive</string>
+
+    <!-- App Context Menu & Customization -->
+    <string name="app_menu_settings">App settings</string>
+    <string name="app_menu_open">Open</string>
+    <string name="app_menu_uninstall">Uninstall</string>
+    <string name="app_menu_move_left">Move left</string>
+    <string name="app_menu_move_right">Move right</string>
+    <string name="app_menu_hide_from_row">Hide from row</string>
+    <string name="app_menu_appearance">Appearance</string>
+    <string name="app_menu_title">Title</string>
+    <string name="app_menu_rename_title">Rename app</string>
+    <string name="app_menu_rename_hint">Enter new app name</string>
+    <string name="app_menu_change_icon">Change icon</string>
+    <string name="app_menu_icon_default">Default (Automatic)</string>
+    <string name="app_menu_icon_system_banner">System TV Banner</string>
+    <string name="app_menu_icon_system_square">System Square Icon</string>
+    <string name="app_menu_icon_packs">Installed Icon Packs</string>
+    <string name="app_menu_no_icon_packs">No icon packs installed on this device.</string>
+    <string name="app_menu_reset">Reset to default</string>
+    <string name="app_menu_save">Save</string>
+    <string name="app_menu_cancel">Cancel</string>
 </resources>

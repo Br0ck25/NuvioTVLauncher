@@ -4,7 +4,9 @@ import android.content.BroadcastReceiver
 import android.content.Context
 import android.content.Intent
 import android.content.IntentFilter
+import androidx.compose.ui.graphics.ImageBitmap
 import androidx.core.content.ContextCompat
+import com.nuvio.tv.data.local.InstalledAppsPreferencesDataStore
 import dagger.hilt.android.qualifiers.ApplicationContext
 import javax.inject.Inject
 import javax.inject.Singleton
@@ -15,6 +17,7 @@ import kotlinx.coroutines.channels.awaitClose
 import kotlinx.coroutines.flow.MutableSharedFlow
 import kotlinx.coroutines.flow.SharingStarted
 import kotlinx.coroutines.flow.callbackFlow
+import kotlinx.coroutines.flow.combine
 import kotlinx.coroutines.flow.distinctUntilChanged
 import kotlinx.coroutines.flow.mapLatest
 import kotlinx.coroutines.flow.merge
@@ -28,13 +31,40 @@ data class InstalledAppsState(
 /** Device-wide package discovery; ordering and row visibility are profile preferences. */
 @Singleton
 class InstalledAppsRepository @Inject constructor(
-    @ApplicationContext private val context: Context
+    @ApplicationContext private val context: Context,
+    private val preferencesDataStore: InstalledAppsPreferencesDataStore,
+    private val iconPackManager: IconPackManager
 ) {
     private val scope = CoroutineScope(SupervisorJob() + Dispatchers.Default)
     private val refreshRequests = MutableSharedFlow<Unit>(extraBufferCapacity = 1)
 
-    val state = merge(packageChanges(), refreshRequests).mapLatest {
-        InstalledAppsState(apps = queryInstalledApps(context), isLoading = false)
+    val state = combine(
+        merge(packageChanges(), refreshRequests).mapLatest { queryInstalledApps(context) },
+        preferencesDataStore.preferences
+    ) { baseApps, prefs ->
+        val customizedApps = baseApps.map { app ->
+            val customTitle = prefs.customTitles[app.packageName]
+            val iconRef = prefs.customIcons[app.packageName]
+            val customIcon: ImageBitmap? = when {
+                iconRef == "system_banner" -> app.bannerBitmap ?: app.icon
+                iconRef == "system_icon" -> app.squareBitmap ?: app.icon
+                iconRef?.startsWith("iconpack:") == true -> {
+                    val parts = iconRef.removePrefix("iconpack:").split(":")
+                    if (parts.size >= 2) {
+                        iconPackManager.loadSpecificIcon(parts[0], parts[1])
+                    } else null
+                }
+                prefs.selectedIconPackPackage != null -> {
+                    iconPackManager.loadIconForApp(app.packageName, app.componentName, prefs.selectedIconPackPackage)
+                }
+                else -> null
+            }
+            app.copy(
+                customLabel = customTitle,
+                customIcon = customIcon
+            )
+        }
+        InstalledAppsState(apps = customizedApps, isLoading = false)
     }.distinctUntilChanged().stateIn(scope, SharingStarted.Eagerly, InstalledAppsState())
 
     fun refresh() {
