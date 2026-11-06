@@ -13,6 +13,7 @@ import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.Spacer
+import androidx.compose.foundation.layout.defaultMinSize
 import androidx.compose.foundation.layout.fillMaxHeight
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.height
@@ -28,12 +29,9 @@ import androidx.compose.material.icons.filled.Settings
 import androidx.compose.material.icons.filled.Tv
 import androidx.compose.material.icons.filled.Wifi
 import androidx.compose.runtime.Composable
-import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.collectAsState
 import androidx.compose.runtime.getValue
-import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
-import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
@@ -51,10 +49,6 @@ import androidx.tv.material3.Surface
 import androidx.tv.material3.Text
 import com.nuvio.tv.R
 import com.nuvio.tv.core.notification.LauncherNotificationListenerService
-import com.nuvio.tv.ui.theme.NuvioTheme
-import kotlinx.coroutines.delay
-import java.time.LocalTime
-import java.time.format.DateTimeFormatter
 
 @Composable
 fun HomeTopBarHeader(
@@ -75,14 +69,6 @@ fun HomeTopBarHeader(
             Intent("android.media.tv.action.VIEW_INPUTS")
         )
         candidateIntents.any { context.packageManager.resolveActivity(it, 0) != null }
-    }
-
-    var timeText by remember { mutableStateOf(currentTimeString()) }
-    LaunchedEffect(Unit) {
-        while (true) {
-            timeText = currentTimeString()
-            delay(15_000)
-        }
     }
 
     val isConnected = remember(context) { isNetworkConnected(context) }
@@ -138,6 +124,7 @@ fun HomeTopBarHeader(
                     containerColor = Color.White.copy(alpha = 0.08f),
                     focusedContainerColor = Color.White.copy(alpha = 0.22f)
                 ),
+                scale = ClickableSurfaceDefaults.scale(focusedScale = 1f),
                 border = ClickableSurfaceDefaults.border(
                     border = Border(BorderStroke(1.dp, Color.White.copy(alpha = 0.12f))),
                     focusedBorder = Border(BorderStroke(2.dp, Color.White))
@@ -168,6 +155,7 @@ fun HomeTopBarHeader(
                 containerColor = Color.White.copy(alpha = 0.08f),
                 focusedContainerColor = Color.White.copy(alpha = 0.22f)
             ),
+            scale = ClickableSurfaceDefaults.scale(focusedScale = 1f),
             border = ClickableSurfaceDefaults.border(
                 border = Border(BorderStroke(1.dp, Color.White.copy(alpha = 0.12f))),
                 focusedBorder = Border(BorderStroke(2.dp, Color.White))
@@ -190,16 +178,18 @@ fun HomeTopBarHeader(
                 if (notificationCount > 0) {
                     Box(
                         modifier = Modifier
+                            .defaultMinSize(minWidth = 18.dp, minHeight = 18.dp)
                             .clip(CircleShape)
-                            .background(NuvioTheme.colors.Secondary)
-                            .padding(horizontal = 6.dp, vertical = 1.dp),
+                            .background(Color(0xFFE50914))
+                            .padding(horizontal = 5.dp, vertical = 1.dp),
                         contentAlignment = Alignment.Center
                     ) {
                         Text(
-                            text = notificationCount.toString(),
+                            text = if (notificationCount > 99) "99+" else notificationCount.toString(),
                             style = MaterialTheme.typography.labelSmall.copy(
                                 fontWeight = FontWeight.Bold,
-                                fontSize = 11.sp
+                                fontSize = 11.sp,
+                                lineHeight = 11.sp
                             ),
                             color = Color.White
                         )
@@ -217,6 +207,7 @@ fun HomeTopBarHeader(
                 containerColor = Color.White.copy(alpha = 0.08f),
                 focusedContainerColor = Color.White.copy(alpha = 0.22f)
             ),
+            scale = ClickableSurfaceDefaults.scale(focusedScale = 1f),
             border = ClickableSurfaceDefaults.border(
                 border = Border(BorderStroke(1.dp, Color.White.copy(alpha = 0.12f))),
                 focusedBorder = Border(BorderStroke(2.dp, Color.White))
@@ -234,22 +225,7 @@ fun HomeTopBarHeader(
                 )
             }
         }
-
-        Text(
-            text = timeText,
-            style = MaterialTheme.typography.titleMedium.copy(
-                fontWeight = FontWeight.SemiBold,
-                fontSize = 17.sp
-            ),
-            color = Color.White.copy(alpha = 0.92f)
-        )
     }
-}
-
-private fun currentTimeString(): String {
-    return runCatching {
-        LocalTime.now().format(DateTimeFormatter.ofPattern("HH:mm"))
-    }.getOrDefault("")
 }
 
 private fun isNetworkConnected(context: Context): Boolean {

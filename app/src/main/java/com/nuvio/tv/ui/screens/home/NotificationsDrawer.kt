@@ -264,6 +264,7 @@ private fun NotificationsDrawerContent(
                         containerColor = Color.White.copy(alpha = 0.08f),
                         focusedContainerColor = Color.White.copy(alpha = 0.22f)
                     ),
+                    scale = ClickableSurfaceDefaults.scale(focusedScale = 1f),
                     border = ClickableSurfaceDefaults.border(
                         border = Border(BorderStroke(1.dp, Color.White.copy(alpha = 0.12f))),
                         focusedBorder = Border(BorderStroke(2.dp, Color.White))
@@ -316,6 +317,7 @@ private fun NotificationsDrawerContent(
                             containerColor = Color.White.copy(alpha = 0.06f),
                             focusedContainerColor = Color.White.copy(alpha = 0.18f)
                         ),
+                        scale = ClickableSurfaceDefaults.scale(focusedScale = 1f),
                         border = ClickableSurfaceDefaults.border(
                             border = Border(BorderStroke(1.dp, Color.White.copy(alpha = 0.08f))),
                             focusedBorder = Border(BorderStroke(2.dp, Color.White))

@@ -305,6 +305,7 @@ private fun AllAppsContent(
                     containerColor = Color.White.copy(alpha = 0.05f),
                     focusedContainerColor = Color.White.copy(alpha = 0.18f)
                 ),
+                scale = ClickableSurfaceDefaults.scale(focusedScale = 1f),
                 border = ClickableSurfaceDefaults.border(
                     border = Border(BorderStroke(1.dp, Color.White.copy(alpha = 0.08f))),
                     focusedBorder = Border(BorderStroke(2.dp, Color.White))
@@ -356,6 +357,7 @@ private fun DrawerActionRow(
             containerColor = Color.White.copy(alpha = 0.05f),
             focusedContainerColor = Color.White.copy(alpha = 0.18f)
         ),
+        scale = ClickableSurfaceDefaults.scale(focusedScale = 1f),
         border = ClickableSurfaceDefaults.border(
             border = Border(BorderStroke(1.dp, Color.White.copy(alpha = 0.08f))),
             focusedBorder = Border(BorderStroke(2.dp, Color.White))

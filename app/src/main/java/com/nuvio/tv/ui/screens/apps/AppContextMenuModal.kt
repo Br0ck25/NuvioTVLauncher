@@ -786,6 +786,7 @@ private fun MenuItemRow(
             contentColor = Color.White,
             focusedContentColor = Color.White
         ),
+        scale = ClickableSurfaceDefaults.scale(focusedScale = 1f),
         border = ClickableSurfaceDefaults.border(
             border = Border(BorderStroke(1.dp, Color.White.copy(alpha = 0.08f))),
             focusedBorder = Border(BorderStroke(2.dp, Color.White))
