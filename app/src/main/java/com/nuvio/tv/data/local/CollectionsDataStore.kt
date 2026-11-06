@@ -23,6 +23,7 @@ import com.nuvio.tv.domain.model.TmdbCollectionSourceType
 import com.nuvio.tv.domain.model.TraktCollectionSource
 import com.nuvio.tv.domain.model.TraktListSort
 import com.nuvio.tv.domain.model.TraktSortHow
+import com.nuvio.tv.domain.model.AuthState
 import dagger.hilt.android.qualifiers.ApplicationContext
 import kotlinx.coroutines.flow.Flow
 import kotlinx.coroutines.flow.first
@@ -67,8 +68,14 @@ class CollectionsDataStore @Inject constructor(
         }.getOrDefault(emptyList())
     }
 
-    private fun parseCollectionsOrDefault(json: String?): List<Collection> {
-        if (authManager?.get()?.isAuthenticated == true) {
+    private val isAuthFlow: Flow<Boolean> =
+        authManager?.get()?.authState?.map { it is AuthState.FullAccount } ?: kotlinx.coroutines.flow.flowOf(false)
+
+    private fun parseCollectionsOrDefault(
+        json: String?,
+        isAuthenticated: Boolean = authManager?.get()?.isAuthenticated == true
+    ): List<Collection> {
+        if (isAuthenticated) {
             // When user is logged into a Nuvio account, all collections go through the Nuvio account.
             if (json.isNullOrBlank() || json.trim() == "[]") return emptyList()
             return parseCollections(json)
@@ -79,9 +86,11 @@ class CollectionsDataStore @Inject constructor(
     }
 
     val collections: Flow<List<Collection>> =
-        profileManager.activeProfileId.flatMapLatest { pid ->
+        kotlinx.coroutines.flow.combine(profileManager.activeProfileId, isAuthFlow) { pid, isAuth ->
+            pid to isAuth
+        }.flatMapLatest { (pid, isAuth) ->
             factory.get(pid, FEATURE).data.map { prefs ->
-                parseCollectionsOrDefault(prefs[collectionsKey])
+                parseCollectionsOrDefault(prefs[collectionsKey], isAuth)
             }
         }
 

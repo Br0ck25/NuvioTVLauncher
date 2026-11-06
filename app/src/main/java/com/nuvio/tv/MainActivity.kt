@@ -472,13 +472,6 @@ open class MainActivity : ComponentActivity() {
 
             PartyEffects(partyRepository)
 
-            LaunchedEffect(hasSeenAuthQrOnFirstLaunch, authState) {
-                if (hasSeenAuthQrOnFirstLaunch == false && authState is AuthState.FullAccount) {
-                    appOnboardingDataStore.setHasSeenAuthQrOnFirstLaunch(true)
-                    onboardingCompletedThisSession = true
-                }
-            }
-
             val activeProfileId by profileManager.activeProfileId.collectAsState()
             val startupSplashEnabled by profileManager.startupSplashEnabled.collectAsState()
             val startupLoadingState = remember(activeProfileId, startupSession) { StartupLoadingState() }
@@ -786,7 +779,6 @@ open class MainActivity : ComponentActivity() {
                         // Still loading auth state; nothing to show yet.
                     } else if (
                         hasSeenAuthQrOnFirstLaunch == false &&
-                        authState !is AuthState.FullAccount &&
                         !onboardingCompletedThisSession
                     ) {
                         startupDestination = StartupDestination.Setup
@@ -803,7 +795,7 @@ open class MainActivity : ComponentActivity() {
                                         val maxAttempts = 3
                                         var synced = false
                                         for (attempt in 0 until maxAttempts) {
-                                            val result = profileSyncService.pullFromRemote()
+                                            val result = profileSyncService.pullFromRemote(force = true)
                                             if (result.isSuccess) {
                                                 synced = true
                                                 break

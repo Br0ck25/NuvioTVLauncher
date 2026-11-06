@@ -97,8 +97,9 @@ class CollectionSyncService @Inject constructor(
             val rows = response.decodeList<SupabaseCollectionBlob>()
             val blob = rows.firstOrNull()
             if (blob == null) {
+                val currentRaw = collectionsDataStore.exportCurrentProfileJson()
                 val localCollections = collectionsDataStore.getCurrentCollections()
-                if (localCollections.isNotEmpty()) {
+                if (localCollections.isNotEmpty() || currentRaw != "[]") {
                     isSyncingFromRemote = true
                     try {
                         collectionsDataStore.setCollections(emptyList())
@@ -115,8 +116,9 @@ class CollectionSyncService @Inject constructor(
             val remoteCollections = collectionsDataStore.importFromJson(remoteJson)
 
             if (remoteCollections.isEmpty()) {
+                val currentRaw = collectionsDataStore.exportCurrentProfileJson()
                 val localCollections = collectionsDataStore.getCurrentCollections()
-                if (localCollections.isNotEmpty()) {
+                if (localCollections.isNotEmpty() || currentRaw != "[]") {
                     isSyncingFromRemote = true
                     try {
                         collectionsDataStore.setCollections(emptyList())

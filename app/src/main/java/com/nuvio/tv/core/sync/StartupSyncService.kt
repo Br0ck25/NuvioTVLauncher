@@ -620,6 +620,9 @@ class StartupSyncService @Inject constructor(
                 }
             }
 
+            addonJob.await()
+            collectionJob.await()
+
             val homeCatalogJob = async {
                 try {
                     homeCatalogSettingsSyncService.pullFromRemote()
@@ -634,8 +637,6 @@ class StartupSyncService @Inject constructor(
                 }
             }
 
-            addonJob.await()
-            collectionJob.await()
             homeCatalogJob.await()
             libraryJob.await()
         }

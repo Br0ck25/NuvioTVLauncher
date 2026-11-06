@@ -25,7 +25,9 @@ import com.nuvio.tv.data.local.TraktSettingsDataStore
 import com.nuvio.tv.data.local.ContinueWatchingEnrichmentCache
 import com.nuvio.tv.data.mediaserver.ServerCatalog
 import com.nuvio.tv.data.trailer.TrailerService
+import com.nuvio.tv.core.auth.AuthManager
 import com.nuvio.tv.domain.model.Addon
+import com.nuvio.tv.domain.model.AuthState
 import com.nuvio.tv.domain.model.enabledAddons
 import com.nuvio.tv.domain.model.CatalogDescriptor
 import com.nuvio.tv.domain.model.CatalogRow
@@ -96,6 +98,7 @@ class HomeViewModel @Inject constructor(
     internal val serverCatalog: ServerCatalog,
     internal val installedAppsRepository: InstalledAppsRepository,
     internal val installedAppsPreferences: com.nuvio.tv.data.local.InstalledAppsPreferencesDataStore,
+    internal val authManager: dagger.Lazy<AuthManager>? = null,
     internal val metaPreviewEnricher: MetaPreviewEnricher = MetaPreviewEnricher(
         tmdbService,
         tmdbMetadataService,
@@ -433,6 +436,65 @@ class HomeViewModel @Inject constructor(
                     _movieWatchedStatus.value = emptyMap()
                     _pendingWatchedBatch.value = emptyMap()
                     _uiState.update { it.copy(movieWatchedStatus = emptyMap()) }
+                }
+            }
+        }
+        if (authManager != null) {
+            viewModelScope.launch {
+                var lastIsAuthenticated: Boolean? = null
+                authManager.get().authState.collect { authState ->
+                    val isAuth = authState is AuthState.FullAccount
+                    if (lastIsAuthenticated != null && lastIsAuthenticated != isAuth) {
+                        Log.d(TAG, "Auth state changed (isAuthenticated: $lastIsAuthenticated -> $isAuth), refreshing Home")
+                        cwPipelineJob?.cancel()
+                        cwPipelineJob = null
+                        cwMetaCache.clear()
+                        cwMetaNegativeCacheTimestamps.clear()
+                        cwBadgeEpisodeCache.clear()
+                        cwBadgeNextSeasonMs.clear()
+                        cwTmdbIdCache.clear()
+                        cwNextUpResolutionCache.clear()
+                        cwNextUpNegativeCacheTimestamps.clear()
+                        discoveredOlderNextUpItems.clear()
+                        cwLastProcessedNextUpContentIds.clear()
+                        cwProcessedOlderSeedContentIds.clear()
+                        cwEnrichedNextUpOverlay.clear()
+                        cwEnrichedInProgressOverlay.clear()
+                        cwLastBadgeEpisodeKeys = emptySet()
+                        cwLastShowIdSiblings = emptyMap()
+                        _uiState.update {
+                            it.copy(layoutPreferencesReady = false, continueWatchingItems = emptyList())
+                        }
+                        clearFocusState()
+                        _gridFocusState.value = HomeScreenFocusState()
+                        _initialCwResolved.value = false
+                        loadContinueWatching()
+
+                        val currentProfileId = profileManager.activeProfileId.value
+                        watchedSeriesStateHolder.clearInMemory()
+                        watchedSeriesStateHolder.loadFromDisk(profileId = currentProfileId)
+                        _movieWatchedStatus.value = emptyMap()
+                        _pendingWatchedBatch.value = emptyMap()
+                        _uiState.update { it.copy(movieWatchedStatus = emptyMap()) }
+
+                        clearCatalogData()
+                        synchronized(catalogStateLock) {
+                            catalogOrder.clear()
+                        }
+                        scheduleUpdateCatalogRows()
+                        val freshAddons = runCatching { addonRepository.getInstalledAddons().first().enabledAddons() }.getOrNull()
+                        val targetAddons = if (!freshAddons.isNullOrEmpty()) {
+                            addonsCache = freshAddons
+                            freshAddons
+                        } else {
+                            addonsCache.enabledAddons()
+                        }
+                        if (targetAddons.isNotEmpty()) {
+                            lastHomeCatalogRefreshAtMs = android.os.SystemClock.elapsedRealtime()
+                            loadAllCatalogs(targetAddons, forceReload = true)
+                        }
+                    }
+                    lastIsAuthenticated = isAuth
                 }
             }
         }
