@@ -264,7 +264,8 @@ class AddonManagerViewModel @Inject constructor(
                 val orderedCatalogs = buildOrderedCatalogEntries(
                     addons = addons.enabledAddons(),
                     savedOrderKeys = homeCatalogOrderKeys,
-                    disabledKeys = disabledHomeCatalogKeys
+                    disabledKeys = disabledHomeCatalogKeys,
+                    collections = currentCollections
                 )
                 // Build unified catalog list with collections interleaved
                 val catalogInfos = orderedCatalogs.map { catalog ->
@@ -821,9 +822,10 @@ class AddonManagerViewModel @Inject constructor(
     private fun buildOrderedCatalogEntries(
         addons: List<Addon>,
         savedOrderKeys: List<String>,
-        disabledKeys: Set<String>
+        disabledKeys: Set<String>,
+        collections: List<Collection> = emptyList()
     ): List<QrCatalogEntry> {
-        val defaultEntries = buildDefaultCatalogEntries(addons)
+        val defaultEntries = buildDefaultCatalogEntries(addons, collections)
         val entryByKey = defaultEntries.associateBy { it.key }
         val defaultOrderKeys = defaultEntries.map { it.key }
         val savedValid = savedOrderKeys
@@ -843,13 +845,23 @@ class AddonManagerViewModel @Inject constructor(
         }
     }
 
-    private fun buildDefaultCatalogEntries(addons: List<Addon>): List<QrCatalogEntry> {
+    private fun buildDefaultCatalogEntries(
+        addons: List<Addon>,
+        collections: List<Collection> = emptyList()
+    ): List<QrCatalogEntry> {
         val entries = mutableListOf<QrCatalogEntry>()
         val seenKeys = mutableSetOf<String>()
 
         addons.enabledAddons().forEach { addon ->
+            if (addon.id.equals(com.nuvio.tv.core.mylists.MyListsDefaultSeed.MY_LISTS_COLLECTIONS_ADDON_ID, ignoreCase = true)) {
+                return@forEach
+            }
             addon.catalogs
-                .filterNot { it.isSearchOnlyCatalog() }
+                .filterNot {
+                    it.isSearchOnlyCatalog() ||
+                    com.nuvio.tv.core.mylists.MyListsDefaultSeed.isRemovedCatalog(it.id, it.apiType) ||
+                    com.nuvio.tv.core.mylists.MyListsDefaultSeed.isCollectionCatalogSource(collections, addon.id, it.apiType, it.id)
+                }
                 .forEach { catalog ->
                     val key = catalogKey(
                         addonId = addon.id,

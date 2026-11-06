@@ -177,7 +177,7 @@ class CatalogOrderViewModel @Inject constructor(
         customTitles: Map<String, String> = emptyMap(),
         followAddonsOrder: Boolean = false
     ): List<CatalogOrderItem> {
-        val defaultEntries = buildDefaultCatalogEntries(addons)
+        val defaultEntries = buildDefaultCatalogEntries(addons, collections)
         val collectionEntries = collections.map { collection ->
             CatalogOrderEntry(
                 key = "collection_${collection.id}",
@@ -241,13 +241,23 @@ class CatalogOrderViewModel @Inject constructor(
         }
     }
 
-    private fun buildDefaultCatalogEntries(addons: List<Addon>): List<CatalogOrderEntry> {
+    private fun buildDefaultCatalogEntries(
+        addons: List<Addon>,
+        collections: List<Collection> = emptyList()
+    ): List<CatalogOrderEntry> {
         val entries = mutableListOf<CatalogOrderEntry>()
         val seenKeys = mutableSetOf<String>()
 
         addons.forEach { addon ->
+            if (addon.id.equals(com.nuvio.tv.core.mylists.MyListsDefaultSeed.MY_LISTS_COLLECTIONS_ADDON_ID, ignoreCase = true)) {
+                return@forEach
+            }
             addon.catalogs
-                .filterNot { it.isSearchOnlyCatalog() }
+                .filterNot {
+                    it.isSearchOnlyCatalog() ||
+                    com.nuvio.tv.core.mylists.MyListsDefaultSeed.isRemovedCatalog(it.id, it.apiType) ||
+                    com.nuvio.tv.core.mylists.MyListsDefaultSeed.isCollectionCatalogSource(collections, addon.id, it.apiType, it.id)
+                }
                 .forEach { catalog ->
                     val key = catalogKey(
                         addonId = addon.id,

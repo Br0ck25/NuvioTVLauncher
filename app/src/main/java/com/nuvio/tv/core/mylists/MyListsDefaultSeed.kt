@@ -21,6 +21,7 @@ object MyListsDefaultSeed {
     const val MY_LISTS_DEFAULT_BASE_URL = "$MY_LISTS_BASE_ORIGIN/nuvio-default"
     const val MY_LISTS_DEFAULT_MANIFEST_URL = "$MY_LISTS_DEFAULT_BASE_URL/manifest.json"
     const val MY_LISTS_DEFAULT_SYNC_URL = "$MY_LISTS_BASE_ORIGIN/api/nuvio-tv/sync/default"
+    const val DEFAULT_TARGET_ID = "default"
     const val MY_LISTS_DEFAULT_COLLECTIONS_ASSET = "my_lists_default_collections.json"
 
     const val CINEMETA_BASE_URL = "https://v3-cinemeta.strem.io"
@@ -183,11 +184,15 @@ object MyListsDefaultSeed {
     fun resolveChannelBackdropUrl(channelName: String, fallbackUrl: String? = null): String {
         val clean = fallbackUrl?.trim()?.takeIf { it.isNotEmpty() }
         if (clean != null) {
-            return when {
+            val resolved = when {
                 clean.startsWith("http://", ignoreCase = true) || clean.startsWith("https://", ignoreCase = true) -> clean.replace("https://prewarm.internal", MY_LISTS_BASE_ORIGIN)
                 clean.startsWith("/") -> "$MY_LISTS_BASE_ORIGIN$clean"
                 else -> "$MY_LISTS_BASE_ORIGIN/$clean"
             }
+            if (resolved.contains("/api/channel-poster") && !resolved.contains("format=landscape")) {
+                return if (resolved.contains("?")) "$resolved&format=landscape" else "$resolved?format=landscape"
+            }
+            return resolved
         }
         val encoded = URLEncoder.encode(channelName.trim().ifBlank { "Channel" }, "UTF-8")
         return "$MY_LISTS_BASE_ORIGIN/api/channel-poster?name=$encoded&format=landscape&v=6"
@@ -405,6 +410,43 @@ object MyListsDefaultSeed {
             addAll(DEFAULT_HOME_CATALOG_KEYS)
             add(INSTALLED_APPS_CATALOG_KEY)
         }.distinct()
+    }
+
+    fun isCollectionCatalogSource(
+        collections: List<Collection>,
+        addonId: String,
+        type: String,
+        catalogId: String
+    ): Boolean {
+        if (addonId.equals(MY_LISTS_COLLECTIONS_ADDON_ID, ignoreCase = true)) {
+            return true
+        }
+        return collections.any { col ->
+            col.folders.any { folder ->
+                folder.catalogSources.any { src ->
+                    (src.catalogId.equals(catalogId, ignoreCase = true) ||
+                        src.catalogId.replace("-", "").equals(catalogId.replace("-", ""), ignoreCase = true)) &&
+                        src.type.equals(type, ignoreCase = true)
+                }
+            }
+        }
+    }
+
+    fun extractCollectionCatalogKeys(collections: List<Collection>, addonId: String = MY_LISTS_ADDON_ID): Set<String> {
+        val keys = mutableSetOf<String>()
+        collections.forEach { col ->
+            col.folders.forEach { folder ->
+                folder.catalogSources.forEach { src ->
+                    keys.add(homeCatalogKey(src.addonId, src.type, src.catalogId))
+                    keys.add(homeCatalogKey(addonId, src.type, src.catalogId))
+                    keys.add(homeCatalogKey(MY_LISTS_COLLECTIONS_ADDON_ID, src.type, src.catalogId))
+                    keys.add("${src.addonId}_${src.type}_${src.catalogId}")
+                    keys.add("${addonId}_${src.type}_${src.catalogId}")
+                    keys.add("${MY_LISTS_COLLECTIONS_ADDON_ID}_${src.type}_${src.catalogId}")
+                }
+            }
+        }
+        return keys
     }
 
     fun buildDefaultMyListsAddon(

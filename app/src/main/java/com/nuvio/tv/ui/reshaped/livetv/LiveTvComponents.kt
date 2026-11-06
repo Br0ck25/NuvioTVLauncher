@@ -245,7 +245,11 @@ internal fun LiveTvLogo(
         }
     }
     val isCleanLogo = remember(effectiveUrl) {
-        effectiveUrl != null && (effectiveUrl.contains("/api/channel-logo") || effectiveUrl.contains(".svg") || effectiveUrl.endsWith(".png"))
+        effectiveUrl != null && (
+            effectiveUrl.contains("/api/channel-logo") ||
+            effectiveUrl.contains(".svg") ||
+            (effectiveUrl.endsWith(".png") && !effectiveUrl.contains("/p/") && !effectiveUrl.contains("poster", ignoreCase = true))
+        )
     }
     Box(
         modifier = modifier

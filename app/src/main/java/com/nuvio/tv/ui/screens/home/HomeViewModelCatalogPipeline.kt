@@ -243,19 +243,24 @@ internal suspend fun HomeViewModel.loadAllCatalogsPipeline(
             return
         }
 
-        val catalogsToLoad = addons.flatMap { addon ->
-            addon.catalogs
-                .filterNot {
-                    com.nuvio.tv.core.mylists.MyListsDefaultSeed.isRemovedCatalog(it.id, it.apiType) || !it.shouldShowOnHome() || isCatalogDisabled(
-                        addonBaseUrl = addon.baseUrl,
-                        addonId = addon.id,
-                        type = it.apiType,
-                        catalogId = it.id,
-                        catalogName = it.name
-                    )
-                }
-                .map { catalog -> addon to catalog }
-        }
+        val catalogsToLoad = addons
+            .filterNot { it.id.equals(com.nuvio.tv.core.mylists.MyListsDefaultSeed.MY_LISTS_COLLECTIONS_ADDON_ID, ignoreCase = true) }
+            .flatMap { addon ->
+                addon.catalogs
+                    .filterNot {
+                        com.nuvio.tv.core.mylists.MyListsDefaultSeed.isRemovedCatalog(it.id, it.apiType) ||
+                        !it.shouldShowOnHome() ||
+                        com.nuvio.tv.core.mylists.MyListsDefaultSeed.isCollectionCatalogSource(collectionsCache, addon.id, it.apiType, it.id) ||
+                        isCatalogDisabled(
+                            addonBaseUrl = addon.baseUrl,
+                            addonId = addon.id,
+                            type = it.apiType,
+                            catalogId = it.id,
+                            catalogName = it.name
+                        )
+                    }
+                    .map { catalog -> addon to catalog }
+            }
 
         // Load hero-selected catalogs even if disabled from home rows —
         // the hero has its own catalog source independent of home rows.
