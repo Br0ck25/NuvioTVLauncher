@@ -175,7 +175,7 @@ fun GridContinueWatchingSection(
                             }
                         },
                     cardWidth = when {
-                        isUpcomingSection -> 240.dp
+                        isUpcomingSection -> UPCOMING_SCHEDULE_CARD_WIDTH
                         cardStyle == ContinueWatchingCardStyle.POSTER -> posterCardWidth ?: posterCardHeight?.let { it * (2f / 3f) } ?: 120.dp
                         cardStyle == ContinueWatchingCardStyle.WIDE -> 320.dp
                         else -> 220.dp

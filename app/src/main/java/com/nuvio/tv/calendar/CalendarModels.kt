@@ -133,9 +133,9 @@ data class CalendarEntry(
             if (lastEpisode != null && lastEpisode > episode) append("–E$lastEpisode")
         }
 
-    /** Nuvio's id for this episode ("tt123:2:5"). */
+    /** Nuvio's id for this episode ("tt123:2:5" or "tmdb:123:2:5"). */
     val videoId: String?
-        get() = if (season != null && episode != null && contentId.startsWith("tt")) "$contentId:$season:$episode" else null
+        get() = if (season != null && episode != null) "$contentId:$season:$episode" else null
 
     val followed: Boolean get() = CalendarReason.BELL in reasons
 }

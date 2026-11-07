@@ -653,14 +653,15 @@ class CalendarRepository @Inject constructor(
         val s = settings.value
         val now = System.currentTimeMillis()
         val today = LocalDate.now()
-        val entries = _state.value.entries.filter { it.kind == CalendarKind.EPISODE && it.contentId.startsWith("tt") }
+        val entries = _state.value.entries.filter { it.kind == CalendarKind.EPISODE }
         fun whenOf(e: CalendarEntry) = e.airMs ?: e.day.atStartOfDay(ZoneId.systemDefault()).toInstant().toEpochMilli()
         val released = if (!s.calendarNewEpisodeCards) emptyList() else entries
             .filter { it.followed && !it.watched && whenOf(it) <= now && !it.day.isBefore(today.minusDays(7)) }
             .groupBy { it.contentId }.map { (_, l) -> l.maxBy { whenOf(it) } }
         val upcoming = if (!s.calendarUpcomingRow) emptyList() else entries
-            .filter { whenOf(it) > now && !it.day.isAfter(today.plusDays(7)) }
-            .groupBy { it.contentId }.map { (_, l) -> l.minBy { whenOf(it) } }
+            .filter { !it.day.isBefore(today) && !it.day.isAfter(today.plusDays(7)) && (whenOf(it) > now || it.day == today) }
+            .distinctBy { it.key }
+            .sortedWith(compareBy<CalendarEntry> { whenOf(it) }.thenBy { it.day })
         // Movies whose bell is rung, out to watch at home in the last two weeks (and not watched).
         val movies = if (!s.calendarNewEpisodeCards) emptyList() else _state.value.entries
             .filter { it.kind == CalendarKind.MOVIE && it.followed && CalendarTag.AT_HOME in it.tags && !it.watched &&

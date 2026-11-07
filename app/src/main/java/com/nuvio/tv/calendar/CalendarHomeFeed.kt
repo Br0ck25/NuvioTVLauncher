@@ -190,7 +190,17 @@ object CalendarHomeFeed {
         }.toSet()
         val gone = synchronized(dismissed) { dismissed.toSet() }
         val addMain = r.filter { it.info.contentId !in native && key(it.info.contentId, it.info.season, it.info.episode).let { k -> k !in gone && !isSnoozed(k) } }
-        val addUp = u.filter { it.info.contentId !in native && it.info.contentId !in addMain.map { a -> a.info.contentId } }
+        val baseUpKeys = baseUp.mapNotNull {
+            when (it) {
+                is ContinueWatchingItem.InProgress -> key(it.progress.contentId, it.progress.season, it.progress.episode)
+                is ContinueWatchingItem.NextUp -> key(it.info.contentId, it.info.season, it.info.episode)
+            }
+        }.toSet()
+        val addMainKeys = addMain.map { key(it.info.contentId, it.info.season, it.info.episode) }.toSet()
+        val addUp = u.filter {
+            val epKey = key(it.info.contentId, it.info.season, it.info.episode)
+            epKey !in baseUpKeys && epKey !in addMainKeys && epKey !in gone && !isSnoozed(epKey)
+        }.distinctBy { key(it.info.contentId, it.info.season, it.info.episode) }
         val addMovies = mv.filter { it.progress.contentId !in native && key(it.progress.contentId, null, null) !in gone }
         injected = (addMain + addUp).map { "${it.info.contentId}|${it.info.videoId}" }.toSet()
         injectedMovies = addMovies.map { it.progress.contentId }.toSet()

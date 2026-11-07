@@ -118,6 +118,7 @@ import com.nuvio.tv.domain.model.ContinueWatchingCardStyle
 import com.nuvio.tv.domain.model.PLACEHOLDER_IMAGE_URL
 import com.nuvio.tv.domain.model.isPlaceholder
 import com.nuvio.tv.ui.components.ContinueWatchingCard
+import com.nuvio.tv.ui.components.UPCOMING_SCHEDULE_CARD_WIDTH
 import com.nuvio.tv.ui.components.continueWatchingArtworkWidth
 import com.nuvio.tv.ui.components.continueWatchingArtworkHeight
 import com.nuvio.tv.ui.components.continueWatchingImageCacheKey
@@ -1003,20 +1004,29 @@ internal fun ModernRowSection(
                             )
                         }
                         is ModernPayload.ContinueWatching -> {
+                            val isUpcoming = row.key == MODERN_UPCOMING_ROW_KEY
                             ModernContinueWatchingRowItem(
                                 payload = payload,
                                 requester = requester,
                                 isTargetItem = isTargetItem,
-                                cardWidth = continueWatchingCardWidth,
+                                cardWidth = if (isUpcoming) UPCOMING_SCHEDULE_CARD_WIDTH else continueWatchingCardWidth,
                                 imageHeight = continueWatchingCardHeight,
                                 blurUnwatchedEpisodes = blurUnwatchedEpisodes,
                                 useEpisodeThumbnails = useEpisodeThumbnails,
                                 continueWatchingCardStyle = continueWatchingCardStyle,
                                 continueWatchingCornerRadius = continueWatchingCornerRadius,
                                 onFocused = onFocused,
-                                onContinueWatchingClick = onContinueWatchingClick,
+                                onContinueWatchingClick = if (isUpcoming) {
+                                    { item ->
+                                        val (id, type) = when (item) {
+                                            is ContinueWatchingItem.InProgress -> item.progress.contentId to item.progress.contentType
+                                            is ContinueWatchingItem.NextUp -> item.info.contentId to item.info.contentType
+                                        }
+                                        onNavigateToDetail(id, type, "")
+                                    }
+                                } else onContinueWatchingClick,
                                 onShowOptions = onContinueWatchingOptions,
-                                isUpcomingCard = row.key == MODERN_UPCOMING_ROW_KEY
+                                isUpcomingCard = isUpcoming
                             )
                         }
 

@@ -41,11 +41,13 @@ import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.layout.ContentScale
 import androidx.compose.ui.input.key.onPreviewKeyEvent
 import androidx.compose.ui.res.stringResource
+import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextOverflow
 import com.nuvio.tv.R
 import com.nuvio.tv.domain.model.CardDepthSurface
 import androidx.compose.ui.unit.Dp
 import androidx.compose.ui.unit.dp
+import androidx.compose.ui.unit.sp
 import androidx.compose.foundation.lazy.LazyListState
 import androidx.compose.foundation.lazy.LazyRow
 import androidx.compose.foundation.lazy.itemsIndexed
@@ -121,14 +123,16 @@ private val POSTER_TITLE_BLOCK_HEIGHT = 30.dp
 // Width to height ratio of poster art, used to size the wide card's artwork strip.
 private const val WIDE_POSTER_ASPECT = 2f / 3f
 
-internal fun upcomingScheduleCardHeight(imageHeight: Dp): Dp =
-    (imageHeight * 0.56f).coerceIn(76.dp, 92.dp)
+internal val UPCOMING_SCHEDULE_CARD_WIDTH = 330.dp
+internal val UPCOMING_SCHEDULE_CARD_HEIGHT = 88.dp
+internal val UPCOMING_SCHEDULE_THUMB_WIDTH = 112.dp
+
+internal fun upcomingScheduleCardHeight(imageHeight: Dp): Dp = UPCOMING_SCHEDULE_CARD_HEIGHT
 
 internal fun upcomingScheduleThumbHeight(imageHeight: Dp): Dp =
-    (upcomingScheduleCardHeight(imageHeight) - 16.dp).coerceAtLeast(56.dp)
+    (UPCOMING_SCHEDULE_CARD_HEIGHT - 16.dp).coerceAtLeast(64.dp)
 
-internal fun upcomingScheduleThumbWidth(imageHeight: Dp): Dp =
-    (upcomingScheduleThumbHeight(imageHeight) * 1.48f).coerceAtLeast(84.dp)
+internal fun upcomingScheduleThumbWidth(imageHeight: Dp): Dp = UPCOMING_SCHEDULE_THUMB_WIDTH
 
 // The wide card fills its strip with poster art, so the strip width follows the card height and the poster is never cropped.
 internal fun continueWatchingArtworkWidth(
@@ -137,7 +141,7 @@ internal fun continueWatchingArtworkWidth(
     cardHeight: Dp,
     isUpcomingCard: Boolean = false
 ): Dp = when {
-    isUpcomingCard -> upcomingScheduleThumbWidth(cardHeight)
+    isUpcomingCard -> UPCOMING_SCHEDULE_THUMB_WIDTH
     cardStyle == ContinueWatchingCardStyle.WIDE -> cardHeight * WIDE_POSTER_ASPECT
     else -> cardWidth
 }
@@ -145,14 +149,15 @@ internal fun continueWatchingArtworkWidth(
 internal fun continueWatchingArtworkHeight(
     cardHeight: Dp,
     isUpcomingCard: Boolean = false
-): Dp = if (isUpcomingCard) upcomingScheduleThumbHeight(cardHeight) else cardHeight
+): Dp = if (isUpcomingCard) (UPCOMING_SCHEDULE_CARD_HEIGHT - 16.dp) else cardHeight
 
 internal fun formatCompactEpisodeSubtitle(
     compactEpisodeStr: String?,
-    episodeTitle: String?
+    episodeTitle: String?,
+    fallbackLabel: String? = null
 ): String? {
     val code = compactEpisodeStr?.trim()?.takeIf { it.isNotEmpty() }
-    val title = episodeTitle?.trim()?.takeIf { it.isNotEmpty() }
+    val title = episodeTitle?.trim()?.takeIf { it.isNotEmpty() } ?: fallbackLabel?.trim()?.takeIf { it.isNotEmpty() }
     return when {
         code != null && title != null -> {
             if (
@@ -695,6 +700,7 @@ fun ContinueWatchingCard(
     
     val bgCardColor = NuvioTheme.colors.BackgroundCard
     val backgroundPainter = remember(bgCardColor) { androidx.compose.ui.graphics.painter.ColorPainter(bgCardColor) }
+    val effectiveCardWidth = if (isUpcomingCard) UPCOMING_SCHEDULE_CARD_WIDTH else cardWidth
 
     LightweightCard(
         onClick = {
@@ -705,7 +711,7 @@ fun ContinueWatchingCard(
             }
         },
         modifier = modifier
-            .width(cardWidth)
+            .width(effectiveCardWidth)
             .recompositionHighlighter()
             .onPreviewKeyEvent { event ->
                 val native = event.nativeKeyEvent
@@ -769,8 +775,8 @@ fun ContinueWatchingCard(
                 }
                 rawLabel.uppercase() to pillColor
             }
-            val upcomingSubtitle = remember(compactEpisodeStr, episodeTitle, strUpcoming) {
-                formatCompactEpisodeSubtitle(compactEpisodeStr, episodeTitle) ?: strUpcoming
+            val upcomingSubtitle = remember(compactEpisodeStr, episodeTitle, nextUp?.airDateLabel, strUpcoming) {
+                formatCompactEpisodeSubtitle(compactEpisodeStr, episodeTitle, nextUp?.airDateLabel) ?: strUpcoming
             }
             UpcomingScheduleCardContent(
                 imageRequest = imageRequest,
@@ -1115,28 +1121,31 @@ private fun UpcomingScheduleCardContent(
             modifier = Modifier
                 .weight(1f)
                 .fillMaxHeight()
-                .padding(start = 12.dp, end = 4.dp),
+                .padding(start = 12.dp, end = 6.dp),
             verticalArrangement = Arrangement.spacedBy(3.dp, Alignment.CenterVertically)
         ) {
             Box(
                 modifier = Modifier
                     .clip(UpcomingPillShape)
                     .background(pillBackground)
-                    .padding(horizontal = 6.dp, vertical = 2.dp)
+                    .padding(horizontal = 7.dp, vertical = 2.dp)
             ) {
                 Text(
                     text = pillText,
-                    style = MaterialTheme.typography.labelSmall,
+                    style = MaterialTheme.typography.labelSmall.copy(
+                        fontWeight = FontWeight.SemiBold,
+                        letterSpacing = 0.5.sp
+                    ),
                     color = Color.White,
                     maxLines = 1,
-                    overflow = TextOverflow.Ellipsis
+                    softWrap = false
                 )
             }
 
             FocusMarqueeText(
                 text = titleText,
                 focused = titleMarqueeActive,
-                style = titleStyle,
+                style = titleStyle.copy(fontWeight = FontWeight.SemiBold),
                 color = NuvioTheme.colors.TextPrimary
             )
 
