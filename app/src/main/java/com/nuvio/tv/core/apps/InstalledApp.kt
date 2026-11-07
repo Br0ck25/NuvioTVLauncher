@@ -96,6 +96,29 @@ internal suspend fun queryInstalledApps(context: Context): List<InstalledApp> = 
 }
 
 /** Never let an uninstalled, disabled, or exported-activity failure crash the launcher. */
-fun launchInstalledApp(context: Context, app: InstalledApp): Boolean = runCatching {
-    context.startActivity(app.launchIntent())
-}.isSuccess
+fun launchInstalledApp(context: Context, app: InstalledApp): Boolean {
+    val pm = context.packageManager
+    val candidates = buildList {
+        add(
+            Intent(Intent.ACTION_MAIN)
+                .addCategory(Intent.CATEGORY_LEANBACK_LAUNCHER)
+                .setComponent(app.componentName)
+                .addFlags(Intent.FLAG_ACTIVITY_NEW_TASK or Intent.FLAG_ACTIVITY_RESET_TASK_IF_NEEDED)
+        )
+        add(app.launchIntent())
+        pm.getLeanbackLaunchIntentForPackage(app.packageName)?.let {
+            add(it.addFlags(Intent.FLAG_ACTIVITY_NEW_TASK or Intent.FLAG_ACTIVITY_RESET_TASK_IF_NEEDED))
+        }
+        pm.getLaunchIntentForPackage(app.packageName)?.let {
+            add(it.addFlags(Intent.FLAG_ACTIVITY_NEW_TASK or Intent.FLAG_ACTIVITY_RESET_TASK_IF_NEEDED))
+        }
+    }
+    for (intent in candidates) {
+        val started = runCatching {
+            context.startActivity(intent)
+            true
+        }.getOrDefault(false)
+        if (started) return true
+    }
+    return false
+}

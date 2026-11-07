@@ -1248,13 +1248,29 @@ open class MainActivity : ComponentActivity() {
                     }
 
                     val liveTvMenuItem = com.nuvio.tv.ui.reshaped.livetv.rememberLiveTvMenuItem(currentRoute, navController) // Live TV menu entry
+                    val sidebarItemOrder by layoutPreferenceDataStore.sidebarItemOrder.collectAsState(
+                        initial = LayoutPreferenceDataStore.DEFAULT_SIDEBAR_ITEM_ORDER
+                    )
+                    val disabledSidebarItems by layoutPreferenceDataStore.disabledSidebarItems.collectAsState(
+                        initial = emptySet()
+                    )
                     val calendarSettings by calendarPreferences.settings.collectAsState(initial = com.nuvio.tv.calendar.CalendarSettings())
                     val calendarFollowCount by remember {
                         calendarRepository.follows.map { list -> list.count { !it.isAiring } }
                     }.collectAsState(initial = 0)
                     val calendarHasShows by calendarRepository.hasShows.collectAsState(initial = false)
                     val calendarInSidebar = !calendarSettings.calendarOff &&
+                        "calendar" !in disabledSidebarItems &&
                         (calendarSettings.calendarInMenu || calendarFollowCount > 0 || calendarHasShows)
+
+                    LaunchedEffect(calendarSettings.calendarOff, currentRoute) {
+                        if (calendarSettings.calendarOff && currentRoute == Screen.Calendar.route) {
+                            navController.navigate(Screen.Home.route) {
+                                popUpTo(navController.graph.startDestinationId) { saveState = false }
+                                launchSingleTop = true
+                            }
+                        }
+                    }
 
                     val rootRoutes = remember(discoverLocation, liveTvMenuItem) {
                         buildSet {
@@ -1286,18 +1302,24 @@ open class MainActivity : ComponentActivity() {
                         strNavSettings,
                         discoverLocation,
                         liveTvMenuItem,
-                        calendarInSidebar
+                        calendarInSidebar,
+                        sidebarItemOrder,
+                        disabledSidebarItems
                     ) {
-                        buildList {
-                            add(
-                                DrawerItem(
-                                    route = Screen.Home.route,
-                                    label = strNavHome,
-                                    icon = Icons.Default.Home
+                        val itemsByKey = buildMap<String, DrawerItem> {
+                            if ("home" !in disabledSidebarItems) {
+                                put(
+                                    "home",
+                                    DrawerItem(
+                                        route = Screen.Home.route,
+                                        label = strNavHome,
+                                        icon = Icons.Default.Home
+                                    )
                                 )
-                            )
-                            if (discoverLocation == DiscoverLocation.IN_SIDEBAR) {
-                                add(
+                            }
+                            if (discoverLocation == DiscoverLocation.IN_SIDEBAR && "discover" !in disabledSidebarItems) {
+                                put(
+                                    "discover",
                                     DrawerItem(
                                         route = Screen.Discover.route,
                                         label = strNavDiscover,
@@ -1305,22 +1327,29 @@ open class MainActivity : ComponentActivity() {
                                     )
                                 )
                             }
-                            add(
-                                DrawerItem(
-                                    route = Screen.Search.route,
-                                    label = strNavSearch,
-                                    iconRes = R.raw.sidebar_search
+                            if ("search" !in disabledSidebarItems) {
+                                put(
+                                    "search",
+                                    DrawerItem(
+                                        route = Screen.Search.route,
+                                        label = strNavSearch,
+                                        iconRes = R.raw.sidebar_search
+                                    )
                                 )
-                            )
-                            add(
-                                DrawerItem(
-                                    route = Screen.Library.route,
-                                    label = strNavLibrary,
-                                    iconRes = R.raw.sidebar_library
+                            }
+                            if ("library" !in disabledSidebarItems) {
+                                put(
+                                    "library",
+                                    DrawerItem(
+                                        route = Screen.Library.route,
+                                        label = strNavLibrary,
+                                        iconRes = R.raw.sidebar_library
+                                    )
                                 )
-                            )
+                            }
                             if (calendarInSidebar) {
-                                add(
+                                put(
+                                    "calendar",
                                     DrawerItem(
                                         route = Screen.Calendar.route,
                                         label = "Calendar",
@@ -1328,15 +1357,33 @@ open class MainActivity : ComponentActivity() {
                                     )
                                 )
                             }
-                            liveTvMenuItem?.let(::add) // Live TV menu entry
-                            add(
-                                DrawerItem(
-                                    route = Screen.Apps.route,
-                                    label = strNavApps,
-                                    icon = Icons.Default.Apps
+                            if ("livetv" !in disabledSidebarItems && liveTvMenuItem != null) {
+                                put("livetv", liveTvMenuItem)
+                            }
+                            if ("apps" !in disabledSidebarItems) {
+                                put(
+                                    "apps",
+                                    DrawerItem(
+                                        route = Screen.Apps.route,
+                                        label = strNavApps,
+                                        icon = Icons.Default.Apps
+                                    )
                                 )
-                            )
-                            add(
+                            }
+                            if ("settings" !in disabledSidebarItems) {
+                                put(
+                                    "settings",
+                                    DrawerItem(
+                                        route = Screen.Settings.route,
+                                        label = strNavSettings,
+                                        iconRes = R.raw.sidebar_settings
+                                    )
+                                )
+                            }
+                        }
+                        val ordered = sidebarItemOrder.mapNotNull { key -> itemsByKey[key] }
+                        ordered.ifEmpty {
+                            listOf(
                                 DrawerItem(
                                     route = Screen.Settings.route,
                                     label = strNavSettings,

@@ -112,19 +112,15 @@ fun AppContextMenuModal(
     onCustomOpen: (() -> Unit)? = null,
     viewModel: AppContextMenuViewModel = hiltViewModel()
 ) {
+    val activityContext = androidx.compose.ui.platform.LocalContext.current
     val uiState by viewModel.uiState.collectAsState()
     var currentMode by remember { mutableStateOf(MenuScreenMode.MAIN) }
     var renameText by remember(app.displayLabel) { mutableStateOf(app.displayLabel) }
     val initialFocusRequester = remember { FocusRequester() }
-    var isReady by remember { mutableStateOf(false) }
+    var isReady by remember(currentMode) { mutableStateOf(false) }
     var backDownSeen by remember(currentMode) { mutableStateOf(false) }
     val fallbackManageOrder = LocalNavigateToManageHomeApps.current
     val effectiveOnManageOrder = onManageOrder ?: fallbackManageOrder
-
-    LaunchedEffect(Unit) {
-        delay(120)
-        isReady = true
-    }
 
     val handleBack = {
         when (currentMode) {
@@ -141,7 +137,6 @@ fun AppContextMenuModal(
     LaunchedEffect(currentMode) {
         repeat(2) { withFrameNanos { } }
         runCatching { initialFocusRequester.requestFocus() }
-        isReady = true
     }
 
     Dialog(
@@ -209,62 +204,42 @@ fun AppContextMenuModal(
                             app = app,
                             isShortcutTile = isShortcutTile,
                             shortcutIconVector = shortcutIconVector,
-                            canExecuteAction = isReady,
+                            canExecuteAction = true,
                             onOpen = {
-                                if (isReady) {
-                                    if (onCustomOpen != null) {
-                                        onCustomOpen()
-                                    } else {
-                                        viewModel.launchApp(app)
-                                    }
-                                    onDismiss()
+                                if (onCustomOpen != null) {
+                                    onCustomOpen()
+                                } else {
+                                    viewModel.launchApp(activityContext, app)
                                 }
+                                onDismiss()
                             },
                             onSettings = {
-                                if (isReady) {
-                                    viewModel.openAppSettings(app.packageName)
-                                    onDismiss()
-                                }
+                                viewModel.openAppSettings(activityContext, app.packageName)
+                                onDismiss()
                             },
                             onUninstall = {
-                                if (isReady) {
-                                    viewModel.uninstallApp(app.packageName)
-                                    onDismiss()
-                                }
+                                viewModel.uninstallApp(activityContext, app.packageName)
+                                onDismiss()
                             },
-                            onMoveLeft = onMoveLeft?.let { move ->
-                                {
-                                    if (isReady) move()
-                                }
-                            },
-                            onMoveRight = onMoveRight?.let { move ->
-                                {
-                                    if (isReady) move()
-                                }
-                            },
+                            onMoveLeft = onMoveLeft,
+                            onMoveRight = onMoveRight,
                             onRemoveFromRow = onRemoveFromRow?.let { remove ->
                                 {
-                                    if (isReady) {
-                                        remove()
-                                        onDismiss()
-                                    }
+                                    remove()
+                                    onDismiss()
                                 }
                             },
                             onManageOrder = effectiveOnManageOrder?.let { manage ->
                                 {
-                                    if (isReady) {
-                                        onDismiss()
-                                        manage()
-                                    }
+                                    onDismiss()
+                                    manage()
                                 }
                             },
-                            onRenameClick = { if (isReady) currentMode = MenuScreenMode.RENAME },
-                            onChangeIconClick = { if (isReady) currentMode = MenuScreenMode.ICON_PICKER },
+                            onRenameClick = { currentMode = MenuScreenMode.RENAME },
+                            onChangeIconClick = { currentMode = MenuScreenMode.ICON_PICKER },
                             onResetClick = {
-                                if (isReady) {
-                                    viewModel.resetAppCustomization(app.packageName)
-                                    onDismiss()
-                                }
+                                viewModel.resetAppCustomization(app.packageName)
+                                onDismiss()
                             },
                             initialFocusRequester = initialFocusRequester
                         )
@@ -334,7 +309,8 @@ fun AppContextMenuModal(
 private fun isSelectKey(keyCode: Int): Boolean {
     return keyCode == AndroidKeyEvent.KEYCODE_DPAD_CENTER ||
         keyCode == AndroidKeyEvent.KEYCODE_ENTER ||
-        keyCode == AndroidKeyEvent.KEYCODE_NUMPAD_ENTER
+        keyCode == AndroidKeyEvent.KEYCODE_NUMPAD_ENTER ||
+        keyCode == AndroidKeyEvent.KEYCODE_BUTTON_A
 }
 
 @Composable

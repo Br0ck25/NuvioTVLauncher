@@ -62,6 +62,17 @@ class LayoutPreferenceDataStore @Inject constructor(
         private const val DEFAULT_POSTER_CARD_CORNER_RADIUS_DP = 12
         private const val DEFAULT_FOCUSED_POSTER_BACKDROP_EXPAND_DELAY_SECONDS = 3
         private const val MIN_FOCUSED_POSTER_BACKDROP_EXPAND_DELAY_SECONDS = 0
+
+        val DEFAULT_SIDEBAR_ITEM_ORDER = listOf(
+            "home",
+            "discover",
+            "search",
+            "library",
+            "calendar",
+            "livetv",
+            "apps",
+            "settings"
+        )
     }
 
     private val scope = CoroutineScope(SupervisorJob() + Dispatchers.IO)
@@ -80,6 +91,8 @@ class LayoutPreferenceDataStore @Inject constructor(
     private val cinemetaVideosDisabledMigratedKey = booleanPreferencesKey("cinemeta_videos_disabled_migrated")
     private val customCatalogTitlesKey = stringPreferencesKey("custom_catalog_titles")
     private val sidebarCollapsedKey = booleanPreferencesKey("sidebar_collapsed_by_default")
+    private val sidebarItemOrderKey = stringPreferencesKey("sidebar_item_order")
+    private val disabledSidebarItemsKey = stringPreferencesKey("disabled_sidebar_items")
     private val modernSidebarEnabledKey = booleanPreferencesKey("modern_sidebar_enabled")
     private val legacyModernSidebarEnabledKey = booleanPreferencesKey("glass_sidepanel_enabled")
     private val modernSidebarBlurEnabledKey = booleanPreferencesKey("modern_sidebar_blur_enabled")
@@ -277,6 +290,14 @@ class LayoutPreferenceDataStore @Inject constructor(
 
     val sidebarCollapsedByDefault: Flow<Boolean> = profileFlow { prefs ->
         prefs[sidebarCollapsedKey] ?: false
+    }
+
+    val sidebarItemOrder: Flow<List<String>> = profileFlow { prefs ->
+        parseSidebarItemOrder(prefs.getStringOrMigrateSet(sidebarItemOrderKey))
+    }
+
+    val disabledSidebarItems: Flow<Set<String>> = profileFlow { prefs ->
+        parseDisabledSidebarItems(prefs.getStringOrMigrateSet(disabledSidebarItemsKey))
     }
 
     val modernSidebarEnabled: Flow<Boolean> = profileFlow { prefs ->
@@ -608,6 +629,62 @@ class LayoutPreferenceDataStore @Inject constructor(
     suspend fun setSidebarCollapsedByDefault(collapsed: Boolean) {
         store().edit { prefs ->
             prefs[sidebarCollapsedKey] = collapsed
+        }
+    }
+
+    suspend fun setSidebarItemEnabled(key: String, enabled: Boolean) {
+        store().edit { prefs ->
+            val current = parseDisabledSidebarItems(prefs.getStringOrMigrateSet(disabledSidebarItemsKey)).toMutableSet()
+            if (enabled) {
+                current.remove(key)
+            } else {
+                current.add(key)
+            }
+            if (current.isEmpty()) {
+                prefs.remove(disabledSidebarItemsKey)
+            } else {
+                prefs[disabledSidebarItemsKey] = gson.toJson(current.toList())
+            }
+        }
+    }
+
+    suspend fun moveSidebarItem(key: String, direction: Int) {
+        store().edit { prefs ->
+            val current = parseSidebarItemOrder(prefs.getStringOrMigrateSet(sidebarItemOrderKey)).toMutableList()
+            val index = current.indexOf(key)
+            if (index == -1) return@edit
+            val targetIndex = (index + direction).coerceIn(0, current.lastIndex)
+            if (targetIndex == index) return@edit
+            val item = current.removeAt(index)
+            current.add(targetIndex, item)
+            prefs[sidebarItemOrderKey] = gson.toJson(current)
+        }
+    }
+
+    private fun parseSidebarItemOrder(json: String?): List<String> {
+        if (json.isNullOrBlank()) return DEFAULT_SIDEBAR_ITEM_ORDER
+        return try {
+            val type = object : TypeToken<List<String>>() {}.type
+            val parsed = gson.fromJson<List<String>>(json, type).orEmpty()
+                .map { it.trim() }
+                .filter { it in DEFAULT_SIDEBAR_ITEM_ORDER }
+                .distinct()
+            (parsed + DEFAULT_SIDEBAR_ITEM_ORDER).distinct()
+        } catch (_: Exception) {
+            DEFAULT_SIDEBAR_ITEM_ORDER
+        }
+    }
+
+    private fun parseDisabledSidebarItems(json: String?): Set<String> {
+        if (json.isNullOrBlank()) return emptySet()
+        return try {
+            val type = object : TypeToken<List<String>>() {}.type
+            gson.fromJson<List<String>>(json, type).orEmpty()
+                .map { it.trim() }
+                .filter { it in DEFAULT_SIDEBAR_ITEM_ORDER }
+                .toSet()
+        } catch (_: Exception) {
+            emptySet()
         }
     }
 

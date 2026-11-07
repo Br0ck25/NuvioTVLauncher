@@ -195,7 +195,6 @@ internal fun LiveDialog(
     width: Dp = 460.dp,
     content: @Composable ColumnScope.() -> Unit
 ) {
-    val openedAt = remember { System.currentTimeMillis() }
     var armed by remember { mutableStateOf(false) }
     val dialogBg = Color(0xFF0A0D12).copy(alpha = 0.90f)
     val dialogBorder = Color.White.copy(alpha = 0.16f)
@@ -208,19 +207,21 @@ internal fun LiveDialog(
             modifier = Modifier
                 .fillMaxSize()
                 .onPreviewKeyEvent { ev ->
-                    val k = ev.key
-                    val isConfirm = k == Key.DirectionCenter || k == Key.Enter || k == Key.NumPadEnter
-                    if (isConfirm && !armed) {
-                        if (ev.type == KeyEventType.KeyDown && System.currentTimeMillis() - openedAt > 250L) {
+                    val native = ev.nativeKeyEvent
+                    val isConfirm = native.keyCode == android.view.KeyEvent.KEYCODE_DPAD_CENTER ||
+                        native.keyCode == android.view.KeyEvent.KEYCODE_ENTER ||
+                        native.keyCode == android.view.KeyEvent.KEYCODE_NUMPAD_ENTER ||
+                        native.keyCode == android.view.KeyEvent.KEYCODE_BUTTON_A ||
+                        native.keyCode == android.view.KeyEvent.KEYCODE_MENU
+                    if (isConfirm) {
+                        if (native.action == android.view.KeyEvent.ACTION_DOWN && native.repeatCount == 0) {
                             armed = true
-                            false
-                        } else if (System.currentTimeMillis() - openedAt < 900L) {
-                            true
-                        } else {
-                            armed = true
-                            false
                         }
-                    } else false
+                        if (!armed) {
+                            return@onPreviewKeyEvent true
+                        }
+                    }
+                    false
                 },
             contentAlignment = Alignment.Center
         ) {

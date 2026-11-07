@@ -81,7 +81,8 @@ val InstalledAppTileHeight = 101.dp
 private fun isSelectKey(keyCode: Int): Boolean {
     return keyCode == AndroidKeyEvent.KEYCODE_DPAD_CENTER ||
         keyCode == AndroidKeyEvent.KEYCODE_ENTER ||
-        keyCode == AndroidKeyEvent.KEYCODE_NUMPAD_ENTER
+        keyCode == AndroidKeyEvent.KEYCODE_NUMPAD_ENTER ||
+        keyCode == AndroidKeyEvent.KEYCODE_BUTTON_A
 }
 
 @Composable
@@ -122,8 +123,10 @@ fun InstalledAppTile(
     onFocused: () -> Unit = {}
 ) {
     val shape = RoundedCornerShape(NuvioTheme.radii.md)
-    val longPressKeyTracker = rememberLongPressKeyTracker()
+    var selectDownSeen by remember { mutableStateOf(false) }
+    var selectDownAtMillis by remember { androidx.compose.runtime.mutableLongStateOf(0L) }
     var longPressTriggered by remember { mutableStateOf(false) }
+    val longPressTimeoutMs = remember { android.view.ViewConfiguration.getLongPressTimeout().toLong() }
 
     val baseModifier = if (fillParentWidth) {
         Modifier.fillMaxWidth().aspectRatio(16f / 9f)
@@ -132,28 +135,61 @@ fun InstalledAppTile(
     }
 
     Card(
-        onClick = {
-            if (longPressTriggered) {
-                longPressTriggered = false
-            } else {
-                onClick()
-            }
-        },
+        onClick = onClick,
         modifier = baseModifier
             .then(modifier)
             .onPreviewKeyEvent { event ->
                 val native = event.nativeKeyEvent
-                if (onLongClick != null &&
-                    longPressKeyTracker.handle(native, ::isSelectKey) {
-                        longPressTriggered = true
+                if (native.keyCode == AndroidKeyEvent.KEYCODE_MENU) {
+                    if (native.action == AndroidKeyEvent.ACTION_DOWN && native.repeatCount == 0 && onLongClick != null) {
                         onLongClick()
                     }
-                ) {
                     return@onPreviewKeyEvent true
+                }
+                if (isSelectKey(native.keyCode)) {
+                    when (native.action) {
+                        AndroidKeyEvent.ACTION_DOWN -> {
+                            if (native.repeatCount == 0) {
+                                selectDownSeen = true
+                                selectDownAtMillis = native.eventTime
+                                longPressTriggered = false
+                            } else if (selectDownSeen && !longPressTriggered && onLongClick != null) {
+                                val heldMs = native.eventTime - selectDownAtMillis
+                                if (native.isLongPress || heldMs >= longPressTimeoutMs) {
+                                    longPressTriggered = true
+                                    selectDownSeen = false
+                                    onLongClick()
+                                }
+                            }
+                            return@onPreviewKeyEvent true
+                        }
+                        AndroidKeyEvent.ACTION_UP -> {
+                            val wasDown = selectDownSeen
+                            val wasLong = longPressTriggered
+                            val heldMs = native.eventTime - selectDownAtMillis
+                            selectDownSeen = false
+                            longPressTriggered = false
+                            if (wasDown && !wasLong && !native.isCanceled) {
+                                if (onLongClick != null && heldMs >= longPressTimeoutMs) {
+                                    onLongClick()
+                                } else {
+                                    onClick()
+                                }
+                            }
+                            return@onPreviewKeyEvent true
+                        }
+                    }
                 }
                 false
             }
-            .onFocusChanged { if (it.isFocused) onFocused() },
+            .onFocusChanged {
+                if (it.isFocused) {
+                    onFocused()
+                } else {
+                    selectDownSeen = false
+                    longPressTriggered = false
+                }
+            },
         shape = CardDefaults.shape(shape),
         colors = CardDefaults.colors(
             containerColor = if (app.isBanner) Color.Transparent else NuvioTheme.colors.BackgroundCard,

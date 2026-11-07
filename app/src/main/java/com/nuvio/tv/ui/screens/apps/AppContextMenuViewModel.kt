@@ -109,23 +109,60 @@ class AppContextMenuViewModel @Inject constructor(
         }
     }
 
-    fun openAppSettings(packageName: String) {
+    fun openAppSettings(activityContext: Context = context, packageName: String) {
         runCatching {
             val intent = Intent(Settings.ACTION_APPLICATION_DETAILS_SETTINGS).apply {
                 data = Uri.fromParts("package", packageName, null)
-                addFlags(Intent.FLAG_ACTIVITY_NEW_TASK)
+                if (activityContext !is android.app.Activity) {
+                    addFlags(Intent.FLAG_ACTIVITY_NEW_TASK)
+                }
             }
-            context.startActivity(intent)
+            activityContext.startActivity(intent)
         }
     }
 
-    fun uninstallApp(packageName: String) {
-        runCatching {
-            val intent = Intent(Intent.ACTION_DELETE).apply {
-                data = Uri.fromParts("package", packageName, null)
-                addFlags(Intent.FLAG_ACTIVITY_NEW_TASK)
+    @Suppress("DEPRECATION")
+    fun uninstallApp(activityContext: Context = context, packageName: String) {
+        val pm = activityContext.packageManager
+        val appInfo = runCatching { pm.getApplicationInfo(packageName, 0) }.getOrNull()
+        val isNonUpdatedSystemApp = appInfo != null &&
+            (appInfo.flags and android.content.pm.ApplicationInfo.FLAG_SYSTEM) != 0 &&
+            (appInfo.flags and android.content.pm.ApplicationInfo.FLAG_UPDATED_SYSTEM_APP) == 0
+
+        if (isNonUpdatedSystemApp) {
+            android.widget.Toast.makeText(
+                activityContext,
+                "System apps cannot be uninstalled; opening App Info",
+                android.widget.Toast.LENGTH_SHORT
+            ).show()
+            openAppSettings(activityContext, packageName)
+            return
+        }
+
+        val packageUri = Uri.fromParts("package", packageName, null)
+        val launched = runCatching {
+            val intent = Intent(Intent.ACTION_DELETE, packageUri).apply {
+                if (activityContext !is android.app.Activity) {
+                    addFlags(Intent.FLAG_ACTIVITY_NEW_TASK)
+                }
             }
-            context.startActivity(intent)
+            activityContext.startActivity(intent)
+            true
+        }.getOrElse {
+            runCatching {
+                val fallbackIntent = Intent(Intent.ACTION_UNINSTALL_PACKAGE, packageUri).apply {
+                    putExtra(Intent.EXTRA_RETURN_RESULT, false)
+                    if (activityContext !is android.app.Activity) {
+                        addFlags(Intent.FLAG_ACTIVITY_NEW_TASK)
+                    }
+                }
+                activityContext.startActivity(fallbackIntent)
+                true
+            }.getOrDefault(false)
+        }
+
+        if (!launched) {
+            openAppSettings(activityContext, packageName)
         }
     }
 
@@ -141,7 +178,7 @@ class AppContextMenuViewModel @Inject constructor(
         }
     }
 
-    fun launchApp(app: InstalledApp) {
-        launchInstalledApp(context, app)
+    fun launchApp(activityContext: Context = context, app: InstalledApp) {
+        launchInstalledApp(activityContext, app)
     }
 }
