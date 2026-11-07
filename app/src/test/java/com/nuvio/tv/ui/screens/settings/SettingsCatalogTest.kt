@@ -27,6 +27,7 @@ class SettingsCatalogTest {
                 SettingsCategory.TRACKING,
                 SettingsCategory.ADVANCED,
                 SettingsCategory.DEFAULT_LAUNCHER,
+                SettingsCategory.REMOTE_BUTTONS,
                 SettingsCategory.ABOUT,
                 SettingsCategory.DEBUG
             ),
@@ -129,6 +130,14 @@ class SettingsCatalogTest {
     fun `default launcher setup is available in every profile and experience mode`() {
         allCombinations().forEach { categories ->
             assertTrue(SettingsCategory.DEFAULT_LAUNCHER in categories)
+        }
+    }
+
+    @Test
+    fun `remote buttons mapper is available in every profile and experience mode under system`() {
+        assertEquals(SettingsRailGroup.SYSTEM, SettingsCategory.REMOTE_BUTTONS.group)
+        allCombinations().forEach { categories ->
+            assertTrue(SettingsCategory.REMOTE_BUTTONS in categories)
         }
     }
 

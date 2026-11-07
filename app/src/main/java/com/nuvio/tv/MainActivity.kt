@@ -148,9 +148,13 @@ import com.nuvio.tv.core.auth.AuthManager
 import com.nuvio.tv.core.auth.DeviceSessionRegistration
 import com.nuvio.tv.core.deeplink.DeepLinkHandler
 import com.nuvio.tv.core.deeplink.DeepLinkParser
+import com.nuvio.tv.core.launcher.ButtonAction
+import com.nuvio.tv.core.launcher.ButtonEventSource
+import com.nuvio.tv.core.launcher.ButtonKeyEventHandler
 import com.nuvio.tv.core.launcher.HomeForegroundDelivery
 import com.nuvio.tv.core.launcher.HomeKeyGesture
 import com.nuvio.tv.core.launcher.HomeKeyPress
+import com.nuvio.tv.core.launcher.LauncherAccessibilityService
 import com.nuvio.tv.core.launcher.LauncherSetup
 import com.nuvio.tv.core.launcher.LauncherHomeRequest
 import com.nuvio.tv.core.player.PlayerWindowBackdrop
@@ -347,8 +351,12 @@ open class MainActivity : ComponentActivity() {
     @Inject
     lateinit var partyRepository: PartyRepository
 
+    @Inject
+    lateinit var buttonKeyEventHandler: ButtonKeyEventHandler
+
     private val pendingDeepLinkUrl = MutableStateFlow<String?>(null)
     private val pendingLaunchIntent = MutableStateFlow<Intent?>(null)
+    private val pendingMappedRouteRequest = MutableStateFlow<String?>(null)
 
     /**
      * Incremented on every HOME request (device HOME key via [com.nuvio.tv.core.launcher.LauncherAccessibilityService]
@@ -429,6 +437,7 @@ open class MainActivity : ComponentActivity() {
         val launchSeason = intent?.getIntExtra("season", -1)?.takeIf { it >= 0 }
         val launchEpisode = intent?.getIntExtra("episode", -1)?.takeIf { it >= 0 }
         val launchEpisodeTitle = intent?.getStringExtra("episodeTitle")
+        buttonKeyEventHandler.actionExecutor.attachForegroundHandler(this, ::executeForegroundButtonAction)
         captureDeepLinkIntent(intent)
         if (savedInstanceState == null) {
             captureHomeRequestIntent(intent, fromNewIntent = false)
@@ -949,6 +958,32 @@ open class MainActivity : ComponentActivity() {
                         repeat(2) { withFrameNanos { } }
                         requestHomeScrollToTop(navController)
                         pendingHomeScrollReset = false
+                    }
+
+                    val mappedRoute by pendingMappedRouteRequest.collectAsState()
+                    LaunchedEffect(mappedRoute, layoutChosen) {
+                        val targetRoute = mappedRoute ?: return@LaunchedEffect
+                        if (layoutChosen != true) return@LaunchedEffect
+                        pendingMappedRouteRequest.value = null
+                        if (targetRoute == com.nuvio.tv.reshaped.livetv.LIVE_TV_ROUTE) {
+                            com.nuvio.tv.reshaped.livetv.LiveTvPreferences.setEnabled(
+                                this@MainActivity,
+                                true
+                            )
+                        }
+                        if (navController.currentDestination?.route == targetRoute) {
+                            return@LaunchedEffect
+                        }
+                        val popped = navController.popBackStack(targetRoute, inclusive = false)
+                        if (!popped) {
+                            navController.navigate(targetRoute) {
+                                popUpTo(navController.graph.startDestinationId) {
+                                    saveState = true
+                                }
+                                launchSingleTop = true
+                                restoreState = true
+                            }
+                        }
                     }
 
                     // Long inactivity or a fresh power-on should hand the TV back to whoever picks
@@ -1478,6 +1513,12 @@ open class MainActivity : ComponentActivity() {
         ambientIdleController.dismiss()
         refreshHomeRole()
         HomeForegroundDelivery.attach(this, ::handleHomeKeyPress)
+        if (::buttonKeyEventHandler.isInitialized) {
+            buttonKeyEventHandler.actionExecutor.attachForegroundHandler(
+                this,
+                ::executeForegroundButtonAction
+            )
+        }
         // An external player covering the app is playback, not idleness, so a long film must not
         // hand the TV back to the picker when it ends.
         if (idleGapMs >= PROFILE_SWITCH_IDLE_TIMEOUT_MS &&
@@ -1512,11 +1553,61 @@ open class MainActivity : ComponentActivity() {
     }
 
     /**
-     * HOME pressed while Nuvio itself is in front. The first press returns to the top of Home, a
-     * second press right after it also opens the profile switcher.
+     * HOME pressed while Nuvio itself is in front. Routes through the single authoritative
+     * [ButtonKeyEventHandler] so factory defaults (Single: Go to Top of Home, Double: Profile
+     * Switcher) and user customizations are resolved consistently.
      */
     private fun handleHomeKeyPress(pressedAtMs: Long) {
+        if (::buttonKeyEventHandler.isInitialized) {
+            buttonKeyEventHandler.onHomePress(
+                pressedAtMs = pressedAtMs,
+                source = ButtonEventSource.FOREGROUND
+            )
+            return
+        }
         applyHomeKeyPress(homeKeyGesture.onPress(pressedAtMs))
+    }
+
+    private fun executeForegroundButtonAction(action: ButtonAction): Boolean {
+        ambientIdleController.dismiss()
+        return when (action) {
+            ButtonAction.GoToTopOfHome -> {
+                pendingHomeRequestNonce.value += 1
+                true
+            }
+            ButtonAction.OpenProfileSwitcher -> {
+                pendingHomeRequestNonce.value += 1
+                pendingProfileSwitchRequest.value = true
+                true
+            }
+            ButtonAction.OpenHome -> {
+                pendingMappedRouteRequest.value = Screen.Home.route
+                true
+            }
+            ButtonAction.OpenSearch -> {
+                pendingMappedRouteRequest.value = Screen.Search.route
+                true
+            }
+            ButtonAction.OpenLibrary -> {
+                pendingMappedRouteRequest.value = Screen.Library.route
+                true
+            }
+            ButtonAction.OpenSettings -> {
+                pendingMappedRouteRequest.value = Screen.Settings.route
+                true
+            }
+            ButtonAction.OpenApps,
+            ButtonAction.OpenAppDrawer -> {
+                pendingMappedRouteRequest.value = Screen.Apps.route
+                true
+            }
+            ButtonAction.OpenLiveTv,
+            ButtonAction.OpenTvGuide -> {
+                pendingMappedRouteRequest.value = com.nuvio.tv.reshaped.livetv.LIVE_TV_ROUTE
+                true
+            }
+            else -> false
+        }
     }
 
     private fun applyHomeKeyPress(press: HomeKeyPress, openProfileSelection: Boolean = false) {
@@ -1540,6 +1631,14 @@ open class MainActivity : ComponentActivity() {
      * An explicit "go Home" request still resets navigation when starting the Activity.
      */
     private fun captureHomeRequestIntent(intent: Intent?, fromNewIntent: Boolean = true) {
+        if (::buttonKeyEventHandler.isInitialized) {
+            buttonKeyEventHandler.onActivityIntent(
+                intent = intent,
+                nowMs = SystemClock.uptimeMillis(),
+                fromNewIntent = fromNewIntent
+            )
+            return
+        }
         val press = LauncherHomeRequest.onIntent(
             intent = intent,
             gesture = homeKeyGesture,
@@ -1563,8 +1662,19 @@ open class MainActivity : ComponentActivity() {
 
     override fun onPause() {
         HomeForegroundDelivery.detach(this)
+        if (::buttonKeyEventHandler.isInitialized) {
+            buttonKeyEventHandler.actionExecutor.detachForegroundHandler(this)
+            buttonKeyEventHandler.cancelPendingGestures()
+        }
         super.onPause()
         if (::jankStats.isInitialized) jankStats.isTrackingEnabled = false
+    }
+
+    override fun onWindowFocusChanged(hasFocus: Boolean) {
+        super.onWindowFocusChanged(hasFocus)
+        if (!hasFocus && ::buttonKeyEventHandler.isInitialized) {
+            buttonKeyEventHandler.cancelPendingGestures()
+        }
     }
 
     // Intercept Back at the Activity level, before any Compose BackHandler, so the auto-next loader
@@ -1584,13 +1694,44 @@ open class MainActivity : ComponentActivity() {
     }
 
     override fun dispatchKeyEvent(event: KeyEvent): Boolean {
-        // HOME is checked before the ambient handler: while the slideshow is up a HOME press should
+        val handlerReady = ::buttonKeyEventHandler.isInitialized
+
+        // 1. If the user is actively capturing a remote button in Settings, offer the event first.
+        if (handlerReady && buttonKeyEventHandler.captureController.isListening()) {
+            if (buttonKeyEventHandler.onKeyEvent(
+                    event = event,
+                    source = ButtonEventSource.FOREGROUND,
+                    accessibilityEnabled = LauncherAccessibilityService.isServiceEnabled(this),
+                    nativeHomeActive = LauncherSetup.isDefaultHome(this)
+                )
+            ) {
+                return true
+            }
+        }
+
+        // 2. HOME is checked before the ambient handler: while the slideshow is up a HOME press should
         // end it *and* go home, instead of only dismissing the slideshow.
         if (event.keyCode == KeyEvent.KEYCODE_HOME) refreshHomeRole()
         if (event.keyCode == KeyEvent.KEYCODE_HOME && nuvioHandlesHomeKey) {
             ambientIdleController.onInteraction()
             if (event.action == KeyEvent.ACTION_DOWN && ambientIdleController.isShowing.value) {
                 ambientIdleController.dismiss()
+            }
+            if (handlerReady) {
+                val homeMapping = buttonKeyEventHandler.repository.activeMappingFor(
+                    keyCode = KeyEvent.KEYCODE_HOME,
+                    isGlobal = false
+                )
+                if (homeMapping == null) {
+                    return super.dispatchKeyEvent(event)
+                }
+                buttonKeyEventHandler.onKeyEvent(
+                    event = event,
+                    source = ButtonEventSource.FOREGROUND,
+                    accessibilityEnabled = LauncherAccessibilityService.isServiceEnabled(this),
+                    nativeHomeActive = LauncherSetup.isDefaultHome(this)
+                )
+                return true
             }
             // Some firmware delivers raw HOME keys; most sends a HOME intent or lets the
             // accessibility service filter the key. Keep this as a fallback, not the only path.
@@ -1615,6 +1756,20 @@ open class MainActivity : ComponentActivity() {
             }
             return true
         }
+
+        // 3. Process other supported mapped remote keys when a valid enabled mapping handles them.
+        if (handlerReady && event.keyCode != KeyEvent.KEYCODE_HOME) {
+            if (buttonKeyEventHandler.onKeyEvent(
+                    event = event,
+                    source = ButtonEventSource.FOREGROUND,
+                    accessibilityEnabled = LauncherAccessibilityService.isServiceEnabled(this),
+                    nativeHomeActive = LauncherSetup.isDefaultHome(this)
+                )
+            ) {
+                return true
+            }
+        }
+
         return super.dispatchKeyEvent(event)
     }
 
@@ -1642,6 +1797,10 @@ open class MainActivity : ComponentActivity() {
 
     override fun onDestroy() {
         HomeForegroundDelivery.detach(this)
+        if (::buttonKeyEventHandler.isInitialized) {
+            buttonKeyEventHandler.actionExecutor.detachForegroundHandler(this)
+            buttonKeyEventHandler.cancelPendingGestures()
+        }
         super.onDestroy()
         PluginRuntimeHooks.onActivityDestroy()
     }

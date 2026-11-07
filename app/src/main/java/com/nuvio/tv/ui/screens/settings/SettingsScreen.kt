@@ -52,6 +52,7 @@ import androidx.compose.material.icons.filled.Palette
 import androidx.compose.material.icons.filled.People
 import androidx.compose.material.icons.filled.Person
 import androidx.compose.material.icons.filled.Settings
+import androidx.compose.material.icons.filled.SettingsRemote
 import androidx.compose.material.icons.filled.Sync
 import androidx.compose.material.icons.filled.Tune
 import androidx.compose.runtime.Composable
@@ -166,6 +167,7 @@ private fun settingsSectionSpec(category: SettingsCategory): SettingsSectionSpec
     SettingsCategory.TRACKING -> SettingsSectionSpec(category, stringResource(R.string.settings_tracking_title), Icons.Default.Sync, destination = SettingsSectionDestination.Inline)
     SettingsCategory.ADVANCED -> SettingsSectionSpec(category, stringResource(R.string.settings_advanced), Icons.Default.Build, destination = SettingsSectionDestination.Inline)
     SettingsCategory.DEFAULT_LAUNCHER -> SettingsSectionSpec(category, stringResource(R.string.settings_default_launcher), Icons.Default.Home, destination = SettingsSectionDestination.Inline)
+    SettingsCategory.REMOTE_BUTTONS -> SettingsSectionSpec(category, stringResource(R.string.settings_remote_buttons), Icons.Default.SettingsRemote, destination = SettingsSectionDestination.Inline)
     SettingsCategory.ABOUT -> SettingsSectionSpec(category, stringResource(R.string.about_title), Icons.Default.Info, destination = SettingsSectionDestination.Inline)
     SettingsCategory.DEBUG -> SettingsSectionSpec(category, stringResource(R.string.settings_debug), Icons.Default.BugReport, destination = SettingsSectionDestination.Inline)
     SettingsCategory.EXPERIENCE -> SettingsSectionSpec(category, stringResource(R.string.settings_experience), Icons.Default.Tune, destination = SettingsSectionDestination.Inline)
@@ -240,6 +242,7 @@ fun SettingsScreen(
             SettingsCategory.PLAYBACK to FocusRequester(),
             SettingsCategory.ADVANCED to FocusRequester(),
             SettingsCategory.DEFAULT_LAUNCHER to FocusRequester(),
+            SettingsCategory.REMOTE_BUTTONS to FocusRequester(),
             SettingsCategory.ABOUT to FocusRequester(),
             SettingsCategory.ACCOUNT to FocusRequester()
         )
@@ -956,6 +959,13 @@ private fun SettingsDetailPane(
         SettingsCategory.DEFAULT_LAUNCHER -> DefaultLauncherSettingsContent(
             initialFocusRequester = if (allowDetailAutofocus) {
                 contentFocusRequesters[SettingsCategory.DEFAULT_LAUNCHER]
+            } else {
+                null
+            }
+        )
+        SettingsCategory.REMOTE_BUTTONS -> ButtonMapperSettingsContent(
+            initialFocusRequester = if (allowDetailAutofocus) {
+                contentFocusRequesters[SettingsCategory.REMOTE_BUTTONS]
             } else {
                 null
             }
