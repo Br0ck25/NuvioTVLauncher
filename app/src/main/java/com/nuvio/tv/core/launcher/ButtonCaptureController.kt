@@ -60,6 +60,8 @@ class ButtonCaptureController(
     val state: StateFlow<ButtonCaptureState> = _state.asStateFlow()
 
     private var timeoutJob: Job? = null
+    @Volatile
+    private var pendingReleaseKeyCode: Int = -1
 
     init {
         activeInstance.set(this)
@@ -67,11 +69,19 @@ class ButtonCaptureController(
 
     fun isListening(): Boolean = _state.value is ButtonCaptureState.Listening
 
+    fun isCapturingOrReleasing(keyCode: Int, action: Int): Boolean {
+        if (_state.value is ButtonCaptureState.Listening) return true
+        return pendingReleaseKeyCode != -1 &&
+            pendingReleaseKeyCode == keyCode &&
+            (action == KeyEvent.ACTION_UP || action == KeyEvent.ACTION_DOWN)
+    }
+
     /**
      * Starts listening for a physical remote button press with a countdown timeout.
      */
     fun startCapture(timeoutMs: Long = ButtonMapperTimingConfig.DEFAULT_CAPTURE_TIMEOUT_MS) {
         timeoutJob?.cancel()
+        pendingReleaseKeyCode = -1
         val totalSeconds = (timeoutMs / 1_000L).toInt().coerceAtLeast(1)
         _state.value = ButtonCaptureState.Listening(
             remainingSeconds = totalSeconds,
@@ -101,6 +111,7 @@ class ButtonCaptureController(
     fun cancelCapture() {
         timeoutJob?.cancel()
         timeoutJob = null
+        pendingReleaseKeyCode = -1
         _state.value = ButtonCaptureState.Idle
     }
 
@@ -116,6 +127,7 @@ class ButtonCaptureController(
     ) {
         timeoutJob?.cancel()
         timeoutJob = null
+        pendingReleaseKeyCode = -1
         _state.value = ButtonCaptureState.Captured(
             buildCapturedInfo(
                 keyCode = keyCode,
@@ -142,7 +154,15 @@ class ButtonCaptureController(
         accessibilityEnabled: Boolean,
         nativeHomeActive: Boolean = false
     ): Boolean {
-        if (_state.value !is ButtonCaptureState.Listening) return false
+        if (_state.value !is ButtonCaptureState.Listening) {
+            if (pendingReleaseKeyCode != -1 && pendingReleaseKeyCode == keyCode) {
+                if (action == KeyEvent.ACTION_UP) {
+                    pendingReleaseKeyCode = -1
+                }
+                return true
+            }
+            return false
+        }
         if (keyCode <= 0) return false
 
         // Allow D-pad, Enter, and Back to navigate and cancel the capture dialog itself.
@@ -177,6 +197,7 @@ class ButtonCaptureController(
             )
             timeoutJob?.cancel()
             timeoutJob = null
+            pendingReleaseKeyCode = keyCode
             _state.value = ButtonCaptureState.Captured(
                 buildCapturedInfo(
                     keyCode = keyCode,

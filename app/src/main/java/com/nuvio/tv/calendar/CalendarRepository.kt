@@ -43,7 +43,8 @@ class CalendarRepository @Inject constructor(
     @ApplicationContext private val context: Context,
     private val prefs: CalendarPreferences,
     private val library: LibraryRepository,
-    private val progress: WatchProgressRepository
+    private val progress: WatchProgressRepository,
+    private val profileManager: com.nuvio.tv.core.profile.ProfileManager
 ) {
     private val scope = CoroutineScope(SupervisorJob() + Dispatchers.IO)
     private val sources = CalendarSources(context)
@@ -82,6 +83,7 @@ class CalendarRepository @Inject constructor(
     fun start() {
         if (started) return
         started = true
+        CalendarHomeFeed.setProfile(profileManager.activeProfileId.value)
         scope.launch {
             // What's kept on the TV first (quick), then a fresh look.
             delay(8_000)
@@ -94,9 +96,40 @@ class CalendarRepository @Inject constructor(
                 refresh(force = false)
             }
         }
+        // When the user switches profiles, immediately clear the previous profile's Calendar
+        // and rebuild using only the newly selected profile's follows, Library, and watch history.
+        scope.launch {
+            var lastProfileId = profileManager.activeProfileId.value
+            profileManager.activeProfileId.collect { profileId ->
+                if (profileId == lastProfileId) return@collect
+                lastProfileId = profileId
+                refreshJob?.cancel()
+                refreshJob = null
+                synchronized(infoMemo) { infoMemo.clear() }
+                CalendarHomeFeed.setProfile(profileId)
+                _state.value = CalendarState(loading = true)
+                _airing.value = AiringToday()
+                build(fetch = false)
+                refresh(force = false)
+            }
+        }
+        // Rebuild when the active profile's Library or Watch Progress loads or updates.
+        scope.launch {
+            kotlinx.coroutines.flow.merge(
+                library.libraryItems.map { items -> items.map { it.id }.toSet() }.distinctUntilChanged().drop(1),
+                progress.allProgress.map { items -> items.map { "${it.contentId}:${it.season}:${it.episode}:${it.isCompleted()}" }.toSet() }.distinctUntilChanged().drop(1),
+                progress.watchedItems.map { items -> items.map { "${it.contentId}:${it.season}:${it.episode}" }.toSet() }.distinctUntilChanged().drop(1)
+            ).debounce(800).collect {
+                build(fetch = false)
+                refresh(force = false)
+            }
+        }
         // A bell rung or a show hidden or shown again: update straight away.
         scope.launch {
-            follows.drop(1).debounce(600).collect { refresh(force = false) }
+            follows.drop(1).debounce(600).collect {
+                build(fetch = false)
+                refresh(force = false)
+            }
         }
         scope.launch {
             hiddenShows.drop(1).debounce(300).collect { build(fetch = false) }
@@ -123,7 +156,8 @@ class CalendarRepository @Inject constructor(
     /** Looks your shows up again ([force]: even ones looked up recently). */
     fun refresh(force: Boolean) {
         if (isOff) return
-        if (refreshJob?.isActive == true) return
+        if (refreshJob?.isActive == true && !force) return
+        refreshJob?.cancel()
         refreshJob = scope.launch { build(fetch = true, force = force) }
     }
 
@@ -252,6 +286,7 @@ class CalendarRepository @Inject constructor(
     }
 
     private suspend fun buildLocked(fetch: Boolean, force: Boolean) {
+        val targetProfileId = profileManager.activeProfileId.value
         val s = settings.value
         if (isOff) {
             _state.value = CalendarState()
@@ -259,6 +294,7 @@ class CalendarRepository @Inject constructor(
             return
         }
         val all = candidates()
+        if (profileManager.activeProfileId.value != targetProfileId) return
         // Bells first, then what you're watching, then your Library (newest first). A Library of
         // hundreds of titles doesn't mean hundreds of look-ups every time.
         val shows = all.filter { it.type == "series" }
@@ -271,6 +307,7 @@ class CalendarRepository @Inject constructor(
             .take(MAX_MOVIES)
         if (fetch) _state.value = _state.value.copy(loading = true, progress = 0 to (shows.size + movies.size), problem = null)
         val seen = seenEpisodes()
+        if (profileManager.activeProfileId.value != targetProfileId) return
         val today = LocalDate.now()
         val from = today.minusDays(30)
         val to = today.plusDays(120)
@@ -280,6 +317,7 @@ class CalendarRepository @Inject constructor(
         // you're watching by another): each show is only taken once.
         val usedShows = HashSet<Int>()
         for (c in shows) {
+            if (profileManager.activeProfileId.value != targetProfileId) return
             val tvmId = if (fetch) sources.tvmazeId(c.imdb, c.tmdb) else cachedTvmazeId(c)
             if (tvmId != null && !usedShows.add(tvmId)) { done++; continue }
             var data = tvmId?.let { sources.cachedShow(it) }
@@ -305,12 +343,14 @@ class CalendarRepository @Inject constructor(
             }
         }
         for (m in movies) {
+            if (profileManager.activeProfileId.value != targetProfileId) return
             val dates = runCatching { sources.movieDates(m.imdb, m.tmdb, s.calendarCountry.ifBlank { "US" }, cachedOnly = !fetch) }.getOrNull()
             done++
             if (dates == null) continue
             entries += moviesOf(m, dates, seen[m.id] ?: m.imdb?.let { seen[it] }, from, to)
         }
         sources.saveMovies()
+        if (profileManager.activeProfileId.value != targetProfileId) return
         // Never the same entry twice (its reasons are put together).
         val merged = entries.groupBy { it.key }.map { (_, same) ->
             if (same.size == 1) same[0] else same[0].copy(reasons = same.flatMap { it.reasons }.toSet())

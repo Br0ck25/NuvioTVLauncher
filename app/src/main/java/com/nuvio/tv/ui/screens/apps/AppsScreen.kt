@@ -9,6 +9,7 @@ import androidx.compose.foundation.Image
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
+import androidx.compose.foundation.layout.PaddingValues
 import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.aspectRatio
 import androidx.compose.foundation.layout.fillMaxSize
@@ -178,16 +179,23 @@ fun AppsScreen(
         Column(
             modifier = Modifier
                 .fillMaxSize()
-                .padding(horizontal = 48.dp, vertical = NuvioTheme.spacing.xl)
+                .padding(top = NuvioTheme.spacing.xl)
         ) {
             Text(
                 text = stringResource(R.string.nav_apps),
                 style = MaterialTheme.typography.headlineLarge.copy(fontWeight = FontWeight.Bold),
-                color = NuvioTheme.colors.TextPrimary
+                color = NuvioTheme.colors.TextPrimary,
+                modifier = Modifier.padding(horizontal = 48.dp)
             )
-            Spacer(modifier = Modifier.height(NuvioTheme.spacing.lg))
+            Spacer(modifier = Modifier.height(4.dp))
             LazyVerticalGrid(
                 columns = GridCells.Adaptive(minSize = 180.dp),
+                contentPadding = PaddingValues(
+                    start = 48.dp,
+                    top = 12.dp,
+                    end = 48.dp,
+                    bottom = 36.dp
+                ),
                 horizontalArrangement = Arrangement.spacedBy(NuvioTheme.spacing.md),
                 verticalArrangement = Arrangement.spacedBy(NuvioTheme.spacing.md),
                 modifier = Modifier.fillMaxSize()

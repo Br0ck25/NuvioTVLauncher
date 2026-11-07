@@ -53,6 +53,9 @@ class ButtonKeyEventHandler(
         homeKeyGesture = homeKeyGesture,
         scheduler = scheduler,
         timingConfig = repository.currentSnapshot().timingConfig,
+        onPassthroughBack = { source ->
+            actionExecutor.executePassthroughBack(source)
+        },
         onActionResolved = { gesture ->
             actionExecutor.execute(gesture.action)
         }
@@ -99,7 +102,7 @@ class ButtonKeyEventHandler(
         nativeHomeActive: Boolean = false
     ): Boolean {
         // 1. If the user is actively capturing a button in "Add Button Mapping", offer it first.
-        if (captureController.isListening()) {
+        if (captureController.isCapturingOrReleasing(keyCode, action)) {
             val captured = captureController.onKeyEvent(
                 keyCode = keyCode,
                 action = action,

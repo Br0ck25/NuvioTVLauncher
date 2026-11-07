@@ -365,6 +365,7 @@ open class MainActivity : ComponentActivity() {
     private val pendingDeepLinkUrl = MutableStateFlow<String?>(null)
     private val pendingLaunchIntent = MutableStateFlow<Intent?>(null)
     private val pendingMappedRouteRequest = MutableStateFlow<String?>(null)
+    private val pendingMappedRouteNonce = MutableStateFlow(0)
 
     /**
      * Incremented on every HOME request (device HOME key via [com.nuvio.tv.core.launcher.LauncherAccessibilityService]
@@ -973,7 +974,8 @@ open class MainActivity : ComponentActivity() {
                     }
 
                     val mappedRoute by pendingMappedRouteRequest.collectAsState()
-                    LaunchedEffect(mappedRoute, layoutChosen) {
+                    val mappedRouteNonce by pendingMappedRouteNonce.collectAsState()
+                    LaunchedEffect(mappedRoute, mappedRouteNonce, layoutChosen) {
                         val targetRoute = mappedRoute ?: return@LaunchedEffect
                         if (layoutChosen != true) return@LaunchedEffect
                         pendingMappedRouteRequest.value = null
@@ -1595,7 +1597,15 @@ open class MainActivity : ComponentActivity() {
         if (::buttonKeyEventHandler.isInitialized) {
             buttonKeyEventHandler.actionExecutor.attachForegroundHandler(
                 this,
-                ::executeForegroundButtonAction
+                object : com.nuvio.tv.core.launcher.ForegroundButtonActionHandler {
+                    override fun onExecuteAction(action: ButtonAction): Boolean =
+                        executeForegroundButtonAction(action)
+
+                    override fun onPassthroughBack(): Boolean = runCatching {
+                        runOnUiThread { onBackPressedDispatcher.onBackPressed() }
+                        true
+                    }.getOrDefault(false)
+                }
             )
         }
         // An external player covering the app is playback, not idleness, so a long film must not
@@ -1651,6 +1661,7 @@ open class MainActivity : ComponentActivity() {
         ambientIdleController.dismiss()
         return when (action) {
             ButtonAction.GoToTopOfHome -> {
+                pendingProfileSwitchRequest.value = false
                 pendingHomeRequestNonce.value += 1
                 true
             }
@@ -1660,29 +1671,41 @@ open class MainActivity : ComponentActivity() {
                 true
             }
             ButtonAction.OpenHome -> {
+                pendingProfileSwitchRequest.value = false
                 pendingMappedRouteRequest.value = Screen.Home.route
+                pendingMappedRouteNonce.value += 1
                 true
             }
             ButtonAction.OpenSearch -> {
+                pendingProfileSwitchRequest.value = false
                 pendingMappedRouteRequest.value = Screen.Search.route
+                pendingMappedRouteNonce.value += 1
                 true
             }
             ButtonAction.OpenLibrary -> {
+                pendingProfileSwitchRequest.value = false
                 pendingMappedRouteRequest.value = Screen.Library.route
+                pendingMappedRouteNonce.value += 1
                 true
             }
             ButtonAction.OpenSettings -> {
+                pendingProfileSwitchRequest.value = false
                 pendingMappedRouteRequest.value = Screen.Settings.route
+                pendingMappedRouteNonce.value += 1
                 true
             }
             ButtonAction.OpenApps,
             ButtonAction.OpenAppDrawer -> {
+                pendingProfileSwitchRequest.value = false
                 pendingMappedRouteRequest.value = Screen.Apps.route
+                pendingMappedRouteNonce.value += 1
                 true
             }
             ButtonAction.OpenLiveTv,
             ButtonAction.OpenTvGuide -> {
+                pendingProfileSwitchRequest.value = false
                 pendingMappedRouteRequest.value = com.nuvio.tv.reshaped.livetv.LIVE_TV_ROUTE
+                pendingMappedRouteNonce.value += 1
                 true
             }
             else -> false
@@ -1743,7 +1766,6 @@ open class MainActivity : ComponentActivity() {
         HomeForegroundDelivery.detach(this)
         if (::buttonKeyEventHandler.isInitialized) {
             buttonKeyEventHandler.actionExecutor.detachForegroundHandler(this)
-            buttonKeyEventHandler.cancelPendingGestures()
         }
         super.onPause()
         if (::jankStats.isInitialized) jankStats.isTrackingEnabled = false
@@ -1751,9 +1773,6 @@ open class MainActivity : ComponentActivity() {
 
     override fun onWindowFocusChanged(hasFocus: Boolean) {
         super.onWindowFocusChanged(hasFocus)
-        if (!hasFocus && ::buttonKeyEventHandler.isInitialized) {
-            buttonKeyEventHandler.cancelPendingGestures()
-        }
     }
 
     // Intercept Back at the Activity level, before any Compose BackHandler, so the auto-next loader
@@ -1776,7 +1795,7 @@ open class MainActivity : ComponentActivity() {
         val handlerReady = ::buttonKeyEventHandler.isInitialized
 
         // 1. If the user is actively capturing a remote button in Settings, offer the event first.
-        if (handlerReady && buttonKeyEventHandler.captureController.isListening()) {
+        if (handlerReady && buttonKeyEventHandler.captureController.isCapturingOrReleasing(event.keyCode, event.action)) {
             if (buttonKeyEventHandler.onKeyEvent(
                     event = event,
                     source = ButtonEventSource.FOREGROUND,

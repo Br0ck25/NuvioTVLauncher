@@ -34,6 +34,7 @@ sealed interface ActionExecutionResult {
  */
 fun interface ForegroundButtonActionHandler {
     fun onExecuteAction(action: ButtonAction): Boolean
+    fun onPassthroughBack(): Boolean = false
 }
 
 /**
@@ -75,6 +76,21 @@ class AndroidButtonActionPlatformBridge(
         val pm = context.packageManager
         val intent = runCatching { pm.getLeanbackLaunchIntentForPackage(cleanPkg) }.getOrNull()
             ?: runCatching { pm.getLaunchIntentForPackage(cleanPkg) }.getOrNull()
+            ?: runCatching {
+                val query = Intent(Intent.ACTION_MAIN)
+                    .addCategory(Intent.CATEGORY_LEANBACK_LAUNCHER)
+                    .setPackage(cleanPkg)
+                val info = pm.queryIntentActivities(query, 0).firstOrNull()?.activityInfo
+                    ?: pm.queryIntentActivities(
+                        Intent(Intent.ACTION_MAIN).addCategory(Intent.CATEGORY_LAUNCHER).setPackage(cleanPkg),
+                        0
+                    ).firstOrNull()?.activityInfo
+                info?.let {
+                    Intent(Intent.ACTION_MAIN).apply {
+                        setClassName(it.packageName, it.name)
+                    }
+                }
+            }.getOrNull()
         if (intent == null) {
             showMissingAppToast(appLabel.ifBlank { cleanPkg })
             return false
@@ -189,6 +205,17 @@ class ButtonActionExecutor(
     }
 
     fun isForegroundAttached(): Boolean = foregroundRegistration?.ownerRef?.get() != null
+
+    fun executePassthroughBack(source: ButtonEventSource) {
+        val foreground = foregroundRegistration
+        val owner = foreground?.ownerRef?.get()
+        if (foreground != null && owner != null) {
+            if (foreground.handler.onPassthroughBack()) {
+                return
+            }
+        }
+        LauncherAccessibilityService.performGlobalBack()
+    }
 
     /**
      * Executes [action] and returns an [ActionExecutionResult] describing what occurred.

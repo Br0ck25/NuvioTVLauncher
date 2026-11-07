@@ -31,18 +31,48 @@ object CalendarHomeFeed {
     @Volatile private var injected: Set<String> = emptySet()
 
     private var prefs: android.content.SharedPreferences? = null
+    @Volatile private var activeProfileId: Int = 1
     private val dismissed = HashSet<String>()
+
+    private fun dismissedKey(profileId: Int): String =
+        if (profileId <= 1) "dismissed" else "dismissed_p$profileId"
+
+    private fun snoozedKey(profileId: Int): String =
+        if (profileId <= 1) "snoozed" else "snoozed_p$profileId"
 
     fun init(context: Context) {
         if (prefs != null) return
         val p = context.applicationContext.getSharedPreferences("calendar_home", Context.MODE_PRIVATE)
         prefs = p
-        synchronized(dismissed) { dismissed += p.getStringSet("dismissed", emptySet()).orEmpty() }
+        loadProfilePrefs(activeProfileId)
+    }
+
+    private fun loadProfilePrefs(profileId: Int) {
+        val p = prefs ?: return
+        synchronized(dismissed) {
+            dismissed.clear()
+            dismissed += p.getStringSet(dismissedKey(profileId), emptySet()).orEmpty()
+        }
         synchronized(snoozed) {
-            p.getStringSet("snoozed", emptySet()).orEmpty().forEach { v ->
+            snoozed.clear()
+            p.getStringSet(snoozedKey(profileId), emptySet()).orEmpty().forEach { v ->
                 val until = v.substringAfterLast('@').toLongOrNull() ?: return@forEach
                 if (until > System.currentTimeMillis()) snoozed[v.substringBeforeLast('@')] = until
             }
+        }
+    }
+
+    fun setProfile(profileId: Int) {
+        val changed = activeProfileId != profileId
+        activeProfileId = profileId
+        loadProfilePrefs(profileId)
+        if (changed) {
+            released = emptyList()
+            upcoming = emptyList()
+            movies = emptyList()
+            injected = emptySet()
+            injectedMovies = emptySet()
+            _version.value++
         }
     }
 
@@ -63,7 +93,7 @@ object CalendarHomeFeed {
         val until = java.time.LocalDate.now().plusDays(1).atTime(6, 0).atZone(ZoneId.systemDefault()).toInstant().toEpochMilli()
         synchronized(snoozed) {
             snoozed[key(contentId, season, episode)] = until
-            prefs?.edit()?.putStringSet("snoozed", snoozed.map { "${it.key}@${it.value}" }.toHashSet())?.apply()
+            prefs?.edit()?.putStringSet(snoozedKey(activeProfileId), snoozed.map { "${it.key}@${it.value}" }.toHashSet())?.apply()
         }
         _version.value++
     }
@@ -191,7 +221,7 @@ object CalendarHomeFeed {
         if (contentId in injectedMovies) {
             synchronized(dismissed) {
                 dismissed += key(contentId, null, null)
-                prefs?.edit()?.putStringSet("dismissed", HashSet(dismissed))?.apply()
+                prefs?.edit()?.putStringSet(dismissedKey(activeProfileId), HashSet(dismissed))?.apply()
             }
             movies = movies.filter { it.progress.contentId != contentId }
             _version.value++
@@ -207,7 +237,7 @@ object CalendarHomeFeed {
             dismissed += k
             // Only the last couple of hundred are kept.
             while (dismissed.size > 300) dismissed.remove(dismissed.first())
-            prefs?.edit()?.putStringSet("dismissed", HashSet(dismissed))?.apply()
+            prefs?.edit()?.putStringSet(dismissedKey(activeProfileId), HashSet(dismissed))?.apply()
         }
         upcoming = upcoming.filter { it.info.contentId != contentId }
         _version.value++

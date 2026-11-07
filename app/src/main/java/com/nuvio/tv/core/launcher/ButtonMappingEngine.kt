@@ -78,6 +78,7 @@ class ButtonMappingEngine(
     private val homeKeyGesture: HomeKeyGesture = HomeKeyGesture(),
     private val scheduler: ButtonGestureScheduler = CoroutineButtonGestureScheduler(),
     timingConfig: ButtonMapperTimingConfig = ButtonMapperTimingConfig(),
+    private val onPassthroughBack: (ButtonEventSource) -> Unit = {},
     private val onActionResolved: (ResolvedButtonGesture) -> Unit = {}
 ) {
     private val lock = Any()
@@ -601,6 +602,7 @@ class ButtonMappingEngine(
                     val singleAction = mapping.singleAction
                     state.singleTapTask = scheduler.schedule(config.doubleClickWindowMs) {
                         var singleGesture: ResolvedButtonGesture? = null
+                        var passthroughBack = false
                         synchronized(lock) {
                             val current = keyStates[keyCode]
                             if (current != null &&
@@ -619,10 +621,15 @@ class ButtonMappingEngine(
                                         source = source,
                                         timestampMs = releaseStamp + config.doubleClickWindowMs
                                     )
+                                } else if (keyCode == KeyEvent.KEYCODE_BACK) {
+                                    passthroughBack = true
                                 }
                             }
                         }
                         singleGesture?.let(onActionResolved)
+                        if (passthroughBack) {
+                            onPassthroughBack(source)
+                        }
                     }
                     true
                 }
