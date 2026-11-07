@@ -304,6 +304,10 @@ fun AppContextMenuModal(
                                 )
                                 onDismiss()
                             },
+                            onApplyToAll = {
+                                viewModel.setGlobalIconPack(uiState.selectedPackPackage)
+                                onDismiss()
+                            },
                             onBack = {
                                 viewModel.clearSelectedPack()
                                 currentMode = MenuScreenMode.ICON_PICKER
@@ -737,12 +741,23 @@ private fun IconPickerContent(
                         } else {
                             Icon(Icons.Default.Image, contentDescription = null, modifier = Modifier.size(28.dp))
                         }
-                        Text(
-                            text = pack.name,
-                            style = MaterialTheme.typography.bodyMedium.copy(fontWeight = FontWeight.SemiBold),
-                            maxLines = 1,
-                            overflow = TextOverflow.Ellipsis
-                        )
+                        Column(modifier = Modifier.weight(1f)) {
+                            Text(
+                                text = pack.name,
+                                style = MaterialTheme.typography.bodyMedium.copy(fontWeight = FontWeight.SemiBold),
+                                maxLines = 1,
+                                overflow = TextOverflow.Ellipsis
+                            )
+                            if (uiState.activeGlobalPackPackage == pack.packageName) {
+                                Text(
+                                    text = stringResource(R.string.app_menu_active_global_pack),
+                                    style = MaterialTheme.typography.bodySmall,
+                                    color = NuvioTheme.colors.Primary,
+                                    maxLines = 1,
+                                    overflow = TextOverflow.Ellipsis
+                                )
+                            }
+                        }
                     }
                 }
             }
@@ -773,6 +788,7 @@ private fun PackIconsContent(
     icons: List<com.nuvio.tv.core.apps.IconPackEntry>,
     isLoading: Boolean,
     onSelectIcon: (String) -> Unit,
+    onApplyToAll: () -> Unit,
     onBack: () -> Unit,
     initialFocusRequester: FocusRequester
 ) {
@@ -803,6 +819,19 @@ private fun PackIconsContent(
                 style = MaterialTheme.typography.titleLarge.copy(fontWeight = FontWeight.Bold),
                 color = Color.White
             )
+            Spacer(modifier = Modifier.weight(1f))
+            Button(
+                onClick = onApplyToAll,
+                colors = ButtonDefaults.colors(
+                    containerColor = NuvioTheme.colors.Primary,
+                    focusedContainerColor = Color.White,
+                    contentColor = Color.White,
+                    focusedContentColor = Color.Black
+                ),
+                contentPadding = PaddingValues(horizontal = 12.dp, vertical = 6.dp)
+            ) {
+                Text(stringResource(R.string.app_menu_apply_pack_to_all))
+            }
         }
 
         if (isLoading) {

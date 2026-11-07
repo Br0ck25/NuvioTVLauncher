@@ -405,6 +405,18 @@
     <string name="settings_style_horizon_desc">Navigation tabs at the top</string>
     <string name="appearance_font_and_language">Font and Language</string>
     <string name="appearance_font_and_language_subtitle">Choose the typeface and locale used throughout the app</string>
+    <string name="appearance_icon_pack_title">Icon Pack</string>
+    <string name="appearance_icon_pack_subtitle">Choose an icon pack for installed apps on your home screen</string>
+    <string name="appearance_icon_pack_row_title">Icon Pack</string>
+    <string name="appearance_icon_pack_row_subtitle">Apply Android TV or Projectivy icon pack APK across installed apps</string>
+    <string name="appearance_icon_pack_system_default">System Default</string>
+    <string name="appearance_icon_pack_system_default_subtitle">Use original app TV banners and launcher icons</string>
+    <string name="appearance_icon_pack_dialog_title">Select Icon Pack</string>
+    <string name="appearance_icon_pack_dialog_subtitle">Choose an installed Android TV or Projectivy icon pack</string>
+    <string name="appearance_icon_pack_empty">No icon pack APKs found on this device. Install an Android TV or Projectivy compatible icon pack APK to use it here.</string>
+    <string name="app_menu_apply_pack_to_all">Apply pack to all apps</string>
+    <string name="app_menu_pack_applied">Applied %1$s to all apps</string>
+    <string name="app_menu_active_global_pack">Active Global Pack</string>
     <string name="cd_selected">Selected</string>
 
     <string name="about_title">About</string>

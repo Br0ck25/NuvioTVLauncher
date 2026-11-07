@@ -21,12 +21,15 @@ import kotlinx.coroutines.flow.update
 import kotlinx.coroutines.launch
 import javax.inject.Inject
 
+import kotlinx.coroutines.flow.collectLatest
+
 data class AppContextMenuUiState(
     val iconPacks: List<IconPackInfo> = emptyList(),
     val isLoadingIconPacks: Boolean = false,
     val selectedPackPackage: String? = null,
     val selectedPackIcons: List<IconPackEntry> = emptyList(),
-    val isLoadingPackIcons: Boolean = false
+    val isLoadingPackIcons: Boolean = false,
+    val activeGlobalPackPackage: String? = null
 )
 
 @HiltViewModel
@@ -41,6 +44,11 @@ class AppContextMenuViewModel @Inject constructor(
 
     init {
         loadIconPacks()
+        viewModelScope.launch {
+            preferencesDataStore.preferences.collectLatest { prefs ->
+                _uiState.update { it.copy(activeGlobalPackPackage = prefs.selectedIconPackPackage) }
+            }
+        }
     }
 
     fun loadIconPacks() {
@@ -78,6 +86,12 @@ class AppContextMenuViewModel @Inject constructor(
     fun applyIconPackToApp(packageName: String, iconPackPackage: String, drawableName: String) {
         viewModelScope.launch {
             preferencesDataStore.setCustomIcon(packageName, "iconpack:$iconPackPackage:$drawableName")
+        }
+    }
+
+    fun setGlobalIconPack(iconPackPackage: String?) {
+        viewModelScope.launch {
+            preferencesDataStore.setSelectedIconPack(iconPackPackage)
         }
     }
 

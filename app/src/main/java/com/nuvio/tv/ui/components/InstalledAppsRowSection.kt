@@ -168,7 +168,7 @@ fun InstalledAppTile(
             if (app.isBanner) {
                 InstalledAppArtwork(
                     app = app,
-                    contentScale = ContentScale.Crop,
+                    contentScale = ContentScale.Fit,
                     modifier = Modifier.fillMaxSize().clip(shape)
                 )
             } else {
