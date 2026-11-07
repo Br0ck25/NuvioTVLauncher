@@ -10,6 +10,7 @@ import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.Spacer
+import androidx.compose.foundation.layout.aspectRatio
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
@@ -18,6 +19,9 @@ import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.lazy.grid.GridCells
 import androidx.compose.foundation.lazy.grid.LazyVerticalGrid
 import androidx.compose.foundation.lazy.grid.items
+import androidx.tv.material3.Card
+import androidx.tv.material3.CardDefaults
+import com.nuvio.tv.ui.components.InstalledAppTile
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.CheckCircle
@@ -182,7 +186,7 @@ fun AppsScreen(
             )
             Spacer(modifier = Modifier.height(NuvioTheme.spacing.lg))
             LazyVerticalGrid(
-                columns = GridCells.Adaptive(minSize = 160.dp),
+                columns = GridCells.Adaptive(minSize = 180.dp),
                 horizontalArrangement = Arrangement.spacedBy(NuvioTheme.spacing.md),
                 verticalArrangement = Arrangement.spacedBy(NuvioTheme.spacing.md),
                 modifier = Modifier.fillMaxSize()
@@ -190,11 +194,11 @@ fun AppsScreen(
                 items(orderedGridItems, key = { it.key }) { gridItem ->
                     when (gridItem) {
                         is AppsGridItem.Shortcut -> {
-                            AppTile(
+                            ShortcutTile(
                                 label = gridItem.label,
                                 iconVector = gridItem.iconVector,
-                                icon = null,
                                 onClick = gridItem.onClick,
+                                modifier = Modifier.fillMaxWidth().aspectRatio(16f / 9f),
                                 onLongClick = {
                                     contextMenuTargetKey = gridItem.key
                                 }
@@ -202,10 +206,9 @@ fun AppsScreen(
                         }
                         is AppsGridItem.App -> {
                             val app = gridItem.app
-                            AppTile(
-                                label = app.displayLabel,
-                                iconVector = null,
-                                icon = app.displayIcon,
+                            InstalledAppTile(
+                                app = app,
+                                fillParentWidth = true,
                                 onClick = {
                                     if (!launchInstalledApp(context, app)) {
                                         launch(app.launchIntent())
@@ -291,17 +294,18 @@ fun AppsScreen(
 }
 
 @Composable
-private fun AppTile(
+private fun ShortcutTile(
     label: String,
-    icon: ImageBitmap?,
-    iconVector: ImageVector? = null,
+    iconVector: ImageVector,
     onClick: () -> Unit,
+    modifier: Modifier = Modifier,
     onLongClick: (() -> Unit)? = null
 ) {
+    val shape = RoundedCornerShape(NuvioTheme.radii.md)
     val longPressKeyTracker = rememberLongPressKeyTracker()
     var longPressTriggered by remember { mutableStateOf(false) }
 
-    Surface(
+    Card(
         onClick = {
             if (longPressTriggered) {
                 longPressTriggered = false
@@ -309,9 +313,7 @@ private fun AppTile(
                 onClick()
             }
         },
-        modifier = Modifier
-            .fillMaxWidth()
-            .height(130.dp)
+        modifier = modifier
             .onPreviewKeyEvent { event ->
                 val native = event.nativeKeyEvent
                 if (onLongClick != null &&
@@ -324,22 +326,22 @@ private fun AppTile(
                 }
                 false
             },
-        colors = ClickableSurfaceDefaults.colors(
+        shape = CardDefaults.shape(shape),
+        colors = CardDefaults.colors(
             containerColor = NuvioTheme.colors.BackgroundCard,
             focusedContainerColor = NuvioTheme.colors.FocusBackground
         ),
-        border = ClickableSurfaceDefaults.border(
+        border = CardDefaults.border(
             border = Border(
                 border = BorderStroke(NuvioTheme.spacing.hairline, NuvioTheme.colors.Border),
-                shape = RoundedCornerShape(NuvioTheme.radii.md)
+                shape = shape
             ),
             focusedBorder = Border(
                 border = NuvioTheme.focusRing.border(NuvioTheme.spacing.xxs),
-                shape = RoundedCornerShape(NuvioTheme.radii.md)
+                shape = shape
             )
         ),
-        shape = ClickableSurfaceDefaults.shape(RoundedCornerShape(NuvioTheme.radii.md)),
-        scale = ClickableSurfaceDefaults.scale(focusedScale = 1f)
+        scale = CardDefaults.scale(focusedScale = 1.03f)
     ) {
         Box(
             modifier = Modifier
@@ -347,25 +349,20 @@ private fun AppTile(
                 .padding(NuvioTheme.spacing.sm),
             contentAlignment = Alignment.Center
         ) {
-            Column(horizontalAlignment = Alignment.CenterHorizontally) {
-                if (icon != null) {
-                    Image(
-                        bitmap = icon,
-                        contentDescription = null,
-                        modifier = Modifier.size(width = 96.dp, height = 54.dp)
-                    )
-                } else {
-                    Icon(
-                        imageVector = iconVector ?: Icons.Default.Settings,
-                        contentDescription = null,
-                        tint = NuvioTheme.colors.TextSecondary,
-                        modifier = Modifier.size(48.dp)
-                    )
-                }
-                Spacer(modifier = Modifier.height(NuvioTheme.spacing.sm))
+            Column(
+                horizontalAlignment = Alignment.CenterHorizontally,
+                verticalArrangement = Arrangement.Center
+            ) {
+                Icon(
+                    imageVector = iconVector,
+                    contentDescription = null,
+                    tint = NuvioTheme.colors.TextSecondary,
+                    modifier = Modifier.size(36.dp)
+                )
+                Spacer(modifier = Modifier.height(6.dp))
                 Text(
                     text = label,
-                    style = MaterialTheme.typography.bodyMedium,
+                    style = MaterialTheme.typography.labelSmall,
                     color = NuvioTheme.colors.TextPrimary,
                     maxLines = 1,
                     overflow = TextOverflow.Ellipsis,

@@ -9,6 +9,7 @@ import androidx.compose.foundation.Image
 import androidx.compose.foundation.background
 import androidx.compose.foundation.border
 import androidx.compose.foundation.clickable
+import androidx.compose.foundation.focusGroup
 import androidx.compose.foundation.interaction.MutableInteractionSource
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
@@ -28,10 +29,13 @@ import androidx.compose.foundation.lazy.rememberLazyListState
 import androidx.compose.foundation.lazy.grid.GridCells
 import androidx.compose.foundation.lazy.grid.LazyVerticalGrid
 import androidx.compose.foundation.lazy.grid.items
+import androidx.compose.foundation.lazy.grid.itemsIndexed
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.foundation.text.BasicTextField
 import androidx.compose.foundation.text.KeyboardActions
 import androidx.compose.foundation.text.KeyboardOptions
+import androidx.compose.ui.focus.focusProperties
+import kotlinx.coroutines.delay
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.automirrored.filled.ArrowBack
 import androidx.compose.material.icons.automirrored.filled.ArrowForward
@@ -112,10 +116,15 @@ fun AppContextMenuModal(
     var currentMode by remember { mutableStateOf(MenuScreenMode.MAIN) }
     var renameText by remember(app.displayLabel) { mutableStateOf(app.displayLabel) }
     val initialFocusRequester = remember { FocusRequester() }
-    var isReady by remember(currentMode) { mutableStateOf(false) }
+    var isReady by remember { mutableStateOf(false) }
     var backDownSeen by remember(currentMode) { mutableStateOf(false) }
     val fallbackManageOrder = LocalNavigateToManageHomeApps.current
     val effectiveOnManageOrder = onManageOrder ?: fallbackManageOrder
+
+    LaunchedEffect(Unit) {
+        delay(120)
+        isReady = true
+    }
 
     val handleBack = {
         when (currentMode) {
@@ -132,6 +141,7 @@ fun AppContextMenuModal(
     LaunchedEffect(currentMode) {
         repeat(2) { withFrameNanos { } }
         runCatching { initialFocusRequester.requestFocus() }
+        isReady = true
     }
 
     Dialog(
@@ -792,6 +802,20 @@ private fun PackIconsContent(
     onBack: () -> Unit,
     initialFocusRequester: FocusRequester
 ) {
+    val firstIconFocusRequester = remember { FocusRequester() }
+    val backButtonFocusRequester = remember { FocusRequester() }
+    val applyButtonFocusRequester = remember { FocusRequester() }
+
+    LaunchedEffect(icons, isLoading) {
+        if (!isLoading && icons.isNotEmpty()) {
+            withFrameNanos { }
+            runCatching { firstIconFocusRequester.requestFocus() }
+        } else if (!isLoading && icons.isEmpty()) {
+            withFrameNanos { }
+            runCatching { backButtonFocusRequester.requestFocus() }
+        }
+    }
+
     Column(
         modifier = Modifier
             .fillMaxSize()
@@ -804,6 +828,11 @@ private fun PackIconsContent(
         ) {
             Button(
                 onClick = onBack,
+                modifier = Modifier
+                    .focusRequester(backButtonFocusRequester)
+                    .focusProperties {
+                        down = firstIconFocusRequester
+                    },
                 colors = ButtonDefaults.colors(
                     containerColor = Color.White.copy(alpha = 0.08f),
                     focusedContainerColor = Color.White,
@@ -822,6 +851,11 @@ private fun PackIconsContent(
             Spacer(modifier = Modifier.weight(1f))
             Button(
                 onClick = onApplyToAll,
+                modifier = Modifier
+                    .focusRequester(applyButtonFocusRequester)
+                    .focusProperties {
+                        down = firstIconFocusRequester
+                    },
                 colors = ButtonDefaults.colors(
                     containerColor = NuvioTheme.colors.Primary,
                     focusedContainerColor = Color.White,
@@ -847,21 +881,32 @@ private fun PackIconsContent(
                 columns = GridCells.Adaptive(minSize = 64.dp),
                 horizontalArrangement = Arrangement.spacedBy(8.dp),
                 verticalArrangement = Arrangement.spacedBy(8.dp),
-                modifier = Modifier.fillMaxSize()
+                modifier = Modifier
+                    .fillMaxSize()
+                    .focusGroup()
             ) {
-                items(icons, key = { it.drawableName }) { entry ->
+                itemsIndexed(icons, key = { _, entry -> entry.drawableName }) { index, entry ->
+                    val itemModifier = Modifier
+                        .size(64.dp)
+                        .then(if (index == 0) Modifier.focusRequester(firstIconFocusRequester) else Modifier)
+                        .focusProperties {
+                            if (index < 6) {
+                                up = backButtonFocusRequester
+                            }
+                        }
                     Surface(
                         onClick = { onSelectIcon(entry.drawableName) },
-                        modifier = Modifier.size(64.dp),
+                        modifier = itemModifier,
                         shape = ClickableSurfaceDefaults.shape(RoundedCornerShape(12.dp)),
                         colors = ClickableSurfaceDefaults.colors(
                             containerColor = Color.White.copy(alpha = 0.06f),
-                            focusedContainerColor = Color.White.copy(alpha = 0.22f)
+                            focusedContainerColor = Color.White.copy(alpha = 0.28f)
                         ),
                         border = ClickableSurfaceDefaults.border(
                             border = Border(BorderStroke(1.dp, Color.White.copy(alpha = 0.08f))),
-                            focusedBorder = Border(BorderStroke(2.dp, Color.White))
-                        )
+                            focusedBorder = Border(BorderStroke(2.5.dp, Color.White))
+                        ),
+                        scale = ClickableSurfaceDefaults.scale(focusedScale = 1.12f)
                     ) {
                         Box(modifier = Modifier.fillMaxSize(), contentAlignment = Alignment.Center) {
                             Image(

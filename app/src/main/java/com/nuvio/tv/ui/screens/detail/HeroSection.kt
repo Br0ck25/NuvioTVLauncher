@@ -26,6 +26,8 @@ import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
+import androidx.compose.material.icons.filled.Notifications
+import androidx.compose.material.icons.filled.NotificationsNone
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
@@ -287,9 +289,9 @@ fun HeroContentSection(
                         com.nuvio.tv.calendar.rememberCalendarBell(meta)?.let { bell ->
                             ActionIconButton(
                                 icon = if (bell.on) {
-                                    androidx.compose.material.icons.Icons.Default.Notifications
+                                    Icons.Filled.Notifications
                                 } else {
-                                    androidx.compose.material.icons.Icons.Default.NotificationsNone
+                                    Icons.Filled.NotificationsNone
                                 },
                                 contentDescription = if (bell.on) {
                                     "Following in Calendar (turn off)"

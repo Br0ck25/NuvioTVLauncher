@@ -23,6 +23,8 @@ import javax.inject.Inject
 
 import kotlinx.coroutines.flow.collectLatest
 
+import com.nuvio.tv.core.apps.InstalledAppsRepository
+
 data class AppContextMenuUiState(
     val iconPacks: List<IconPackInfo> = emptyList(),
     val isLoadingIconPacks: Boolean = false,
@@ -36,7 +38,8 @@ data class AppContextMenuUiState(
 class AppContextMenuViewModel @Inject constructor(
     @ApplicationContext private val context: Context,
     private val preferencesDataStore: InstalledAppsPreferencesDataStore,
-    private val iconPackManager: IconPackManager
+    private val iconPackManager: IconPackManager,
+    private val installedAppsRepository: InstalledAppsRepository
 ) : ViewModel() {
 
     private val _uiState = MutableStateFlow(AppContextMenuUiState())
@@ -74,30 +77,35 @@ class AppContextMenuViewModel @Inject constructor(
     fun renameApp(packageName: String, newTitle: String) {
         viewModelScope.launch {
             preferencesDataStore.setCustomTitle(packageName, newTitle)
+            installedAppsRepository.refresh()
         }
     }
 
     fun setAppIcon(packageName: String, iconRef: String?) {
         viewModelScope.launch {
             preferencesDataStore.setCustomIcon(packageName, iconRef)
+            installedAppsRepository.refresh()
         }
     }
 
     fun applyIconPackToApp(packageName: String, iconPackPackage: String, drawableName: String) {
         viewModelScope.launch {
             preferencesDataStore.setCustomIcon(packageName, "iconpack:$iconPackPackage:$drawableName")
+            installedAppsRepository.refresh()
         }
     }
 
     fun setGlobalIconPack(iconPackPackage: String?) {
         viewModelScope.launch {
             preferencesDataStore.setSelectedIconPack(iconPackPackage)
+            installedAppsRepository.refresh()
         }
     }
 
     fun resetAppCustomization(packageName: String) {
         viewModelScope.launch {
             preferencesDataStore.resetAppCustomization(packageName)
+            installedAppsRepository.refresh()
         }
     }
 

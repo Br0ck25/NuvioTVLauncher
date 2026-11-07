@@ -68,6 +68,8 @@ object CalendarHomeFeed {
         _version.value++
     }
 
+    fun snoozeToday(contentId: String, season: Int?, episode: Int?) = snooze(contentId, season, episode)
+
     fun publish(releasedEntries: List<CalendarEntry>, upcomingEntries: List<CalendarEntry>, movieEntries: List<CalendarEntry> = emptyList()) {
         released = releasedEntries.mapNotNull { toNextUp(it, aired = true) }
         upcoming = upcomingEntries.mapNotNull { toNextUp(it, aired = false) }

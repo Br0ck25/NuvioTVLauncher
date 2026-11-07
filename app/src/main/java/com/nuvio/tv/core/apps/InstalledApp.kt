@@ -33,11 +33,8 @@ data class InstalledApp(
     val isBanner: Boolean
         get() {
             val currentIcon = displayIcon ?: return false
-            return if (customIcon != null) {
-                currentIcon.width.toFloat() / currentIcon.height.coerceAtLeast(1).toFloat() > BANNER_ASPECT_THRESHOLD
-            } else {
-                hasBanner
-            }
+            val aspect = currentIcon.width.toFloat() / currentIcon.height.coerceAtLeast(1).toFloat()
+            return aspect > BANNER_ASPECT_THRESHOLD || (customIcon == null && hasBanner)
         }
 
     fun launchIntent(): Intent = Intent(Intent.ACTION_MAIN)

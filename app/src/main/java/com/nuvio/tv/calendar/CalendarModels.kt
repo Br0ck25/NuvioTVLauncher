@@ -17,12 +17,14 @@ data class CalendarFollow(
     val background: String? = null,
     val imdbId: String? = null,
     val addonBaseUrl: String? = null,
+    val isAiring: Boolean = false,
     val addedAt: Long = System.currentTimeMillis()
 ) {
     fun toJson(): JSONObject = JSONObject()
         .put("id", id).put("type", type).put("name", name)
         .put("poster", poster ?: "").put("background", background ?: "")
-        .put("imdb", imdbId ?: "").put("addon", addonBaseUrl ?: "").put("at", addedAt)
+        .put("imdb", imdbId ?: "").put("addon", addonBaseUrl ?: "")
+        .put("airing", isAiring).put("at", addedAt)
 
     companion object {
         fun fromJson(o: JSONObject) = CalendarFollow(
@@ -33,6 +35,7 @@ data class CalendarFollow(
             background = o.optString("background").ifBlank { null },
             imdbId = o.optString("imdb").ifBlank { null },
             addonBaseUrl = o.optString("addon").ifBlank { null },
+            isAiring = o.optBoolean("airing", false),
             addedAt = o.optLong("at", 0L)
         )
 
@@ -74,7 +77,8 @@ enum class CalendarTag(val label: String) {
     SERIES_FINALE("Series finale"),
     IN_THEATERS("In theaters"),
     AT_HOME("At home"),
-    ON_DISC("On disc")
+    ON_DISC("On disc"),
+    ON_TV("On TV")
 }
 
 /** Why an entry is on your Calendar. */

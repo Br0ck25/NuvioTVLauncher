@@ -51,6 +51,7 @@ import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.Apps
+import androidx.compose.material.icons.filled.DateRange
 import androidx.compose.material.icons.filled.Explore
 import androidx.compose.material.icons.filled.Home
 import androidx.compose.material.icons.filled.Search
@@ -1323,7 +1324,7 @@ open class MainActivity : ComponentActivity() {
                                     DrawerItem(
                                         route = Screen.Calendar.route,
                                         label = "Calendar",
-                                        icon = androidx.compose.material.icons.Icons.Default.DateRange
+                                        icon = Icons.Filled.DateRange
                                     )
                                 )
                             }
