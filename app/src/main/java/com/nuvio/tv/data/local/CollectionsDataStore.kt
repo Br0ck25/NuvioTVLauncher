@@ -385,8 +385,10 @@ class CollectionsDataStore @Inject constructor(
     )
 
     private fun normalizeCollectionAddonId(addonId: String): String {
-        return if (addonId.equals(MyListsDefaultSeed.MY_LISTS_COLLECTIONS_ADDON_ID, ignoreCase = true)) {
-            MyListsDefaultSeed.MY_LISTS_ADDON_ID
+        return if (addonId.equals(MyListsDefaultSeed.MY_LISTS_COLLECTIONS_ADDON_ID, ignoreCase = true) ||
+            addonId.equals(MyListsDefaultSeed.MY_LISTS_ADDON_ID, ignoreCase = true)
+        ) {
+            MyListsDefaultSeed.MY_LISTS_TV_ADDON_ID
         } else {
             addonId
         }

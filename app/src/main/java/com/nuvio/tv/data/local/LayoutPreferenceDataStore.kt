@@ -990,6 +990,7 @@ class LayoutPreferenceDataStore @Inject constructor(
     private fun normalizeCatalogOrderKeys(keys: List<String>): List<String> {
         return keys.asSequence()
             .map { it.trim() }
+            .map { MyListsDefaultSeed.migrateCatalogKey(it) }
             .filter { it.isNotEmpty() && !MyListsDefaultSeed.isRemovedCatalogKey(it) }
             .distinct()
             .toList()

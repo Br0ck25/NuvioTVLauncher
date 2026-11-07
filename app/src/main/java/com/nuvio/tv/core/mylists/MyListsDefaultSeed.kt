@@ -13,12 +13,14 @@ import com.nuvio.tv.domain.model.ContentType
 import java.net.URLEncoder
 
 object MyListsDefaultSeed {
+    const val MY_LISTS_TV_ADDON_ID = "app.my-list.tv"
     const val MY_LISTS_ADDON_ID = "app.my-list"
     const val MY_LISTS_COLLECTIONS_ADDON_ID = "app.my-list.collections"
+    const val MY_LISTS_TV_ADDON_NAME = "My Lists TV Launcher"
     const val MY_LISTS_ADDON_NAME = "My Lists"
     const val MY_LISTS_ADDON_VERSION = "2.1.0"
     const val MY_LISTS_BASE_ORIGIN = "https://mylistsaddon.com"
-    const val MY_LISTS_DEFAULT_BASE_URL = "$MY_LISTS_BASE_ORIGIN/nuvio-default"
+    const val MY_LISTS_DEFAULT_BASE_URL = "$MY_LISTS_BASE_ORIGIN/nuvio-default/tv"
     const val MY_LISTS_DEFAULT_MANIFEST_URL = "$MY_LISTS_DEFAULT_BASE_URL/manifest.json"
     const val MY_LISTS_DEFAULT_SYNC_URL = "$MY_LISTS_BASE_ORIGIN/api/nuvio-tv/sync/default"
     const val DEFAULT_TARGET_ID = "default"
@@ -45,7 +47,10 @@ object MyListsDefaultSeed {
     }
 
     val TRAKT_BOXOFFICE_SERIES_CATALOG_KEYS: List<String> = listOf(
+        "app.my-list.tv_series_chart:trakt:boxoffice_tv",
         "app.my-list_series_chart:trakt:boxoffice_tv",
+        "https://mylistsaddon.com/nuvio-default/tv_series_chart:trakt:boxoffice_tv_Trakt Box Office",
+        "https://mylistsaddon.com/nuvio-default/tv/_series_chart:trakt:boxoffice_tv_Trakt Box Office",
         "https://mylistsaddon.com/nuvio-default_series_chart:trakt:boxoffice_tv_Trakt Box Office",
         "https://mylistsaddon.com/nuvio-default/_series_chart:trakt:boxoffice_tv_Trakt Box Office"
     )
@@ -312,7 +317,7 @@ object MyListsDefaultSeed {
     )
 
     val DEFAULT_HOME_CATALOG_KEYS: List<String> = DEFAULT_CATALOG_SPECS.map { descriptor ->
-        homeCatalogKey(MY_LISTS_ADDON_ID, descriptor.apiType, descriptor.id)
+        homeCatalogKey(MY_LISTS_TV_ADDON_ID, descriptor.apiType, descriptor.id)
     }
 
     val DEFAULT_HOME_COLLECTION_KEYS: List<String> = DEFAULT_COLLECTION_IDS.map { id ->
@@ -365,7 +370,8 @@ object MyListsDefaultSeed {
 
     fun isMyListsDefaultUrl(url: String): Boolean {
         val clean = url.trim().trimEnd('/').removeSuffix("/manifest.json").trimEnd('/')
-        return clean.equals(MY_LISTS_DEFAULT_BASE_URL, ignoreCase = true)
+        return clean.equals(MY_LISTS_DEFAULT_BASE_URL, ignoreCase = true) ||
+            clean.equals("$MY_LISTS_BASE_ORIGIN/nuvio-default", ignoreCase = true)
     }
 
     fun isMyListsAddonUrl(url: String): Boolean {
@@ -374,21 +380,31 @@ object MyListsDefaultSeed {
     }
 
     fun isMyListsAddon(addon: Addon): Boolean {
-        return addon.id.equals(MY_LISTS_ADDON_ID, ignoreCase = true) ||
+        return addon.id.equals(MY_LISTS_TV_ADDON_ID, ignoreCase = true) ||
+            addon.id.equals(MY_LISTS_ADDON_ID, ignoreCase = true) ||
             addon.id.equals(MY_LISTS_COLLECTIONS_ADDON_ID, ignoreCase = true) ||
             isMyListsAddonUrl(addon.baseUrl)
     }
 
     fun isMyListsAddonId(addonId: String): Boolean {
-        return addonId.equals(MY_LISTS_ADDON_ID, ignoreCase = true) ||
+        return addonId.equals(MY_LISTS_TV_ADDON_ID, ignoreCase = true) ||
+            addonId.equals(MY_LISTS_ADDON_ID, ignoreCase = true) ||
             addonId.equals(MY_LISTS_COLLECTIONS_ADDON_ID, ignoreCase = true) ||
             isMyListsAddonUrl(addonId)
     }
 
     fun isMyListsDefaultCatalogKey(key: String): Boolean {
         return key in DEFAULT_HOME_CATALOG_KEYS ||
+            key.startsWith("${MY_LISTS_TV_ADDON_ID}_") ||
             key.startsWith("${MY_LISTS_ADDON_ID}_") ||
             key.startsWith("${MY_LISTS_COLLECTIONS_ADDON_ID}_")
+    }
+
+    fun migrateCatalogKey(key: String): String {
+        if (key.startsWith("${MY_LISTS_ADDON_ID}_") && !key.startsWith("${MY_LISTS_COLLECTIONS_ADDON_ID}_")) {
+            return key.replaceFirst("${MY_LISTS_ADDON_ID}_", "${MY_LISTS_TV_ADDON_ID}_")
+        }
+        return key
     }
 
     fun isStockCinemetaAddon(addonId: String, baseUrl: String = ""): Boolean {
@@ -432,16 +448,18 @@ object MyListsDefaultSeed {
         }
     }
 
-    fun extractCollectionCatalogKeys(collections: List<Collection>, addonId: String = MY_LISTS_ADDON_ID): Set<String> {
+    fun extractCollectionCatalogKeys(collections: List<Collection>, addonId: String = MY_LISTS_TV_ADDON_ID): Set<String> {
         val keys = mutableSetOf<String>()
         collections.forEach { col ->
             col.folders.forEach { folder ->
                 folder.catalogSources.forEach { src ->
                     keys.add(homeCatalogKey(src.addonId, src.type, src.catalogId))
                     keys.add(homeCatalogKey(addonId, src.type, src.catalogId))
+                    keys.add(homeCatalogKey(MY_LISTS_ADDON_ID, src.type, src.catalogId))
                     keys.add(homeCatalogKey(MY_LISTS_COLLECTIONS_ADDON_ID, src.type, src.catalogId))
                     keys.add("${src.addonId}_${src.type}_${src.catalogId}")
                     keys.add("${addonId}_${src.type}_${src.catalogId}")
+                    keys.add("${MY_LISTS_ADDON_ID}_${src.type}_${src.catalogId}")
                     keys.add("${MY_LISTS_COLLECTIONS_ADDON_ID}_${src.type}_${src.catalogId}")
                 }
             }
@@ -455,9 +473,9 @@ object MyListsDefaultSeed {
     ): Addon {
         val cleanBaseUrl = baseUrl.trim().trimEnd('/').removeSuffix("/manifest.json").trimEnd('/')
         return Addon(
-            id = MY_LISTS_ADDON_ID,
-            name = MY_LISTS_ADDON_NAME,
-            displayName = MY_LISTS_ADDON_NAME,
+            id = MY_LISTS_TV_ADDON_ID,
+            name = MY_LISTS_TV_ADDON_NAME,
+            displayName = MY_LISTS_TV_ADDON_NAME,
             version = MY_LISTS_ADDON_VERSION,
             description = "Curated lists, combined charts, premade collections, and live channels powered by My Lists.",
             logo = "$MY_LISTS_BASE_ORIGIN/icon.png",

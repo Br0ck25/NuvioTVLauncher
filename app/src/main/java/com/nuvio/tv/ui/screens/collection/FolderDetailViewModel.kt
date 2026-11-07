@@ -751,6 +751,7 @@ class FolderDetailViewModel @Inject constructor(
         addonId: String
     ): com.nuvio.tv.domain.model.Addon? {
         if (
+            addonId.equals(MyListsDefaultSeed.MY_LISTS_TV_ADDON_ID, ignoreCase = true) ||
             addonId.equals(MyListsDefaultSeed.MY_LISTS_COLLECTIONS_ADDON_ID, ignoreCase = true) ||
             addonId.equals(MyListsDefaultSeed.MY_LISTS_ADDON_ID, ignoreCase = true)
         ) {
