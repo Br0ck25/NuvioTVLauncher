@@ -229,6 +229,7 @@ import kotlinx.coroutines.flow.map
 import kotlinx.coroutines.launch
 
 val LocalSidebarExpanded = compositionLocalOf { false }
+val LocalOpenSidebar = compositionLocalOf<() -> Unit> { {} }
 val LocalContentFocusRequester = compositionLocalOf { FocusRequester.Default }
 
 data class SplashBackground(
@@ -347,6 +348,12 @@ open class MainActivity : ComponentActivity() {
     @Inject
     lateinit var partyRepository: PartyRepository
 
+    @Inject
+    lateinit var calendarRepository: com.nuvio.tv.calendar.CalendarRepository
+
+    @Inject
+    lateinit var calendarPreferences: com.nuvio.tv.calendar.CalendarPreferences
+
     private val pendingDeepLinkUrl = MutableStateFlow<String?>(null)
     private val pendingLaunchIntent = MutableStateFlow<Intent?>(null)
 
@@ -411,6 +418,10 @@ open class MainActivity : ComponentActivity() {
         externalPlaybackTracker.activityLauncher = externalPlayerLauncher
 
         PluginRuntimeHooks.onActivityCreate(this)
+        runCatching {
+            com.nuvio.tv.calendar.CalendarHomeFeed.init(this)
+            calendarRepository.start()
+        }
 
         window?.decorView?.post {
             val snapshot = com.nuvio.tv.core.player.DisplayCapabilities.detect(this)
@@ -1201,12 +1212,21 @@ open class MainActivity : ComponentActivity() {
                     }
 
                     val liveTvMenuItem = com.nuvio.tv.ui.reshaped.livetv.rememberLiveTvMenuItem(currentRoute, navController) // Live TV menu entry
+                    val calendarSettings by calendarPreferences.settings.collectAsState(initial = com.nuvio.tv.calendar.CalendarSettings())
+                    val calendarFollowCount by remember {
+                        calendarRepository.follows.map { list -> list.count { !it.isAiring } }
+                    }.collectAsState(initial = 0)
+                    val calendarHasShows by calendarRepository.hasShows.collectAsState(initial = false)
+                    val calendarInSidebar = !calendarSettings.calendarOff &&
+                        (calendarSettings.calendarInMenu || calendarFollowCount > 0 || calendarHasShows)
+
                     val rootRoutes = remember(discoverLocation, liveTvMenuItem) {
                         buildSet {
                             liveTvMenuItem?.let { add(it.route) } // Live TV menu entry
                             add(Screen.Home.route)
                             add(Screen.Search.route)
                             add(Screen.Library.route)
+                            add(Screen.Calendar.route)
                             add(Screen.Apps.route)
                             add(Screen.Settings.route)
                             if (discoverLocation == DiscoverLocation.IN_SIDEBAR) {
@@ -1229,7 +1249,8 @@ open class MainActivity : ComponentActivity() {
                         strNavApps,
                         strNavSettings,
                         discoverLocation,
-                        liveTvMenuItem
+                        liveTvMenuItem,
+                        calendarInSidebar
                     ) {
                         buildList {
                             add(
@@ -1262,6 +1283,15 @@ open class MainActivity : ComponentActivity() {
                                     iconRes = R.raw.sidebar_library
                                 )
                             )
+                            if (calendarInSidebar) {
+                                add(
+                                    DrawerItem(
+                                        route = Screen.Calendar.route,
+                                        label = "Calendar",
+                                        icon = androidx.compose.material.icons.Icons.Default.DateRange
+                                    )
+                                )
+                            }
                             liveTvMenuItem?.let(::add) // Live TV menu entry
                             add(
                                 DrawerItem(
@@ -1411,6 +1441,7 @@ open class MainActivity : ComponentActivity() {
                                     !isTrailerPlaying,
                                 onShown = { trailerPlayerPool.stop() }
                             )
+                            com.nuvio.tv.calendar.CalendarNoticeHost()
                         }
                     }
                 } 
@@ -1962,6 +1993,10 @@ private fun LegacySidebarScaffold(
         ) {
             CompositionLocalProvider(
                 LocalSidebarExpanded provides (drawerState.currentValue == DrawerValue.Open),
+                LocalOpenSidebar provides {
+                    pendingSidebarFocusRequest = true
+                    drawerState.setValue(DrawerValue.Open)
+                },
                 LocalContentFocusRequester provides contentFocusRequester
             ) {
                 NuvioNavHost(
@@ -2365,6 +2400,11 @@ private fun ModernSidebarScaffold(
         ) {
             CompositionLocalProvider(
                 LocalSidebarExpanded provides isSidebarExpanded,
+                LocalOpenSidebar provides {
+                    isSidebarExpanded = true
+                    sidebarCollapsePending = false
+                    pendingSidebarFocusRequest = true
+                },
                 LocalContentFocusRequester provides contentFocusRequester
             ) {
                 NuvioNavHost(

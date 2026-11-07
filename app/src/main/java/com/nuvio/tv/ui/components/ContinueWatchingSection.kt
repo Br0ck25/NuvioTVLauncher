@@ -1200,6 +1200,26 @@ fun ContinueWatchingOptionsDialog(
             }
         }
 
+        if (item is ContinueWatchingItem.NextUp && item.info.fromCalendar && item.info.isReleaseAlert) {
+            Button(
+                onClick = {
+                    com.nuvio.tv.calendar.CalendarHomeFeed.snoozeToday(
+                        item.info.contentId,
+                        item.info.season,
+                        item.info.episode
+                    )
+                    onDismiss()
+                },
+                colors = ButtonDefaults.colors(
+                    containerColor = NuvioTheme.colors.BackgroundCard,
+                    contentColor = NuvioTheme.colors.TextPrimary
+                ),
+                modifier = Modifier.fillMaxWidth()
+            ) {
+                Text("Not today (back on Home tomorrow)")
+            }
+        }
+
         Button(
             onClick = onRemove,
             colors = ButtonDefaults.colors(
