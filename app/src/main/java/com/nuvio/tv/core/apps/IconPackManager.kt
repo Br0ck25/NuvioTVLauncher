@@ -31,6 +31,11 @@ data class IconPackEntry(
     val icon: ImageBitmap
 )
 
+data class IconPackData(
+    val mapping: Map<String, String>,
+    val allDrawables: List<String>
+)
+
 /**
  * Manages discovery, parsing, and drawable resolution for standard APK-based Android TV and
  * Projectivy icon packs (structured with assets/appfilter.xml and res/ drawable resources).
@@ -63,8 +68,6 @@ class IconPackManager @Inject constructor(
             "org.adw.launcher.icons.ACTION_PICK_ICON"
         )
     }
-
-    private val appFilterCache = ConcurrentHashMap<String, Map<String, String>>()
 
     /**
      * Scans installed packages to detect valid icon packs matching known launcher/theme intents
@@ -164,21 +167,21 @@ class IconPackManager @Inject constructor(
      */
     fun hasAppFilter(packageName: String): Boolean {
         return runCatching {
-            val packContext = context.createPackageContext(packageName, Context.CONTEXT_IGNORE_SECURITY)
-            val hasAsset = runCatching {
-                packContext.assets.open("appfilter.xml").use { true }
-            }.getOrDefault(false) || runCatching {
-                packContext.assets.open("appfilter_tv.xml").use { true }
-            }.getOrDefault(false) || runCatching {
-                packContext.assets.open("themeinfo.xml").use { true }
-            }.getOrDefault(false)
+            val packContext = runCatching {
+                context.createPackageContext(packageName, Context.CONTEXT_IGNORE_SECURITY)
+            }.getOrNull()
+            val hasAsset = packContext?.let { pc ->
+                listOf("appfilter_tv.xml", "appfilter.xml", "drawable.xml", "themeinfo.xml").any { asset ->
+                    runCatching { pc.assets.open(asset).use { true } }.getOrDefault(false)
+                }
+            } ?: false
 
             if (hasAsset) return true
 
             val res = context.packageManager.getResourcesForApplication(packageName)
-            val resId = res.getIdentifier("appfilter", "xml", packageName)
-            val resTvId = res.getIdentifier("appfilter_tv", "xml", packageName)
-            resId != 0 || resTvId != 0
+            listOf("appfilter_tv", "appfilter", "drawable", "themeinfo").any { xmlName ->
+                res.getIdentifier(xmlName, "xml", packageName) != 0
+            }
         }.getOrDefault(false)
     }
 
@@ -218,16 +221,20 @@ class IconPackManager @Inject constructor(
         loadDrawableFromPack(iconPackPackage, drawableName)
     }
 
+    private val packDataCache = ConcurrentHashMap<String, IconPackData>()
+    private val appFilterCache = ConcurrentHashMap<String, Map<String, String>>()
+
     /**
      * Loads available icons from an icon pack for picker UI lists.
+     * Takes from both full drawable catalogs (drawable.xml) and appfilter mappings.
      */
     suspend fun loadIconsForPack(
         iconPackPackage: String,
-        limit: Int = 120
+        limit: Int = 300
     ): List<IconPackEntry> = withContext(Dispatchers.Default) {
-        val appFilter = getOrLoadAppFilter(iconPackPackage)
-        val drawableNames = appFilter.values.distinct().take(limit)
-        drawableNames.mapNotNull { name ->
+        val packData = getOrLoadPackData(iconPackPackage)
+        val allNames = (packData.allDrawables + packData.mapping.values).distinct().take(limit)
+        allNames.mapNotNull { name ->
             val icon = loadDrawableFromPack(iconPackPackage, name) ?: return@mapNotNull null
             IconPackEntry(drawableName = name, icon = icon)
         }
@@ -238,8 +245,10 @@ class IconPackManager @Inject constructor(
      */
     fun invalidateCache(packageName: String? = null) {
         if (packageName == null) {
+            packDataCache.clear()
             appFilterCache.clear()
         } else {
+            packDataCache.remove(packageName)
             appFilterCache.remove(packageName)
         }
     }
@@ -254,116 +263,161 @@ class IconPackManager @Inject constructor(
         }.getOrDefault(false)
     }
 
-    private fun getOrLoadAppFilter(iconPackPackage: String): Map<String, String> {
-        return appFilterCache.getOrPut(iconPackPackage) {
-            parseAppFilter(iconPackPackage)
+    private fun getOrLoadPackData(iconPackPackage: String): IconPackData {
+        return packDataCache.getOrPut(iconPackPackage) {
+            parsePackData(iconPackPackage)
         }
+    }
+
+    private fun getOrLoadAppFilter(iconPackPackage: String): Map<String, String> {
+        return getOrLoadPackData(iconPackPackage).mapping
+    }
+
+    /**
+     * Parses all icon pack configuration files (appfilter_tv, appfilter, drawable, themeinfo)
+     * across both assets and compiled res/xml resources.
+     */
+    fun parsePackData(iconPackPackage: String): IconPackData {
+        val mapping = mutableMapOf<String, String>()
+        val drawables = mutableSetOf<String>()
+        val pm = context.packageManager
+
+        // 1. Parse assets: appfilter_tv.xml, appfilter.xml, drawable.xml, themeinfo.xml
+        runCatching {
+            val packContext = context.createPackageContext(iconPackPackage, Context.CONTEXT_IGNORE_SECURITY)
+            val factory = XmlPullParserFactory.newInstance().apply { isNamespaceAware = false }
+            for (assetName in listOf("appfilter_tv.xml", "appfilter.xml", "drawable.xml", "themeinfo.xml")) {
+                runCatching {
+                    packContext.assets.open(assetName).use { stream ->
+                        val parser = factory.newPullParser().apply { setInput(stream, "UTF-8") }
+                        parseXmlStreamOrResource(parser, mapping, drawables)
+                    }
+                }
+            }
+        }
+
+        // 2. Parse compiled res/xml: appfilter_tv, appfilter, drawable, themeinfo
+        runCatching {
+            val res = pm.getResourcesForApplication(iconPackPackage)
+            for (xmlName in listOf("appfilter_tv", "appfilter", "drawable", "themeinfo")) {
+                val resId = res.getIdentifier(xmlName, "xml", iconPackPackage)
+                if (resId != 0) {
+                    runCatching {
+                        val parser = res.getXml(resId)
+                        try {
+                            parseXmlStreamOrResource(parser, mapping, drawables)
+                        } finally {
+                            parser.close()
+                        }
+                    }
+                }
+            }
+        }
+
+        return IconPackData(mapping = mapping, allDrawables = drawables.toList())
     }
 
     /**
      * Parses `appfilter.xml` from the external package's assets or resources using [XmlPullParser].
      */
     fun parseAppFilter(iconPackPackage: String): Map<String, String> {
-        val mapping = mutableMapOf<String, String>()
-        val pm = context.packageManager
-        try {
-            val packContext = runCatching {
-                context.createPackageContext(iconPackPackage, Context.CONTEXT_IGNORE_SECURITY)
-            }.getOrNull()
+        return parsePackData(iconPackPackage).mapping
+    }
 
-            var parser: XmlPullParser? = null
-            var inputStream: InputStream? = null
+    private fun parseXmlStreamOrResource(
+        parser: XmlPullParser,
+        mapping: MutableMap<String, String>,
+        drawables: MutableSet<String>
+    ) {
+        var eventType = parser.eventType
+        while (eventType != XmlPullParser.END_DOCUMENT) {
+            if (eventType == XmlPullParser.START_TAG && parser.name == "item") {
+                val (component, pkgAttr, rawDrawable) = extractAttributes(parser)
+                val drawable = rawDrawable?.let { cleanDrawableName(it) }
 
-            // 1. Try opening assets/appfilter.xml or assets/appfilter_tv.xml
-            if (packContext != null) {
-                for (assetName in listOf("appfilter.xml", "appfilter_tv.xml", "drawable.xml")) {
-                    try {
-                        inputStream = packContext.assets.open(assetName)
-                        val factory = XmlPullParserFactory.newInstance().apply {
-                            isNamespaceAware = false
-                        }
-                        parser = factory.newPullParser().apply {
-                            setInput(inputStream, "UTF-8")
-                        }
-                        break
-                    } catch (_: Exception) {
-                        // Continue to next asset candidate
-                    }
-                }
-            }
+                if (!drawable.isNullOrBlank()) {
+                    drawables.add(drawable)
 
-            // 2. Try res/xml/appfilter
-            if (parser == null) {
-                val res = pm.getResourcesForApplication(iconPackPackage)
-                val resId = res.getIdentifier("appfilter", "xml", iconPackPackage).takeIf { it != 0 }
-                    ?: res.getIdentifier("appfilter_tv", "xml", iconPackPackage).takeIf { it != 0 }
-                if (resId != null && resId != 0) {
-                    parser = res.getXml(resId)
-                }
-            }
+                    if (!component.isNullOrBlank()) {
+                        val cleanComp = component.removePrefix("ComponentInfo{").removeSuffix("}").trim()
+                        mapping[cleanComp] = drawable
+                        mapping[cleanComp.lowercase()] = drawable
 
-            if (parser != null) {
-                try {
-                    var eventType = parser.eventType
-                    while (eventType != XmlPullParser.END_DOCUMENT) {
-                        if (eventType == XmlPullParser.START_TAG && parser.name == "item") {
-                            val component = parser.getAttributeValue(null, "component")
-                            val pkgAttr = parser.getAttributeValue(null, "package")
-                            val drawable = parser.getAttributeValue(null, "drawable")
+                        if (cleanComp.contains("/")) {
+                            val pkg = cleanComp.substringBefore("/")
+                            val cls = cleanComp.substringAfter("/")
 
-                            if (!drawable.isNullOrBlank()) {
-                                if (!component.isNullOrBlank()) {
-                                    val cleanComp = component.removePrefix("ComponentInfo{").removeSuffix("}").trim()
-                                    mapping[cleanComp] = drawable
-                                    mapping[cleanComp.lowercase()] = drawable
-
-                                    if (cleanComp.contains("/")) {
-                                        val pkg = cleanComp.substringBefore("/")
-                                        val cls = cleanComp.substringAfter("/")
-
-                                        if (cls.startsWith(".")) {
-                                            mapping["$pkg$cls"] = drawable
-                                            mapping["$pkg/$pkg$cls"] = drawable
-                                        }
-
-                                        // Fallback package mapping: TV / Leanback activities take precedence
-                                        val isTvActivity = cls.contains("tv", ignoreCase = true) ||
-                                            cls.contains("leanback", ignoreCase = true)
-                                        if (!mapping.containsKey(pkg) || isTvActivity) {
-                                            mapping[pkg] = drawable
-                                            mapping[pkg.lowercase()] = drawable
-                                        }
-                                    } else {
-                                        mapping[cleanComp] = drawable
-                                        mapping[cleanComp.lowercase()] = drawable
-                                    }
-                                }
-
-                                if (!pkgAttr.isNullOrBlank()) {
-                                    if (!mapping.containsKey(pkgAttr)) {
-                                        mapping[pkgAttr] = drawable
-                                        mapping[pkgAttr.lowercase()] = drawable
-                                    }
-                                }
+                            if (cls.startsWith(".")) {
+                                mapping["$pkg$cls"] = drawable
+                                mapping["$pkg/$pkg$cls"] = drawable
                             }
+
+                            // Fallback package mapping: TV / Leanback activities take precedence
+                            val isTvActivity = cls.contains("tv", ignoreCase = true) ||
+                                cls.contains("leanback", ignoreCase = true)
+                            if (!mapping.containsKey(pkg) || isTvActivity) {
+                                mapping[pkg] = drawable
+                                mapping[pkg.lowercase()] = drawable
+                            }
+                        } else {
+                            mapping[cleanComp] = drawable
+                            mapping[cleanComp.lowercase()] = drawable
                         }
-                        eventType = parser.next()
                     }
-                } finally {
-                    inputStream?.close()
+
+                    if (!pkgAttr.isNullOrBlank()) {
+                        val cleanPkg = pkgAttr.trim()
+                        if (!mapping.containsKey(cleanPkg)) {
+                            mapping[cleanPkg] = drawable
+                            mapping[cleanPkg.lowercase()] = drawable
+                        }
+                    }
                 }
             }
-        } catch (e: Exception) {
-            Log.w(TAG, "Failed to parse appfilter.xml for $iconPackPackage", e)
+            eventType = parser.next()
         }
-        return mapping
+    }
+
+    private fun extractAttributes(parser: XmlPullParser): Triple<String?, String?, String?> {
+        var component: String? = null
+        var pkg: String? = null
+        var drawable: String? = null
+
+        val count = runCatching { parser.attributeCount }.getOrDefault(0)
+        for (i in 0 until count) {
+            val name = parser.getAttributeName(i)
+            val value = parser.getAttributeValue(i)
+            when (name) {
+                "component" -> component = value
+                "package" -> pkg = value
+                "drawable" -> drawable = value
+            }
+        }
+
+        if (component == null && pkg == null && drawable == null) {
+            component = parser.getAttributeValue(null, "component")
+            pkg = parser.getAttributeValue(null, "package")
+            drawable = parser.getAttributeValue(null, "drawable")
+        }
+
+        return Triple(component, pkg, drawable)
+    }
+
+    private fun cleanDrawableName(raw: String): String {
+        return raw.removePrefix("@drawable/")
+            .removePrefix("@mipmap/")
+            .removePrefix("@")
+            .substringBeforeLast('.')
+            .trim()
     }
 
     /**
      * Resolves the named drawable from the external icon pack APK using [PackageManager.getResourcesForApplication].
      * Supports both "drawable" and "mipmap" resource types and scales 16:9 banners and icons crisply without distortion.
      */
-    fun loadDrawableFromPack(iconPackPackage: String, drawableName: String): ImageBitmap? {
+    fun loadDrawableFromPack(iconPackPackage: String, rawDrawableName: String): ImageBitmap? {
+        val drawableName = cleanDrawableName(rawDrawableName)
+        if (drawableName.isBlank()) return null
         return runCatching {
             val pm = context.packageManager
             val res = pm.getResourcesForApplication(iconPackPackage)
@@ -383,16 +437,18 @@ class IconPackManager @Inject constructor(
             if (resId == 0) return null
 
             val drawable: Drawable = res.getDrawable(resId, null) ?: return null
-            val intrinsicW = drawable.intrinsicWidth.coerceAtLeast(1)
-            val intrinsicH = drawable.intrinsicHeight.coerceAtLeast(1)
+            val rawW = drawable.intrinsicWidth
+            val rawH = drawable.intrinsicHeight
 
             // TV banners (~16:9) are sized up to 640x360 (2x 320x180); square icons up to 192x192
-            val isBanner = (intrinsicW.toFloat() / intrinsicH.toFloat()) > 1.3f
-            val (maxW, maxH) = if (isBanner) 640f to 360f else 192f to 192f
-
-            val scale = minOf(maxW / intrinsicW, maxH / intrinsicH, 1f)
-            val w = (intrinsicW * scale).toInt().coerceAtLeast(1)
-            val h = (intrinsicH * scale).toInt().coerceAtLeast(1)
+            val (w, h) = if (rawW > 1 && rawH > 1) {
+                val isBanner = (rawW.toFloat() / rawH.toFloat()) > 1.3f
+                val (maxW, maxH) = if (isBanner) 640f to 360f else 192f to 192f
+                val scale = minOf(maxW / rawW, maxH / rawH, 1f)
+                (rawW * scale).toInt().coerceAtLeast(1) to (rawH * scale).toInt().coerceAtLeast(1)
+            } else {
+                192 to 192
+            }
 
             drawable.toBitmap(width = w, height = h).asImageBitmap()
         }.getOrNull()

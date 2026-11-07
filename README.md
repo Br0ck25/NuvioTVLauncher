@@ -1,6 +1,6 @@
 <div align="center">
 
-  <img src="assets/brand/app_logo_wordmark.png" alt="Nuvio" width="300" />
+  <img src="assets/brand/app_logo_wordmark_readme.png" alt="Nuvio" width="340" />
 
   <p>
     A free, open-source media app for your phone, your desktop, and the TV you already own.
