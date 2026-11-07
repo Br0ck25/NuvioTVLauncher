@@ -67,7 +67,8 @@ fun GridContinueWatchingSection(
     cardStyle: ContinueWatchingCardStyle = ContinueWatchingCardStyle.CARD,
     cornerRadius: Dp = NuvioTheme.radii.md,
     posterCardWidth: Dp? = null,
-    posterCardHeight: Dp? = null
+    posterCardHeight: Dp? = null,
+    isUpcomingSection: Boolean = false
 ) {
     if (items.isEmpty()) return
 
@@ -162,6 +163,7 @@ fun GridContinueWatchingSection(
                     cardStyle = cardStyle,
                     cornerRadius = cornerRadius,
                     isFocused = isCardFocused,
+                    isUpcomingCard = isUpcomingSection,
                     modifier = focusModifier
                         .onFocusChanged { focusState ->
                             isCardFocused = focusState.isFocused
@@ -172,15 +174,17 @@ fun GridContinueWatchingSection(
                                 onItemFocused(index)
                             }
                         },
-                    cardWidth = when (cardStyle) {
-                        ContinueWatchingCardStyle.POSTER -> posterCardWidth ?: posterCardHeight?.let { it * (2f / 3f) } ?: 120.dp
-                        ContinueWatchingCardStyle.WIDE -> 320.dp
-                        ContinueWatchingCardStyle.CARD -> 220.dp
+                    cardWidth = when {
+                        isUpcomingSection -> 240.dp
+                        cardStyle == ContinueWatchingCardStyle.POSTER -> posterCardWidth ?: posterCardHeight?.let { it * (2f / 3f) } ?: 120.dp
+                        cardStyle == ContinueWatchingCardStyle.WIDE -> 320.dp
+                        else -> 220.dp
                     },
-                    imageHeight = when (cardStyle) {
-                        ContinueWatchingCardStyle.POSTER -> posterCardHeight ?: posterCardWidth?.let { it * 1.5f } ?: 180.dp
-                        ContinueWatchingCardStyle.WIDE -> 128.dp
-                        ContinueWatchingCardStyle.CARD -> 124.dp
+                    imageHeight = when {
+                        isUpcomingSection -> 124.dp
+                        cardStyle == ContinueWatchingCardStyle.POSTER -> posterCardHeight ?: posterCardWidth?.let { it * 1.5f } ?: 180.dp
+                        cardStyle == ContinueWatchingCardStyle.WIDE -> 128.dp
+                        else -> 124.dp
                     }
                 )
             }

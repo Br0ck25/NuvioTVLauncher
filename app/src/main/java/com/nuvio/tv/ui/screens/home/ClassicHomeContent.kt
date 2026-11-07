@@ -817,7 +817,8 @@ fun ClassicHomeContent(
                     cardStyle = uiState.continueWatchingCardStyle,
                     cornerRadius = posterCardStyle.cornerRadius,
                     posterTitleOverride = classicPosterTitleStyle,
-                    listState = upcomingListState
+                    listState = upcomingListState,
+                    isUpcomingSection = true
                 )
             }
         }

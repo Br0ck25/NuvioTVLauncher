@@ -150,7 +150,7 @@ object CalendarHomeFeed {
                 videoId = videoId,
                 season = season,
                 episode = episode,
-                episodeTitle = if (e.spoiler) null else e.episodeTitle,
+                episodeTitle = e.episodeTitle,
                 thumbnail = if (e.spoiler) null else e.episodeImage,
                 released = Instant.ofEpochMilli(at).toString(),
                 hasAired = aired,
