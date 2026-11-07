@@ -95,9 +95,13 @@ fun HomeScreen(
     onContinueWatchingStartFromBeginning: (ContinueWatchingItem) -> Unit = onContinueWatchingClick,
     onContinueWatchingPlayManually: (ContinueWatchingItem) -> Unit = onContinueWatchingClick,
     onNavigateToCatalogSeeAll: (String, String, String) -> Unit = { _, _, _ -> },
-    onNavigateToFolderDetail: (String, String) -> Unit = { _, _ -> }
+    onNavigateToFolderDetail: (String, String) -> Unit = { _, _ -> },
+    onNavigateToSettings: () -> Unit = {}
 ) {
     val uiState by viewModel.uiState.collectAsStateWithLifecycle()
+
+    var showSettingsDrawer by rememberSaveable { mutableStateOf(false) }
+    var showNotificationsDrawer by rememberSaveable { mutableStateOf(false) }
 
     // Home was the only major screen without a lifecycle observer, so nothing ever told it to
     // look at its catalogs again.
@@ -117,6 +121,7 @@ fun HomeScreen(
     val modernPresentation by viewModel.modernHomePresentation.collectAsStateWithLifecycle()
     val initialCwResolved by viewModel.initialCwResolved.collectAsStateWithLifecycle()
     val scrollToTopTrigger by viewModel.scrollToTopTrigger.collectAsStateWithLifecycle()
+    var handledDrawerDismissTrigger by rememberSaveable { mutableStateOf(scrollToTopTrigger) }
     val effectiveAutoplayEnabled by viewModel.effectiveAutoplayEnabled.collectAsStateWithLifecycle(
         initialValue = false
     )
@@ -135,6 +140,15 @@ fun HomeScreen(
     // Track that catalog loading has started at least once (isLoading went true→false).
     var catalogLoadingStarted by rememberSaveable { mutableStateOf(false) }
     var posterOptionsTarget by remember { mutableStateOf<HomePosterOptionsTarget?>(null) }
+
+    LaunchedEffect(scrollToTopTrigger) {
+        if (scrollToTopTrigger != handledDrawerDismissTrigger) {
+            handledDrawerDismissTrigger = scrollToTopTrigger
+            showNotificationsDrawer = false
+            showSettingsDrawer = false
+            posterOptionsTarget = null
+        }
+    }
 
     LaunchedEffect(uiState.homeLayout) {
         if (uiState.homeLayout != HomeLayout.MODERN) {
@@ -449,6 +463,26 @@ fun HomeScreen(
             }
         }
 
+        if (!showStartupLoader) {
+            HomeTopBarHeader(
+                onNotificationsClick = { showNotificationsDrawer = true },
+                onSettingsClick = { showSettingsDrawer = true },
+                modifier = Modifier.align(Alignment.TopEnd)
+            )
+        }
+
+        if (showSettingsDrawer) {
+            HomeSettingsDrawer(
+                onDismiss = { showSettingsDrawer = false },
+                onOpenNuvioSettings = onNavigateToSettings
+            )
+        }
+
+        if (showNotificationsDrawer) {
+            NotificationsDrawer(
+                onDismiss = { showNotificationsDrawer = false }
+            )
+        }
     }
 
     val selectedPoster = posterOptionsTarget

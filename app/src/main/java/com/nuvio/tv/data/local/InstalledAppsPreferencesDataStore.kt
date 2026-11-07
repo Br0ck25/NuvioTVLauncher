@@ -18,7 +18,10 @@ import kotlinx.coroutines.sync.withLock
 
 data class InstalledAppsPreferences(
     val order: List<String> = emptyList(),
-    val removedPackages: Set<String> = emptySet()
+    val removedPackages: Set<String> = emptySet(),
+    val customTitles: Map<String, String> = emptyMap(),
+    val customIcons: Map<String, String> = emptyMap(),
+    val selectedIconPackPackage: String? = null
 )
 
 @Singleton
@@ -29,6 +32,9 @@ class InstalledAppsPreferencesDataStore @Inject constructor(
 ) {
     private val orderKey = stringPreferencesKey("installed_apps_order")
     private val removedKey = stringPreferencesKey("installed_apps_removed")
+    private val customTitlesKey = stringPreferencesKey("installed_apps_custom_titles")
+    private val customIconsKey = stringPreferencesKey("installed_apps_custom_icons")
+    private val selectedIconPackKey = stringPreferencesKey("installed_apps_selected_icon_pack")
     private val gson = Gson()
     private val writeMutex = Mutex()
     private fun store(profileId: Int = profileManager.activeProfileId.value) = factory.get(profileId, "installed_apps_row")
@@ -37,29 +43,71 @@ class InstalledAppsPreferencesDataStore @Inject constructor(
         factory.get(pid, "installed_apps_row").data.map { prefs ->
             InstalledAppsPreferences(
                 order = parsePackages(prefs[orderKey]),
-                removedPackages = parsePackages(prefs[removedKey]).toSet()
+                removedPackages = parsePackages(prefs[removedKey]).toSet(),
+                customTitles = parseMap(prefs[customTitlesKey]),
+                customIcons = parseMap(prefs[customIconsKey]),
+                selectedIconPackPackage = prefs[selectedIconPackKey]?.takeIf { it.isNotBlank() }
             )
         }
     }
 
     suspend fun moveApp(packageName: String, direction: Int, availablePackages: List<String>) = mutate { prefs ->
-        prefs.copy(order = moveInstalledApp(orderInstalledApps(availablePackages, prefs.order, prefs.removedPackages), packageName, direction))
+        val effectiveRemoved = if (availablePackages.any { it in prefs.removedPackages }) emptySet() else prefs.removedPackages
+        val visibleOrder = orderInstalledApps(availablePackages, prefs.order, effectiveRemoved)
+        val movedVisible = moveInstalledApp(visibleOrder, packageName, direction)
+        val visibleSet = movedVisible.toSet()
+        val baseFull = (prefs.order + availablePackages).distinct()
+        val iterator = movedVisible.iterator()
+        val mergedOrder = baseFull.map { item ->
+            if (item in visibleSet && iterator.hasNext()) iterator.next() else item
+        }
+        prefs.copy(order = mergedOrder)
     }
 
     suspend fun removeFromRow(packageName: String, availablePackages: List<String>) = mutate { prefs ->
         prefs.copy(
-            order = orderInstalledApps(availablePackages, prefs.order, prefs.removedPackages).filterNot { it == packageName },
+            order = (prefs.order + availablePackages).distinct().filterNot { it == packageName },
             removedPackages = prefs.removedPackages + packageName
         )
     }
 
     suspend fun restoreToRow(packageName: String, availablePackages: List<String>) = mutate { prefs ->
         val removed = prefs.removedPackages - packageName
-        prefs.copy(order = orderInstalledApps(availablePackages, prefs.order, removed), removedPackages = removed)
+        prefs.copy(order = (prefs.order + availablePackages).distinct(), removedPackages = removed)
     }
 
     suspend fun restoreAll(availablePackages: List<String>) = mutate { prefs ->
-        prefs.copy(order = orderInstalledApps(availablePackages, prefs.order, emptySet()), removedPackages = emptySet())
+        prefs.copy(order = (prefs.order + availablePackages).distinct(), removedPackages = emptySet())
+    }
+
+    suspend fun setCustomTitle(packageName: String, title: String?) = mutate { prefs ->
+        val updated = prefs.customTitles.toMutableMap()
+        if (title.isNullOrBlank()) {
+            updated.remove(packageName)
+        } else {
+            updated[packageName] = title.trim()
+        }
+        prefs.copy(customTitles = updated)
+    }
+
+    suspend fun setCustomIcon(packageName: String, iconRef: String?) = mutate { prefs ->
+        val updated = prefs.customIcons.toMutableMap()
+        if (iconRef.isNullOrBlank() || iconRef == "default") {
+            updated.remove(packageName)
+        } else {
+            updated[packageName] = iconRef
+        }
+        prefs.copy(customIcons = updated)
+    }
+
+    suspend fun setSelectedIconPack(packageName: String?) = mutate { prefs ->
+        prefs.copy(selectedIconPackPackage = packageName?.takeIf { it.isNotBlank() })
+    }
+
+    suspend fun resetAppCustomization(packageName: String) = mutate { prefs ->
+        val updatedTitles = prefs.customTitles.toMutableMap().apply { remove(packageName) }
+        val updatedIcons = prefs.customIcons.toMutableMap().apply { remove(packageName) }
+        prefs.copy(customTitles = updatedTitles, customIcons = updatedIcons)
     }
 
     suspend fun currentPreferences(): InstalledAppsPreferences = preferences.first()
@@ -68,12 +116,25 @@ class InstalledAppsPreferencesDataStore @Inject constructor(
         // Capture the profile before suspension so a profile switch cannot write edits to the wrong store.
         val targetStore = store()
         val current = targetStore.data.first().let { prefs ->
-            InstalledAppsPreferences(parsePackages(prefs[orderKey]), parsePackages(prefs[removedKey]).toSet())
+            InstalledAppsPreferences(
+                order = parsePackages(prefs[orderKey]),
+                removedPackages = parsePackages(prefs[removedKey]).toSet(),
+                customTitles = parseMap(prefs[customTitlesKey]),
+                customIcons = parseMap(prefs[customIconsKey]),
+                selectedIconPackPackage = prefs[selectedIconPackKey]?.takeIf { it.isNotBlank() }
+            )
         }
         val updated = transform(current)
         targetStore.edit { prefs ->
             prefs[orderKey] = gson.toJson(updated.order.distinct())
             prefs[removedKey] = gson.toJson(updated.removedPackages.toList())
+            prefs[customTitlesKey] = gson.toJson(updated.customTitles)
+            prefs[customIconsKey] = gson.toJson(updated.customIcons)
+            if (updated.selectedIconPackPackage != null) {
+                prefs[selectedIconPackKey] = updated.selectedIconPackPackage
+            } else {
+                prefs.remove(selectedIconPackKey)
+            }
         }
     }
 
@@ -81,4 +142,9 @@ class InstalledAppsPreferencesDataStore @Inject constructor(
         gson.fromJson<List<String>>(json, object : TypeToken<List<String>>() {}.type)
             .orEmpty().filter { it.isNotBlank() }.distinct()
     }.getOrDefault(emptyList())
+
+    private fun parseMap(json: String?): Map<String, String> = runCatching {
+        if (json.isNullOrBlank()) return emptyMap()
+        gson.fromJson<Map<String, String>>(json, object : TypeToken<Map<String, String>>() {}.type).orEmpty()
+    }.getOrDefault(emptyMap())
 }

@@ -20,6 +20,7 @@ import com.nuvio.tv.data.local.CollectionsDataStore
 import com.nuvio.tv.data.local.LayoutPreferenceDataStore
 import com.nuvio.tv.data.local.ProfileDataStoreFactory
 import com.nuvio.tv.domain.model.Addon
+import com.nuvio.tv.domain.model.AuthState
 import com.nuvio.tv.domain.repository.AddonRepository
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Dispatchers
@@ -140,6 +141,17 @@ class MyListsTvSyncManager @Inject constructor(
                 lastSyncAttemptElapsedMs = 0L
                 runCatching {
                     syncIfNeeded(force = true)
+                }
+            }
+        }
+        scope.launch {
+            authManager.get().authState.collect { authState ->
+                if (authState is AuthState.FullAccount) {
+                    Log.d(TAG, "Auth state changed to FullAccount: resetting rate limit and requesting sync")
+                    lastSyncAttemptElapsedMs = 0L
+                    runCatching {
+                        syncIfNeeded(force = true)
+                    }
                 }
             }
         }

@@ -1443,6 +1443,7 @@ private fun LibraryDropdownPicker(
         Card(
             onClick = { onExpandedChange(!expanded) },
             modifier = Modifier
+                .widthIn(min = 180.dp)
                 .then(
                     if (upFocusRequester != null) {
                         Modifier.focusProperties { up = upFocusRequester }
@@ -1474,24 +1475,31 @@ private fun LibraryDropdownPicker(
         ) {
             Row(
                 modifier = Modifier
-                    .padding(horizontal = 12.dp, vertical = 7.dp),
+                    .widthIn(min = 180.dp)
+                    .padding(horizontal = 14.dp, vertical = 7.dp),
                 verticalAlignment = Alignment.CenterVertically,
-                horizontalArrangement = Arrangement.spacedBy(6.dp)
+                horizontalArrangement = Arrangement.SpaceBetween
             ) {
-                Text(
-                    text = "$title:",
-                    style = MaterialTheme.typography.labelMedium,
-                    color = if (isFocused) NuvioTheme.colors.TextSecondary.copy(alpha = 0.9f) else NuvioTheme.colors.TextTertiary
-                )
-                Text(
-                    text = value,
-                    style = MaterialTheme.typography.labelMedium,
-                    fontWeight = FontWeight.SemiBold,
-                    color = NuvioTheme.colors.TextPrimary,
-                    maxLines = 1,
-                    overflow = TextOverflow.Ellipsis
-                )
-                Spacer(modifier = Modifier.width(2.dp))
+                Row(
+                    verticalAlignment = Alignment.CenterVertically,
+                    horizontalArrangement = Arrangement.spacedBy(6.dp),
+                    modifier = Modifier.weight(1f, fill = false)
+                ) {
+                    Text(
+                        text = "$title:",
+                        style = MaterialTheme.typography.labelMedium,
+                        color = if (isFocused) NuvioTheme.colors.TextSecondary.copy(alpha = 0.9f) else NuvioTheme.colors.TextTertiary
+                    )
+                    Text(
+                        text = value,
+                        style = MaterialTheme.typography.labelMedium,
+                        fontWeight = FontWeight.SemiBold,
+                        color = NuvioTheme.colors.TextPrimary,
+                        maxLines = 1,
+                        overflow = TextOverflow.Ellipsis
+                    )
+                }
+                Spacer(modifier = Modifier.width(6.dp))
                 Icon(
                     imageVector = if (expanded) Icons.Default.KeyboardArrowUp else Icons.Default.KeyboardArrowDown,
                     contentDescription = if (expanded) stringResource(R.string.cd_collapse, title) else stringResource(R.string.cd_expand, title),

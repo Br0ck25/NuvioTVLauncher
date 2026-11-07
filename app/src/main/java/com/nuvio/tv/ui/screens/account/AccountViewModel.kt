@@ -16,9 +16,13 @@ import com.nuvio.tv.core.logging.urlForLog
 import com.nuvio.tv.core.plugin.PluginManager
 import com.nuvio.tv.core.profile.ProfileManager
 import com.nuvio.tv.core.qr.QrCodeGenerator
+import com.nuvio.tv.core.mylists.MyListsTvSyncManager
 import com.nuvio.tv.core.sync.AddonSyncService
+import com.nuvio.tv.core.sync.CollectionSyncService
+import com.nuvio.tv.core.sync.HomeCatalogSettingsSyncService
 import com.nuvio.tv.core.sync.LibrarySyncService
 import com.nuvio.tv.core.sync.PluginSyncService
+import com.nuvio.tv.core.sync.ProfileSyncService
 import com.nuvio.tv.data.local.PluginSyncProfile
 import com.nuvio.tv.data.local.effectivePluginProfileId
 import com.nuvio.tv.core.sync.WatchProgressSyncService
@@ -73,6 +77,10 @@ class AccountViewModel @Inject constructor(
     private val librarySyncService: LibrarySyncService,
     private val watchedItemsSyncService: WatchedItemsSyncService,
     private val profileSettingsSyncService: ProfileSettingsSyncService,
+    private val profileSyncService: ProfileSyncService,
+    private val collectionSyncService: CollectionSyncService,
+    private val homeCatalogSettingsSyncService: HomeCatalogSettingsSyncService,
+    private val myListsTvSyncManager: MyListsTvSyncManager,
     private val providerCredentialSyncService: ProviderCredentialSyncService,
     private val pluginManager: PluginManager,
     private val addonRepository: AddonRepositoryImpl,
@@ -731,6 +739,9 @@ class AccountViewModel @Inject constructor(
 
     private suspend fun pullRemoteData(): Result<Unit> {
         try {
+            // First pull profiles so multi-profile accounts have all profiles restored locally
+            runCatching { profileSyncService.pullFromRemote(force = true) }
+
             // Capture profile ID once to prevent cross-profile data leaks
             // if the user switches profiles during this long-running operation.
             val profileId = profileManager.activeProfileId.value
@@ -748,6 +759,10 @@ class AccountViewModel @Inject constructor(
                 removeMissingLocal = true
             )
             addonRepository.isSyncingFromRemote = false
+
+            runCatching { collectionSyncService.pullFromRemote() }
+            runCatching { homeCatalogSettingsSyncService.pullFromRemote() }
+            runCatching { myListsTvSyncManager.syncIfNeeded(force = true) }
 
             val isTraktConnected = traktAuthDataStore.isEffectivelyAuthenticated.first()
             val shouldUseSupabaseWatchProgressSync = watchProgressSyncService.shouldUseSupabaseWatchProgressSync(profileId)
