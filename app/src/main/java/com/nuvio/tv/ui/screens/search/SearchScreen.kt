@@ -940,6 +940,7 @@ fun SearchScreen(
     com.nuvio.tv.ui.components.posteroptions.PosterOptionsHost(
         state = posterOptionsState,
         controller = viewModel.posterOptions,
+        calendarBell = true,
         onNavigateToDetail = { id, type, addonBaseUrl ->
             // Consume it, so a later navigation cannot reuse this row.
             posterOptionsRowKey?.let(saveSearchFocusForDetail)

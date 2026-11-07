@@ -51,6 +51,8 @@ fun PosterOptionsDialog(
     isSeries: Boolean = false,
     isWatched: Boolean,
     isWatchedPending: Boolean,
+    bellLabel: String? = null,
+    onBell: () -> Unit = {},
     onDismiss: () -> Unit,
     onDetails: () -> Unit,
     onToggleLibrary: () -> Unit,
@@ -119,6 +121,19 @@ fun PosterOptionsDialog(
                         stringResource(R.string.hero_mark_watched)
                     }
                 )
+            }
+        }
+
+        if (bellLabel != null) {
+            Button(
+                onClick = onBell,
+                modifier = Modifier.fillMaxWidth(),
+                colors = ButtonDefaults.colors(
+                    containerColor = NuvioTheme.colors.BackgroundCard,
+                    contentColor = NuvioTheme.colors.TextPrimary
+                )
+            ) {
+                Text(bellLabel)
             }
         }
     }
@@ -212,7 +227,8 @@ fun PosterListPickerDialog(
 fun PosterOptionsHost(
     state: PosterOptionsState,
     controller: PosterOptionsController,
-    onNavigateToDetail: (id: String, type: String, addonBaseUrl: String) -> Unit
+    onNavigateToDetail: (id: String, type: String, addonBaseUrl: String) -> Unit,
+    calendarBell: Boolean = false
 ) {
     val target = state.target
     if (target != null) {
@@ -220,6 +236,15 @@ fun PosterOptionsHost(
         val isSeries = target.apiType.equals("series", ignoreCase = true) ||
             target.apiType.equals("tv", ignoreCase = true) ||
             target.apiType.equals("anime", ignoreCase = true)
+        val bell = if (calendarBell && isSeries) {
+            com.nuvio.tv.calendar.rememberShowBell(
+                showKey = target.id,
+                imdbId = target.id.takeIf { it.startsWith("tt") },
+                title = target.name,
+                poster = target.poster,
+                backdrop = target.backdrop
+            )
+        } else null
         PosterOptionsDialog(
             title = target.name,
             isInLibrary = state.isInLibrary,
@@ -229,6 +254,11 @@ fun PosterOptionsHost(
             isSeries = isSeries,
             isWatched = state.isWatched,
             isWatchedPending = state.isWatchedPending,
+            bellLabel = bell?.let { if (it.on) "Turn off the bell" else "Ring the bell (follow in Calendar)" },
+            onBell = {
+                bell?.toggle?.invoke()
+                controller.dismiss()
+            },
             onDismiss = { controller.dismiss() },
             onDetails = {
                 onNavigateToDetail(target.id, target.apiType, state.addonBaseUrl)

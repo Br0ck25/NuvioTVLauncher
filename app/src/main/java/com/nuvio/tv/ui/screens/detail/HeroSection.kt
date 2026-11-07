@@ -284,6 +284,27 @@ fun HeroContentSection(
                             onFocused = onHeroActionFocused
                         )
 
+                        com.nuvio.tv.calendar.rememberCalendarBell(meta)?.let { bell ->
+                            ActionIconButton(
+                                icon = if (bell.on) {
+                                    androidx.compose.material.icons.Icons.Default.Notifications
+                                } else {
+                                    androidx.compose.material.icons.Icons.Default.NotificationsNone
+                                },
+                                contentDescription = if (bell.on) {
+                                    "Following in Calendar (turn off)"
+                                } else {
+                                    "Follow in Calendar"
+                                },
+                                onClick = bell.toggle,
+                                selected = bell.on,
+                                toggleable = true,
+                                selectedContainerColor = Color.White,
+                                selectedContentColor = Color.Black,
+                                onFocused = onHeroActionFocused
+                            )
+                        }
+
                         if (meta.apiType == "movie") {
                             ActionIconButton(
                                 icon = if (isMovieWatched) {
@@ -329,6 +350,8 @@ fun HeroContentSection(
                     }
 
                     Spacer(modifier = Modifier.height(NuvioTheme.spacing.lg))
+
+                    com.nuvio.tv.calendar.CalendarNextLine(meta = meta, onFocused = onHeroActionFocused)
 
                     // Director/Writer line above description
                     if (!creditLine.isNullOrBlank()) {

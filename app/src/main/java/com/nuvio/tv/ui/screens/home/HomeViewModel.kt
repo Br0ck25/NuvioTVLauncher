@@ -377,6 +377,15 @@ class HomeViewModel @Inject constructor(
 
         observeStartupAuthNotice()
         viewModelScope.launch {
+            com.nuvio.tv.calendar.CalendarHomeFeed.version.collect {
+                _uiState.update { st ->
+                    val (main, up) = com.nuvio.tv.calendar.CalendarHomeFeed.apply(st.continueWatchingItems, st.upcomingItems)
+                    if (main == st.continueWatchingItems && up == st.upcomingItems) st
+                    else st.copy(continueWatchingItems = main, upcomingItems = up)
+                }
+            }
+        }
+        viewModelScope.launch {
             profileManager.activeProfileReady.first { it }
             observeLayoutPreferences()
             observeModernHomePresentation()
@@ -768,12 +777,16 @@ class HomeViewModel @Inject constructor(
             is HomeEvent.OnItemClick -> navigateToDetail(event.itemId, event.itemType)
             is HomeEvent.OnLoadMoreCatalog -> loadMoreCatalogItems(event.catalogId, event.addonId, event.type)
             is HomeEvent.OnMarkContinueWatchingWatched -> markContinueWatchingWatched(event.item)
-            is HomeEvent.OnRemoveContinueWatching -> removeContinueWatching(
-                contentId = event.contentId,
-                season = event.season,
-                episode = event.episode,
-                isNextUp = event.isNextUp
-            )
+            is HomeEvent.OnRemoveContinueWatching -> {
+                if (!com.nuvio.tv.calendar.CalendarHomeFeed.dismiss(event.contentId, event.season, event.episode)) {
+                    removeContinueWatching(
+                        contentId = event.contentId,
+                        season = event.season,
+                        episode = event.episode,
+                        isNextUp = event.isNextUp
+                    )
+                }
+            }
             HomeEvent.OnRetry -> viewModelScope.launch { loadAllCatalogs(addonsCache, forceReload = true) }
         }
     }

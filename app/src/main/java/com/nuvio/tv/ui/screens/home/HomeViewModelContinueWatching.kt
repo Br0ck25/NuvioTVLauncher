@@ -1789,7 +1789,7 @@ internal fun splitUpcomingItems(
     mode: ContinueWatchingSortMode
 ): Pair<List<ContinueWatchingItem>, List<ContinueWatchingItem>> {
     if (mode != ContinueWatchingSortMode.SPLIT_UPCOMING) {
-        return items to emptyList()
+        return com.nuvio.tv.calendar.CalendarHomeFeed.apply(items, emptyList())
     }
     val (upcoming, main) = items.partition { item ->
         item is ContinueWatchingItem.NextUp && !item.info.hasAired
@@ -1809,7 +1809,7 @@ internal fun splitUpcomingItems(
             else -> dateA.compareTo(dateB)
         }
     }
-    return main to sortedUpcoming
+    return com.nuvio.tv.calendar.CalendarHomeFeed.apply(main, sortedUpcoming)
 }
 
 private suspend fun HomeViewModel.buildNextUpItem(
