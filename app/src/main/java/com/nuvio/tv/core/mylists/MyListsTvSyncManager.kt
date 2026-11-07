@@ -19,6 +19,7 @@ import com.nuvio.tv.data.local.AddonPreferences
 import com.nuvio.tv.data.local.CollectionsDataStore
 import com.nuvio.tv.data.local.LayoutPreferenceDataStore
 import com.nuvio.tv.data.local.ProfileDataStoreFactory
+import com.nuvio.tv.core.poster.CustomPosterScreen
 import com.nuvio.tv.domain.model.Addon
 import com.nuvio.tv.domain.model.AuthState
 import com.nuvio.tv.domain.repository.AddonRepository
@@ -73,7 +74,9 @@ data class MyListsSyncResponse(
     val catalogIds: List<String>? = null,
     val catalogOrder: List<String>? = null,
     val collections: JsonArray? = null,
-    val channels: List<MyListsTvChannel>? = null
+    val channels: List<MyListsTvChannel>? = null,
+    val betterPosters: Boolean? = null,
+    val customPosterPattern: String? = null
 )
 
 @Keep
@@ -246,6 +249,10 @@ class MyListsTvSyncManager @Inject constructor(
     }
 
     suspend fun unlinkAccount() {
+        val currentPattern = layoutPreferenceDataStore.customPosterUrlPattern.first()
+        if (currentPattern.contains("btttr.cc") || currentPattern.contains("mylistsaddon.com/bp")) {
+            layoutPreferenceDataStore.clearCustomPosterSettings()
+        }
         store().edit { prefs ->
             prefs[targetIdKey] = DEFAULT_TARGET_ID
             prefs.remove(manifestUrlKey)
@@ -550,6 +557,51 @@ class MyListsTvSyncManager @Inject constructor(
                 editPrefs[channelsJsonKey] = gson.toJson(channelsToStore)
             }
 
+            // 5. Better Posters synchronization
+            var hasBetterPosters = syncResponse.betterPosters == true
+            if (!hasBetterPosters && isCustomAccount && refreshedAddon != null) {
+                val firstCatalog = refreshedAddon.catalogs.firstOrNull { !it.isSearchOnlyCatalog() }
+                if (firstCatalog != null) {
+                    val probeUrl = "${refreshedAddon.baseUrl}/catalog/${firstCatalog.apiType}/${firstCatalog.id}.json"
+                    try {
+                        val req = Request.Builder()
+                            .url(probeUrl)
+                            .header("Origin", MyListsDefaultSeed.MY_LISTS_BASE_ORIGIN)
+                            .header("Referer", "${MyListsDefaultSeed.MY_LISTS_BASE_ORIGIN}/")
+                            .cacheControl(CacheControl.FORCE_NETWORK)
+                            .get()
+                            .build()
+                        okHttpClient.newCall(req).execute().use { resp ->
+                            if (resp.isSuccessful) {
+                                val respBody = resp.body?.string().orEmpty()
+                                hasBetterPosters = respBody.contains("/bp/") || respBody.contains("btttr.cc")
+                            }
+                        }
+                    } catch (e: Exception) {
+                        Log.d(TAG, "Better Posters probe failed: ${e.message}")
+                    }
+                }
+            }
+
+            if (isCustomAccount && hasBetterPosters) {
+                val currentPattern = layoutPreferenceDataStore.customPosterUrlPattern.first()
+                if (currentPattern.isBlank() || currentPattern.contains("btttr.cc") || currentPattern.contains("mylistsaddon.com/bp")) {
+                    val targetPattern = syncResponse.customPosterPattern?.takeIf { it.isNotBlank() }
+                        ?: "https://btttr.cc/poster/imdb/poster-default/{imdb_id}.jpg"
+                    if (currentPattern != targetPattern) {
+                        layoutPreferenceDataStore.setCustomPosterUrlPattern(targetPattern)
+                        layoutPreferenceDataStore.setCustomPosterEnabledScreens(CustomPosterScreen.ALL)
+                        Log.i(TAG, "Auto-configured Better Posters pattern: $targetPattern across all screens")
+                    }
+                }
+            } else if (isCustomAccount && !hasBetterPosters) {
+                val currentPattern = layoutPreferenceDataStore.customPosterUrlPattern.first()
+                if (currentPattern.contains("btttr.cc") || currentPattern.contains("mylistsaddon.com/bp")) {
+                    layoutPreferenceDataStore.clearCustomPosterSettings()
+                    Log.i(TAG, "Cleared Better Posters pattern as it was disabled in My Lists account")
+                }
+            }
+
             _syncRefreshEvents.tryEmit(Unit)
             true
         }
@@ -653,16 +705,13 @@ class MyListsTvSyncManager @Inject constructor(
         if (active == null || active.isPrimary || !active.usesPrimaryAddons) {
             val currentUrls = addonPreferences.installedAddonUrls.first()
             val existingMyListsIndex = currentUrls.indexOfFirst { MyListsDefaultSeed.isMyListsAddonUrl(it) }
-            if (existingMyListsIndex == -1) {
-                addonPreferences.addAddon(cleanNew)
-                return
+            val updatedUrls = if (existingMyListsIndex == -1) {
+                listOf(cleanNew) + currentUrls
+            } else {
+                val list = currentUrls.toMutableList()
+                list[existingMyListsIndex] = cleanNew
+                list
             }
-            val existingUrl = canonicalizeManifestBaseUrl(currentUrls[existingMyListsIndex])
-            if (existingUrl.equals(cleanNew, ignoreCase = true)) {
-                return
-            }
-            val updatedUrls = currentUrls.toMutableList()
-            updatedUrls[existingMyListsIndex] = cleanNew
             addonPreferences.setAddonOrder(updatedUrls.distinct())
         }
     }

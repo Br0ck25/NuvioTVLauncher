@@ -97,10 +97,14 @@ class MetaPreviewEnricher @Inject constructor(
         if (enrichment == null) return@coroutineScope enriched
 
         if (settings.useArtwork) {
+            val hasCustomOrBetterPoster = enriched.poster?.let { p ->
+                p.contains("btttr.cc") || p.contains("/bp/") || p.contains("ratingposterdb.com") ||
+                    p.contains("aioratings.com") || p.contains("top-posters.com")
+            } ?: false
             enriched = enriched.copy(
                 background = enrichment.backdrop ?: enriched.background,
                 logo = enrichment.logo ?: enriched.logo,
-                poster = enrichment.poster ?: enriched.poster
+                poster = if (hasCustomOrBetterPoster) enriched.poster else (enrichment.poster ?: enriched.poster)
             )
         }
 
