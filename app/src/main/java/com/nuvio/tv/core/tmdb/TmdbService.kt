@@ -16,6 +16,12 @@ import javax.inject.Singleton
 private const val TAG = "TmdbService"
 private val TMDB_API_KEY = BuildConfig.TMDB_API_KEY
 
+/** How long a failed lookup (not found / error) is remembered before it may be retried. */
+private const val FAILURE_TTL_MS = 10 * 60 * 1000L
+
+/** How long all lookups pause after TMDB rejects the API key (401/403). */
+private const val AUTH_FAILURE_PAUSE_MS = 30 * 60 * 1000L
+
 /**
  * Service to handle TMDB ID conversions and lookups.
  * Provides caching to avoid redundant API calls.
@@ -35,6 +41,41 @@ class TmdbService @Inject constructor(
     
     // Mutex for thread-safe cache operations
     private val cacheMutex = Mutex()
+
+    // Negative cache: lookup key -> time (uptime ms) until which it must not be retried.
+    private val failedUntil = ConcurrentHashMap<String, Long>()
+
+    @Volatile
+    private var authPausedUntil = 0L
+
+    @Volatile
+    private var loggedMissingKey = false
+
+    /** True when a network lookup for [key] should be skipped (no key, key rejected, or recent failure). */
+    private fun shouldSkipLookup(key: String): Boolean {
+        if (TMDB_API_KEY.isBlank()) {
+            if (!loggedMissingKey) {
+                loggedMissingKey = true
+                Log.w(TAG, "TMDB_API_KEY is empty; TMDB lookups are disabled")
+            }
+            return true
+        }
+        val now = android.os.SystemClock.elapsedRealtime()
+        if (now < authPausedUntil) return true
+        val until = failedUntil[key] ?: return false
+        if (now < until) return true
+        failedUntil.remove(key, until)
+        return false
+    }
+
+    private fun recordFailure(key: String, httpCode: Int? = null) {
+        val now = android.os.SystemClock.elapsedRealtime()
+        failedUntil[key] = now + FAILURE_TTL_MS
+        if (httpCode == 401 || httpCode == 403) {
+            authPausedUntil = now + AUTH_FAILURE_PAUSE_MS
+            Log.w(TAG, "TMDB rejected the API key ($httpCode); pausing lookups for ${AUTH_FAILURE_PAUSE_MS / 60000} min")
+        }
+    }
     
     /**
      * Convert an IMDB ID to a TMDB ID.
@@ -59,6 +100,8 @@ class TmdbService @Inject constructor(
             return@withContext cached
         }
         
+        if (shouldSkipLookup("i2t:$cacheKey")) return@withContext null
+
         val requestKey = cacheKey
         val requestDeferred = CompletableDeferred<Int?>()
         imdbToTmdbInFlight.putIfAbsent(requestKey, requestDeferred)?.let { existing ->
@@ -76,6 +119,7 @@ class TmdbService @Inject constructor(
             
             if (!response.isSuccessful) {
                 Log.e(TAG, "TMDB API error: ${response.code()} - ${response.message()}")
+                recordFailure("i2t:$cacheKey", response.code())
                 requestDeferred.complete(null)
                 return@withContext null
             }
@@ -108,6 +152,7 @@ class TmdbService @Inject constructor(
             }
             
             Log.w(TAG, "No TMDB result found for IMDB: $imdbId")
+            recordFailure("i2t:$cacheKey")
             requestDeferred.complete(null)
             null
             
@@ -116,6 +161,7 @@ class TmdbService @Inject constructor(
             throw e
         } catch (e: Exception) {
             Log.e(TAG, "Error looking up TMDB ID for $imdbId: ${e.message}", e)
+            recordFailure("i2t:$cacheKey")
             requestDeferred.complete(null)
             null
         } finally {
@@ -140,6 +186,8 @@ class TmdbService @Inject constructor(
             return@withContext cached
         }
         
+        if (shouldSkipLookup("t2i:$cacheKey")) return@withContext null
+
         val requestKey = cacheKey
         val requestDeferred = CompletableDeferred<String?>()
         tmdbToImdbInFlight.putIfAbsent(requestKey, requestDeferred)?.let { existing ->
@@ -157,6 +205,7 @@ class TmdbService @Inject constructor(
             
             if (!response.isSuccessful) {
                 Log.e(TAG, "TMDB API error: ${response.code()} - ${response.message()}")
+                recordFailure("t2i:$cacheKey", response.code())
                 requestDeferred.complete(null)
                 return@withContext null
             }
@@ -261,6 +310,8 @@ class TmdbService @Inject constructor(
      * Clear all caches
      */
     fun clearCache() {
+        failedUntil.clear()
+        authPausedUntil = 0L
         imdbToTmdbCache.clear()
         tmdbToImdbCache.clear()
         imdbToTmdbInFlight.clear()

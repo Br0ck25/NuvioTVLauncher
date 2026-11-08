@@ -197,7 +197,7 @@ class ButtonKeyEventHandler(
             intent.removeExtra(LauncherHomeRequest.EXTRA_OPEN_PROFILE_SELECTION)
             val action = ButtonAction.fromStorageKey(explicitActionKey)
             if (action != ButtonAction.None) {
-                actionExecutor.execute(action)
+                actionExecutor.execute(action, fromLaunchIntent = true)
                 return true
             }
         }

@@ -8,7 +8,9 @@ import androidx.compose.runtime.Immutable
 import androidx.compose.ui.graphics.ImageBitmap
 import androidx.compose.ui.graphics.asImageBitmap
 import androidx.core.graphics.drawable.toBitmap
+import java.util.concurrent.ConcurrentHashMap
 import kotlinx.coroutines.Dispatchers
+import kotlinx.coroutines.ensureActive
 import kotlinx.coroutines.withContext
 
 /** A launchable package, with a TV banner first and a correctly proportioned icon fallback. */
@@ -45,7 +47,34 @@ data class InstalledApp(
 /** TV banners are ~16:9; anything squarer than this is just the app icon. */
 private const val BANNER_ASPECT_THRESHOLD = 1.3f
 
-internal suspend fun queryInstalledApps(context: Context): List<InstalledApp> = withContext(Dispatchers.Default) {
+/**
+ * Remembers each app's decoded icon/banner so a package broadcast only re-decodes packages that
+ * actually changed. Reusing the same [ImageBitmap] instances also keeps [InstalledApp] equality
+ * stable, so unchanged lists do not recompose every tile or re-upload bitmaps to the GPU.
+ */
+internal class InstalledAppsDecodeCache {
+    private class Entry(val signature: String, val app: InstalledApp)
+
+    private val entries = ConcurrentHashMap<String, Entry>()
+
+    fun get(packageName: String, signature: String?): InstalledApp? {
+        if (signature == null) return null
+        return entries[packageName]?.takeIf { it.signature == signature }?.app
+    }
+
+    fun put(packageName: String, signature: String?, app: InstalledApp) {
+        if (signature != null) entries[packageName] = Entry(signature, app)
+    }
+
+    fun retainOnly(packages: Set<String>) {
+        entries.keys.retainAll(packages)
+    }
+}
+
+internal suspend fun queryInstalledApps(
+    context: Context,
+    cache: InstalledAppsDecodeCache = InstalledAppsDecodeCache()
+): List<InstalledApp> = withContext(Dispatchers.Default) {
     val pm = context.packageManager
     val appsByPackage = linkedMapOf<String, InstalledApp>()
     // Leanback entries win when a package exposes both kinds of launcher activity.
@@ -56,7 +85,15 @@ internal suspend fun queryInstalledApps(context: Context): List<InstalledApp> = 
             if (activity.packageName == context.packageName || appsByPackage.containsKey(activity.packageName)) {
                 return@forEach
             }
+            // A superseded query (newer package broadcast) must stop instead of decoding every icon.
+            ensureActive()
             val component = ComponentName(activity.packageName, activity.name)
+            val lastUpdate = runCatching { pm.getPackageInfo(activity.packageName, 0).lastUpdateTime }.getOrNull()
+            val signature = lastUpdate?.let { "${component.flattenToString()}|$it" }
+            cache.get(activity.packageName, signature)?.let {
+                appsByPackage[activity.packageName] = it
+                return@forEach
+            }
             val banner = runCatching { pm.getActivityBanner(component) }.getOrNull()
                 ?: runCatching { pm.getApplicationBanner(activity.packageName) }.getOrNull()
             val icon = runCatching { info.loadIcon(pm) }.getOrNull()
@@ -81,7 +118,7 @@ internal suspend fun queryInstalledApps(context: Context): List<InstalledApp> = 
             val squareBmp = scaleToBitmap(icon ?: banner, 160f, 160f)
             val defaultBmp = if (bannerIsWide) bannerBmp else (squareBmp ?: bannerBmp)
 
-            appsByPackage[activity.packageName] = InstalledApp(
+            val app = InstalledApp(
                 packageName = activity.packageName,
                 label = info.loadLabel(pm).toString().ifBlank { activity.packageName },
                 componentName = component,
@@ -90,8 +127,11 @@ internal suspend fun queryInstalledApps(context: Context): List<InstalledApp> = 
                 bannerBitmap = bannerBmp,
                 squareBitmap = squareBmp
             )
+            cache.put(activity.packageName, signature, app)
+            appsByPackage[activity.packageName] = app
         }
     }
+    cache.retainOnly(appsByPackage.keys)
     appsByPackage.values.sortedWith(compareBy(String.CASE_INSENSITIVE_ORDER) { it.displayLabel })
 }
 

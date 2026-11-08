@@ -396,6 +396,14 @@ open class MainActivity : ComponentActivity() {
         externalPlaybackTracker.onActivityResult(result)
     }
 
+    /** One-time offer of the native HOME role after an app update; the result is re-checked, not trusted. */
+    private val homeRoleOfferLauncher = registerForActivityResult(
+        androidx.activity.result.contract.ActivityResultContracts.StartActivityForResult()
+    ) {
+        com.nuvio.tv.core.launcher.LauncherSetup.recordRoleRequestResult(this)
+        refreshHomeRole()
+    }
+
     /** True until the first onResume after onCreate completes. */
     private var isFirstResumeAfterCreate = false
 
@@ -1593,6 +1601,10 @@ open class MainActivity : ComponentActivity() {
         val idleGapMs = SystemClock.uptimeMillis() - ambientIdleController.lastInteractionAt.value
         ambientIdleController.dismiss()
         refreshHomeRole()
+        com.nuvio.tv.core.launcher.LauncherSetup.takePendingRoleOffer(this)?.let { offer ->
+            runCatching { homeRoleOfferLauncher.launch(offer) }
+                .onFailure { com.nuvio.tv.core.launcher.LauncherSetup.recordRoleRequestResult(this, launchFailed = true) }
+        }
         HomeForegroundDelivery.attach(this, ::handleHomeKeyPress)
         if (::buttonKeyEventHandler.isInitialized) {
             buttonKeyEventHandler.actionExecutor.attachForegroundHandler(
