@@ -192,8 +192,19 @@ class ButtonActionExecutor(
     @Volatile
     private var foregroundRegistration: HandlerRegistration? = null
 
+    /**
+     * Action delivered via a launch intent while no foreground handler was attached yet
+     * (Activity delivered `onNewIntent` before `onResume`). It is replayed on attach instead of
+     * re-launching Nuvio, which would otherwise re-enter `onNewIntent` in an endless loop.
+     */
+    @Volatile
+    private var pendingForegroundAction: ButtonAction? = null
+
     fun attachForegroundHandler(owner: Any, handler: ForegroundButtonActionHandler) {
         foregroundRegistration = HandlerRegistration(WeakReference(owner), handler)
+        val pending = pendingForegroundAction ?: return
+        pendingForegroundAction = null
+        handler.onExecuteAction(pending)
     }
 
     fun detachForegroundHandler(owner: Any) {
@@ -220,7 +231,7 @@ class ButtonActionExecutor(
     /**
      * Executes [action] and returns an [ActionExecutionResult] describing what occurred.
      */
-    fun execute(action: ButtonAction): ActionExecutionResult {
+    fun execute(action: ButtonAction, fromLaunchIntent: Boolean = false): ActionExecutionResult {
         return when (action) {
             ButtonAction.None,
             ButtonAction.RestoreDefault -> ActionExecutionResult.Ignored
@@ -234,7 +245,7 @@ class ButtonActionExecutor(
             ButtonAction.OpenApps,
             ButtonAction.OpenAppDrawer,
             ButtonAction.OpenLiveTv,
-            ButtonAction.OpenTvGuide -> executeNuvioDestinationAction(action)
+            ButtonAction.OpenTvGuide -> executeNuvioDestinationAction(action, fromLaunchIntent)
 
             ButtonAction.MediaPlayPause -> dispatchMedia(action, KeyEvent.KEYCODE_MEDIA_PLAY_PAUSE)
             ButtonAction.MediaRewind -> dispatchMedia(action, KeyEvent.KEYCODE_MEDIA_REWIND)
@@ -270,13 +281,21 @@ class ButtonActionExecutor(
         }
     }
 
-    private fun executeNuvioDestinationAction(action: ButtonAction): ActionExecutionResult {
+    private fun executeNuvioDestinationAction(
+        action: ButtonAction,
+        fromLaunchIntent: Boolean
+    ): ActionExecutionResult {
         val foreground = foregroundRegistration
         val owner = foreground?.ownerRef?.get()
         if (foreground != null && owner != null) {
             if (foreground.handler.onExecuteAction(action)) {
                 return ActionExecutionResult.ExecutedInForeground(action)
             }
+        }
+        if (fromLaunchIntent) {
+            // We are already running because of a launch intent: never fire another one.
+            pendingForegroundAction = action
+            return ActionExecutionResult.Ignored
         }
         return if (platformBridge.startNuvioWithAction(action)) {
             ActionExecutionResult.ExecutedViaLauncherIntent(action)
