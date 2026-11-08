@@ -1917,6 +1917,8 @@ class TraktProgressService @Inject constructor(
     }
 
     private suspend fun fetchAllProgressSnapshot(force: Boolean = false): List<WatchProgress> {
+        // Without a Trakt client id every request is rejected; nothing to fetch.
+        if (BuildConfig.TRAKT_CLIENT_ID.isBlank()) return emptyList()
         val playbackStartAt = recentWatchWindowMs()?.let { windowMs ->
             toTraktUtcDateTime(System.currentTimeMillis() - windowMs)
         }
