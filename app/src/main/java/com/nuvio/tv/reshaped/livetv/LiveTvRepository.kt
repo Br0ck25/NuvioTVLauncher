@@ -251,6 +251,11 @@ object LiveTvRepository {
         launchAdd(LiveTvSource("", LiveTvSourceType.Xtream, normalized.serverUrl, xtream = normalized, epgUrl = epgUrl.trim()))
     }
 
+    /** Saves the channels picked from an installed addon as a source (picking again replaces the earlier pick). */
+    fun loadAddon(settings: LiveTvAddonSettings) {
+        launchAdd(LiveTvSource("", LiveTvSourceType.Addon, settings.addonUrl, addon = settings, name = settings.addonName))
+    }
+
     fun loadStalker(settings: LiveTvStalkerSettings, epgUrl: String = "") {
         val normalized = settings.normalized()
         launchAdd(LiveTvSource("", LiveTvSourceType.Stalker, normalized.portalUrl, stalker = normalized, epgUrl = epgUrl.trim()))
@@ -267,6 +272,7 @@ object LiveTvRepository {
             LiveTvSourceType.M3u -> edited.copy(url = edited.url.trim())
             LiveTvSourceType.Xtream -> edited.xtream.normalized().let { edited.copy(url = it.serverUrl, xtream = it) }
             LiveTvSourceType.Stalker -> edited.stalker.normalized().let { edited.copy(url = it.portalUrl, stalker = it) }
+            LiveTvSourceType.Addon -> edited.copy(url = edited.addon.addonUrl)
         }
         val updated = source.copy(id = sourceId, epgUrl = edited.epgUrl.trim(), name = edited.name.trim())
         if (updated.copy(name = "") == existing.copy(name = "")) {
@@ -580,9 +586,22 @@ object LiveTvRepository {
         channel.stalkerCommand != null &&
             _uiState.value.sources.firstOrNull { it.id == channel.sourceId }?.type == LiveTvSourceType.Stalker
 
-    /** The channel with a link that plays now: Stalker links are created per play; others are as listed. */
+    /** Whether [channel] was picked from an installed addon, whose links are asked for per play. */
+    fun isAddonChannel(channel: LiveTvChannel): Boolean = channel.addonRef != null
+
+    /** The channel with a link that plays now: Stalker and addon links are created per play; others are as listed. */
     suspend fun playableChannel(channel: LiveTvChannel): LiveTvChannel {
         val source = _uiState.value.sources.firstOrNull { it.id == channel.sourceId }
+        if (source?.type == LiveTvSourceType.Addon && channel.addonRef != null) {
+            return try {
+                LiveTvAddons.resolve(appContext, source.addon, channel)
+            } catch (cancel: CancellationException) {
+                throw cancel
+            } catch (error: Exception) {
+                Log.w(TAG, "Addon link failed", error)
+                channel
+            }
+        }
         if (source?.type != LiveTvSourceType.Stalker || channel.stalkerCommand == null) return channel
         return try {
             LiveTvStalker.resolve(source.stalker, channel)
@@ -754,6 +773,11 @@ object LiveTvRepository {
         if (source.epgUrl.isNotBlank() && !source.epgUrl.isHttpUrl()) LiveTvError.GuideInvalidUrl else validateSource(source)
 
     private fun validateSource(source: LiveTvSource): LiveTvError? = when (source.type) {
+        LiveTvSourceType.Addon -> when {
+            source.addon.addonUrl.isBlank() -> LiveTvError.InvalidUrl
+            source.addon.channels.isEmpty() -> LiveTvError.NoChannels
+            else -> null
+        }
         LiveTvSourceType.M3u -> if (source.url.isBlank()) LiveTvError.InvalidUrl else null
         LiveTvSourceType.Xtream -> when {
             !source.xtream.isConfigured -> LiveTvError.XtreamRequired
@@ -771,6 +795,7 @@ object LiveTvRepository {
         LiveTvSourceType.M3u -> LiveTvError.LoadFailed
         LiveTvSourceType.Xtream -> LiveTvError.XtreamFailed
         LiveTvSourceType.Stalker -> LiveTvError.StalkerFailed
+        LiveTvSourceType.Addon -> LiveTvError.LoadFailed
     }
 
     /** One source's channels (tagged with the source) and guide links, plus a notice for a partial load. */
@@ -801,6 +826,21 @@ object LiveTvRepository {
                 if (channels.isEmpty()) throw LiveTvException(LiveTvError.XtreamNoChannels)
                 // Xtream providers publish their guide at xmltv.php.
                 channels to listOf("${settings.serverUrl}/xmltv.php?username=${settings.username.urlEncoded()}&password=${settings.password.urlEncoded()}")
+            }
+            LiveTvSourceType.Addon -> {
+                // The picked channels are kept with the source; their links are asked for per play.
+                val picked = source.addon.channels.map { channel ->
+                    LiveTvChannel(
+                        id = "${channel.type}|${channel.id}",
+                        name = channel.name,
+                        streamUrl = "nuvio-addon://${source.id}/${channel.type}/${java.net.URLEncoder.encode(channel.id, "UTF-8")}",
+                        logoUrl = channel.logo,
+                        group = channel.group,
+                        addonRef = "${channel.type}|${channel.id}",
+                    )
+                }
+                if (picked.isEmpty()) throw LiveTvException(LiveTvError.NoChannels)
+                picked to emptyList()
             }
             LiveTvSourceType.Stalker -> {
                 val (channels, incomplete, genres) = LiveTvStalker.channels(source.stalker)
@@ -927,7 +967,7 @@ object LiveTvRepository {
             val folder = url.encodedPath.dropLast("/get.php".length)
             Triple(url.newBuilder().encodedPath(folder.ifEmpty { "/" }).query(null).build().toString().trimEnd('/'), user, pass)
         }
-        LiveTvSourceType.Stalker -> null
+        LiveTvSourceType.Stalker, LiveTvSourceType.Addon -> null
     }
 
     private suspend fun fetchM3u(url: String): ParsedM3uPlaylist {

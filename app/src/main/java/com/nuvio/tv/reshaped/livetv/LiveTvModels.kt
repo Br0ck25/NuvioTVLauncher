@@ -24,6 +24,8 @@ data class LiveTvChannel(
     val tvgName: String? = null,
     /** How past programmes of this channel can be played again; null when the provider keeps none. */
     val catchup: LiveTvCatchup? = null,
+    /** Addon channels only: the addon's `type|id` the playable link is asked for, per play. */
+    val addonRef: String? = null,
 )
 
 /**
@@ -101,7 +103,7 @@ data class LiveTvProgramme(
     val image: String? = null,
 )
 
-enum class LiveTvSourceType { M3u, Stalker, Xtream }
+enum class LiveTvSourceType { M3u, Stalker, Xtream, Addon }
 
 @Immutable
 data class LiveTvStalkerSettings(
@@ -122,6 +124,28 @@ data class LiveTvXtreamSettings(
     val isConfigured: Boolean get() = serverUrl.isNotBlank() && username.isNotBlank() && password.isNotBlank()
 }
 
+/** One channel the viewer picked from an installed addon's `tv` / `channel` catalogs. */
+@Immutable
+data class LiveTvAddonChannel(
+    val id: String,
+    /** The catalog type the addon lists it under, as the stream request needs it (`tv`, `channel`). */
+    val type: String,
+    val name: String,
+    val logo: String? = null,
+    /** The catalog it came from, shown as the channel's category. */
+    val group: String = "",
+)
+
+/** An installed addon and the channels picked from it. */
+@Immutable
+data class LiveTvAddonSettings(
+    val addonUrl: String = "",
+    val addonName: String = "",
+    val channels: List<LiveTvAddonChannel> = emptyList(),
+) {
+    val isConfigured: Boolean get() = addonUrl.isNotBlank() && channels.isNotEmpty()
+}
+
 /** One saved channel source. Several can be added; their channels show as one list. */
 @Immutable
 data class LiveTvSource(
@@ -131,6 +155,7 @@ data class LiveTvSource(
     val url: String = "",
     val stalker: LiveTvStalkerSettings = LiveTvStalkerSettings(),
     val xtream: LiveTvXtreamSettings = LiveTvXtreamSettings(),
+    val addon: LiveTvAddonSettings = LiveTvAddonSettings(),
     /** A guide (XMLTV) link the viewer added; read before the source's own guide. */
     val epgUrl: String = "",
     /** The name the viewer gave the source; blank shows [label]'s default. */
@@ -149,6 +174,7 @@ data class LiveTvSource(
             LiveTvSourceType.M3u -> "m3u|${url.lowercase()}"
             LiveTvSourceType.Xtream -> "xtream|${xtream.serverUrl.lowercase()}|${xtream.username}"
             LiveTvSourceType.Stalker -> "stalker|${stalker.portalUrl.lowercase()}|${stalker.macAddress}"
+            LiveTvSourceType.Addon -> "addon|${addon.addonUrl.lowercase()}"
         }
 }
 

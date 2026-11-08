@@ -165,4 +165,13 @@
         <item quantity="one">Give it a name. %d channel will be in it.</item>
         <item quantity="other">Give it a name. %d channels will be in it.</item>
     </plurals>
+    <string name="live_tv_source_addon">Addon</string>
+    <string name="live_tv_addon_pick_addon">Choose an installed addon that has TV channels</string>
+    <string name="live_tv_addon_none">None of your installed addons list TV channels. Install one in Addons first.</string>
+    <string name="live_tv_addon_loading">Loading channels…</string>
+    <string name="live_tv_addon_no_channels">This addon listed no channels.</string>
+    <string name="live_tv_addon_select_all">Select all</string>
+    <string name="live_tv_addon_clear">Clear</string>
+    <string name="live_tv_addon_add_selected">Add %d channels</string>
+    <string name="live_tv_addon_change_addon">Change addon</string>
 </resources>

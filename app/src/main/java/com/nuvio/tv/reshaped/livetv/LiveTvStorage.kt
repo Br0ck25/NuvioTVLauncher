@@ -54,6 +54,23 @@ internal class LiveTvStorage(context: Context, private val profileId: Int) {
             url = optString("url"),
             stalker = LiveTvStalkerSettings(optString("portal"), optString("mac"), optString("stalkerUser"), optString("stalkerPassword")),
             xtream = LiveTvXtreamSettings(optString("server"), optString("xtreamUser"), optString("xtreamPassword")),
+            addon = LiveTvAddonSettings(
+                addonUrl = optString("addonUrl"),
+                addonName = optString("addonName"),
+                channels = optJSONArray("addonChannels")?.let { array ->
+                    (0 until array.length()).mapNotNull { index ->
+                        val item = array.optJSONObject(index) ?: return@mapNotNull null
+                        val channelId = item.optString("id").takeIf(String::isNotBlank) ?: return@mapNotNull null
+                        LiveTvAddonChannel(
+                            id = channelId,
+                            type = item.optString("type").ifBlank { "tv" },
+                            name = item.optString("name").ifBlank { channelId },
+                            logo = item.optString("logo").takeIf(String::isNotBlank),
+                            group = item.optString("group"),
+                        )
+                    }
+                }.orEmpty(),
+            ),
             epgUrl = optString("epg"),
             name = optString("name"),
         )
@@ -78,6 +95,25 @@ internal class LiveTvStorage(context: Context, private val profileId: Int) {
                 put("xtreamUser", xtream.username)
                 put("xtreamPassword", xtream.password)
             }
+            LiveTvSourceType.Addon -> {
+                put("addonUrl", addon.addonUrl)
+                put("addonName", addon.addonName)
+                put(
+                    "addonChannels",
+                    JSONArray().also { array ->
+                        addon.channels.forEach { channel ->
+                            array.put(
+                                JSONObject()
+                                    .put("id", channel.id)
+                                    .put("type", channel.type)
+                                    .put("name", channel.name)
+                                    .put("logo", channel.logo.orEmpty())
+                                    .put("group", channel.group),
+                            )
+                        }
+                    },
+                )
+            }
         }
     }
 
@@ -100,6 +136,7 @@ internal class LiveTvStorage(context: Context, private val profileId: Int) {
                 id, LiveTvSourceType.Stalker, url,
                 stalker = LiveTvStalkerSettings(string(STALKER_PORTAL).orEmpty(), string(STALKER_MAC).orEmpty(), string(STALKER_USER).orEmpty(), string(STALKER_PASSWORD).orEmpty()),
             ).takeIf { it.stalker.isConfigured }
+            LiveTvSourceType.Addon -> null // never kept in the single-source layout
             null -> null
         }
         val sources = listOfNotNull(source)
