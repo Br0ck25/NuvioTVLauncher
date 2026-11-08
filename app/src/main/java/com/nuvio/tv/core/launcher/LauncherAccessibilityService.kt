@@ -19,6 +19,28 @@ import kotlinx.coroutines.flow.asStateFlow
 class LauncherAccessibilityService : AccessibilityService() {
     private var delivery = HomeFallbackPolicy()
     private var buttonKeyEventHandler: ButtonKeyEventHandler? = null
+    private val mainHandler = Handler(Looper.getMainLooper())
+    private var recheckPending = false
+    private val recheckHome = Runnable {
+        recheckPending = false
+        if (HomeForegroundDelivery.isResumed) return@Runnable
+        if (LauncherSetup.isDefaultHome(this) || !LauncherSetup.accessibilityFallbackAllowed(this)) return@Runnable
+        if (!delivery.consumeRecheck()) return@Runnable
+        launchHome(SystemClock.uptimeMillis())
+        // Verify the relaunch actually won; bounded by the per-press budget.
+        scheduleHomeRecheck()
+    }
+
+    /**
+     * The system also starts the stock launcher for each HOME press and that start can land after
+     * ours. Look again shortly after a press and take the screen back only if Nuvio still isn't in
+     * front. Latest press wins, so a double tap is judged from its last press.
+     */
+    private fun scheduleHomeRecheck() {
+        mainHandler.removeCallbacks(recheckHome)
+        recheckPending = true
+        mainHandler.postDelayed(recheckHome, HomeFallbackPolicy.RECHECK_DELAY_MS)
+    }
 
     override fun onServiceConnected() {
         super.onServiceConnected()
@@ -58,7 +80,9 @@ class LauncherAccessibilityService : AccessibilityService() {
 
     override fun onKeyEvent(event: KeyEvent): Boolean {
         val handler = resolveKeyEventHandler()
-        val nativeHome = LauncherSetup.isDefaultHome(this)
+        // isDefaultHome is a PackageManager binder call. Every key press (D-pad included) passes through
+        // here on the main thread, so only pay for it when a key actually needs the answer.
+        val nativeHome by lazy(LazyThreadSafetyMode.NONE) { LauncherSetup.isDefaultHome(this) }
         val isForeground = HomeForegroundDelivery.isResumed
         val effectiveSource = if (isForeground) ButtonEventSource.FOREGROUND else ButtonEventSource.GLOBAL
 
@@ -116,6 +140,8 @@ class LauncherAccessibilityService : AccessibilityService() {
             // Consume the whole sequence, but only forward uncanceled releases, never held-key DOWNs.
             if (delivery.acceptKeyRelease(event.eventTime, event.action == KeyEvent.ACTION_UP, event.isCanceled)) {
                 launchHome(event.eventTime)
+                // Not tied to a stock-launcher window event: re-fronting its existing task may not emit one.
+                scheduleHomeRecheck()
             }
             return true
         }
@@ -145,15 +171,23 @@ class LauncherAccessibilityService : AccessibilityService() {
             delivery.onOtherApplicationWindow()
             return
         }
+        // Runs for every window change in every app, on the main thread. When Nuvio is the native
+        // HOME (the normal case) nothing below applies, so do one cheap resolver check and stop
+        // before the full capability scan (several PackageManager/RoleManager binder calls).
+        val nativeHome = LauncherSetup.isDefaultHome(this)
+        LauncherSetup.observeNativeHome(this, nativeHome)
+        if (nativeHome || !LauncherSetup.accessibilityFallbackAllowed(this) || HomeForegroundDelivery.isResumed) return
         val capabilities = LauncherCapabilities.detect(this)
-        LauncherSetup.observeNativeHome(this, capabilities.isDefaultHome)
-        if (capabilities.isDefaultHome || !capabilities.accessibilityFallbackAllowed || HomeForegroundDelivery.isResumed) return
         val component = ComponentName(pkg, className)
         if (component in capabilities.selectedHomeActivities) {
             // A launcher activity transition is only a last resort when firmware withholds HOME
             // keys. Dialogs, SystemUI and arbitrary windows in the launcher package are not HOME.
             val now = SystemClock.uptimeMillis()
-            if (delivery.acceptLauncherWindow(now)) launchHome(now)
+            if (delivery.acceptLauncherWindow(now)) {
+                launchHome(now)
+            } else if (delivery.shouldScheduleRecheck(now) && !recheckPending) {
+                scheduleHomeRecheck()
+            }
         } else if (isApplicationActivity(pkg, className)) {
             // Do not rearm on transient system panels/dialogs; they can accompany the same HOME.
             delivery.onOtherApplicationWindow()
@@ -170,6 +204,7 @@ class LauncherAccessibilityService : AccessibilityService() {
     override fun onInterrupt() {}
 
     override fun onUnbind(intent: Intent?): Boolean {
+        cancelHomeRecheck()
         operational.value = false
         if (activeServiceRef?.get() === this) {
             activeServiceRef = null
@@ -177,7 +212,13 @@ class LauncherAccessibilityService : AccessibilityService() {
         return super.onUnbind(intent)
     }
 
+    private fun cancelHomeRecheck() {
+        mainHandler.removeCallbacks(recheckHome)
+        recheckPending = false
+    }
+
     override fun onDestroy() {
+        cancelHomeRecheck()
         operational.value = false
         if (activeServiceRef?.get() === this) {
             activeServiceRef = null

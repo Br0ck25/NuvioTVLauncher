@@ -68,6 +68,42 @@ class HomeFallbackPolicyTest {
     }
 
     @Test
+    fun `late stock launcher window right after our launch earns a recheck`() {
+        val policy = HomeFallbackPolicy()
+        assertTrue(policy.acceptKeyRelease(1_000))
+        policy.onLaunch(1_000)
+        // The window is suppressed (see test above) but a follow-up check is still warranted.
+        assertFalse(policy.acceptLauncherWindow(1_045))
+        assertTrue(policy.shouldScheduleRecheck(1_045))
+        assertTrue(policy.shouldScheduleRecheck(2_000))
+        assertFalse(policy.shouldScheduleRecheck(2_001))
+    }
+
+    @Test
+    fun `no recheck without a physical press or a launch`() {
+        val policy = HomeFallbackPolicy()
+        assertFalse(policy.shouldScheduleRecheck(0))
+        // A window-triggered launch alone (no key release) never grants a recheck.
+        policy.onLaunch(100)
+        assertFalse(policy.shouldScheduleRecheck(150))
+        assertFalse(policy.consumeRecheck())
+    }
+
+    @Test
+    fun `recheck budget is bounded per press and renewed by the next press`() {
+        val policy = HomeFallbackPolicy()
+        assertTrue(policy.acceptKeyRelease(1_000))
+        policy.onLaunch(1_000)
+        assertTrue(policy.consumeRecheck())
+        assertTrue(policy.consumeRecheck())
+        assertFalse(policy.consumeRecheck())
+        assertFalse(policy.shouldScheduleRecheck(1_100))
+        assertTrue(policy.acceptKeyRelease(1_300))
+        policy.onLaunch(1_300)
+        assertTrue(policy.shouldScheduleRecheck(1_350))
+    }
+
+    @Test
     fun `service restart starts a fresh delivery guard without a fake previous press`() {
         val previous = HomeFallbackPolicy()
         previous.acceptKeyRelease(1_000)

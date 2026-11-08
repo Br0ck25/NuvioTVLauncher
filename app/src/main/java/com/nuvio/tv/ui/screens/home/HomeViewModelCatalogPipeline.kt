@@ -1207,11 +1207,18 @@ internal fun HomeViewModel.mergeRefreshedCatalogRow(
 }
 
 
-internal fun HomeViewModel.refreshVisibleCatalogsPipeline(requestedByUser: Boolean = false, forceReplace: Boolean = false) {
+internal fun HomeViewModel.refreshVisibleCatalogsPipeline(
+    requestedByUser: Boolean = false,
+    forceReplace: Boolean = false,
+    /** When set, only catalogs of these addons are re-requested (e.g. after a My Lists sync). */
+    onlyAddonIds: Set<String>? = null
+) {
     val loadedKeys = synchronized(catalogStateLock) { catalogsMap.keys.toSet() }
     if (loadedKeys.isEmpty()) return
 
-    val toRefresh = addonsCache.flatMap { addon ->
+    val toRefresh = addonsCache
+        .filter { addon -> onlyAddonIds == null || onlyAddonIds.any { it.equals(addon.id, ignoreCase = true) } }
+        .flatMap { addon ->
         addon.catalogs
             .filter { catalog ->
                 !catalog.isSearchOnlyCatalog() && catalogKey(
