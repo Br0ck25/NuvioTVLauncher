@@ -78,7 +78,7 @@ internal class HomeFallbackPolicy {
     companion object {
         const val WINDOW_DEBOUNCE_MS = 400L
         const val RECENT_LAUNCH_MS = 1_000L
-        const val RECHECK_DELAY_MS = 500L
+        const val RECHECK_DELAY_MS = 600L
         const val MAX_RECHECKS = 2
     }
 }

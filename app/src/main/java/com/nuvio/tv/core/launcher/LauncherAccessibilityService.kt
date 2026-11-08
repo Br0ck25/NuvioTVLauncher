@@ -27,6 +27,19 @@ class LauncherAccessibilityService : AccessibilityService() {
         if (LauncherSetup.isDefaultHome(this) || !LauncherSetup.accessibilityFallbackAllowed(this)) return@Runnable
         if (!delivery.consumeRecheck()) return@Runnable
         launchHome(SystemClock.uptimeMillis())
+        // Verify the relaunch actually won; bounded by the per-press budget.
+        scheduleHomeRecheck()
+    }
+
+    /**
+     * The system also starts the stock launcher for each HOME press and that start can land after
+     * ours. Look again shortly after a press and take the screen back only if Nuvio still isn't in
+     * front. Latest press wins, so a double tap is judged from its last press.
+     */
+    private fun scheduleHomeRecheck() {
+        mainHandler.removeCallbacks(recheckHome)
+        recheckPending = true
+        mainHandler.postDelayed(recheckHome, HomeFallbackPolicy.RECHECK_DELAY_MS)
     }
 
     override fun onServiceConnected() {
@@ -127,6 +140,8 @@ class LauncherAccessibilityService : AccessibilityService() {
             // Consume the whole sequence, but only forward uncanceled releases, never held-key DOWNs.
             if (delivery.acceptKeyRelease(event.eventTime, event.action == KeyEvent.ACTION_UP, event.isCanceled)) {
                 launchHome(event.eventTime)
+                // Not tied to a stock-launcher window event: re-fronting its existing task may not emit one.
+                scheduleHomeRecheck()
             }
             return true
         }
@@ -171,10 +186,7 @@ class LauncherAccessibilityService : AccessibilityService() {
             if (delivery.acceptLauncherWindow(now)) {
                 launchHome(now)
             } else if (delivery.shouldScheduleRecheck(now) && !recheckPending) {
-                // The system's own HOME start for this press can land after ours. Look once more
-                // shortly after and take the screen back only if Nuvio still isn't in front.
-                recheckPending = true
-                mainHandler.postDelayed(recheckHome, HomeFallbackPolicy.RECHECK_DELAY_MS)
+                scheduleHomeRecheck()
             }
         } else if (isApplicationActivity(pkg, className)) {
             // Do not rearm on transient system panels/dialogs; they can accompany the same HOME.
