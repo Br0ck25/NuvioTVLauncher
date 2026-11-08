@@ -30,7 +30,7 @@ import androidx.compose.material.icons.filled.Home
 import androidx.compose.material.icons.filled.Settings
 import androidx.compose.material.icons.filled.Tune
 import androidx.compose.runtime.Composable
-import androidx.compose.runtime.collectAsState
+import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
@@ -94,7 +94,7 @@ fun AppsScreen(
 ) {
     val context = LocalContext.current
     val setup = rememberLauncherSetupState()
-    val appsState by viewModel.state.collectAsState()
+    val appsState by viewModel.state.collectAsStateWithLifecycle()
     val apps = appsState.apps
     var contextMenuTargetKey by remember { mutableStateOf<String?>(null) }
 

@@ -5,7 +5,7 @@ import androidx.activity.result.contract.ActivityResultContracts
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.DisposableEffect
 import androidx.compose.runtime.LaunchedEffect
-import androidx.compose.runtime.collectAsState
+import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
@@ -37,7 +37,7 @@ internal fun rememberLauncherSetupState(): LauncherSetupState {
     val context = LocalContext.current
     val lifecycleOwner = LocalLifecycleOwner.current
     var capabilities by remember { mutableStateOf(LauncherCapabilities.detect(context)) }
-    val serviceOperational by LauncherAccessibilityService.isOperational.collectAsState()
+    val serviceOperational by LauncherAccessibilityService.isOperational.collectAsStateWithLifecycle()
     val isDefaultHome = capabilities.isDefaultHome
     val isAccessibilityEnabled = capabilities.accessibilityEnabled
     var showFallback by rememberSaveable { mutableStateOf(false) }

@@ -11,7 +11,7 @@ import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.DateRange
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
-import androidx.compose.runtime.collectAsState
+import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
@@ -60,8 +60,8 @@ fun rememberCalendarBell(meta: Meta): CalendarBell? = when {
 private fun rememberMovieBell(meta: Meta): CalendarBell? {
     val context = LocalContext.current
     val repo = remember { repoOf(context) } ?: return null
-    val follows by repo.follows.collectAsState()
-    val settings by repo.settings.collectAsState()
+    val follows by repo.follows.collectAsStateWithLifecycle()
+    val settings by repo.settings.collectAsStateWithLifecycle()
     if (settings.calendarOff) return null
     val imdb = meta.imdbOrNull()
     val existing = follows.firstOrNull { !it.isAiring && (it.id == meta.id || (imdb != null && (it.imdbId == imdb || it.id == imdb))) }
@@ -108,8 +108,8 @@ private fun rememberMovieBell(meta: Meta): CalendarBell? {
 fun rememberShowBell(id: String, imdbId: String?, name: String, poster: String?, background: String?): CalendarBell? {
     val context = LocalContext.current
     val repo = remember { repoOf(context) } ?: return null
-    val follows by repo.follows.collectAsState()
-    val settings by repo.settings.collectAsState()
+    val follows by repo.follows.collectAsStateWithLifecycle()
+    val settings by repo.settings.collectAsStateWithLifecycle()
     if (settings.calendarOff) return null
     val imdb = imdbId?.takeIf { it.startsWith("tt") } ?: id.takeIf { it.startsWith("tt") }
     val existing = follows.firstOrNull { it.id == id || (imdb != null && (it.imdbId == imdb || it.id == imdb)) }
@@ -134,7 +134,7 @@ fun CalendarNextLine(meta: Meta, @Suppress("UNUSED_PARAMETER") onFocused: () -> 
         runCatching { EntryPointAccessors.fromApplication(context.applicationContext, CalendarEntryPoint::class.java) }.getOrNull()
     } ?: return
     val repo = remember { entryPoint.calendarRepository() }
-    val settings by repo.settings.collectAsState()
+    val settings by repo.settings.collectAsStateWithLifecycle()
     if (settings.calendarOff) return
     val series = meta.isSeriesMeta()
     if (!series && !meta.isMovieMeta()) return
