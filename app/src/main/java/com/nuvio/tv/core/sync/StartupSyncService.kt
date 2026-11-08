@@ -33,6 +33,8 @@ import kotlin.coroutines.coroutineContext
 
 private const val TAG = "StartupSyncService"
 private const val FORCE_RESYNC_MIN_INTERVAL_MS = 30_000L
+/** Head start given to the UI before the first automatic startup pull begins. */
+private const val FIRST_AUTOMATIC_PULL_DELAY_MS = 4_000L
 private const val FULL_STARTUP_PULL_TTL_MS = 6 * 60 * 60 * 1000L
 private const val FOREGROUND_ACTIVITY_PULL_DELAY_MS = 2_500L
 private const val FOREGROUND_ACTIVITY_PULL_MIN_INTERVAL_MS = 2 * 60_000L
@@ -393,7 +395,12 @@ class StartupSyncService @Inject constructor(
         activityPullJob?.cancel()
         activityPullJob = null
 
+        // The first automatic pull after process start competes with Home's first draw on a weak CPU
+        // (profiles, library, addons, collections, credentials, media servers all at once). Let the UI
+        // settle first. Forced requests (sign-in, manual sync) still run immediately.
+        val deferFirstPull = !force && lastPulledKey == null
         startupPullJob = scope.launch {
+            if (deferFirstPull) delay(FIRST_AUTOMATIC_PULL_DELAY_MS)
             val maxAttempts = 3
             var syncCompleted = false
             for (attempt in 1..maxAttempts) {

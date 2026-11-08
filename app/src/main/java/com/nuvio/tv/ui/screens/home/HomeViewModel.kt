@@ -117,6 +117,8 @@ class HomeViewModel @Inject constructor(
 
         /** How long a home catalog is left alone before a return to Home re-requests it. */
         private const val HOME_CATALOG_REFRESH_TTL_MS = 15L * 60L * 1000L
+        /** A My Lists sync often lands as several events in a row; handle them as one. */
+        internal const val MY_LISTS_REFRESH_DEBOUNCE_MS = 1_500L
         internal const val EXTERNAL_META_PREFETCH_FOCUS_DEBOUNCE_MS = 220L
         internal const val EXTERNAL_META_PREFETCH_ADJACENT_DEBOUNCE_MS = 120L
         private const val MAX_ENRICHMENT_CACHE_SIZE = 64
@@ -950,7 +952,8 @@ class HomeViewModel @Inject constructor(
         }
         if (myListsTvSyncManager != null) {
             viewModelScope.launch {
-                myListsTvSyncManager.syncRefreshEvents.collect {
+                // Bursts (profile + auth + periodic) collapse into one pass.
+                myListsTvSyncManager.syncRefreshEvents.debounce(MY_LISTS_REFRESH_DEBOUNCE_MS).collect {
                     val freshAddons = runCatching { addonRepository.getInstalledAddons().first().enabledAddons() }.getOrNull()
                     val targetAddons = if (!freshAddons.isNullOrEmpty()) {
                         addonsCache = freshAddons
@@ -967,7 +970,22 @@ class HomeViewModel @Inject constructor(
                         return@collect
                     }
                     lastHomeCatalogRefreshAtMs = android.os.SystemClock.elapsedRealtime()
-                    loadAllCatalogs(targetAddons, forceReload = true)
+                    // A full forced reload wipes every row and re-requests every addon. Only do that when
+                    // the set of catalogs actually changed (a list was added/removed/renamed); otherwise
+                    // swap in fresh My Lists rows in place and leave all other addons alone.
+                    val catalogSetChanged = buildHomeCatalogLoadSignature(targetAddons) != activeCatalogLoadSignature
+                    if (catalogSetChanged || !hasAnyCatalogRows()) {
+                        loadAllCatalogs(targetAddons, forceReload = true)
+                    } else {
+                        refreshVisibleCatalogsPipeline(
+                            requestedByUser = true,
+                            forceReplace = true,
+                            onlyAddonIds = setOf(
+                                com.nuvio.tv.core.mylists.MyListsDefaultSeed.MY_LISTS_TV_ADDON_ID,
+                                com.nuvio.tv.core.mylists.MyListsDefaultSeed.MY_LISTS_ADDON_ID
+                            )
+                        )
+                    }
                 }
             }
         }
