@@ -109,10 +109,6 @@ fun truthy(value: String?): Boolean {
         value.equals("yes", ignoreCase = true)
 }
 
-// x86 / x86_64 are emulator and rare-device ABIs: leaving them out of release builds makes the APKs
-// noticeably smaller. Pass -PincludeX86=true to bring them back (emulator testing, x86 boxes).
-val includeX86 = parseBooleanProperty(providers.gradleProperty("includeX86").orNull)
-val releaseAbis = listOf("armeabi-v7a", "arm64-v8a") + if (includeX86) listOf("x86", "x86_64") else emptyList()
 val buildingAppBundle = gradle.startParameter.taskNames.any { it.contains("bundle", ignoreCase = true) }
 val useDebugReleaseSigning = env("CI_USE_DEBUG_SIGNING").equals("true", ignoreCase = true)
 val useLocalFfmpegDecoder = truthy(
@@ -261,7 +257,6 @@ android {
             buildConfigField("String", "SPONSOR_NAMES", buildConfigString(sponsorNames))
         }
         release {
-            ndk { abiFilters += releaseAbis }
             isMinifyEnabled = true
             isShrinkResources = true
             proguardFiles(
@@ -317,7 +312,7 @@ android {
         abi {
             isEnable = !buildingAppBundle
             reset()
-            include(*releaseAbis.toTypedArray())
+            include("armeabi-v7a", "arm64-v8a", "x86", "x86_64")
             isUniversalApk = true
         }
     }
