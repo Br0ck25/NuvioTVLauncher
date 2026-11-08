@@ -70,6 +70,33 @@ internal object LauncherSetup {
         }
     }
 
+    private const val ROLE_OFFER_PENDING = "home_role_offer_pending"
+    private const val ROLE_OFFER_COUNT = "home_role_offer_count"
+    private const val MAX_ROLE_OFFERS = 2
+
+    /**
+     * Called after an app update (no UI available): remember to offer the native HOME role the next
+     * time Nuvio is in front. Capped so a user who declines is not nagged on every update.
+     */
+    fun markRoleOfferAfterUpdate(context: Context) {
+        val prefs = preferences(context)
+        if (prefs.getInt(ROLE_OFFER_COUNT, 0) >= MAX_ROLE_OFFERS) return
+        if (!accessibilityFallbackAllowed(context) || isDefaultHome(context)) return
+        prefs.edit().putBoolean(ROLE_OFFER_PENDING, true).apply()
+    }
+
+    /** Returns the role request to launch (once per pending offer), or null. */
+    fun takePendingRoleOffer(context: Context): Intent? {
+        val prefs = preferences(context)
+        if (!prefs.getBoolean(ROLE_OFFER_PENDING, false)) return null
+        val count = prefs.getInt(ROLE_OFFER_COUNT, 0)
+        if (!prefs.edit().putBoolean(ROLE_OFFER_PENDING, false).putInt(ROLE_OFFER_COUNT, count + 1).commit()) {
+            return null
+        }
+        if (isDefaultHome(context)) return null
+        return createHomeRoleRequest(context)
+    }
+
     fun recordRoleRequestResult(context: Context, launchFailed: Boolean = false) {
         // A denial/no change is not proof of a firmware restriction. Only record thrown failures.
         preferences(context).edit().putBoolean(REQUEST_FAILED, launchFailed).apply()

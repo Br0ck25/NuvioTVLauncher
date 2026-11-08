@@ -3,6 +3,8 @@ package com.nuvio.tv.core.launcher
 import android.content.BroadcastReceiver
 import android.content.Context
 import android.content.Intent
+import android.os.Handler
+import android.os.Looper
 import android.util.Log
 import com.nuvio.tv.MainActivity
 
@@ -24,18 +26,42 @@ class LauncherBootReceiver : BroadcastReceiver() {
                         "optedIn=${AccessibilityWatchdog.isOptedIn(context)} " +
                         "defaultHome=$defaultHome fallbackAllowed=$fallbackAllowed"
                 )
+                if (intent.action == Intent.ACTION_MY_PACKAGE_REPLACED) {
+                    LauncherSetup.markRoleOfferAfterUpdate(context)
+                }
                 if (fallbackAllowed || defaultHome) {
-                    val launchIntent = Intent(context, MainActivity::class.java).apply {
-                        putExtra(LauncherHomeRequest.EXTRA_GO_HOME, true)
-                        addFlags(Intent.FLAG_ACTIVITY_NEW_TASK or Intent.FLAG_ACTIVITY_CLEAR_TOP or Intent.FLAG_ACTIVITY_SINGLE_TOP)
+                    val appContext = context.applicationContext
+                    relaunch(appContext, attempt = 0)
+                    // Other launchers (e.g. the stock one) can start their own screens right after an
+                    // update. If Nuvio still isn't in front, try again a couple of times.
+                    val handler = Handler(Looper.getMainLooper())
+                    RETRY_DELAYS_MS.forEachIndexed { index, delay ->
+                        handler.postDelayed({
+                            if (HomeForegroundDelivery.isResumed) {
+                                Log.i(TAG, "Retry ${index + 1} skipped: Nuvio already in foreground")
+                            } else {
+                                relaunch(appContext, attempt = index + 1)
+                            }
+                        }, delay)
                     }
-                    runCatching { context.startActivity(launchIntent) }
-                        .onSuccess { Log.i(TAG, "Home relaunch requested (may still be blocked by the system; check ActivityTaskManager)") }
-                        .onFailure { Log.w(TAG, "Home relaunch failed", it) }
                 } else {
                     Log.i(TAG, "Skipping home relaunch: not default home and accessibility fallback disallowed")
                 }
             }
         }
+    }
+
+    private fun relaunch(context: Context, attempt: Int) {
+        val launchIntent = Intent(context, MainActivity::class.java).apply {
+            putExtra(LauncherHomeRequest.EXTRA_GO_HOME, true)
+            addFlags(Intent.FLAG_ACTIVITY_NEW_TASK or Intent.FLAG_ACTIVITY_CLEAR_TOP or Intent.FLAG_ACTIVITY_SINGLE_TOP)
+        }
+        runCatching { context.startActivity(launchIntent) }
+            .onSuccess { Log.i(TAG, "Home relaunch #$attempt requested (may still be blocked by the system; check ActivityTaskManager)") }
+            .onFailure { Log.w(TAG, "Home relaunch #$attempt failed", it) }
+    }
+
+    private companion object {
+        val RETRY_DELAYS_MS = longArrayOf(3_000L, 8_000L)
     }
 }
