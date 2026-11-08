@@ -88,6 +88,7 @@ interface ListChannelsEntryPoint {
     fun addonRepository(): AddonRepository
     fun catalogRepository(): CatalogRepository
     fun metaRepository(): MetaRepository
+    fun tmdbService(): com.nuvio.tv.core.tmdb.TmdbService
     fun streamRepository(): StreamRepository
     fun libraryRepository(): LibraryRepository
     fun collectionsDataStore(): CollectionsDataStore
@@ -571,7 +572,7 @@ internal object ListChannels {
     ): Pair<ListSlot, String?>? {
         val type = entry.itemType.lowercase(Locale.US)
         if (type == "movie") {
-            val minutes = (entry.runtimeMinutes ?: DEFAULT_MOVIE_MIN).coerceIn(5, 240)
+            val minutes = (runtimeOrTmdb(entry.runtimeMinutes, entry.itemId, "movie") ?: DEFAULT_MOVIE_MIN).coerceIn(5, 240)
             val slot = ListSlot(
                 itemId = entry.itemId,
                 itemType = "movie",
@@ -591,7 +592,7 @@ internal object ListChannels {
         val season = entry.season
         val episode = entry.episode
         if ((season != null && episode != null) || entry.videoId.contains(':')) {
-            val minutes = (entry.runtimeMinutes ?: DEFAULT_EPISODE_MIN).coerceIn(5, 240)
+            val minutes = (runtimeOrTmdb(entry.runtimeMinutes, entry.itemId, "series") ?: DEFAULT_EPISODE_MIN).coerceIn(5, 240)
             val resolvedVideoId = if (entry.videoId.contains(':')) {
                 entry.videoId
             } else {
@@ -960,7 +961,7 @@ internal object ListChannels {
             .sortedWith(compareBy<Video>({ it.season }, { it.episode }))
         if (episodes.isEmpty()) {
             if (meta.videos.isNotEmpty()) return null // a show with nothing out yet
-            val minutes = (parseRuntimeMinutes(meta.runtime) ?: DEFAULT_MOVIE_MIN).coerceIn(5, 240)
+            val minutes = (runtimeOrTmdb(parseRuntimeMinutes(meta.runtime), item.id, "movie") ?: DEFAULT_MOVIE_MIN).coerceIn(5, 240)
             return ListSlot(
                 itemId = item.id, itemType = item.type, videoId = item.id, season = null, episode = null,
                 title = meta.name.ifBlank { item.name }, description = meta.description ?: item.description,
@@ -974,7 +975,7 @@ internal object ListChannels {
         }
         // Everything seen: the show starts over from its first episode not played on this channel.
         val pick = fresh.firstOrNull() ?: episodes.firstOrNull { it.id !in played } ?: episodes.first()
-        val minutes = (pick.runtime ?: parseRuntimeMinutes(meta.runtime) ?: DEFAULT_EPISODE_MIN).coerceIn(5, 240)
+        val minutes = (runtimeOrTmdb(pick.runtime ?: parseRuntimeMinutes(meta.runtime), item.id, "series") ?: DEFAULT_EPISODE_MIN).coerceIn(5, 240)
         val label = "S${pick.season}E${pick.episode}"
         return ListSlot(
             itemId = item.id, itemType = item.type, videoId = pick.id, season = pick.season, episode = pick.episode,
@@ -990,6 +991,15 @@ internal object ListChannels {
         val released = video.released?.take(10)?.takeIf { it.length == 10 } ?: return true
         val today = SimpleDateFormat("yyyy-MM-dd", Locale.US).format(Date())
         return released <= today
+    }
+
+    /** [known] if the addons gave a runtime, else what TMDB lists, so the guide matches the real file. */
+    private suspend fun runtimeOrTmdb(known: Int?, imdbId: String, type: String): Int? {
+        if (known != null) return known
+        val base = imdbId.substringBefore(':')
+        return withTimeoutOrNull(4_000L) {
+            runCatching { deps().tmdbService().fetchImdbRuntimeMinutes(base, type) }.getOrNull()
+        }
     }
 
     private fun parseRuntimeMinutes(text: String?): Int? {
