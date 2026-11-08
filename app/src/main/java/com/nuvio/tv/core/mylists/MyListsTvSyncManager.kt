@@ -19,6 +19,7 @@ import com.nuvio.tv.data.local.AddonPreferences
 import com.nuvio.tv.data.local.CollectionsDataStore
 import com.nuvio.tv.data.local.LayoutPreferenceDataStore
 import com.nuvio.tv.data.local.ProfileDataStoreFactory
+import com.nuvio.tv.core.poster.CustomPosterScreen
 import com.nuvio.tv.domain.model.Addon
 import com.nuvio.tv.domain.model.AuthState
 import com.nuvio.tv.domain.repository.AddonRepository
@@ -73,7 +74,9 @@ data class MyListsSyncResponse(
     val catalogIds: List<String>? = null,
     val catalogOrder: List<String>? = null,
     val collections: JsonArray? = null,
-    val channels: List<MyListsTvChannel>? = null
+    val channels: List<MyListsTvChannel>? = null,
+    val betterPosters: Boolean? = null,
+    val customPosterPattern: String? = null
 )
 
 @Keep
@@ -241,11 +244,15 @@ class MyListsTvSyncManager @Inject constructor(
             }
             prefs.remove(lastVersionHashKey)
         }
-        replaceMyListsAddonUrl(cleanManifest ?: "https://mylistsaddon.com/$normalizedTarget")
+        replaceMyListsAddonUrl(cleanManifest ?: "https://mylistsaddon.com/$normalizedTarget/tv")
         syncIfNeeded(force = true)
     }
 
     suspend fun unlinkAccount() {
+        val currentPattern = layoutPreferenceDataStore.customPosterUrlPattern.first()
+        if (currentPattern.contains("btttr.cc") || currentPattern.contains("mylistsaddon.com/bp")) {
+            layoutPreferenceDataStore.clearCustomPosterSettings()
+        }
         store().edit { prefs ->
             prefs[targetIdKey] = DEFAULT_TARGET_ID
             prefs.remove(manifestUrlKey)
@@ -458,7 +465,7 @@ class MyListsTvSyncManager @Inject constructor(
                 ?: if (effectiveTarget == DEFAULT_TARGET_ID) {
                     MyListsDefaultSeed.MY_LISTS_DEFAULT_MANIFEST_URL
                 } else {
-                    "https://mylistsaddon.com/$effectiveTarget/manifest.json"
+                    "https://mylistsaddon.com/$effectiveTarget/tv/manifest.json"
                 }
 
             var refreshedAddon: Addon? = null
@@ -469,6 +476,7 @@ class MyListsTvSyncManager @Inject constructor(
                     is NetworkResult.Success -> refreshedAddon = fetchResult.data
                     else -> Log.w(TAG, "Manifest hot-reload failed for $cleanBaseUrl, using installed state")
                 }
+                cleanUpLegacyAddon(cleanBaseUrl)
             }
 
             if (profileManager.activeProfileId.value != syncProfileId) {
@@ -493,6 +501,7 @@ class MyListsTvSyncManager @Inject constructor(
 
             // 3. Diff catalog IDs: auto-enable newly added lists and prune removed lists
             val previousKnownCatalogKeys = parseStringList(prefs[knownCatalogKeysKey])
+                .map { MyListsDefaultSeed.migrateCatalogKey(it) }
                 .ifEmpty { MyListsDefaultSeed.DEFAULT_HOME_CATALOG_KEYS }
             val newCatalogKeys = if (refreshedAddon != null) {
                 applyCatalogDiffAndOrder(
@@ -550,6 +559,51 @@ class MyListsTvSyncManager @Inject constructor(
                 editPrefs[channelsJsonKey] = gson.toJson(channelsToStore)
             }
 
+            // 5. Better Posters synchronization
+            var hasBetterPosters = syncResponse.betterPosters == true
+            if (!hasBetterPosters && isCustomAccount && refreshedAddon != null) {
+                val firstCatalog = refreshedAddon.catalogs.firstOrNull { !it.isSearchOnlyCatalog() }
+                if (firstCatalog != null) {
+                    val probeUrl = "${refreshedAddon.baseUrl}/catalog/${firstCatalog.apiType}/${firstCatalog.id}.json"
+                    try {
+                        val req = Request.Builder()
+                            .url(probeUrl)
+                            .header("Origin", MyListsDefaultSeed.MY_LISTS_BASE_ORIGIN)
+                            .header("Referer", "${MyListsDefaultSeed.MY_LISTS_BASE_ORIGIN}/")
+                            .cacheControl(CacheControl.FORCE_NETWORK)
+                            .get()
+                            .build()
+                        okHttpClient.newCall(req).execute().use { resp ->
+                            if (resp.isSuccessful) {
+                                val respBody = resp.body?.string().orEmpty()
+                                hasBetterPosters = respBody.contains("/bp/") || respBody.contains("btttr.cc")
+                            }
+                        }
+                    } catch (e: Exception) {
+                        Log.d(TAG, "Better Posters probe failed: ${e.message}")
+                    }
+                }
+            }
+
+            if (isCustomAccount && hasBetterPosters) {
+                val currentPattern = layoutPreferenceDataStore.customPosterUrlPattern.first()
+                if (currentPattern.isBlank() || currentPattern.contains("btttr.cc") || currentPattern.contains("mylistsaddon.com/bp")) {
+                    val targetPattern = syncResponse.customPosterPattern?.takeIf { it.isNotBlank() }
+                        ?: "https://btttr.cc/poster/imdb/poster-default/{imdb_id}.jpg"
+                    if (currentPattern != targetPattern) {
+                        layoutPreferenceDataStore.setCustomPosterUrlPattern(targetPattern)
+                        layoutPreferenceDataStore.setCustomPosterEnabledScreens(CustomPosterScreen.ALL)
+                        Log.i(TAG, "Auto-configured Better Posters pattern: $targetPattern across all screens")
+                    }
+                }
+            } else if (isCustomAccount && !hasBetterPosters) {
+                val currentPattern = layoutPreferenceDataStore.customPosterUrlPattern.first()
+                if (currentPattern.contains("btttr.cc") || currentPattern.contains("mylistsaddon.com/bp")) {
+                    layoutPreferenceDataStore.clearCustomPosterSettings()
+                    Log.i(TAG, "Cleared Better Posters pattern as it was disabled in My Lists account")
+                }
+            }
+
             _syncRefreshEvents.tryEmit(Unit)
             true
         }
@@ -582,12 +636,31 @@ class MyListsTvSyncManager @Inject constructor(
     private fun extractTargetFromManifestUrl(url: String): String? {
         val clean = canonicalizeManifestBaseUrl(url)
         val path = clean.removePrefix(MyListsDefaultSeed.MY_LISTS_BASE_ORIGIN).trim('/')
-        if (path.isBlank() || path.equals("nuvio-default", ignoreCase = true)) return null
-        val segments = path.split('/').filter { it.isNotBlank() }
+        if (path.isBlank() || path.equals("nuvio-default", ignoreCase = true) || path.equals("nuvio-default/tv", ignoreCase = true)) return null
+        val segments = path.split('/').filter { it.isNotBlank() && !it.equals("tv", ignoreCase = true) }
         return when {
             segments.size >= 2 && (segments[0] == "u" || segments[0] == "i") -> segments[1]
             segments.size == 1 -> segments[0]
             else -> null
+        }
+    }
+
+    private suspend fun cleanUpLegacyAddon(currentTvBaseUrl: String) {
+        try {
+            val installed = addonRepository.getInstalledAddons().first()
+            for (addon in installed) {
+                val isCollections = addon.id.equals(MyListsDefaultSeed.MY_LISTS_COLLECTIONS_ADDON_ID, ignoreCase = true)
+                if (isCollections) continue
+                val isLegacyId = addon.id.equals(MyListsDefaultSeed.MY_LISTS_ADDON_ID, ignoreCase = true)
+                val isOldUrl = MyListsDefaultSeed.isMyListsAddonUrl(addon.baseUrl) &&
+                    !addon.baseUrl.equals(currentTvBaseUrl, ignoreCase = true)
+                if (isLegacyId || isOldUrl) {
+                    Log.i(TAG, "Removing legacy/duplicate My Lists addon: id=${addon.id}, baseUrl=${addon.baseUrl}")
+                    addonRepository.removeAddon(addon.baseUrl)
+                }
+            }
+        } catch (e: Exception) {
+            Log.w(TAG, "Failed cleaning up legacy My Lists addon: ${e.message}")
         }
     }
 
@@ -653,16 +726,10 @@ class MyListsTvSyncManager @Inject constructor(
         if (active == null || active.isPrimary || !active.usesPrimaryAddons) {
             val currentUrls = addonPreferences.installedAddonUrls.first()
             val existingMyListsIndex = currentUrls.indexOfFirst { MyListsDefaultSeed.isMyListsAddonUrl(it) }
-            if (existingMyListsIndex == -1) {
-                addonPreferences.addAddon(cleanNew)
-                return
-            }
-            val existingUrl = canonicalizeManifestBaseUrl(currentUrls[existingMyListsIndex])
-            if (existingUrl.equals(cleanNew, ignoreCase = true)) {
-                return
-            }
-            val updatedUrls = currentUrls.toMutableList()
-            updatedUrls[existingMyListsIndex] = cleanNew
+            val nonMyListsUrls = currentUrls.filterNot { MyListsDefaultSeed.isMyListsAddonUrl(it) }
+            val insertIndex = if (existingMyListsIndex >= 0) existingMyListsIndex.coerceAtMost(nonMyListsUrls.size) else 0
+            val updatedUrls = nonMyListsUrls.toMutableList()
+            updatedUrls.add(insertIndex, cleanNew)
             addonPreferences.setAddonOrder(updatedUrls.distinct())
         }
     }

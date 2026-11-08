@@ -117,7 +117,7 @@ class AddonPreferences @Inject constructor(
                 installedCustomUrl != null ->
                     canonicalizeUrl(installedCustomUrl)
                 resolvedTargetId.isNotBlank() && resolvedTargetId != MyListsDefaultSeed.DEFAULT_TARGET_ID ->
-                    "https://mylistsaddon.com/$resolvedTargetId"
+                    "https://mylistsaddon.com/$resolvedTargetId/tv"
                 else ->
                     MyListsDefaultSeed.MY_LISTS_DEFAULT_BASE_URL
             }

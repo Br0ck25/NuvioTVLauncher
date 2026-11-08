@@ -118,7 +118,9 @@ import com.nuvio.tv.domain.model.ContinueWatchingCardStyle
 import com.nuvio.tv.domain.model.PLACEHOLDER_IMAGE_URL
 import com.nuvio.tv.domain.model.isPlaceholder
 import com.nuvio.tv.ui.components.ContinueWatchingCard
+import com.nuvio.tv.ui.components.UPCOMING_SCHEDULE_CARD_WIDTH
 import com.nuvio.tv.ui.components.continueWatchingArtworkWidth
+import com.nuvio.tv.ui.components.continueWatchingArtworkHeight
 import com.nuvio.tv.ui.components.continueWatchingImageCacheKey
 import com.nuvio.tv.ui.components.continueWatchingImageModel
 import com.nuvio.tv.ui.components.continueWatchingShouldBlur
@@ -178,6 +180,7 @@ private fun ModernContinueWatchingRowItem(
     onFocused: () -> Unit,
     onContinueWatchingClick: (ContinueWatchingItem) -> Unit,
     onShowOptions: (ContinueWatchingItem) -> Unit,
+    isUpcomingCard: Boolean = false,
     modifier: Modifier = Modifier
 ) {
     val item = payload.item
@@ -216,6 +219,7 @@ private fun ModernContinueWatchingRowItem(
         cardStyle = continueWatchingCardStyle,
         cornerRadius = continueWatchingCornerRadius,
         isFocused = isCardFocused,
+        isUpcomingCard = isUpcomingCard,
         modifier = modifier
             .focusRequester(requester)
             .onFocusChanged {
@@ -678,12 +682,15 @@ internal fun ModernRowSection(
         ) {
             if (!isActiveRow() || isVerticalRowsScrollingState.value) return@LaunchedEffect
             delay(150) // Wait before spamming image requests to survive rapid vertical D-pad scrolls!
+            val isUpcomingRow = row.key == MODERN_UPCOMING_ROW_KEY
             val cwWidthPx = with(density) {
                 continueWatchingArtworkWidth(
-                    continueWatchingCardStyle, continueWatchingCardWidth, continueWatchingCardHeight
+                    continueWatchingCardStyle, continueWatchingCardWidth, continueWatchingCardHeight, isUpcomingRow
                 ).roundToPx()
             }
-            val cwHeightPx = with(density) { continueWatchingCardHeight.roundToPx() }
+            val cwHeightPx = with(density) {
+                continueWatchingArtworkHeight(continueWatchingCardHeight, isUpcomingRow).roundToPx()
+            }
             fun imageUrlAndKey(item: ModernCarouselItem): Pair<String, String>? {
                 return when (val payload = item.payload) {
                     is ModernPayload.InstalledApp -> null
@@ -715,13 +722,14 @@ internal fun ModernRowSection(
                     }
                     is ModernPayload.ContinueWatching -> {
                         // Use the same model and cache key the card computes so the prefetch warms the entry the card actually reads.
+                        val effectiveCardStyle = if (isUpcomingRow) ContinueWatchingCardStyle.CARD else continueWatchingCardStyle
                         val model = continueWatchingImageModel(
-                            payload.item, continueWatchingUsesEpisodeThumbnails(continueWatchingCardStyle, useEpisodeThumbnails),
-                            continueWatchingCardStyle != ContinueWatchingCardStyle.CARD
+                            payload.item, continueWatchingUsesEpisodeThumbnails(effectiveCardStyle, useEpisodeThumbnails),
+                            effectiveCardStyle != ContinueWatchingCardStyle.CARD
                         ) ?: return null
                         val blur = continueWatchingShouldBlur(
-                            payload.item, blurUnwatchedEpisodes, continueWatchingUsesEpisodeThumbnails(continueWatchingCardStyle, useEpisodeThumbnails),
-                            continueWatchingCardStyle != ContinueWatchingCardStyle.CARD
+                            payload.item, blurUnwatchedEpisodes, continueWatchingUsesEpisodeThumbnails(effectiveCardStyle, useEpisodeThumbnails),
+                            effectiveCardStyle != ContinueWatchingCardStyle.CARD
                         )
                         model to continueWatchingImageCacheKey(model, cwWidthPx, cwHeightPx, blur)
                     }
@@ -996,19 +1004,29 @@ internal fun ModernRowSection(
                             )
                         }
                         is ModernPayload.ContinueWatching -> {
+                            val isUpcoming = row.key == MODERN_UPCOMING_ROW_KEY
                             ModernContinueWatchingRowItem(
                                 payload = payload,
                                 requester = requester,
                                 isTargetItem = isTargetItem,
-                                cardWidth = continueWatchingCardWidth,
+                                cardWidth = if (isUpcoming) UPCOMING_SCHEDULE_CARD_WIDTH else continueWatchingCardWidth,
                                 imageHeight = continueWatchingCardHeight,
                                 blurUnwatchedEpisodes = blurUnwatchedEpisodes,
                                 useEpisodeThumbnails = useEpisodeThumbnails,
                                 continueWatchingCardStyle = continueWatchingCardStyle,
                                 continueWatchingCornerRadius = continueWatchingCornerRadius,
                                 onFocused = onFocused,
-                                onContinueWatchingClick = onContinueWatchingClick,
-                                onShowOptions = onContinueWatchingOptions
+                                onContinueWatchingClick = if (isUpcoming) {
+                                    { item ->
+                                        val (id, type) = when (item) {
+                                            is ContinueWatchingItem.InProgress -> item.progress.contentId to item.progress.contentType
+                                            is ContinueWatchingItem.NextUp -> item.info.contentId to item.info.contentType
+                                        }
+                                        onNavigateToDetail(id, type, "")
+                                    }
+                                } else onContinueWatchingClick,
+                                onShowOptions = onContinueWatchingOptions,
+                                isUpcomingCard = isUpcoming
                             )
                         }
 

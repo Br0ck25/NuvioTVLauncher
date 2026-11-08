@@ -1284,7 +1284,7 @@ private fun PlaybackNavHost(
         composable(Screen.Calendar.route) {
             com.nuvio.tv.calendar.CalendarScreen(
                 onOpenDetail = { id, type, addonBaseUrl, season, episode ->
-                    navController.navigate(Screen.Detail.createRoute(id, type, addonBaseUrl, season = season, episode = episode))
+                    navController.navigate(Screen.Detail.createRoute(id, type, addonBaseUrl, returnFocusSeason = season, returnFocusEpisode = episode))
                 },
                 onFindSources = { e ->
                     val videoId = e.videoId ?: return@CalendarScreen

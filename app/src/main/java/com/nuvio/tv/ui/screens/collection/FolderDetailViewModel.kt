@@ -750,14 +750,16 @@ class FolderDetailViewModel @Inject constructor(
         addons: List<com.nuvio.tv.domain.model.Addon>,
         addonId: String
     ): com.nuvio.tv.domain.model.Addon? {
-        addons.find { it.id == addonId }?.let { return it }
         if (
+            addonId.equals(MyListsDefaultSeed.MY_LISTS_TV_ADDON_ID, ignoreCase = true) ||
             addonId.equals(MyListsDefaultSeed.MY_LISTS_COLLECTIONS_ADDON_ID, ignoreCase = true) ||
             addonId.equals(MyListsDefaultSeed.MY_LISTS_ADDON_ID, ignoreCase = true)
         ) {
-            return addons.find { MyListsDefaultSeed.isMyListsAddon(it) }
+            return addons.find { MyListsDefaultSeed.isMyListsAddon(it) && !MyListsDefaultSeed.isMyListsDefaultUrl(it.baseUrl) }
+                ?: addons.find { MyListsDefaultSeed.isMyListsAddon(it) }
         }
-        return null
+        return addons.find { it.id == addonId && !MyListsDefaultSeed.isMyListsDefaultUrl(it.baseUrl) }
+            ?: addons.find { it.id == addonId }
     }
 
     private fun loadAddonCatalogForTab(tabIndex: Int, source: AddonCatalogCollectionSource) {

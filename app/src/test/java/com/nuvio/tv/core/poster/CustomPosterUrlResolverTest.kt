@@ -184,6 +184,26 @@ class CustomPosterUrlResolverTest {
         assertEquals("https://btttr.cc/poster/tmdb/poster-default/series-1396.jpg", url)
     }
 
+    @Test
+    fun `resolve MyLists BetterPosters pattern with IMDb id`() {
+        val ids = CustomPosterUrlResolver.extractIds("tt0137523")
+        val url = CustomPosterUrlResolver.resolve(
+            "https://mylistsaddon.com/bp/poster/imdb/{imdb_id}.jpg",
+            ids, "movie"
+        )
+        assertEquals("https://mylistsaddon.com/bp/poster/imdb/tt0137523.jpg", url)
+    }
+
+    @Test
+    fun `resolve MyLists BetterPosters falls back to TMDB when IMDb id is missing`() {
+        val ids = CustomPosterUrlResolver.extractIds("tmdb:1396")
+        val url = CustomPosterUrlResolver.resolve(
+            "https://mylistsaddon.com/bp/poster/imdb/{imdb_id}.jpg",
+            ids, "series"
+        )
+        assertEquals("https://mylistsaddon.com/bp/poster/tmdb/series-1396.jpg", url)
+    }
+
     // ── PostersPlus ─────────────────────────────────────────────────────
 
     @Test

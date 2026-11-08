@@ -42,16 +42,19 @@ import androidx.compose.material.icons.rounded.PlayArrow
 import androidx.compose.material.icons.filled.BugReport
 import androidx.compose.material.icons.filled.Build
 import androidx.compose.material.icons.filled.CloudDownload
+import androidx.compose.material.icons.filled.DateRange
 import androidx.compose.material.icons.filled.Explore
 import androidx.compose.material.icons.filled.FastForward
 import androidx.compose.material.icons.filled.GridView
 import androidx.compose.material.icons.filled.Home
 import androidx.compose.material.icons.filled.Info
 import androidx.compose.material.icons.filled.Link
+import androidx.compose.material.icons.filled.LiveTv
 import androidx.compose.material.icons.filled.Palette
 import androidx.compose.material.icons.filled.People
 import androidx.compose.material.icons.filled.Person
 import androidx.compose.material.icons.filled.Settings
+import androidx.compose.material.icons.filled.SettingsRemote
 import androidx.compose.material.icons.filled.Sync
 import androidx.compose.material.icons.filled.Tune
 import androidx.compose.runtime.Composable
@@ -161,12 +164,14 @@ private fun settingsSectionSpec(category: SettingsCategory): SettingsSectionSpec
     SettingsCategory.APPEARANCE -> SettingsSectionSpec(category, stringResource(R.string.appearance_title), Icons.Default.Palette, destination = SettingsSectionDestination.Inline)
     SettingsCategory.LAYOUT -> SettingsSectionSpec(category, stringResource(R.string.settings_layout), Icons.Default.GridView, destination = SettingsSectionDestination.Inline)
     SettingsCategory.CONTENT_DISCOVERY -> SettingsSectionSpec(category, stringResource(R.string.settings_content_discovery), Icons.Default.Explore, destination = SettingsSectionDestination.Inline)
-    SettingsCategory.CALENDAR -> SettingsSectionSpec(category, "Calendar", androidx.compose.material.icons.Icons.Default.DateRange, destination = SettingsSectionDestination.Inline)
+    SettingsCategory.CALENDAR -> SettingsSectionSpec(category, "Calendar", Icons.Filled.DateRange, destination = SettingsSectionDestination.Inline)
+    SettingsCategory.LIVE_TV -> SettingsSectionSpec(category, stringResource(R.string.live_tv_title), Icons.Default.LiveTv, destination = SettingsSectionDestination.Inline)
     SettingsCategory.PLAYBACK -> SettingsSectionSpec(category, stringResource(R.string.settings_playback), Icons.Rounded.PlayArrow, destination = SettingsSectionDestination.Inline)
     SettingsCategory.INTEGRATION -> SettingsSectionSpec(category, stringResource(R.string.settings_integration), Icons.Default.Link, destination = SettingsSectionDestination.Inline)
     SettingsCategory.TRACKING -> SettingsSectionSpec(category, stringResource(R.string.settings_tracking_title), Icons.Default.Sync, destination = SettingsSectionDestination.Inline)
     SettingsCategory.ADVANCED -> SettingsSectionSpec(category, stringResource(R.string.settings_advanced), Icons.Default.Build, destination = SettingsSectionDestination.Inline)
     SettingsCategory.DEFAULT_LAUNCHER -> SettingsSectionSpec(category, stringResource(R.string.settings_default_launcher), Icons.Default.Home, destination = SettingsSectionDestination.Inline)
+    SettingsCategory.REMOTE_BUTTONS -> SettingsSectionSpec(category, stringResource(R.string.settings_remote_buttons), Icons.Default.SettingsRemote, destination = SettingsSectionDestination.Inline)
     SettingsCategory.ABOUT -> SettingsSectionSpec(category, stringResource(R.string.about_title), Icons.Default.Info, destination = SettingsSectionDestination.Inline)
     SettingsCategory.DEBUG -> SettingsSectionSpec(category, stringResource(R.string.settings_debug), Icons.Default.BugReport, destination = SettingsSectionDestination.Inline)
     SettingsCategory.EXPERIENCE -> SettingsSectionSpec(category, stringResource(R.string.settings_experience), Icons.Default.Tune, destination = SettingsSectionDestination.Inline)
@@ -237,11 +242,13 @@ fun SettingsScreen(
             SettingsCategory.LAYOUT to FocusRequester(),
             SettingsCategory.CONTENT_DISCOVERY to FocusRequester(),
             SettingsCategory.CALENDAR to FocusRequester(),
+            SettingsCategory.LIVE_TV to FocusRequester(),
             SettingsCategory.INTEGRATION to FocusRequester(),
             SettingsCategory.TRACKING to FocusRequester(),
             SettingsCategory.PLAYBACK to FocusRequester(),
             SettingsCategory.ADVANCED to FocusRequester(),
             SettingsCategory.DEFAULT_LAUNCHER to FocusRequester(),
+            SettingsCategory.REMOTE_BUTTONS to FocusRequester(),
             SettingsCategory.ABOUT to FocusRequester(),
             SettingsCategory.ACCOUNT to FocusRequester()
         )
@@ -962,6 +969,13 @@ private fun SettingsDetailPane(
                 null
             }
         )
+        SettingsCategory.REMOTE_BUTTONS -> ButtonMapperSettingsContent(
+            initialFocusRequester = if (allowDetailAutofocus) {
+                contentFocusRequesters[SettingsCategory.REMOTE_BUTTONS]
+            } else {
+                null
+            }
+        )
         SettingsCategory.ABOUT -> AboutSettingsContent(
             onNavigateToSupportersContributors = onNavigateToSupportersContributors,
             onNavigateToLicensesAttributions = onNavigateToLicensesAttributions,
@@ -984,6 +998,13 @@ private fun SettingsDetailPane(
         SettingsCategory.CALENDAR -> CalendarSettingsContent(
             initialFocusRequester = if (allowDetailAutofocus) {
                 contentFocusRequesters[SettingsCategory.CALENDAR]
+            } else {
+                null
+            }
+        )
+        SettingsCategory.LIVE_TV -> LiveTvSettingsContent(
+            initialFocusRequester = if (allowDetailAutofocus) {
+                contentFocusRequesters[SettingsCategory.LIVE_TV]
             } else {
                 null
             }

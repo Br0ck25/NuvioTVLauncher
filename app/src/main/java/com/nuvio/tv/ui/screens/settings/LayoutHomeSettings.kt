@@ -14,28 +14,37 @@ import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
+import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.lazy.LazyRow
 import androidx.compose.foundation.lazy.itemsIndexed
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.Check
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.collectAsState
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
+import androidx.compose.runtime.rememberCoroutineScope
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.focus.FocusRequester
 import androidx.compose.ui.focus.focusRequester
 import androidx.compose.ui.focus.onFocusChanged
+import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.semantics.Role
+import androidx.compose.ui.semantics.clearAndSetSemantics
+import androidx.compose.ui.semantics.contentDescription
 import androidx.compose.ui.semantics.role
 import androidx.compose.ui.semantics.selected
 import androidx.compose.ui.semantics.semantics
 import androidx.compose.ui.unit.dp
+import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import androidx.tv.material3.Border
+import androidx.tv.material3.Button
+import androidx.tv.material3.ButtonDefaults
 import androidx.tv.material3.Card
 import androidx.tv.material3.CardDefaults
 import androidx.tv.material3.ExperimentalTvMaterial3Api
@@ -43,12 +52,18 @@ import androidx.tv.material3.Icon
 import androidx.tv.material3.MaterialTheme
 import androidx.tv.material3.Text
 import com.nuvio.tv.R
+import com.nuvio.tv.calendar.CalendarEntryPoint
+import com.nuvio.tv.calendar.CalendarSettings
 import com.nuvio.tv.domain.model.DiscoverLocation
 import com.nuvio.tv.domain.model.HomeImdbRatingsVisibility
 import com.nuvio.tv.domain.model.HomeLayout
+import com.nuvio.tv.reshaped.livetv.LiveTvPreferences
 import com.nuvio.tv.ui.components.ClassicLayoutPreview
 import com.nuvio.tv.ui.components.GridLayoutPreview
 import com.nuvio.tv.ui.components.ModernLayoutPreview
+import dagger.hilt.android.EntryPointAccessors
+import kotlinx.coroutines.flow.flowOf
+import kotlinx.coroutines.launch
 
 @Composable
 internal fun LayoutHomeLayoutSection(
@@ -208,6 +223,21 @@ internal fun LayoutSidebarSection(
     uiState: LayoutSettingsUiState,
     onEvent: (LayoutSettingsEvent) -> Unit
 ) {
+    val context = LocalContext.current
+    val scope = rememberCoroutineScope()
+    LiveTvPreferences.ensureLoaded(context)
+    val liveTvEnabled by LiveTvPreferences.enabled.collectAsStateWithLifecycle()
+    val calendarPrefs = remember(context) {
+        runCatching {
+            EntryPointAccessors.fromApplication(
+                context.applicationContext,
+                CalendarEntryPoint::class.java
+            ).calendarPreferences()
+        }.getOrNull()
+    }
+    val calendarSettings by (calendarPrefs?.settings ?: flowOf(CalendarSettings()))
+        .collectAsState(initial = CalendarSettings())
+
     SettingsToggleRow(
         title = stringResource(R.string.layout_modern_sidebar),
         subtitle = stringResource(R.string.layout_modern_sidebar_sub),
@@ -242,6 +272,157 @@ internal fun LayoutSidebarSection(
         rememberedLocation = uiState.lastNonOffDiscoverLocation,
         onLocationSelected = { location -> onEvent(LayoutSettingsEvent.SetDiscoverLocation(location)) }
     )
+
+    Spacer(modifier = Modifier.height(6.dp))
+    Text(
+        text = "Sidebar Menu Items",
+        style = MaterialTheme.typography.labelLarge,
+        color = NuvioTheme.colors.TextSecondary
+    )
+    Text(
+        text = "Turn items on or off and move them up or down to rearrange the sidebar menu",
+        style = MaterialTheme.typography.bodySmall,
+        color = NuvioTheme.colors.TextTertiary
+    )
+
+    val strNavHome = stringResource(R.string.nav_home)
+    val strNavDiscover = stringResource(R.string.nav_discover)
+    val strNavSearch = stringResource(R.string.nav_search)
+    val strNavLibrary = stringResource(R.string.nav_library)
+    val strNavLiveTv = stringResource(R.string.live_tv_title)
+    val strNavApps = stringResource(R.string.nav_apps)
+    val strNavSettings = stringResource(R.string.nav_settings)
+
+    val order = uiState.sidebarItemOrder
+    order.forEachIndexed { index, itemKey ->
+        val title = when (itemKey) {
+            "home" -> strNavHome
+            "discover" -> strNavDiscover
+            "search" -> strNavSearch
+            "library" -> strNavLibrary
+            "calendar" -> "Calendar"
+            "livetv" -> strNavLiveTv
+            "apps" -> strNavApps
+            "settings" -> strNavSettings
+            else -> itemKey.replaceFirstChar { it.uppercase() }
+        }
+        val isChecked = when (itemKey) {
+            "discover" -> uiState.discoverLocation == DiscoverLocation.IN_SIDEBAR &&
+                "discover" !in uiState.disabledSidebarItems
+            "calendar" -> !calendarSettings.calendarOff &&
+                "calendar" !in uiState.disabledSidebarItems
+            "livetv" -> liveTvEnabled &&
+                "livetv" !in uiState.disabledSidebarItems
+            else -> itemKey !in uiState.disabledSidebarItems
+        }
+        val onToggle: () -> Unit = {
+            when (itemKey) {
+                "discover" -> {
+                    val nextOn = !isChecked
+                    onEvent(LayoutSettingsEvent.SetSidebarItemEnabled("discover", nextOn))
+                    onEvent(
+                        LayoutSettingsEvent.SetDiscoverLocation(
+                            if (nextOn) DiscoverLocation.IN_SIDEBAR else DiscoverLocation.OFF
+                        )
+                    )
+                }
+                "calendar" -> {
+                    val nextOn = !isChecked
+                    onEvent(LayoutSettingsEvent.SetSidebarItemEnabled("calendar", nextOn))
+                    scope.launch {
+                        calendarPrefs?.updateSettings {
+                            if (nextOn) {
+                                it.copy(calendarOff = false, calendarInMenu = true)
+                            } else {
+                                it.copy(calendarInMenu = false)
+                            }
+                        }
+                    }
+                }
+                "livetv" -> {
+                    val nextOn = !isChecked
+                    onEvent(LayoutSettingsEvent.SetSidebarItemEnabled("livetv", nextOn))
+                    LiveTvPreferences.setEnabled(context, nextOn)
+                }
+                else -> {
+                    onEvent(LayoutSettingsEvent.SetSidebarItemEnabled(itemKey, !isChecked))
+                }
+            }
+        }
+        SidebarOrderToggleRow(
+            title = title,
+            checked = isChecked,
+            onToggle = onToggle,
+            onMoveUp = if (index > 0) {
+                { onEvent(LayoutSettingsEvent.MoveSidebarItem(itemKey, -1)) }
+            } else null,
+            onMoveDown = if (index < order.lastIndex) {
+                { onEvent(LayoutSettingsEvent.MoveSidebarItem(itemKey, 1)) }
+            } else null
+        )
+    }
+}
+
+@Composable
+private fun SidebarOrderToggleRow(
+    title: String,
+    checked: Boolean,
+    onToggle: () -> Unit,
+    onMoveUp: (() -> Unit)?,
+    onMoveDown: (() -> Unit)?
+) {
+    val moveUpLabel = stringResource(R.string.cd_move_up)
+    val moveDownLabel = stringResource(R.string.cd_move_down)
+    Row(
+        modifier = Modifier
+            .fillMaxWidth()
+            .padding(vertical = 2.dp),
+        verticalAlignment = Alignment.CenterVertically,
+        horizontalArrangement = Arrangement.spacedBy(NuvioTheme.spacing.xs)
+    ) {
+        SettingsToggleRow(
+            title = title,
+            subtitle = null,
+            checked = checked,
+            enabled = true,
+            onToggle = onToggle,
+            modifier = Modifier.weight(1f)
+        )
+        Button(
+            onClick = { onMoveUp?.invoke() },
+            enabled = onMoveUp != null,
+            modifier = Modifier
+                .width(40.dp)
+                .semantics { this.contentDescription = moveUpLabel },
+            colors = ButtonDefaults.colors(
+                containerColor = NuvioTheme.colors.BackgroundElevated,
+                contentColor = NuvioTheme.colors.TextPrimary,
+                disabledContainerColor = NuvioTheme.colors.BackgroundElevated,
+                disabledContentColor = NuvioTheme.colors.TextTertiary
+            ),
+            scale = ButtonDefaults.scale(focusedScale = 1.05f),
+            contentPadding = PaddingValues(0.dp)
+        ) {
+            Text("▲", style = MaterialTheme.typography.bodySmall, modifier = Modifier.clearAndSetSemantics {})
+        }
+        Button(
+            onClick = { onMoveDown?.invoke() },
+            enabled = onMoveDown != null,
+            modifier = Modifier
+                .width(40.dp)
+                .semantics { this.contentDescription = moveDownLabel },
+            colors = ButtonDefaults.colors(
+                containerColor = NuvioTheme.colors.BackgroundElevated,
+                contentColor = NuvioTheme.colors.TextPrimary,
+                disabledContainerColor = NuvioTheme.colors.BackgroundElevated,
+                disabledContentColor = NuvioTheme.colors.TextTertiary
+            ),
+            scale = ButtonDefaults.scale(focusedScale = 1.05f),
+            contentPadding = PaddingValues(0.dp)
+        ) {
+            Text("▼", style = MaterialTheme.typography.bodySmall, modifier = Modifier.clearAndSetSemantics {})
+        }
+    }
 }
 
 @Composable

@@ -319,7 +319,8 @@ object CustomPosterUrlResolver {
         "ratingposterdb.com",
         "aioratings.com",
         "top-posters.com",
-        "btttr.cc"
+        "btttr.cc",
+        "mylistsaddon.com"
     )
 
     private fun isRpdbFamily(pattern: String): Boolean =

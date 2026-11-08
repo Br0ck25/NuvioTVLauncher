@@ -658,7 +658,13 @@ fun GridHomeContent(
                         rowFocusRequester = upcomingRowFocusRequester,
                         listState = upcomingListState,
                         onItemFocused = { lastFocusedUpcomingIndex.intValue = it; activeCwRowKey.value = "upcoming_section" },
-                        onItemClick = onContinueWatchingClick,
+                        onItemClick = { item ->
+                            val (id, type) = when (item) {
+                                is ContinueWatchingItem.InProgress -> item.progress.contentId to item.progress.contentType
+                                is ContinueWatchingItem.NextUp -> item.info.contentId to item.info.contentType
+                            }
+                            onNavigateToDetail(id, type, "")
+                        },
                         onStartFromBeginning = onContinueWatchingStartFromBeginning,
                         showManualPlayOption = showContinueWatchingManualPlayOption,
                         onPlayManually = onContinueWatchingPlayManually,
@@ -697,7 +703,8 @@ fun GridHomeContent(
                         cardStyle = uiState.continueWatchingCardStyle,
                         cornerRadius = posterCardStyle.cornerRadius,
                         posterCardWidth = posterCardStyle.width,
-                        posterCardHeight = posterCardStyle.height
+                        posterCardHeight = posterCardStyle.height,
+                        isUpcomingSection = true
                     )
                 }
             }

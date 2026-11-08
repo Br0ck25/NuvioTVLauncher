@@ -22,11 +22,14 @@ class SettingsCatalogTest {
                 SettingsCategory.APPEARANCE,
                 SettingsCategory.LAYOUT,
                 SettingsCategory.CONTENT_DISCOVERY,
+                SettingsCategory.CALENDAR,
+                SettingsCategory.LIVE_TV,
                 SettingsCategory.PLAYBACK,
                 SettingsCategory.INTEGRATION,
                 SettingsCategory.TRACKING,
                 SettingsCategory.ADVANCED,
                 SettingsCategory.DEFAULT_LAUNCHER,
+                SettingsCategory.REMOTE_BUTTONS,
                 SettingsCategory.ABOUT,
                 SettingsCategory.DEBUG
             ),
@@ -129,6 +132,14 @@ class SettingsCatalogTest {
     fun `default launcher setup is available in every profile and experience mode`() {
         allCombinations().forEach { categories ->
             assertTrue(SettingsCategory.DEFAULT_LAUNCHER in categories)
+        }
+    }
+
+    @Test
+    fun `remote buttons mapper is available in every profile and experience mode under system`() {
+        assertEquals(SettingsRailGroup.SYSTEM, SettingsCategory.REMOTE_BUTTONS.group)
+        allCombinations().forEach { categories ->
+            assertTrue(SettingsCategory.REMOTE_BUTTONS in categories)
         }
     }
 

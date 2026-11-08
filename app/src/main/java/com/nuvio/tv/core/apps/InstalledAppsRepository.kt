@@ -75,6 +75,8 @@ class InstalledAppsRepository @Inject constructor(
     private fun packageChanges() = callbackFlow {
         val receiver = object : BroadcastReceiver() {
             override fun onReceive(context: Context?, intent: Intent?) {
+                val pkg = intent?.data?.schemeSpecificPart
+                iconPackManager.invalidateCache(pkg)
                 trySend(Unit)
             }
         }

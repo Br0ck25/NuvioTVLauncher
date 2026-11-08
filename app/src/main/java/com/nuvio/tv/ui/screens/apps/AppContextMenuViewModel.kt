@@ -21,19 +21,25 @@ import kotlinx.coroutines.flow.update
 import kotlinx.coroutines.launch
 import javax.inject.Inject
 
+import kotlinx.coroutines.flow.collectLatest
+
+import com.nuvio.tv.core.apps.InstalledAppsRepository
+
 data class AppContextMenuUiState(
     val iconPacks: List<IconPackInfo> = emptyList(),
     val isLoadingIconPacks: Boolean = false,
     val selectedPackPackage: String? = null,
     val selectedPackIcons: List<IconPackEntry> = emptyList(),
-    val isLoadingPackIcons: Boolean = false
+    val isLoadingPackIcons: Boolean = false,
+    val activeGlobalPackPackage: String? = null
 )
 
 @HiltViewModel
 class AppContextMenuViewModel @Inject constructor(
     @ApplicationContext private val context: Context,
     private val preferencesDataStore: InstalledAppsPreferencesDataStore,
-    private val iconPackManager: IconPackManager
+    private val iconPackManager: IconPackManager,
+    private val installedAppsRepository: InstalledAppsRepository
 ) : ViewModel() {
 
     private val _uiState = MutableStateFlow(AppContextMenuUiState())
@@ -41,6 +47,11 @@ class AppContextMenuViewModel @Inject constructor(
 
     init {
         loadIconPacks()
+        viewModelScope.launch {
+            preferencesDataStore.preferences.collectLatest { prefs ->
+                _uiState.update { it.copy(activeGlobalPackPackage = prefs.selectedIconPackPackage) }
+            }
+        }
     }
 
     fun loadIconPacks() {
@@ -66,44 +77,92 @@ class AppContextMenuViewModel @Inject constructor(
     fun renameApp(packageName: String, newTitle: String) {
         viewModelScope.launch {
             preferencesDataStore.setCustomTitle(packageName, newTitle)
+            installedAppsRepository.refresh()
         }
     }
 
     fun setAppIcon(packageName: String, iconRef: String?) {
         viewModelScope.launch {
             preferencesDataStore.setCustomIcon(packageName, iconRef)
+            installedAppsRepository.refresh()
         }
     }
 
     fun applyIconPackToApp(packageName: String, iconPackPackage: String, drawableName: String) {
         viewModelScope.launch {
             preferencesDataStore.setCustomIcon(packageName, "iconpack:$iconPackPackage:$drawableName")
+            installedAppsRepository.refresh()
+        }
+    }
+
+    fun setGlobalIconPack(iconPackPackage: String?) {
+        viewModelScope.launch {
+            preferencesDataStore.setSelectedIconPack(iconPackPackage)
+            installedAppsRepository.refresh()
         }
     }
 
     fun resetAppCustomization(packageName: String) {
         viewModelScope.launch {
             preferencesDataStore.resetAppCustomization(packageName)
+            installedAppsRepository.refresh()
         }
     }
 
-    fun openAppSettings(packageName: String) {
+    fun openAppSettings(activityContext: Context = context, packageName: String) {
         runCatching {
             val intent = Intent(Settings.ACTION_APPLICATION_DETAILS_SETTINGS).apply {
                 data = Uri.fromParts("package", packageName, null)
-                addFlags(Intent.FLAG_ACTIVITY_NEW_TASK)
+                if (activityContext !is android.app.Activity) {
+                    addFlags(Intent.FLAG_ACTIVITY_NEW_TASK)
+                }
             }
-            context.startActivity(intent)
+            activityContext.startActivity(intent)
         }
     }
 
-    fun uninstallApp(packageName: String) {
-        runCatching {
-            val intent = Intent(Intent.ACTION_DELETE).apply {
-                data = Uri.fromParts("package", packageName, null)
-                addFlags(Intent.FLAG_ACTIVITY_NEW_TASK)
+    @Suppress("DEPRECATION")
+    fun uninstallApp(activityContext: Context = context, packageName: String) {
+        val pm = activityContext.packageManager
+        val appInfo = runCatching { pm.getApplicationInfo(packageName, 0) }.getOrNull()
+        val isNonUpdatedSystemApp = appInfo != null &&
+            (appInfo.flags and android.content.pm.ApplicationInfo.FLAG_SYSTEM) != 0 &&
+            (appInfo.flags and android.content.pm.ApplicationInfo.FLAG_UPDATED_SYSTEM_APP) == 0
+
+        if (isNonUpdatedSystemApp) {
+            android.widget.Toast.makeText(
+                activityContext,
+                "System apps cannot be uninstalled; opening App Info",
+                android.widget.Toast.LENGTH_SHORT
+            ).show()
+            openAppSettings(activityContext, packageName)
+            return
+        }
+
+        val packageUri = Uri.fromParts("package", packageName, null)
+        val launched = runCatching {
+            val intent = Intent(Intent.ACTION_DELETE, packageUri).apply {
+                if (activityContext !is android.app.Activity) {
+                    addFlags(Intent.FLAG_ACTIVITY_NEW_TASK)
+                }
             }
-            context.startActivity(intent)
+            activityContext.startActivity(intent)
+            true
+        }.getOrElse {
+            runCatching {
+                val fallbackIntent = Intent(Intent.ACTION_UNINSTALL_PACKAGE, packageUri).apply {
+                    putExtra(Intent.EXTRA_RETURN_RESULT, false)
+                    if (activityContext !is android.app.Activity) {
+                        addFlags(Intent.FLAG_ACTIVITY_NEW_TASK)
+                    }
+                }
+                activityContext.startActivity(fallbackIntent)
+                true
+            }.getOrDefault(false)
+        }
+
+        if (!launched) {
+            openAppSettings(activityContext, packageName)
         }
     }
 
@@ -119,7 +178,7 @@ class AppContextMenuViewModel @Inject constructor(
         }
     }
 
-    fun launchApp(app: InstalledApp) {
-        launchInstalledApp(context, app)
+    fun launchApp(activityContext: Context = context, app: InstalledApp) {
+        launchInstalledApp(activityContext, app)
     }
 }

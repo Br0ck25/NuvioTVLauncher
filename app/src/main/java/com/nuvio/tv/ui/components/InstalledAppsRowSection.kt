@@ -7,12 +7,15 @@
 package com.nuvio.tv.ui.components
 
 import android.widget.Toast
+import androidx.compose.foundation.BorderStroke
 import androidx.compose.foundation.Image
 import androidx.compose.foundation.focusGroup
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.PaddingValues
+import androidx.compose.foundation.layout.Spacer
+import androidx.compose.foundation.layout.aspectRatio
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
@@ -49,6 +52,8 @@ import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.semantics.contentDescription
 import androidx.compose.ui.semantics.semantics
+import androidx.compose.ui.text.style.TextAlign
+import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.Dp
 import androidx.compose.ui.unit.dp
 import androidx.hilt.navigation.compose.hiltViewModel
@@ -76,7 +81,8 @@ val InstalledAppTileHeight = 101.dp
 private fun isSelectKey(keyCode: Int): Boolean {
     return keyCode == AndroidKeyEvent.KEYCODE_DPAD_CENTER ||
         keyCode == AndroidKeyEvent.KEYCODE_ENTER ||
-        keyCode == AndroidKeyEvent.KEYCODE_NUMPAD_ENTER
+        keyCode == AndroidKeyEvent.KEYCODE_NUMPAD_ENTER ||
+        keyCode == AndroidKeyEvent.KEYCODE_BUTTON_A
 }
 
 @Composable
@@ -112,45 +118,91 @@ fun InstalledAppTile(
     app: InstalledApp,
     onClick: () -> Unit,
     modifier: Modifier = Modifier,
+    fillParentWidth: Boolean = false,
     onLongClick: (() -> Unit)? = null,
     onFocused: () -> Unit = {}
 ) {
     val shape = RoundedCornerShape(NuvioTheme.radii.md)
-    val longPressKeyTracker = rememberLongPressKeyTracker()
+    var selectDownSeen by remember { mutableStateOf(false) }
+    var selectDownAtMillis by remember { androidx.compose.runtime.mutableLongStateOf(0L) }
     var longPressTriggered by remember { mutableStateOf(false) }
+    val longPressTimeoutMs = remember { android.view.ViewConfiguration.getLongPressTimeout().toLong() }
+
+    val baseModifier = if (fillParentWidth) {
+        Modifier.fillMaxWidth().aspectRatio(16f / 9f)
+    } else {
+        Modifier.width(InstalledAppTileWidth).height(InstalledAppTileHeight)
+    }
 
     Card(
-        onClick = {
-            if (longPressTriggered) {
-                longPressTriggered = false
-            } else {
-                onClick()
-            }
-        },
-        modifier = modifier
-            .width(InstalledAppTileWidth)
-            .height(InstalledAppTileHeight)
+        onClick = onClick,
+        modifier = baseModifier
+            .then(modifier)
             .onPreviewKeyEvent { event ->
                 val native = event.nativeKeyEvent
-                if (onLongClick != null &&
-                    longPressKeyTracker.handle(native, ::isSelectKey) {
-                        longPressTriggered = true
+                if (native.keyCode == AndroidKeyEvent.KEYCODE_MENU) {
+                    if (native.action == AndroidKeyEvent.ACTION_DOWN && native.repeatCount == 0 && onLongClick != null) {
                         onLongClick()
                     }
-                ) {
                     return@onPreviewKeyEvent true
+                }
+                if (isSelectKey(native.keyCode)) {
+                    when (native.action) {
+                        AndroidKeyEvent.ACTION_DOWN -> {
+                            if (native.repeatCount == 0) {
+                                selectDownSeen = true
+                                selectDownAtMillis = native.eventTime
+                                longPressTriggered = false
+                            } else if (selectDownSeen && !longPressTriggered && onLongClick != null) {
+                                val heldMs = native.eventTime - selectDownAtMillis
+                                if (native.isLongPress || heldMs >= longPressTimeoutMs) {
+                                    longPressTriggered = true
+                                    selectDownSeen = false
+                                    onLongClick()
+                                }
+                            }
+                            return@onPreviewKeyEvent true
+                        }
+                        AndroidKeyEvent.ACTION_UP -> {
+                            val wasDown = selectDownSeen
+                            val wasLong = longPressTriggered
+                            val heldMs = native.eventTime - selectDownAtMillis
+                            selectDownSeen = false
+                            longPressTriggered = false
+                            if (wasDown && !wasLong && !native.isCanceled) {
+                                if (onLongClick != null && heldMs >= longPressTimeoutMs) {
+                                    onLongClick()
+                                } else {
+                                    onClick()
+                                }
+                            }
+                            return@onPreviewKeyEvent true
+                        }
+                    }
                 }
                 false
             }
-            .onFocusChanged { if (it.isFocused) onFocused() },
+            .onFocusChanged {
+                if (it.isFocused) {
+                    onFocused()
+                } else {
+                    selectDownSeen = false
+                    longPressTriggered = false
+                }
+            },
         shape = CardDefaults.shape(shape),
         colors = CardDefaults.colors(
-            containerColor = Color.Transparent,
-            focusedContainerColor = Color.Transparent
+            containerColor = if (app.isBanner) Color.Transparent else NuvioTheme.colors.BackgroundCard,
+            focusedContainerColor = if (app.isBanner) Color.Transparent else NuvioTheme.colors.FocusBackground
         ),
-        // No resting border and a transparent container: the artwork is the card. Same pattern as
-        // ContentCard, so the only chrome is the focus ring.
+        // No resting border for banners so the artwork is the card.
         border = CardDefaults.border(
+            border = if (!app.isBanner) {
+                Border(
+                    border = BorderStroke(NuvioTheme.spacing.hairline, NuvioTheme.colors.Border),
+                    shape = shape
+                )
+            } else Border.None,
             focusedBorder = Border(
                 border = NuvioTheme.focusRing.border(NuvioTheme.spacing.xxs),
                 shape = shape
@@ -168,11 +220,26 @@ fun InstalledAppTile(
             if (app.isBanner) {
                 InstalledAppArtwork(
                     app = app,
-                    contentScale = ContentScale.Crop,
+                    contentScale = ContentScale.Fit,
                     modifier = Modifier.fillMaxSize().clip(shape)
                 )
             } else {
-                InstalledAppArtwork(app = app, modifier = Modifier.size(64.dp))
+                Column(
+                    horizontalAlignment = Alignment.CenterHorizontally,
+                    verticalArrangement = Arrangement.Center,
+                    modifier = Modifier.padding(horizontal = 8.dp)
+                ) {
+                    InstalledAppArtwork(app = app, modifier = Modifier.size(48.dp))
+                    Spacer(modifier = Modifier.height(4.dp))
+                    Text(
+                        text = app.displayLabel,
+                        style = MaterialTheme.typography.labelSmall,
+                        color = NuvioTheme.colors.TextPrimary,
+                        maxLines = 1,
+                        overflow = TextOverflow.Ellipsis,
+                        textAlign = TextAlign.Center
+                    )
+                }
             }
         }
     }

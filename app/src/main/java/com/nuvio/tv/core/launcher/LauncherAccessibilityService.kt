@@ -18,10 +18,13 @@ import kotlinx.coroutines.flow.asStateFlow
 
 class LauncherAccessibilityService : AccessibilityService() {
     private var delivery = HomeFallbackPolicy()
+    private var buttonKeyEventHandler: ButtonKeyEventHandler? = null
 
     override fun onServiceConnected() {
         super.onServiceConnected()
+        activeServiceRef = java.lang.ref.WeakReference(this)
         delivery = HomeFallbackPolicy()
+        buttonKeyEventHandler = ButtonKeyEventHandler.fromContext(this)
         try {
             val info = serviceInfo ?: AccessibilityServiceInfo()
             info.eventTypes = AccessibilityEvent.TYPE_WINDOW_STATE_CHANGED
@@ -48,19 +51,90 @@ class LauncherAccessibilityService : AccessibilityService() {
         Handler(Looper.getMainLooper()).postDelayed({ launchHome(SystemClock.uptimeMillis()) }, BOOT_OPEN_DELAY_MS)
     }
 
+    private fun resolveKeyEventHandler(): ButtonKeyEventHandler? {
+        buttonKeyEventHandler?.let { return it }
+        return ButtonKeyEventHandler.fromContext(this).also { buttonKeyEventHandler = it }
+    }
+
     override fun onKeyEvent(event: KeyEvent): Boolean {
-        if (event.keyCode != KeyEvent.KEYCODE_HOME) return super.onKeyEvent(event)
+        val handler = resolveKeyEventHandler()
         val nativeHome = LauncherSetup.isDefaultHome(this)
-        LauncherSetup.observeNativeHome(this, nativeHome)
-        if (nativeHome || !LauncherSetup.accessibilityFallbackAllowed(this)) {
-            // Native HOME is preferred. In particular, don't fight a working HOME role.
+        val isForeground = HomeForegroundDelivery.isResumed
+        val effectiveSource = if (isForeground) ButtonEventSource.FOREGROUND else ButtonEventSource.GLOBAL
+
+        // 1. If the user is actively capturing a remote button in Settings, offer the event first.
+        if (handler != null && handler.captureController.isCapturingOrReleasing(event.keyCode, event.action)) {
+            if (handler.onKeyEvent(
+                    event = event,
+                    source = effectiveSource,
+                    accessibilityEnabled = true,
+                    nativeHomeActive = nativeHome
+                )
+            ) {
+                return true
+            }
+        }
+
+        // 2. Never intercept system-reserved keys (Volume, Power, D-pad, Enter).
+        if (!RemoteButtonCatalog.isMappableKey(event.keyCode)) {
             return super.onKeyEvent(event)
         }
-        // Consume the whole sequence, but only forward uncanceled releases, never held-key DOWNs.
-        if (delivery.acceptKeyRelease(event.eventTime, event.action == KeyEvent.ACTION_UP, event.isCanceled)) {
-            launchHome(event.eventTime)
+
+        // 3. Record global key capability in memory when observed.
+        if (handler != null &&
+            (event.action == KeyEvent.ACTION_DOWN || event.action == KeyEvent.ACTION_UP) &&
+            event.repeatCount == 0
+        ) {
+            handler.repository.recordKeyObserved(event.keyCode, isGlobal = true)
         }
-        return true
+
+        // 4. Home button handling: preserve existing native HOME / fallback behavior by default,
+        // while honoring custom Home mappings or disabled Home mappings when configured.
+        if (event.keyCode == KeyEvent.KEYCODE_HOME) {
+            LauncherSetup.observeNativeHome(this, nativeHome)
+            val homeMapping = handler?.repository?.activeMappingFor(KeyEvent.KEYCODE_HOME, isGlobal = !isForeground)
+            if (handler != null && homeMapping == null) {
+                // User explicitly disabled or removed the Home mapping for this context.
+                return super.onKeyEvent(event)
+            }
+            if (handler != null && homeMapping != null && !homeMapping.matchesFactoryHomeDefaults()) {
+                val handled = handler.onKeyEvent(
+                    event = event,
+                    source = effectiveSource,
+                    accessibilityEnabled = true,
+                    nativeHomeActive = nativeHome
+                )
+                if (handled) {
+                    delivery.onLaunch(SystemClock.uptimeMillis())
+                    return true
+                }
+            }
+            if (nativeHome || !LauncherSetup.accessibilityFallbackAllowed(this)) {
+                // Native HOME is preferred. In particular, don't fight a working HOME role.
+                return super.onKeyEvent(event)
+            }
+            // Consume the whole sequence, but only forward uncanceled releases, never held-key DOWNs.
+            if (delivery.acceptKeyRelease(event.eventTime, event.action == KeyEvent.ACTION_UP, event.isCanceled)) {
+                launchHome(event.eventTime)
+            }
+            return true
+        }
+
+        // 5. Non-Home mapped buttons: intercept keys with enabled mappings for the active context
+        // (foreground when Nuvio is resumed, global when another app is active) so Android TV's
+        // PhoneWindowManager cannot hijack shortcut, media, search, guide, or settings keys before
+        // MainActivity sees them.
+        if (handler == null) return super.onKeyEvent(event)
+        handler.repository.activeMappingFor(event.keyCode, isGlobal = !isForeground)
+            ?: return super.onKeyEvent(event)
+
+        val consumed = handler.onKeyEvent(
+            event = event,
+            source = effectiveSource,
+            accessibilityEnabled = true,
+            nativeHomeActive = nativeHome
+        )
+        return if (consumed) true else super.onKeyEvent(event)
     }
 
     override fun onAccessibilityEvent(event: AccessibilityEvent?) {
@@ -97,11 +171,17 @@ class LauncherAccessibilityService : AccessibilityService() {
 
     override fun onUnbind(intent: Intent?): Boolean {
         operational.value = false
+        if (activeServiceRef?.get() === this) {
+            activeServiceRef = null
+        }
         return super.onUnbind(intent)
     }
 
     override fun onDestroy() {
         operational.value = false
+        if (activeServiceRef?.get() === this) {
+            activeServiceRef = null
+        }
         super.onDestroy()
     }
 
@@ -126,9 +206,15 @@ class LauncherAccessibilityService : AccessibilityService() {
         private const val BOOT_WINDOW_MS = 5 * 60 * 1000L
         private const val BOOT_OPEN_DELAY_MS = 4_000L
         private val operational = MutableStateFlow(false)
+        @Volatile
+        private var activeServiceRef: java.lang.ref.WeakReference<LauncherAccessibilityService>? = null
 
         /** Live binding/configuration, not proof this firmware actually delivers HOME keys. */
         internal val isOperational = operational.asStateFlow()
+
+        fun performGlobalBack(): Boolean = runCatching {
+            activeServiceRef?.get()?.performGlobalAction(GLOBAL_ACTION_BACK) == true
+        }.getOrDefault(false)
 
         internal fun containsEnabledComponent(enabledServices: String?, target: ComponentName): Boolean =
             enabledServices?.split(':')?.any { ComponentName.unflattenFromString(it) == target } == true

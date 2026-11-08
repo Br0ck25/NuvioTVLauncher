@@ -7,6 +7,7 @@ import androidx.lifecycle.viewModelScope
 import com.nuvio.tv.core.player.StreamAutoPlayPolicy
 import com.nuvio.tv.core.profile.ProfileManager
 import com.nuvio.tv.core.network.NetworkResult
+import com.nuvio.tv.core.poster.withCustomPosterUrl
 import com.nuvio.tv.core.poster.withCustomPosterUrls
 import com.nuvio.tv.core.tmdb.TmdbMetadataService
 import com.nuvio.tv.core.tmdb.TmdbMovieCollection
@@ -1025,16 +1026,22 @@ class MetaDetailsViewModel @Inject constructor(
         if (!isServerItem) loadMoreLikeThisAsync(meta)
         val enriched = if (isServerItem) meta else enrichMeta(meta)
 
-        syncEffectiveContentId(enriched)
+        val pattern = layoutPreferenceDataStore.customPosterUrlPattern.first()
+        val enabledScreens = layoutPreferenceDataStore.customPosterEnabledScreens.first()
+        val finalMeta = if (pattern.isNotBlank() && com.nuvio.tv.core.poster.CustomPosterScreen.DETAILS in enabledScreens) {
+            enriched.withCustomPosterUrl(pattern)
+        } else enriched
+
+        syncEffectiveContentId(finalMeta)
         val cachedNextToWatch = metaDetailsSessionState.getNextToWatch(
             profileId = profileManager.activeProfileId.value,
             progressSource = traktSettingsDataStore.watchProgressSource.value.name,
             contentId = _effectiveContentId.value,
-            contentType = enriched.apiType
-        )?.resolveForMeta(enriched)
+            contentType = finalMeta.apiType
+        )?.resolveForMeta(finalMeta)
 
         applyMeta(
-            meta = enriched,
+            meta = finalMeta,
             initialNextToWatch = cachedNextToWatch
         )
 

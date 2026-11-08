@@ -9,7 +9,9 @@ import androidx.compose.foundation.Image
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
+import androidx.compose.foundation.layout.PaddingValues
 import androidx.compose.foundation.layout.Spacer
+import androidx.compose.foundation.layout.aspectRatio
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
@@ -18,6 +20,9 @@ import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.lazy.grid.GridCells
 import androidx.compose.foundation.lazy.grid.LazyVerticalGrid
 import androidx.compose.foundation.lazy.grid.items
+import androidx.tv.material3.Card
+import androidx.tv.material3.CardDefaults
+import com.nuvio.tv.ui.components.InstalledAppTile
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.CheckCircle
@@ -61,7 +66,8 @@ import com.nuvio.tv.ui.util.rememberLongPressKeyTracker
 private fun isSelectKey(keyCode: Int): Boolean {
     return keyCode == AndroidKeyEvent.KEYCODE_DPAD_CENTER ||
         keyCode == AndroidKeyEvent.KEYCODE_ENTER ||
-        keyCode == AndroidKeyEvent.KEYCODE_NUMPAD_ENTER
+        keyCode == AndroidKeyEvent.KEYCODE_NUMPAD_ENTER ||
+        keyCode == AndroidKeyEvent.KEYCODE_BUTTON_A
 }
 
 private sealed interface AppsGridItem {
@@ -173,16 +179,23 @@ fun AppsScreen(
         Column(
             modifier = Modifier
                 .fillMaxSize()
-                .padding(horizontal = 48.dp, vertical = NuvioTheme.spacing.xl)
+                .padding(top = NuvioTheme.spacing.xl)
         ) {
             Text(
                 text = stringResource(R.string.nav_apps),
                 style = MaterialTheme.typography.headlineLarge.copy(fontWeight = FontWeight.Bold),
-                color = NuvioTheme.colors.TextPrimary
+                color = NuvioTheme.colors.TextPrimary,
+                modifier = Modifier.padding(horizontal = 48.dp)
             )
-            Spacer(modifier = Modifier.height(NuvioTheme.spacing.lg))
+            Spacer(modifier = Modifier.height(4.dp))
             LazyVerticalGrid(
-                columns = GridCells.Adaptive(minSize = 160.dp),
+                columns = GridCells.Adaptive(minSize = 180.dp),
+                contentPadding = PaddingValues(
+                    start = 48.dp,
+                    top = 12.dp,
+                    end = 48.dp,
+                    bottom = 36.dp
+                ),
                 horizontalArrangement = Arrangement.spacedBy(NuvioTheme.spacing.md),
                 verticalArrangement = Arrangement.spacedBy(NuvioTheme.spacing.md),
                 modifier = Modifier.fillMaxSize()
@@ -190,11 +203,11 @@ fun AppsScreen(
                 items(orderedGridItems, key = { it.key }) { gridItem ->
                     when (gridItem) {
                         is AppsGridItem.Shortcut -> {
-                            AppTile(
+                            ShortcutTile(
                                 label = gridItem.label,
                                 iconVector = gridItem.iconVector,
-                                icon = null,
                                 onClick = gridItem.onClick,
+                                modifier = Modifier.fillMaxWidth().aspectRatio(16f / 9f),
                                 onLongClick = {
                                     contextMenuTargetKey = gridItem.key
                                 }
@@ -202,10 +215,9 @@ fun AppsScreen(
                         }
                         is AppsGridItem.App -> {
                             val app = gridItem.app
-                            AppTile(
-                                label = app.displayLabel,
-                                iconVector = null,
-                                icon = app.displayIcon,
+                            InstalledAppTile(
+                                app = app,
+                                fillParentWidth = true,
                                 onClick = {
                                     if (!launchInstalledApp(context, app)) {
                                         launch(app.launchIntent())
@@ -291,55 +303,82 @@ fun AppsScreen(
 }
 
 @Composable
-private fun AppTile(
+private fun ShortcutTile(
     label: String,
-    icon: ImageBitmap?,
-    iconVector: ImageVector? = null,
+    iconVector: ImageVector,
     onClick: () -> Unit,
+    modifier: Modifier = Modifier,
     onLongClick: (() -> Unit)? = null
 ) {
-    val longPressKeyTracker = rememberLongPressKeyTracker()
+    val shape = RoundedCornerShape(NuvioTheme.radii.md)
+    var selectDownSeen by remember { mutableStateOf(false) }
+    var selectDownAtMillis by remember { androidx.compose.runtime.mutableLongStateOf(0L) }
     var longPressTriggered by remember { mutableStateOf(false) }
+    val longPressTimeoutMs = remember { android.view.ViewConfiguration.getLongPressTimeout().toLong() }
 
-    Surface(
-        onClick = {
-            if (longPressTriggered) {
-                longPressTriggered = false
-            } else {
-                onClick()
-            }
-        },
-        modifier = Modifier
-            .fillMaxWidth()
-            .height(130.dp)
+    Card(
+        onClick = onClick,
+        modifier = modifier
             .onPreviewKeyEvent { event ->
                 val native = event.nativeKeyEvent
-                if (onLongClick != null &&
-                    longPressKeyTracker.handle(native, ::isSelectKey) {
-                        longPressTriggered = true
+                if (native.keyCode == AndroidKeyEvent.KEYCODE_MENU) {
+                    if (native.action == AndroidKeyEvent.ACTION_DOWN && native.repeatCount == 0 && onLongClick != null) {
                         onLongClick()
                     }
-                ) {
                     return@onPreviewKeyEvent true
+                }
+                if (isSelectKey(native.keyCode)) {
+                    when (native.action) {
+                        AndroidKeyEvent.ACTION_DOWN -> {
+                            if (native.repeatCount == 0) {
+                                selectDownSeen = true
+                                selectDownAtMillis = native.eventTime
+                                longPressTriggered = false
+                            } else if (selectDownSeen && !longPressTriggered && onLongClick != null) {
+                                val heldMs = native.eventTime - selectDownAtMillis
+                                if (native.isLongPress || heldMs >= longPressTimeoutMs) {
+                                    longPressTriggered = true
+                                    selectDownSeen = false
+                                    onLongClick()
+                                }
+                            }
+                            return@onPreviewKeyEvent true
+                        }
+                        AndroidKeyEvent.ACTION_UP -> {
+                            val wasDown = selectDownSeen
+                            val wasLong = longPressTriggered
+                            val heldMs = native.eventTime - selectDownAtMillis
+                            selectDownSeen = false
+                            longPressTriggered = false
+                            if (wasDown && !wasLong && !native.isCanceled) {
+                                if (onLongClick != null && heldMs >= longPressTimeoutMs) {
+                                    onLongClick()
+                                } else {
+                                    onClick()
+                                }
+                            }
+                            return@onPreviewKeyEvent true
+                        }
+                    }
                 }
                 false
             },
-        colors = ClickableSurfaceDefaults.colors(
+        shape = CardDefaults.shape(shape),
+        colors = CardDefaults.colors(
             containerColor = NuvioTheme.colors.BackgroundCard,
             focusedContainerColor = NuvioTheme.colors.FocusBackground
         ),
-        border = ClickableSurfaceDefaults.border(
+        border = CardDefaults.border(
             border = Border(
                 border = BorderStroke(NuvioTheme.spacing.hairline, NuvioTheme.colors.Border),
-                shape = RoundedCornerShape(NuvioTheme.radii.md)
+                shape = shape
             ),
             focusedBorder = Border(
                 border = NuvioTheme.focusRing.border(NuvioTheme.spacing.xxs),
-                shape = RoundedCornerShape(NuvioTheme.radii.md)
+                shape = shape
             )
         ),
-        shape = ClickableSurfaceDefaults.shape(RoundedCornerShape(NuvioTheme.radii.md)),
-        scale = ClickableSurfaceDefaults.scale(focusedScale = 1f)
+        scale = CardDefaults.scale(focusedScale = 1.03f)
     ) {
         Box(
             modifier = Modifier
@@ -347,25 +386,20 @@ private fun AppTile(
                 .padding(NuvioTheme.spacing.sm),
             contentAlignment = Alignment.Center
         ) {
-            Column(horizontalAlignment = Alignment.CenterHorizontally) {
-                if (icon != null) {
-                    Image(
-                        bitmap = icon,
-                        contentDescription = null,
-                        modifier = Modifier.size(width = 96.dp, height = 54.dp)
-                    )
-                } else {
-                    Icon(
-                        imageVector = iconVector ?: Icons.Default.Settings,
-                        contentDescription = null,
-                        tint = NuvioTheme.colors.TextSecondary,
-                        modifier = Modifier.size(48.dp)
-                    )
-                }
-                Spacer(modifier = Modifier.height(NuvioTheme.spacing.sm))
+            Column(
+                horizontalAlignment = Alignment.CenterHorizontally,
+                verticalArrangement = Arrangement.Center
+            ) {
+                Icon(
+                    imageVector = iconVector,
+                    contentDescription = null,
+                    tint = NuvioTheme.colors.TextSecondary,
+                    modifier = Modifier.size(36.dp)
+                )
+                Spacer(modifier = Modifier.height(6.dp))
                 Text(
                     text = label,
-                    style = MaterialTheme.typography.bodyMedium,
+                    style = MaterialTheme.typography.labelSmall,
                     color = NuvioTheme.colors.TextPrimary,
                     maxLines = 1,
                     overflow = TextOverflow.Ellipsis,

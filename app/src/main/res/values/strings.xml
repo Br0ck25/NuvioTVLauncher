@@ -405,6 +405,18 @@
     <string name="settings_style_horizon_desc">Navigation tabs at the top</string>
     <string name="appearance_font_and_language">Font and Language</string>
     <string name="appearance_font_and_language_subtitle">Choose the typeface and locale used throughout the app</string>
+    <string name="appearance_icon_pack_title">Icon Pack</string>
+    <string name="appearance_icon_pack_subtitle">Choose an icon pack for installed apps on your home screen</string>
+    <string name="appearance_icon_pack_row_title">Icon Pack</string>
+    <string name="appearance_icon_pack_row_subtitle">Apply Android TV or Projectivy icon pack APK across installed apps</string>
+    <string name="appearance_icon_pack_system_default">System Default</string>
+    <string name="appearance_icon_pack_system_default_subtitle">Use original app TV banners and launcher icons</string>
+    <string name="appearance_icon_pack_dialog_title">Select Icon Pack</string>
+    <string name="appearance_icon_pack_dialog_subtitle">Choose an installed Android TV or Projectivy icon pack</string>
+    <string name="appearance_icon_pack_empty">No icon pack APKs found on this device. Install an Android TV or Projectivy compatible icon pack APK to use it here.</string>
+    <string name="app_menu_apply_pack_to_all">Apply pack to all apps</string>
+    <string name="app_menu_pack_applied">Applied %1$s to all apps</string>
+    <string name="app_menu_active_global_pack">Active Global Pack</string>
     <string name="cd_selected">Selected</string>
 
     <string name="about_title">About</string>
@@ -3541,4 +3553,36 @@
     <string name="notifications_title">Notifications</string>
     <string name="notifications_none">No notifications</string>
     <string name="notifications_clear_all">Clear all</string>
+
+    <!-- Remote & Buttons / Button Mapper -->
+    <string name="settings_remote_buttons">Remote &amp; Buttons</string>
+    <string name="settings_remote_buttons_subtitle">Customize remote buttons, Home actions, and app shortcuts in Nuvio and globally.</string>
+    <string name="button_mapper_title">Button Mapper</string>
+    <string name="button_mapper_master_toggle">Enable Button Mapper</string>
+    <string name="button_mapper_master_subtitle">Intercept and run custom actions for configured remote buttons.</string>
+    <string name="button_mapper_home_customization_toggle">Customize Home Button</string>
+    <string name="button_mapper_home_customization_subtitle">When disabled, Home uses factory defaults (Single: Go to Top of Home, Double: Profile Switcher).</string>
+    <string name="button_mapper_global_status_active">Global button interception active (Accessibility)</string>
+    <string name="button_mapper_global_status_inactive">Foreground only — enable Accessibility Service for global button remapping</string>
+    <string name="button_mapper_add_button">Add Button Mapping</string>
+    <string name="button_mapper_add_button_subtitle">Press a remote button to detect it and assign single, double, or long-press actions.</string>
+    <string name="button_mapper_reset_defaults">Reset to Defaults</string>
+    <string name="button_mapper_reset_defaults_subtitle">Restore default Home button behavior and remove custom button mappings.</string>
+    <string name="button_mapper_reset_confirm_title">Reset Button Mapper to Defaults?</string>
+    <string name="button_mapper_reset_confirm_message">This will remove all custom button mappings and restore the factory Home button defaults (Single: Go to Top of Home, Double: Profile Switcher, Long: Not Assigned).</string>
+    <string name="button_mapper_delete_confirm_title">Delete Button Mapping?</string>
+    <string name="button_mapper_delete_confirm_message">Remove custom actions for %1$s?</string>
+    <string name="button_mapper_restore_home_defaults">Restore Default Home Assignments</string>
+    <string name="button_mapper_not_assigned">Not Assigned</string>
+    <string name="button_mapper_single_press">Single Click</string>
+    <string name="button_mapper_double_press">Double Click</string>
+    <string name="button_mapper_long_press">Long Press</string>
+    <string name="button_mapper_status_global">Available Globally</string>
+    <string name="button_mapper_status_nuvio">Available in Nuvio</string>
+    <string name="button_mapper_status_unknown">Unverified on This Remote</string>
+    <string name="button_mapper_status_unavailable">Unavailable</string>
+    <string name="button_mapper_status_reserved">System Reserved</string>
+    <string name="button_mapper_capture_title">Press a Remote Button</string>
+    <string name="button_mapper_capture_instruction">Press the physical button on your remote that you want to configure.</string>
+    <string name="button_mapper_capture_timeout_message">No key event was detected. Your TV or remote firmware may reserve that button at the system level and not expose its key event to Android apps. You can try again or choose a known remote button below.</string>
 </resources>

@@ -238,11 +238,11 @@ fun PosterOptionsHost(
             target.apiType.equals("anime", ignoreCase = true)
         val bell = if (calendarBell && isSeries) {
             com.nuvio.tv.calendar.rememberShowBell(
-                showKey = target.id,
-                imdbId = target.id.takeIf { it.startsWith("tt") },
-                title = target.name,
+                id = target.id,
+                imdbId = target.imdbId ?: target.id.takeIf { it.startsWith("tt") },
+                name = target.name,
                 poster = target.poster,
-                backdrop = target.backdrop
+                background = target.background
             )
         } else null
         PosterOptionsDialog(
