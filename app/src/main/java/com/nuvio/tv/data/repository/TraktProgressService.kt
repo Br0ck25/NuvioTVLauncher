@@ -291,6 +291,10 @@ class TraktProgressService @Inject constructor(
                 val success = try {
                     refreshRemoteSnapshot()
                     true
+                } catch (e: kotlinx.coroutines.CancellationException) {
+                    // collectLatest cancels the previous refresh when a new event arrives. That is not a
+                    // failure and must not feed the backoff (it did, hundreds of times in a burst).
+                    throw e
                 } catch (e: Exception) {
                     Log.w(TAG, "Failed to refresh remote snapshot", e)
                     false
@@ -1033,8 +1037,10 @@ class TraktProgressService @Inject constructor(
         }
 
         consecutiveRefreshFailures += 1
-        val nextInterval = (baseRefreshIntervalMs shl (consecutiveRefreshFailures - 1))
-            .coerceAtMost(maxRefreshIntervalMs)
+        // Cap the shift: a Long shifted by 63+ wraps to 0 or a negative interval (a busy retry loop).
+        val shift = (consecutiveRefreshFailures - 1).coerceIn(0, 16)
+        val nextInterval = (baseRefreshIntervalMs shl shift)
+            .coerceIn(baseRefreshIntervalMs, maxRefreshIntervalMs)
         if (nextInterval != refreshIntervalMs) {
             Log.w(
                 TAG,
