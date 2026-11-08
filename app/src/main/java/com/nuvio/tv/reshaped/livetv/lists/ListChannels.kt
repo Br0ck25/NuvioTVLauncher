@@ -392,6 +392,33 @@ internal object ListChannels {
         return offset.coerceIn(0L, (slot.durationMs - 20_000L).coerceAtLeast(0L))
     }
 
+    /**
+     * Guide lengths come from addon metadata (or a default), which often differs from the real file.
+     * Once the player knows the true length of the programme opened on [channelUrl], resize its slot
+     * and move everything after it, so the guide, "ends at" time and next programme line up.
+     */
+    fun reconcileDuration(channelUrl: String, actualMs: Long) {
+        val id = listChannelIdOf(channelUrl)
+        val opened0 = opened[id] ?: return
+        if (actualMs < 5 * 60_000L) return
+        val now = System.currentTimeMillis()
+        val newEnd = opened0.startMs + actualMs
+        if (kotlin.math.abs(newEnd - opened0.endMs) < 60_000L || newEnd < now + 20_000L) return
+        val delta = newEnd - opened0.endMs
+        val current = slotsById[id] ?: return
+        val updated = current.map { s ->
+            when {
+                s.startMs == opened0.startMs && s.videoId == opened0.videoId -> s.copy(endMs = newEnd)
+                s.startMs >= opened0.endMs -> s.copy(startMs = s.startMs + delta, endMs = s.endMs + delta)
+                else -> s
+            }
+        }
+        slotsById = slotsById + (id to updated)
+        opened[id] = opened0.copy(endMs = newEnd)
+        store?.let { it.saveSchedule(id, updated, it.state(id)) }
+        onProgrammesChanged()
+    }
+
     private suspend fun keepSchedulesCurrent() {
         val now = System.currentTimeMillis()
         _channels.value.forEach { channel ->

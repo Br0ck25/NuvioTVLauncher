@@ -462,8 +462,7 @@ internal class LiveTvPlayerState(
 
     /** Tuning in to a list channel joins its programme part-way: seeks there once the player knows the length. */
     internal suspend fun joinListProgramme(url: String, listUrl: String) {
-        val offset = ListChannels.startOffsetMs(listUrl)
-        if (offset < JOIN_MIN_MS) return
+        var offset = ListChannels.startOffsetMs(listUrl)
         // On a zap the player is kept, so the previous programme's length is still there: wait until
         // the new one is really playing before seeking, then check the seek landed.
         var seeked = false
@@ -472,6 +471,10 @@ internal class LiveTvPlayerState(
             val timeline = controller._playbackTimeline.value
             val ready = !controller._uiState.value.isBuffering && timeline.duration > 0L
             if (ready && !seeked) {
+                // The file's real length wins over the guide's estimate.
+                ListChannels.reconcileDuration(listUrl, timeline.duration)
+                offset = ListChannels.startOffsetMs(listUrl)
+                if (offset < JOIN_MIN_MS) return
                 controller.onEvent(PlayerEvent.OnSeekTo(offset))
                 seeked = true
                 delay(3_000L)
