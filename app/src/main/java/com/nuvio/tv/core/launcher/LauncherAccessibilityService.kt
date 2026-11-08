@@ -58,7 +58,9 @@ class LauncherAccessibilityService : AccessibilityService() {
 
     override fun onKeyEvent(event: KeyEvent): Boolean {
         val handler = resolveKeyEventHandler()
-        val nativeHome = LauncherSetup.isDefaultHome(this)
+        // isDefaultHome is a PackageManager binder call. Every key press (D-pad included) passes through
+        // here on the main thread, so only pay for it when a key actually needs the answer.
+        val nativeHome by lazy(LazyThreadSafetyMode.NONE) { LauncherSetup.isDefaultHome(this) }
         val isForeground = HomeForegroundDelivery.isResumed
         val effectiveSource = if (isForeground) ButtonEventSource.FOREGROUND else ButtonEventSource.GLOBAL
 
