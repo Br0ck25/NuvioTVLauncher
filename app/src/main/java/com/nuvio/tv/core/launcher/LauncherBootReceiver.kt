@@ -26,6 +26,12 @@ class LauncherBootReceiver : BroadcastReceiver() {
                         "optedIn=${AccessibilityWatchdog.isOptedIn(context)} " +
                         "defaultHome=$defaultHome fallbackAllowed=$fallbackAllowed"
                 )
+                // Why does the resolver disagree with Settings' Home picker? Log what it actually returns,
+                // now and shortly after (the preferred-Home binding can settle a moment after an update).
+                logHomeResolution(context.applicationContext, "now")
+                Handler(Looper.getMainLooper()).postDelayed(
+                    { logHomeResolution(context.applicationContext, "+10s") }, 10_000L
+                )
                 if (intent.action == Intent.ACTION_MY_PACKAGE_REPLACED) {
                     LauncherSetup.markRoleOfferAfterUpdate(context)
                 }
@@ -49,6 +55,16 @@ class LauncherBootReceiver : BroadcastReceiver() {
                 }
             }
         }
+    }
+
+    private fun logHomeResolution(context: Context, whenLabel: String) {
+        val caps = LauncherCapabilities.detect(context)
+        Log.i(
+            TAG,
+            "Home resolution ($whenLabel): resolver=${caps.selectedHome?.flattenToShortString()} " +
+                "roleHeld=${caps.homeRoleHeld} isDefaultHome=${caps.isDefaultHome} " +
+                "candidates=${caps.selectedHomeActivities.map { it.flattenToShortString() }}"
+        )
     }
 
     private fun relaunch(context: Context, attempt: Int) {
