@@ -229,6 +229,7 @@ import java.util.Locale
 import javax.inject.Inject
 import kotlinx.coroutines.delay
 import kotlinx.coroutines.flow.MutableStateFlow
+import kotlinx.coroutines.flow.collectLatest
 import kotlinx.coroutines.flow.combine
 import kotlinx.coroutines.flow.map
 import kotlinx.coroutines.launch
@@ -1012,7 +1013,6 @@ open class MainActivity : ComponentActivity() {
                     // up the remote, so the profile picker becomes the default screen again.
                     val profileIdleSwitchEnabled by profileManager.profileIdleSwitchEnabled.collectAsState()
                     val canSwitchProfiles = profiles.size > 1 || activeProfileHasPin
-                    val interactionAt by ambientIdleController.lastInteractionAt.collectAsState()
                     val ambientShowing by ambientIdleController.isShowing.collectAsState()
                     val appLifecycleState by LocalLifecycleOwner.current.lifecycle.currentStateAsState()
                     var profileSwitchDue by remember { mutableStateOf(false) }
@@ -1025,8 +1025,7 @@ open class MainActivity : ComponentActivity() {
                         canSwitchProfiles,
                         hasSelectedProfileThisSession,
                         currentRoute,
-                        appLifecycleState,
-                        interactionAt
+                        appLifecycleState
                     ) {
                         if (!profileIdleSwitchEnabled || !canSwitchProfiles) {
                             profileSwitchDue = false
@@ -1041,12 +1040,20 @@ open class MainActivity : ComponentActivity() {
                         // Never pull the picker over playback, e.g. a paused movie left overnight.
                         // Leaving the player counts as activity so it cannot fire on the way out.
                         if (currentRoute?.startsWith("player/") == true) {
-                            ambientIdleController.onInteraction()
-                            return@LaunchedEffect
+                            // Keep the idle clock fresh for as long as playback is on screen.
+                            while (true) {
+                                ambientIdleController.onInteraction()
+                                delay(PROFILE_SWITCH_IDLE_TIMEOUT_MS / 4)
+                            }
                         }
-                        val remainingMs = interactionAt + PROFILE_SWITCH_IDLE_TIMEOUT_MS - SystemClock.uptimeMillis()
-                        if (remainingMs > 0) delay(remainingMs)
-                        profileSwitchDue = true
+                        // The interaction time is collected here, not read during composition: it changes on
+                        // every key press, and reading it in the root composable recomposed the whole app
+                        // on each remote press.
+                        ambientIdleController.lastInteractionAt.collectLatest { interactedAt ->
+                            val remainingMs = interactedAt + PROFILE_SWITCH_IDLE_TIMEOUT_MS - SystemClock.uptimeMillis()
+                            if (remainingMs > 0) delay(remainingMs)
+                            profileSwitchDue = true
+                        }
                     }
 
                     // The ambient slideshow is the screen saver for the same idle period; leave it up
