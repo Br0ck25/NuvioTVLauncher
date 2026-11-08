@@ -19,6 +19,15 @@ import kotlinx.coroutines.flow.asStateFlow
 class LauncherAccessibilityService : AccessibilityService() {
     private var delivery = HomeFallbackPolicy()
     private var buttonKeyEventHandler: ButtonKeyEventHandler? = null
+    private val mainHandler = Handler(Looper.getMainLooper())
+    private var recheckPending = false
+    private val recheckHome = Runnable {
+        recheckPending = false
+        if (HomeForegroundDelivery.isResumed) return@Runnable
+        if (LauncherSetup.isDefaultHome(this) || !LauncherSetup.accessibilityFallbackAllowed(this)) return@Runnable
+        if (!delivery.consumeRecheck()) return@Runnable
+        launchHome(SystemClock.uptimeMillis())
+    }
 
     override fun onServiceConnected() {
         super.onServiceConnected()
@@ -159,7 +168,14 @@ class LauncherAccessibilityService : AccessibilityService() {
             // A launcher activity transition is only a last resort when firmware withholds HOME
             // keys. Dialogs, SystemUI and arbitrary windows in the launcher package are not HOME.
             val now = SystemClock.uptimeMillis()
-            if (delivery.acceptLauncherWindow(now)) launchHome(now)
+            if (delivery.acceptLauncherWindow(now)) {
+                launchHome(now)
+            } else if (delivery.shouldScheduleRecheck(now) && !recheckPending) {
+                // The system's own HOME start for this press can land after ours. Look once more
+                // shortly after and take the screen back only if Nuvio still isn't in front.
+                recheckPending = true
+                mainHandler.postDelayed(recheckHome, HomeFallbackPolicy.RECHECK_DELAY_MS)
+            }
         } else if (isApplicationActivity(pkg, className)) {
             // Do not rearm on transient system panels/dialogs; they can accompany the same HOME.
             delivery.onOtherApplicationWindow()
@@ -176,6 +192,7 @@ class LauncherAccessibilityService : AccessibilityService() {
     override fun onInterrupt() {}
 
     override fun onUnbind(intent: Intent?): Boolean {
+        cancelHomeRecheck()
         operational.value = false
         if (activeServiceRef?.get() === this) {
             activeServiceRef = null
@@ -183,7 +200,13 @@ class LauncherAccessibilityService : AccessibilityService() {
         return super.onUnbind(intent)
     }
 
+    private fun cancelHomeRecheck() {
+        mainHandler.removeCallbacks(recheckHome)
+        recheckPending = false
+    }
+
     override fun onDestroy() {
+        cancelHomeRecheck()
         operational.value = false
         if (activeServiceRef?.get() === this) {
             activeServiceRef = null
