@@ -2948,7 +2948,25 @@ private fun requestHomeScrollToTop(navController: NavHostController) {
         // "home" not yet on the back stack (e.g. nav graph not fully initialized).
         return
     }
-    val homeViewModel = androidx.lifecycle.ViewModelProvider(homeEntry)[com.nuvio.tv.ui.screens.home.HomeViewModel::class.java]
+    // HomeViewModel is @HiltViewModel, so it must come from Hilt's factory. A plain
+    // ViewModelProvider(entry) only works if the Home screen already created the instance; otherwise
+    // it throws "Cannot create an instance of class HomeViewModel" (no no-arg constructor).
+    var context = navController.context
+    while (context is android.content.ContextWrapper && context !is androidx.activity.ComponentActivity) {
+        context = context.baseContext
+    }
+    val activity = context as? androidx.activity.ComponentActivity ?: return
+    val factory = dagger.hilt.android.internal.lifecycle.HiltViewModelFactory.createInternal(
+        activity,
+        homeEntry,
+        homeEntry.arguments,
+        homeEntry.defaultViewModelProviderFactory,
+    )
+    val homeViewModel = androidx.lifecycle.ViewModelProvider(
+        homeEntry.viewModelStore,
+        factory,
+        homeEntry.defaultViewModelCreationExtras,
+    )[com.nuvio.tv.ui.screens.home.HomeViewModel::class.java]
     homeViewModel.requestScrollToTop()
 }
 

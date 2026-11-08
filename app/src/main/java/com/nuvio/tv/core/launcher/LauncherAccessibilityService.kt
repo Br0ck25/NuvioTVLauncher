@@ -147,9 +147,13 @@ class LauncherAccessibilityService : AccessibilityService() {
             delivery.onOtherApplicationWindow()
             return
         }
+        // Runs for every window change in every app, on the main thread. When Nuvio is the native
+        // HOME (the normal case) nothing below applies, so do one cheap resolver check and stop
+        // before the full capability scan (several PackageManager/RoleManager binder calls).
+        val nativeHome = LauncherSetup.isDefaultHome(this)
+        LauncherSetup.observeNativeHome(this, nativeHome)
+        if (nativeHome || !LauncherSetup.accessibilityFallbackAllowed(this) || HomeForegroundDelivery.isResumed) return
         val capabilities = LauncherCapabilities.detect(this)
-        LauncherSetup.observeNativeHome(this, capabilities.isDefaultHome)
-        if (capabilities.isDefaultHome || !capabilities.accessibilityFallbackAllowed || HomeForegroundDelivery.isResumed) return
         val component = ComponentName(pkg, className)
         if (component in capabilities.selectedHomeActivities) {
             // A launcher activity transition is only a last resort when firmware withholds HOME
