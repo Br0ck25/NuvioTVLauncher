@@ -142,6 +142,7 @@ internal object ListChannels {
     private const val PENDING_TORRENT_MS = 3L * 60 * 1000
     private const val NETWORK_TIMEOUT_MS = 20_000L
     private const val STREAMS_TIMEOUT_MS = 25_000L
+    private const val TMDB_MISS_TTL_MS = 10L * 60 * 1000
     private const val DEFAULT_MOVIE_MIN = 100
     private const val DEFAULT_EPISODE_MIN = 45
     private const val MAX_BUILD_FAILURES = 6
@@ -993,13 +994,26 @@ internal object ListChannels {
         return released <= today
     }
 
-    /** [known] if the addons gave a runtime, else what TMDB lists, so the guide matches the real file. */
+    private val tmdbRuntimes = ConcurrentHashMap<String, Int>()
+    private val tmdbRuntimeMisses = ConcurrentHashMap<String, Long>()
+
+    /**
+     * [known] if the addons gave a runtime, else what TMDB lists, so the guide matches the real file.
+     * Answers are remembered per title, and a title TMDB could not answer is not asked again for a while,
+     * so extending a long schedule never repeats the same slow lookups.
+     */
     private suspend fun runtimeOrTmdb(known: Int?, imdbId: String, type: String): Int? {
         if (known != null) return known
         val base = imdbId.substringBefore(':')
-        return withTimeoutOrNull(4_000L) {
+        val key = "${if (type == "movie") "movie" else "tv"}:$base"
+        tmdbRuntimes[key]?.let { return it }
+        val missAt = tmdbRuntimeMisses[key]
+        if (missAt != null && SystemClock.elapsedRealtime() - missAt < TMDB_MISS_TTL_MS) return null
+        val minutes = withTimeoutOrNull(4_000L) {
             runCatching { deps().tmdbService().fetchImdbRuntimeMinutes(base, type) }.getOrNull()
         }
+        if (minutes != null) tmdbRuntimes[key] = minutes else tmdbRuntimeMisses[key] = SystemClock.elapsedRealtime()
+        return minutes
     }
 
     private fun parseRuntimeMinutes(text: String?): Int? {
