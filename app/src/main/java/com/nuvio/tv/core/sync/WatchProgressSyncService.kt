@@ -1,6 +1,7 @@
 package com.nuvio.tv.core.sync
 
 import android.util.Log
+import com.nuvio.tv.BuildConfig
 import com.nuvio.tv.core.auth.AuthManager
 import com.nuvio.tv.core.profile.ProfileManager
 import com.nuvio.tv.core.tracking.TrackingProgressProviderRegistry
@@ -167,7 +168,7 @@ class WatchProgressSyncService @Inject constructor(
                     !ServerItemRef.isServerId(progress.contentId)
             }
             Log.d(TAG, "pushToRemote: ${rawEntries.size} pending entries, ${entries.size} canonical entries to push for profile $profileId")
-            entries.forEach { (key, progress) ->
+            if (BuildConfig.DEBUG) entries.forEach { (key, progress) ->
                 Log.d(TAG, "  push entry: key=$key contentId=${progress.contentId} type=${progress.contentType} pos=${progress.position} dur=${progress.duration} lastWatched=${progress.lastWatched}")
             }
 
@@ -301,7 +302,7 @@ class WatchProgressSyncService @Inject constructor(
             val remote = response.decodeList<SupabaseWatchProgress>()
 
             Log.d(TAG, "pullFromRemote: fetched ${remote.size} entries from Supabase via RPC for profile $profileId sinceLastWatched=$sinceLastWatched")
-            remote.forEach { entry ->
+            if (BuildConfig.DEBUG) remote.forEach { entry ->
                 Log.d(TAG, "  pull entry: key=${entry.progressKey} contentId=${entry.contentId} type=${entry.contentType} pos=${entry.position} dur=${entry.duration} lastWatched=${entry.lastWatched}")
             }
 
