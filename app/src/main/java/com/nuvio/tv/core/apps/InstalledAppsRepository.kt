@@ -12,13 +12,16 @@ import javax.inject.Inject
 import javax.inject.Singleton
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Dispatchers
+import kotlinx.coroutines.FlowPreview
 import kotlinx.coroutines.SupervisorJob
 import kotlinx.coroutines.channels.awaitClose
 import kotlinx.coroutines.flow.MutableSharedFlow
 import kotlinx.coroutines.flow.SharingStarted
 import kotlinx.coroutines.flow.callbackFlow
 import kotlinx.coroutines.flow.combine
+import kotlinx.coroutines.flow.debounce
 import kotlinx.coroutines.flow.distinctUntilChanged
+import kotlinx.coroutines.flow.flowOf
 import kotlinx.coroutines.flow.mapLatest
 import kotlinx.coroutines.flow.merge
 import kotlinx.coroutines.flow.stateIn
@@ -29,7 +32,11 @@ data class InstalledAppsState(
     val isLoading: Boolean = true
 )
 
+/** Package installs/updates arrive in bursts; coalesce them into one refresh. */
+private const val PACKAGE_CHANGE_DEBOUNCE_MS = 300L
+
 /** Device-wide package discovery; ordering and row visibility are profile preferences. */
+@OptIn(FlowPreview::class)
 @Singleton
 class InstalledAppsRepository @Inject constructor(
     @ApplicationContext private val context: Context,
@@ -38,9 +45,14 @@ class InstalledAppsRepository @Inject constructor(
 ) {
     private val scope = CoroutineScope(SupervisorJob() + Dispatchers.Default)
     private val refreshRequests = MutableSharedFlow<Unit>(extraBufferCapacity = 1)
+    private val decodeCache = InstalledAppsDecodeCache()
 
     val state = combine(
-        merge(packageChanges(), refreshRequests).mapLatest { queryInstalledApps(context) },
+        merge(
+            flowOf(Unit), // initial load, not debounced
+            packageChanges().debounce(PACKAGE_CHANGE_DEBOUNCE_MS),
+            refreshRequests
+        ).mapLatest { queryInstalledApps(context, decodeCache) },
         preferencesDataStore.preferences
     ) { baseApps, prefs ->
         val customizedApps = baseApps.map { app ->
@@ -88,7 +100,6 @@ class InstalledAppsRepository @Inject constructor(
             addDataScheme("package")
         }
         ContextCompat.registerReceiver(context, receiver, filter, ContextCompat.RECEIVER_NOT_EXPORTED)
-        trySend(Unit)
         awaitClose { context.unregisterReceiver(receiver) }
     }
 }
