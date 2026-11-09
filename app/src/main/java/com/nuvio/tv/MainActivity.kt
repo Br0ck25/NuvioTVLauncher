@@ -2014,8 +2014,10 @@ private fun LegacySidebarScaffold(
     }
 
     BackHandler(enabled = currentRoute in rootRoutes && drawerState.currentValue == DrawerValue.Open) {
+        // As the home launcher, Back must never leave the app: just close the sidebar.
         if (longPressBackHeld.value) return@BackHandler
-        onExitApp()
+        pendingContentFocusTransfer = true
+        drawerState.setValue(DrawerValue.Closed)
     }
 
     LaunchedEffect(drawerState.currentValue, pendingContentFocusTransfer) {
@@ -2464,8 +2466,9 @@ private fun ModernSidebarScaffold(
     }
 
     BackHandler(enabled = currentRoute in rootRoutes && isSidebarExpanded && !sidebarCollapsePending) {
+        // As the home launcher, Back must never leave the app: just collapse the sidebar.
         if (longPressBackHeld.value) return@BackHandler
-        onExitApp()
+        sidebarCollapsePending = true
     }
 
     LaunchedEffect(sidebarCollapsePending, isSidebarExpanded, showSidebar) {
