@@ -16,6 +16,7 @@ import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.platform.LocalContext
+import androidx.compose.ui.res.pluralStringResource
 import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.unit.dp
 import androidx.tv.material3.MaterialTheme
@@ -63,6 +64,39 @@ internal fun LiveTvAddonPicker(
         val currentAddons = addons
         val currentChannels = channels
         val currentChosen = chosen
+        // The actions sit above the list so they are always in reach, however long the list is.
+        Row(
+            modifier = Modifier.fillMaxWidth(),
+            horizontalArrangement = Arrangement.spacedBy(NuvioTheme.spacing.sm),
+            verticalAlignment = Alignment.CenterVertically,
+        ) {
+            if (currentChosen != null && currentChannels != null) {
+                LiveTvPillButton(
+                    text = pluralStringResource(R.plurals.live_tv_addon_add_selected, selected.size, selected.size),
+                    enabled = selected.isNotEmpty(),
+                    onClick = {
+                        onConfirm(
+                            LiveTvAddonSettings(
+                                addonUrl = currentChosen.baseUrl,
+                                addonName = currentChosen.displayName,
+                                channels = currentChannels.filter { (it.type to it.id) in selected },
+                            ),
+                        )
+                    },
+                )
+                if (currentChannels.isNotEmpty()) {
+                    LiveTvPillButton(
+                        text = stringResource(R.string.live_tv_addon_select_all),
+                        onClick = { selected = currentChannels.map { it.type to it.id }.toSet() },
+                    )
+                    LiveTvPillButton(text = stringResource(R.string.live_tv_addon_clear), onClick = { selected = emptySet() })
+                }
+                if (initial == null) {
+                    LiveTvPillButton(text = stringResource(R.string.live_tv_addon_change_addon), onClick = { chosen = null })
+                }
+            }
+            LiveTvPillButton(text = stringResource(R.string.live_tv_back), onClick = onBack)
+        }
         when {
             currentAddons == null -> Hint(stringResource(R.string.live_tv_addon_loading))
             currentAddons.isEmpty() -> Hint(stringResource(R.string.live_tv_addon_none))
@@ -79,15 +113,8 @@ internal fun LiveTvAddonPicker(
             currentChannels == null -> Hint(stringResource(R.string.live_tv_addon_loading))
             currentChannels.isEmpty() -> Hint(stringResource(R.string.live_tv_addon_no_channels))
             else -> {
-                Row(horizontalArrangement = Arrangement.spacedBy(NuvioTheme.spacing.sm), verticalAlignment = Alignment.CenterVertically) {
-                    LiveTvPillButton(
-                        text = stringResource(R.string.live_tv_addon_select_all),
-                        onClick = { selected = currentChannels.map { it.type to it.id }.toSet() },
-                    )
-                    LiveTvPillButton(text = stringResource(R.string.live_tv_addon_clear), onClick = { selected = emptySet() })
-                }
                 LazyColumn(
-                    modifier = Modifier.fillMaxWidth().height(300.dp),
+                    modifier = Modifier.fillMaxWidth().height(260.dp),
                     verticalArrangement = Arrangement.spacedBy(NuvioTheme.spacing.xs),
                 ) {
                     items(currentChannels, key = { "${it.type}|${it.id}" }) { channel ->
@@ -101,30 +128,6 @@ internal fun LiveTvAddonPicker(
                         )
                     }
                 }
-            }
-        }
-        Row(
-            modifier = Modifier.fillMaxWidth(),
-            horizontalArrangement = Arrangement.spacedBy(NuvioTheme.spacing.sm, Alignment.End),
-        ) {
-            if (currentChosen != null && initial == null) {
-                LiveTvPillButton(text = stringResource(R.string.live_tv_addon_change_addon), onClick = { chosen = null })
-            }
-            LiveTvPillButton(text = stringResource(R.string.live_tv_back), onClick = onBack)
-            if (currentChosen != null && currentChannels != null) {
-                LiveTvPillButton(
-                    text = stringResource(R.string.live_tv_addon_add_selected, selected.size),
-                    enabled = selected.isNotEmpty(),
-                    onClick = {
-                        onConfirm(
-                            LiveTvAddonSettings(
-                                addonUrl = currentChosen.baseUrl,
-                                addonName = currentChosen.displayName,
-                                channels = currentChannels.filter { (it.type to it.id) in selected },
-                            ),
-                        )
-                    },
-                )
             }
         }
     }

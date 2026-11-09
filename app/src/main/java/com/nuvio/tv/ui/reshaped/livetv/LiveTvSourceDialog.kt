@@ -160,26 +160,29 @@ internal fun LiveTvSourceDialog(onDismiss: () -> Unit) {
             modifier = Modifier.fillMaxWidth(),
             horizontalArrangement = Arrangement.spacedBy(NuvioTheme.spacing.xl),
         ) {
-            Column(
-                modifier = Modifier.width(200.dp),
-                verticalArrangement = Arrangement.spacedBy(NuvioTheme.spacing.sm),
-                horizontalAlignment = Alignment.CenterHorizontally,
-            ) {
-                serverState?.qr?.let { qr ->
-                    Image(
-                        bitmap = remember(qr) { qr.asImageBitmap() },
-                        contentDescription = stringResource(R.string.cd_qr_code),
-                        modifier = Modifier.size(170.dp),
-                        contentScale = ContentScale.Fit,
+            // Choosing addon channels needs the room: the phone setup code is only for typed-in sources.
+            if (!(adding && tab == LiveTvSourceType.Addon)) {
+                Column(
+                    modifier = Modifier.width(200.dp),
+                    verticalArrangement = Arrangement.spacedBy(NuvioTheme.spacing.sm),
+                    horizontalAlignment = Alignment.CenterHorizontally,
+                ) {
+                    serverState?.qr?.let { qr ->
+                        Image(
+                            bitmap = remember(qr) { qr.asImageBitmap() },
+                            contentDescription = stringResource(R.string.cd_qr_code),
+                            modifier = Modifier.size(170.dp),
+                            contentScale = ContentScale.Fit,
+                        )
+                    }
+                    Text(
+                        text = serverState?.error ?: stringResource(R.string.live_tv_phone_instruction),
+                        style = MaterialTheme.typography.bodySmall,
+                        color = NuvioTheme.colors.TextSecondary,
                     )
-                }
-                Text(
-                    text = serverState?.error ?: stringResource(R.string.live_tv_phone_instruction),
-                    style = MaterialTheme.typography.bodySmall,
-                    color = NuvioTheme.colors.TextSecondary,
-                )
-                serverState?.url?.let { url ->
-                    Text(text = url, style = MaterialTheme.typography.labelSmall, color = NuvioTheme.colors.TextTertiary)
+                    serverState?.url?.let { url ->
+                        Text(text = url, style = MaterialTheme.typography.labelSmall, color = NuvioTheme.colors.TextTertiary)
+                    }
                 }
             }
 
