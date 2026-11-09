@@ -228,15 +228,10 @@ internal fun HomeViewModel.rebuildCatalogOrder(addons: List<Addon>) {
     val defaultOrder = buildDefaultCatalogOrder(addons)
     val independentKeys = collectionsCache.map { "collection_${it.id}" } + INSTALLED_APPS_CATALOG_KEY
     val ownerByCatalogKey = buildAddonKeyOwnerMap(addons)
-    val collectionCatalogKeys = com.nuvio.tv.core.mylists.MyListsDefaultSeed.extractCollectionCatalogKeys(collectionsCache)
-    val filteredSavedOrder = homeCatalogOrderKeys.filterNot {
-        it in collectionCatalogKeys ||
-        it.startsWith("${com.nuvio.tv.core.mylists.MyListsDefaultSeed.MY_LISTS_COLLECTIONS_ADDON_ID}_")
-    }
     val order = mergeHomeCatalogOrder(
         addonKeys = defaultOrder,
         independentKeys = independentKeys,
-        savedOrderKeys = filteredSavedOrder,
+        savedOrderKeys = homeCatalogOrderKeys,
         followAddonsOrder = followAddonsOrderEnabled,
         addonOwner = ownerByCatalogKey::get
     )
@@ -249,15 +244,9 @@ internal fun HomeViewModel.rebuildCatalogOrder(addons: List<Addon>) {
 private fun HomeViewModel.buildDefaultCatalogOrder(addons: List<Addon>): List<String> {
     val orderedKeys = mutableListOf<String>()
     addons.forEach { addon ->
-        if (addon.id.equals(com.nuvio.tv.core.mylists.MyListsDefaultSeed.MY_LISTS_COLLECTIONS_ADDON_ID, ignoreCase = true)) {
-            return@forEach
-        }
         addon.catalogs
             .filterNot {
-                com.nuvio.tv.core.mylists.MyListsDefaultSeed.isRemovedCatalog(it.id, it.apiType) ||
-                !it.shouldShowOnHome() ||
-                com.nuvio.tv.core.mylists.MyListsDefaultSeed.isCollectionCatalogSource(collectionsCache, addon.id, it.apiType, it.id) ||
-                isCatalogDisabled(
+                !it.shouldShowOnHome() || isCatalogDisabled(
                     addonBaseUrl = addon.baseUrl,
                     addonId = addon.id,
                     type = it.apiType,

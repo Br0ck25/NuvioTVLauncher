@@ -6,7 +6,6 @@ import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
 import com.nuvio.tv.R
 import com.nuvio.tv.core.build.AppFeaturePolicy
-import com.nuvio.tv.core.mylists.MyListsDefaultSeed
 import com.nuvio.tv.core.network.NetworkResult
 import com.nuvio.tv.core.tmdb.TmdbCollectionSourceResolver
 import com.nuvio.tv.core.util.hasNoReleaseInfo
@@ -750,16 +749,7 @@ class FolderDetailViewModel @Inject constructor(
         addons: List<com.nuvio.tv.domain.model.Addon>,
         addonId: String
     ): com.nuvio.tv.domain.model.Addon? {
-        if (
-            addonId.equals(MyListsDefaultSeed.MY_LISTS_TV_ADDON_ID, ignoreCase = true) ||
-            addonId.equals(MyListsDefaultSeed.MY_LISTS_COLLECTIONS_ADDON_ID, ignoreCase = true) ||
-            addonId.equals(MyListsDefaultSeed.MY_LISTS_ADDON_ID, ignoreCase = true)
-        ) {
-            return addons.find { MyListsDefaultSeed.isMyListsAddon(it) && !MyListsDefaultSeed.isMyListsDefaultUrl(it.baseUrl) }
-                ?: addons.find { MyListsDefaultSeed.isMyListsAddon(it) }
-        }
-        return addons.find { it.id == addonId && !MyListsDefaultSeed.isMyListsDefaultUrl(it.baseUrl) }
-            ?: addons.find { it.id == addonId }
+        return addons.find { it.id == addonId }
     }
 
     private fun loadAddonCatalogForTab(tabIndex: Int, source: AddonCatalogCollectionSource) {

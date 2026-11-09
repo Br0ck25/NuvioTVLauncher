@@ -110,7 +110,6 @@ fun HomeScreen(
         val observer = LifecycleEventObserver { _, event ->
             if (event == Lifecycle.Event.ON_RESUME) {
                 viewModel.beginShuffleHomeVisit()
-                viewModel.syncMyListsIfNeeded()
                 viewModel.refreshHomeCatalogsIfStale()
                 viewModel.refreshInstalledApps()
             }

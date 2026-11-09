@@ -72,7 +72,6 @@ class HomeViewModel @Inject constructor(
     @ApplicationContext internal val appContext: Context,
     internal val addonRepository: AddonRepository,
     internal val startupSyncService: com.nuvio.tv.core.sync.StartupSyncService,
-    internal val myListsTvSyncManager: com.nuvio.tv.core.mylists.MyListsTvSyncManager? = null,
     internal val catalogRepository: CatalogRepository,
     internal val watchProgressRepository: WatchProgressRepository,
     internal val libraryRepository: LibraryRepository,
@@ -117,8 +116,6 @@ class HomeViewModel @Inject constructor(
 
         /** How long a home catalog is left alone before a return to Home re-requests it. */
         private const val HOME_CATALOG_REFRESH_TTL_MS = 15L * 60L * 1000L
-        /** A My Lists sync often lands as several events in a row; handle them as one. */
-        internal const val MY_LISTS_REFRESH_DEBOUNCE_MS = 1_500L
         internal const val EXTERNAL_META_PREFETCH_FOCUS_DEBOUNCE_MS = 220L
         internal const val EXTERNAL_META_PREFETCH_ADJACENT_DEBOUNCE_MS = 120L
         private const val MAX_ENRICHMENT_CACHE_SIZE = 64
@@ -156,8 +153,6 @@ class HomeViewModel @Inject constructor(
     val effectiveAutoplayEnabled = playerSettingsDataStore.playerSettings
         .map(StreamAutoPlayPolicy::isEffectivelyEnabled)
         .distinctUntilChanged()
-    val myListsTargetId: Flow<String> = myListsTvSyncManager?.targetIdFlow
-        ?: kotlinx.coroutines.flow.flowOf(com.nuvio.tv.core.mylists.MyListsTvSyncManager.DEFAULT_TARGET_ID)
     internal val _fullCatalogRows = MutableStateFlow<List<CatalogRow>>(emptyList())
     val fullCatalogRows: StateFlow<List<CatalogRow>> = _fullCatalogRows.asStateFlow()
 
@@ -950,49 +945,6 @@ class HomeViewModel @Inject constructor(
                 refreshVisibleCatalogsPipeline(requestedByUser = true)
             }
         }
-        if (myListsTvSyncManager != null) {
-            viewModelScope.launch {
-                // Bursts (profile + auth + periodic) collapse into one pass.
-                myListsTvSyncManager.syncRefreshEvents.debounce(MY_LISTS_REFRESH_DEBOUNCE_MS).collect {
-                    val freshAddons = runCatching { addonRepository.getInstalledAddons().first().enabledAddons() }.getOrNull()
-                    val targetAddons = if (!freshAddons.isNullOrEmpty()) {
-                        addonsCache = freshAddons
-                        freshAddons
-                    } else {
-                        addonsCache.enabledAddons()
-                    }
-                    if (targetAddons.isEmpty()) {
-                        clearCatalogData()
-                        synchronized(catalogStateLock) {
-                            catalogOrder.clear()
-                        }
-                        scheduleUpdateCatalogRows()
-                        return@collect
-                    }
-                    lastHomeCatalogRefreshAtMs = android.os.SystemClock.elapsedRealtime()
-                    // A full forced reload wipes every row and re-requests every addon. Only do that when
-                    // the set of catalogs actually changed (a list was added/removed/renamed); otherwise
-                    // swap in fresh My Lists rows in place and leave all other addons alone.
-                    val catalogSetChanged = buildHomeCatalogLoadSignature(targetAddons) != activeCatalogLoadSignature
-                    if (catalogSetChanged || !hasAnyCatalogRows()) {
-                        loadAllCatalogs(targetAddons, forceReload = true)
-                    } else {
-                        refreshVisibleCatalogsPipeline(
-                            requestedByUser = true,
-                            forceReplace = true,
-                            onlyAddonIds = setOf(
-                                com.nuvio.tv.core.mylists.MyListsDefaultSeed.MY_LISTS_TV_ADDON_ID,
-                                com.nuvio.tv.core.mylists.MyListsDefaultSeed.MY_LISTS_ADDON_ID
-                            )
-                        )
-                    }
-                }
-            }
-        }
-    }
-
-    fun syncMyListsIfNeeded() {
-        myListsTvSyncManager?.requestSyncInBackground(force = false)
     }
 
     fun refreshHomeCatalogsIfStale() {

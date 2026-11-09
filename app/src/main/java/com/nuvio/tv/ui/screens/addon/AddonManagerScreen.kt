@@ -1,6 +1,5 @@
 package com.nuvio.tv.ui.screens.addon
 
-import com.nuvio.tv.core.mylists.MyListsDefaultSeed
 import com.nuvio.tv.ui.theme.NuvioPrimitives
 import com.nuvio.tv.ui.theme.NuvioTheme
 
@@ -596,7 +595,6 @@ fun AddonManagerScreen(
                         onEnabledChange = { enabled -> viewModel.setAddonEnabled(addon.baseUrl, enabled) },
                         isReadOnly = viewModel.isReadOnly,
                         showReorder = !isEssential,
-                        canRemove = !MyListsDefaultSeed.isMyListsDefaultUrl(addon.baseUrl),
                         toggleFocusRequester = if (index == 0) firstAddonToggleFocusRequester else null
                     )
                 }

@@ -76,12 +76,4 @@ class ServerScheduleTest {
         assertNull(slots[0].description)
         assertEquals("tt1", slots[0].itemId)
     }
-
-    @Test
-    fun `a server that lists its features is only asked for what it has`() {
-        assertTrue("an older server says nothing and is tried", serverSupportsSchedules(null))
-        assertTrue(serverSupportsSchedules(setOf("etag", "schedule", "schedules")))
-        assertFalse("a server that has only the single route is not asked for the batch", serverSupportsSchedules(setOf("etag", "schedule")))
-        assertFalse(serverSupportsSchedules(emptySet()))
-    }
 }

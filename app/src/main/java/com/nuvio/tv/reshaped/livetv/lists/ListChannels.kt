@@ -70,9 +70,6 @@ import kotlinx.coroutines.launch
 import kotlinx.coroutines.sync.Mutex
 import kotlinx.coroutines.sync.withLock
 import kotlinx.coroutines.withTimeoutOrNull
-import com.nuvio.tv.core.mylists.MyListsDefaultSeed
-import com.nuvio.tv.core.mylists.MyListsTvChannel
-import com.nuvio.tv.core.mylists.MyListsTvSyncManager
 import okhttp3.CacheControl
 import okhttp3.MediaType.Companion.toMediaType
 import okhttp3.OkHttpClient
@@ -101,7 +98,7 @@ interface ListChannelsEntryPoint {
     fun debridSettings(): DebridSettingsDataStore
     fun torboxApi(): TorboxApi
     fun torrentSettings(): TorrentSettings
-    fun myListsTvSyncManager(): MyListsTvSyncManager
+    fun myListsChannelSource(): MyListsChannelSource
     fun okHttpClient(): OkHttpClient
 }
 
@@ -168,7 +165,7 @@ internal object ListChannels {
     private val channelLocks = ConcurrentHashMap<String, Mutex>()
     private val _channels = MutableStateFlow<List<ListChannel>>(emptyList())
     val channels: StateFlow<List<ListChannel>> = _channels.asStateFlow()
-    @Volatile private var myListsChannels: List<MyListsTvChannel> = MyListsDefaultSeed.DEFAULT_QUICK_ADD_CHANNELS
+    @Volatile private var myListsChannels: List<MyListsTvChannel> = emptyList()
 
     @Volatile private var slotsById: Map<String, List<ListSlot>> = emptyMap()
     @Volatile private var store: ListChannelStore? = null
@@ -206,9 +203,6 @@ internal object ListChannels {
     private fun deps(): ListChannelsEntryPoint =
         EntryPointAccessors.fromApplication(appContext!!, ListChannelsEntryPoint::class.java)
 
-    fun myListsTvSyncManager(): com.nuvio.tv.core.mylists.MyListsTvSyncManager? =
-        appContext?.let { runCatching { deps().myListsTvSyncManager() }.getOrNull() }
-
     /** Loads [profileId]'s channels and starts keeping their schedules up to date. Reads files: not on the main thread. */
     fun attach(context: Context, profileId: Int) {
         if (this.profileId == profileId && store != null) return
@@ -233,8 +227,7 @@ internal object ListChannels {
         _channels.value = list
         myListsCollectJob = scope.launch {
             runCatching {
-                deps().myListsTvSyncManager().channelsFlow.collect { synced ->
-                    val next = synced.ifEmpty { MyListsDefaultSeed.DEFAULT_QUICK_ADD_CHANNELS }
+                deps().myListsChannelSource().channelsFlow.collect { next ->
                     myListsChannels = next
                     val currentStore = store
                     if (currentStore != null) {
@@ -331,9 +324,9 @@ internal object ListChannels {
             val rawLogo = channel.logoUrl?.trim().orEmpty()
             val isLikelyPoster = rawLogo.contains("format=poster") ||
                 (rawLogo.contains("/p/w") && !rawLogo.contains("logo", ignoreCase = true))
-            val resolvedLogo = if (isLikelyPoster) null else MyListsDefaultSeed.resolveChannelLogoUrl(channel.logoUrl, channel.name)
+            val resolvedLogo = if (isLikelyPoster) null else MyListsAddon.resolveLogoUrl(channel.logoUrl)
             val backdrop = channel.backdropUrl?.takeIf { it.isNotBlank() }
-            val fallbackLandscape = MyListsDefaultSeed.resolveChannelBackdropUrl(channel.name)
+            val fallbackLandscape = MyListsAddon.backdropUrl(channel.name)
 
             LiveTvChannel(
                 id = listChannelGuideKey(internalId),
@@ -352,7 +345,7 @@ internal object ListChannels {
             LiveTvChannel(
                 id = listChannelGuideKey(channel.id),
                 name = channel.name,
-                logoUrl = MyListsDefaultSeed.resolveChannelBackdropUrl(channel.name),
+                logoUrl = MyListsAddon.backdropUrl(channel.name),
                 streamUrl = listChannelUrl(channel.id),
                 group = LIST_CHANNELS_GROUP,
                 sourceId = LIST_CHANNELS_SOURCE_ID,
@@ -370,10 +363,10 @@ internal object ListChannels {
             val rawId = stripMyListsChannelInternalId(id)
             val ch = myListsChannels.firstOrNull { it.id == rawId } ?: return null
             return ch.backdropUrl?.takeIf { it.isNotBlank() }
-                ?: MyListsDefaultSeed.resolveChannelBackdropUrl(ch.name)
+                ?: MyListsAddon.backdropUrl(ch.name)
         }
         val local = _channels.value.firstOrNull { it.id == id } ?: return null
-        return MyListsDefaultSeed.resolveChannelBackdropUrl(local.name)
+        return MyListsAddon.backdropUrl(local.name)
     }
 
     // endregion
@@ -697,19 +690,18 @@ internal object ListChannels {
         val saved = store
         if (channels.isEmpty() || saved == null) return@withLock
         serverBatchNextAsk = LiveTvClock.nowEpochMs() + SERVER_SCHEDULE_RETRY_MS
-        // A server that says what it offers is only asked for what it has; one that does not say (older) is tried.
-        if (!serverSupportsSchedules(runCatching { deps().myListsTvSyncManager().serverFeatures }.getOrNull())) return@withLock
         withContext(Dispatchers.IO) {
-            val target = runCatching { deps().myListsTvSyncManager().currentTargetId() }.getOrNull() ?: return@withContext
+            // The account is the one in the installed addon's link.
+            val target = channels.firstNotNullOfOrNull { MyListsAddon.targetId(it.addonBaseUrl) } ?: return@withContext
             val encodedTarget = URLEncoder.encode(target, "UTF-8").replace("+", "%20")
             val ids = channels.joinToString(",") { URLEncoder.encode(it.id, "UTF-8").replace(",", "%2C") }
-            val url = "${MyListsDefaultSeed.MY_LISTS_BASE_ORIGIN}/api/nuvio-tv/schedules/$encodedTarget?channels=$ids"
+            val url = "${MyListsAddon.ORIGIN}/api/nuvio-tv/schedules/$encodedTarget?channels=$ids"
             val request = Request.Builder()
                 .url(url)
                 .cacheControl(CacheControl.FORCE_NETWORK)
                 .header("Accept", "application/json")
-                .header("Origin", MyListsDefaultSeed.MY_LISTS_BASE_ORIGIN)
-                .header("Referer", "${MyListsDefaultSeed.MY_LISTS_BASE_ORIGIN}/")
+                .header("Origin", MyListsAddon.ORIGIN)
+                .header("Referer", "${MyListsAddon.ORIGIN}/")
                 .apply { serverBatchTag?.let { header("If-None-Match", it) } }
                 .get()
                 .build()
@@ -750,7 +742,7 @@ internal object ListChannels {
 
     /**
      * Fetches the current lineup for a [MyListsTvChannel] from `{addonBaseUrl}/catalog/tv/{channel.catalogId}.json`
-     * (and falls back to `/meta/series/channel_{id}.json` or `POST /api/channel-lineup` for preset networks).
+     * (and falls back to `/meta/series/channel_{id}.json`).
      */
     private suspend fun fetchMyListsChannelLineup(channel: MyListsTvChannel): List<MyListsLineupEntry> =
         withContext(Dispatchers.IO) {
@@ -759,15 +751,7 @@ internal object ListChannels {
                 return@withContext cached.second
             }
 
-            val d = deps()
-            val installedMyLists = runCatching {
-                d.addonRepository().getInstalledAddons().first().firstOrNull { addon ->
-                    MyListsDefaultSeed.isMyListsAddon(addon)
-                }
-            }.getOrNull()
-            val addonBaseUrl = (installedMyLists?.baseUrl ?: MyListsDefaultSeed.MY_LISTS_BASE_ORIGIN)
-                .trim()
-                .trimEnd('/')
+            val addonBaseUrl = channel.addonBaseUrl.trim().trimEnd('/')
 
             val entries = ArrayList<MyListsLineupEntry>()
             val catalogId = channel.catalogId.trim().ifBlank { "channel_${channel.id}" }
@@ -785,7 +769,11 @@ internal object ListChannels {
 
             // 2. If catalog returned a channel meta wrapper or wasn't directly listed, try `/meta/series/{channelMetaId}.json`
             if (entries.isEmpty()) {
-                val metaId = if (catalogId.startsWith("channel_")) catalogId else "channel_${channel.id}"
+                val metaId = when {
+                    catalogId.startsWith("channel_") -> catalogId
+                    catalogId.startsWith("channel-") -> "channel_" + catalogId.removePrefix("channel-")
+                    else -> "channel_${channel.id}"
+                }
                 val metaUrls = listOf(
                     "$addonBaseUrl/meta/series/$metaId.json",
                     "$addonBaseUrl/meta/tv/$metaId.json"
@@ -794,15 +782,6 @@ internal object ListChannels {
                     if (entries.isNotEmpty()) break
                     val body = executeMyListsGet(url) ?: continue
                     parseMyListsCatalogOrMetaJson(body, addonBaseUrl, entries)
-                }
-            }
-
-            // 3. For Quick Add preset network channels (or custom channels before account linking),
-            // request the rotated episode lineup from `POST https://mylistsaddon.com/api/channel-lineup`.
-            if (entries.isEmpty()) {
-                val presetNetId = extractPresetNetworkId(channel)
-                if (presetNetId != null) {
-                    fetchPresetNetworkLineup(channel, presetNetId, entries)
                 }
             }
 
@@ -815,81 +794,13 @@ internal object ListChannels {
             deduplicated
         }
 
-    private fun extractPresetNetworkId(channel: MyListsTvChannel): String? {
-        channel.catalogId.removePrefix("channel_preset_").takeIf { it.isNotEmpty() && it.all(Char::isDigit) }?.let { return it }
-        channel.id.removePrefix("ch_preset_").takeIf { it.isNotEmpty() && it.all(Char::isDigit) }?.let { return it }
-        return Regex("""[?&]netId=(\d+)""").find(channel.logoUrl.orEmpty())?.groupValues?.getOrNull(1)
-    }
-
-    private fun fetchPresetNetworkLineup(
-        channel: MyListsTvChannel,
-        presetNetId: String,
-        out: MutableList<MyListsLineupEntry>
-    ) {
-        val client = deps().okHttpClient()
-        val autoSort = "interleave"
-        val channelSpec = JSONObject()
-            .put("channelId", channel.id)
-            .put("name", channel.name)
-            .put("presetNetworkId", presetNetId)
-            .put("dailyRotate", true)
-            .put("autoSort", autoSort)
-            .put("items", JSONArray())
-        val payload = JSONObject()
-            .put("url", "channel:v1:$channelSpec")
-            .toString()
-
-        val request = Request.Builder()
-            .url("${MyListsDefaultSeed.MY_LISTS_BASE_ORIGIN}/api/channel-lineup")
-            .header("Accept", "application/json")
-            .header("Origin", MyListsDefaultSeed.MY_LISTS_BASE_ORIGIN)
-            .header("Referer", "${MyListsDefaultSeed.MY_LISTS_BASE_ORIGIN}/")
-            .post(payload.toRequestBody("application/json; charset=utf-8".toMediaType()))
-            .build()
-
-        runCatching {
-            client.newCall(request).execute().use { response ->
-                if (!response.isSuccessful) return@use
-                val body = response.body?.string().orEmpty()
-                if (body.isBlank()) return@use
-                val root = JSONObject(body)
-                val items = root.optJSONArray("items") ?: return@use
-                parseLineupItemsArray(items, channel, out)
-            }
-        }
-
-        if (out.isEmpty()) {
-            val encodedName = URLEncoder.encode(channel.name, "UTF-8")
-            val presetUrl = "${MyListsDefaultSeed.MY_LISTS_BASE_ORIGIN}/api/channel-preset?networkId=$presetNetId&name=$encodedName"
-            val body = executeMyListsGet(presetUrl) ?: return
-            runCatching {
-                val root = JSONObject(body)
-                val items = root.optJSONArray("items") ?: return@runCatching
-                for (i in 0 until items.length()) {
-                    val obj = items.optJSONObject(i) ?: continue
-                    val imdbId = obj.optString("imdbId").trim()
-                    if (imdbId.isBlank()) continue
-                    val title = obj.optString("title").trim().ifBlank { channel.name }
-                    val poster = obj.optString("poster").trim().ifBlank { null }
-                    out += MyListsLineupEntry(
-                        itemId = imdbId,
-                        itemType = "series",
-                        videoId = imdbId,
-                        title = title,
-                        image = poster ?: channel.posterUrl ?: MyListsDefaultSeed.resolveChannelLogoUrl(channel.logoUrl, channel.name)
-                    )
-                }
-            }
-        }
-    }
-
     private fun executeMyListsGet(url: String): String? {
         val request = Request.Builder()
             .url(url)
             .cacheControl(CacheControl.FORCE_NETWORK)
             .header("Accept", "application/json")
-            .header("Origin", MyListsDefaultSeed.MY_LISTS_BASE_ORIGIN)
-            .header("Referer", "${MyListsDefaultSeed.MY_LISTS_BASE_ORIGIN}/")
+            .header("Origin", MyListsAddon.ORIGIN)
+            .header("Referer", "${MyListsAddon.ORIGIN}/")
             .get()
             .build()
         return runCatching {
@@ -1028,8 +939,8 @@ internal object ListChannels {
         out: MutableList<MyListsLineupEntry>
     ) {
         val fallbackImage = channel?.posterUrl?.takeIf { it.isNotBlank() }
-            ?: MyListsDefaultSeed.resolveChannelLogoUrl(channel?.logoUrl, channel?.name)
-            ?: channel?.name?.let { MyListsDefaultSeed.resolveChannelPosterUrl(it) }
+            ?: MyListsAddon.resolveLogoUrl(channel?.logoUrl)
+            ?: channel?.name?.let { MyListsAddon.posterUrl(it) }
         for (i in 0 until items.length()) {
             val obj = items.optJSONObject(i) ?: continue
             val imdbId = obj.optString("imdbId").trim()

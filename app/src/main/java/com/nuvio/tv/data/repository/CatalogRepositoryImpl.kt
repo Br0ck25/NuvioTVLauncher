@@ -2,7 +2,6 @@ package com.nuvio.tv.data.repository
 
 import android.content.Context
 import android.util.Log
-import com.nuvio.tv.core.mylists.MyListsDefaultSeed
 import com.nuvio.tv.core.network.NetworkResult
 import com.nuvio.tv.core.network.safeApiCall
 import com.nuvio.tv.core.poster.withCustomPosterUrls
@@ -69,19 +68,7 @@ class CatalogRepositoryImpl @Inject constructor(
             "Fetching catalog addonId=$addonId addonName=$addonName type=$type catalogId=$catalogId skip=$skip skipStep=$skipStep supportsSkip=$supportsSkip url=$url"
         )
 
-        val cacheHeader = if (MyListsDefaultSeed.isMyListsAddonUrl(addonBaseUrl)) "no-cache" else null
-        val initialResult = safeApiCall(context) { api.getCatalog(url, cacheControl = cacheHeader) }
-        val effectiveResult = if (
-            initialResult is NetworkResult.Error &&
-            MyListsDefaultSeed.isMyListsDefaultUrl(addonBaseUrl)
-        ) {
-            val fallbackUrl = buildCatalogUrl(MyListsDefaultSeed.MY_LISTS_BASE_ORIGIN, type, catalogId, skip, extraArgs)
-            safeApiCall(context) { api.getCatalog(fallbackUrl, cacheControl = cacheHeader) }
-        } else {
-            initialResult
-        }
-
-        when (val result = effectiveResult) {
+        when (val result = safeApiCall(context) { api.getCatalog(url) }) {
             is NetworkResult.Success -> {
                 val rawItemCount = result.data.metas.size
                 val posterPattern = layoutPreferenceDataStore.customPosterUrlPattern

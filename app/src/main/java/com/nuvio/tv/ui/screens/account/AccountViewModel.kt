@@ -16,7 +16,6 @@ import com.nuvio.tv.core.logging.urlForLog
 import com.nuvio.tv.core.plugin.PluginManager
 import com.nuvio.tv.core.profile.ProfileManager
 import com.nuvio.tv.core.qr.QrCodeGenerator
-import com.nuvio.tv.core.mylists.MyListsTvSyncManager
 import com.nuvio.tv.core.sync.AddonSyncService
 import com.nuvio.tv.core.sync.CollectionSyncService
 import com.nuvio.tv.core.sync.HomeCatalogSettingsSyncService
@@ -80,7 +79,6 @@ class AccountViewModel @Inject constructor(
     private val profileSyncService: ProfileSyncService,
     private val collectionSyncService: CollectionSyncService,
     private val homeCatalogSettingsSyncService: HomeCatalogSettingsSyncService,
-    private val myListsTvSyncManager: MyListsTvSyncManager,
     private val providerCredentialSyncService: ProviderCredentialSyncService,
     private val pluginManager: PluginManager,
     private val addonRepository: AddonRepositoryImpl,
@@ -762,7 +760,6 @@ class AccountViewModel @Inject constructor(
 
             runCatching { collectionSyncService.pullFromRemote() }
             runCatching { homeCatalogSettingsSyncService.pullFromRemote() }
-            runCatching { myListsTvSyncManager.syncIfNeeded(force = true) }
 
             val isTraktConnected = traktAuthDataStore.isEffectivelyAuthenticated.first()
             val shouldUseSupabaseWatchProgressSync = watchProgressSyncService.shouldUseSupabaseWatchProgressSync(profileId)

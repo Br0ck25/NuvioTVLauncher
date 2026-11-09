@@ -4,7 +4,6 @@ import android.content.Context
 import android.util.Log
 import com.google.gson.Gson
 import com.google.gson.reflect.TypeToken
-import com.nuvio.tv.core.mylists.MyListsDefaultSeed
 import com.nuvio.tv.core.network.NetworkResult
 import com.nuvio.tv.core.network.safeApiCall
 import com.nuvio.tv.data.local.AddonPreferences
@@ -136,12 +135,6 @@ class AddonRepositoryImpl(
     private val manifestRefreshLock = Any()
 
     init {
-        synchronized(manifestCacheLock) {
-            manifestCache.putIfAbsent(
-                MyListsDefaultSeed.MY_LISTS_DEFAULT_BASE_URL,
-                MyListsDefaultSeed.buildDefaultMyListsAddon()
-            )
-        }
         syncScope.launch { loadManifestCacheFromDisk() }
     }
 
@@ -209,12 +202,7 @@ class AddonRepositoryImpl(
             val type = object : TypeToken<Map<String, Addon>>() {}.type
             val cached: Map<String, Addon> = gson.fromJson(json, type) ?: return@withContext
             synchronized(manifestCacheLock) {
-                val sanitized = cached.mapValues { (_, addon) ->
-                    addon.copy(catalogs = addon.catalogs.filterNot {
-                        com.nuvio.tv.core.mylists.MyListsDefaultSeed.isRemovedCatalog(it.id, it.apiType)
-                    })
-                }
-                manifestCache.putAll(sanitized)
+                manifestCache.putAll(cached)
             }
             bumpManifestCacheRevision()
             Log.d(TAG, "Loaded ${cached.size} cached manifests from disk")
@@ -316,10 +304,8 @@ class AddonRepositoryImpl(
         val basePath = if (queryStart >= 0) cleanBaseUrl.substring(0, queryStart).trimEnd('/') else cleanBaseUrl
         val baseQuery = if (queryStart >= 0) cleanBaseUrl.substring(queryStart) else ""
         val manifestUrl = "$basePath/manifest.json$baseQuery"
-        val effectiveCacheControl = cacheControl
-            ?: if (MyListsDefaultSeed.isMyListsAddonUrl(cleanBaseUrl)) "no-cache" else null
 
-        return when (val result = safeApiCall(context) { api.getManifest(manifestUrl, cacheControl = effectiveCacheControl) }) {
+        return when (val result = safeApiCall(context) { api.getManifest(manifestUrl, cacheControl = cacheControl) }) {
             is NetworkResult.Success -> {
                 val addon = result.data.toDomain(cleanBaseUrl)
                 if (putCachedManifestIfChanged(cleanBaseUrl, addon)) {
@@ -328,15 +314,8 @@ class AddonRepositoryImpl(
                 NetworkResult.Success(addon)
             }
             is NetworkResult.Error -> {
-                if (MyListsDefaultSeed.isMyListsDefaultUrl(cleanBaseUrl)) {
-                    val fallback = MyListsDefaultSeed.buildDefaultMyListsAddon(cleanBaseUrl)
-                    putCachedManifestIfChanged(cleanBaseUrl, fallback)
-                    Log.d(TAG, "Using built-in default My Lists manifest for url=$cleanBaseUrl")
-                    NetworkResult.Success(fallback)
-                } else {
-                    Log.w(TAG, "Failed to fetch addon manifest for url=$manifestUrl code=${result.code} message=${result.message}")
-                    result
-                }
+                Log.w(TAG, "Failed to fetch addon manifest for url=$manifestUrl code=${result.code} message=${result.message}")
+                result
             }
             NetworkResult.Loading -> NetworkResult.Loading
         }
@@ -404,19 +383,13 @@ class AddonRepositoryImpl(
             localByNormalized[normalizeUrl(remote)] ?: remote
         }
 
-        val baseList = if (shouldRemoveMissingLocal) {
+        val finalList = if (shouldRemoveMissingLocal) {
             remoteOrdered
         } else {
             val extras = initialLocalUrls
                 .map { canonicalizeUrl(it) }
                 .filter { normalizeUrl(it) !in remoteSet }
             remoteOrdered + extras
-        }
-
-        val finalList = if (baseList.none { MyListsDefaultSeed.isMyListsAddonUrl(it) }) {
-            baseList + MyListsDefaultSeed.MY_LISTS_DEFAULT_BASE_URL
-        } else {
-            baseList
         }
 
         if (shouldRemoveMissingLocal) {

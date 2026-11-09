@@ -249,15 +249,8 @@ class CatalogOrderViewModel @Inject constructor(
         val seenKeys = mutableSetOf<String>()
 
         addons.forEach { addon ->
-            if (addon.id.equals(com.nuvio.tv.core.mylists.MyListsDefaultSeed.MY_LISTS_COLLECTIONS_ADDON_ID, ignoreCase = true)) {
-                return@forEach
-            }
             addon.catalogs
-                .filterNot {
-                    it.isSearchOnlyCatalog() ||
-                    com.nuvio.tv.core.mylists.MyListsDefaultSeed.isRemovedCatalog(it.id, it.apiType) ||
-                    com.nuvio.tv.core.mylists.MyListsDefaultSeed.isCollectionCatalogSource(collections, addon.id, it.apiType, it.id)
-                }
+                .filterNot { it.isSearchOnlyCatalog() }
                 .forEach { catalog ->
                     val key = catalogKey(
                         addonId = addon.id,

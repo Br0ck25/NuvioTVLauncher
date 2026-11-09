@@ -9,7 +9,6 @@ import androidx.datastore.preferences.core.stringPreferencesKey
 import androidx.datastore.preferences.core.stringSetPreferencesKey
 import com.google.gson.Gson
 import com.google.gson.reflect.TypeToken
-import com.nuvio.tv.core.mylists.MyListsDefaultSeed
 import com.nuvio.tv.core.profile.ProfileManager
 import com.nuvio.tv.core.sync.LocalHomeCatalogSettingsState
 import com.nuvio.tv.core.sync.SyncHomeCatalogPayload
@@ -38,7 +37,6 @@ import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.SupervisorJob
 import kotlinx.coroutines.flow.Flow
-import kotlinx.coroutines.flow.flowOf
 import kotlinx.coroutines.flow.SharingStarted
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.first
@@ -88,7 +86,6 @@ class LayoutPreferenceDataStore @Inject constructor(
     private val heroCatalogKeysKey = stringPreferencesKey("hero_catalog_keys")
     private val homeCatalogOrderKeysKey = stringPreferencesKey("home_catalog_order_keys")
     private val disabledHomeCatalogKeysKey = stringPreferencesKey("disabled_home_catalog_keys")
-    private val cinemetaVideosDisabledMigratedKey = booleanPreferencesKey("cinemeta_videos_disabled_migrated")
     private val customCatalogTitlesKey = stringPreferencesKey("custom_catalog_titles")
     private val sidebarCollapsedKey = booleanPreferencesKey("sidebar_collapsed_by_default")
     private val sidebarItemOrderKey = stringPreferencesKey("sidebar_item_order")
@@ -219,72 +216,27 @@ class LayoutPreferenceDataStore @Inject constructor(
     val homeCatalogOrderKeys: Flow<List<String>> = profileManager.activeProfileId.flatMapLatest { pid ->
         val profile = profileManager.profiles.value.find { it.id == pid }
         val usePrimary = profile != null && !profile.isPrimary && profile.usesPrimaryAddons
-        factory.get(pid, FEATURE).data.flatMapLatest { prefs ->
-            val raw = prefs.getStringOrMigrateSet(homeCatalogOrderKeysKey)
-            if (raw != null) {
-                flowOf(parseCatalogKeys(raw).filterNot { MyListsDefaultSeed.isRemovedCatalogKey(it) })
-            } else if (usePrimary) {
-                factory.get(1, FEATURE).data.map { primaryPrefs ->
-                    val primaryRaw = primaryPrefs.getStringOrMigrateSet(homeCatalogOrderKeysKey)
-                    if (primaryRaw != null) {
-                        parseCatalogKeys(primaryRaw).filterNot { MyListsDefaultSeed.isRemovedCatalogKey(it) }
-                    } else {
-                        MyListsDefaultSeed.DEFAULT_HOME_CATALOG_ORDER_KEYS
-                    }
-                }
-            } else {
-                flowOf(MyListsDefaultSeed.DEFAULT_HOME_CATALOG_ORDER_KEYS)
-            }
+        val effectivePid = if (usePrimary) 1 else pid
+        factory.get(effectivePid, FEATURE).data.map { prefs ->
+            parseCatalogKeys(prefs.getStringOrMigrateSet(homeCatalogOrderKeysKey))
         }
     }
 
     val disabledHomeCatalogKeys: Flow<List<String>> = profileManager.activeProfileId.flatMapLatest { pid ->
         val profile = profileManager.profiles.value.find { it.id == pid }
         val usePrimary = profile != null && !profile.isPrimary && profile.usesPrimaryAddons
-        factory.get(pid, FEATURE).data.flatMapLatest { prefs ->
-            val raw = prefs.getStringOrMigrateSet(disabledHomeCatalogKeysKey)
-            if (raw != null) {
-                val list = parseCatalogKeys(raw).filterNot { MyListsDefaultSeed.isRemovedCatalogKey(it) }
-                val result = if (prefs[cinemetaVideosDisabledMigratedKey] != true) {
-                    (list + MyListsDefaultSeed.CINEMETA_VIDEO_CATALOG_KEYS).distinct()
-                } else {
-                    list
-                }
-                flowOf(result)
-            } else if (usePrimary) {
-                factory.get(1, FEATURE).data.map { primaryPrefs ->
-                    val primaryRaw = primaryPrefs.getStringOrMigrateSet(disabledHomeCatalogKeysKey)
-                    if (primaryRaw != null) {
-                        val list = parseCatalogKeys(primaryRaw).filterNot { MyListsDefaultSeed.isRemovedCatalogKey(it) }
-                        if (primaryPrefs[cinemetaVideosDisabledMigratedKey] != true) {
-                            (list + MyListsDefaultSeed.CINEMETA_VIDEO_CATALOG_KEYS).distinct()
-                        } else {
-                            list
-                        }
-                    } else {
-                        MyListsDefaultSeed.DEFAULT_DISABLED_STOCK_CATALOG_KEYS
-                    }
-                }
-            } else {
-                flowOf(MyListsDefaultSeed.DEFAULT_DISABLED_STOCK_CATALOG_KEYS)
-            }
+        val effectivePid = if (usePrimary) 1 else pid
+        factory.get(effectivePid, FEATURE).data.map { prefs ->
+            parseCatalogKeys(prefs.getStringOrMigrateSet(disabledHomeCatalogKeysKey))
         }
     }
 
     val customCatalogTitles: Flow<Map<String, String>> = profileManager.activeProfileId.flatMapLatest { pid ->
         val profile = profileManager.profiles.value.find { it.id == pid }
         val usePrimary = profile != null && !profile.isPrimary && profile.usesPrimaryAddons
-        factory.get(pid, FEATURE).data.flatMapLatest { prefs ->
-            val raw = prefs.getStringOrMigrateSet(customCatalogTitlesKey)
-            if (raw != null) {
-                flowOf(parseCustomTitles(raw))
-            } else if (usePrimary) {
-                factory.get(1, FEATURE).data.map { primaryPrefs ->
-                    parseCustomTitles(primaryPrefs.getStringOrMigrateSet(customCatalogTitlesKey))
-                }
-            } else {
-                flowOf(emptyMap())
-            }
+        val effectivePid = if (usePrimary) 1 else pid
+        factory.get(effectivePid, FEATURE).data.map { prefs ->
+            parseCustomTitles(prefs.getStringOrMigrateSet(customCatalogTitlesKey))
         }
     }
 
@@ -621,8 +573,11 @@ class LayoutPreferenceDataStore @Inject constructor(
     suspend fun setDisabledHomeCatalogKeys(keys: List<String>) {
         val normalizedKeys = normalizeCatalogOrderKeys(keys)
         store().edit { prefs ->
-            prefs[disabledHomeCatalogKeysKey] = gson.toJson(normalizedKeys)
-            prefs[cinemetaVideosDisabledMigratedKey] = true
+            if (normalizedKeys.isEmpty()) {
+                prefs.remove(disabledHomeCatalogKeysKey)
+            } else {
+                prefs[disabledHomeCatalogKeysKey] = gson.toJson(normalizedKeys)
+            }
         }
     }
 
@@ -990,8 +945,7 @@ class LayoutPreferenceDataStore @Inject constructor(
     private fun normalizeCatalogOrderKeys(keys: List<String>): List<String> {
         return keys.asSequence()
             .map { it.trim() }
-            .map { MyListsDefaultSeed.migrateCatalogKey(it) }
-            .filter { it.isNotEmpty() && !MyListsDefaultSeed.isRemovedCatalogKey(it) }
+            .filter { it.isNotEmpty() }
             .distinct()
             .toList()
     }
@@ -1048,27 +1002,10 @@ class LayoutPreferenceDataStore @Inject constructor(
             key to item.customTitle
         }.filterValues { it.isNotBlank() }
 
-        val hasOtherRemoteCatalogs = payload.items.any { item ->
-            item.enabled && !item.isCollection &&
-                !com.nuvio.tv.core.mylists.MyListsDefaultSeed.isMyListsAddonId(item.addonId) &&
-                !com.nuvio.tv.core.mylists.MyListsDefaultSeed.isStockCinemetaAddon(item.addonId)
-        }
-        val defaultMyListsKeysToDisable = if (hasOtherRemoteCatalogs) {
-            com.nuvio.tv.core.mylists.MyListsDefaultSeed.DEFAULT_HOME_CATALOG_KEYS
-        } else {
-            emptyList()
-        }
-
         store().edit { prefs ->
             val local = readHomeCatalogSettingsState(prefs)
-            val baseOrderKeys = if (hasOtherRemoteCatalogs) {
-                val nonMyListsRemote = remoteOrderKeys.filterNot { com.nuvio.tv.core.mylists.MyListsDefaultSeed.isMyListsDefaultCatalogKey(it) }
-                (nonMyListsRemote + com.nuvio.tv.core.mylists.MyListsDefaultSeed.DEFAULT_HOME_CATALOG_KEYS).distinct()
-            } else {
-                remoteOrderKeys
-            }
-            val orderKeys = baseOrderKeys.withDeviceLocalCatalogKeys(local.orderKeys)
-            val disabledKeys = (remoteDisabledKeys + local.disabledKeys.filter(::isDeviceLocalCatalogKey) + defaultMyListsKeysToDisable).distinct()
+            val orderKeys = remoteOrderKeys.withDeviceLocalCatalogKeys(local.orderKeys)
+            val disabledKeys = remoteDisabledKeys + local.disabledKeys.filter(::isDeviceLocalCatalogKey)
             val titles = remoteTitles + local.customTitles.filterKeys(ServerCatalog::isServerKey)
             prefs[hideUnreleasedContentKey] = payload.hideUnreleasedContent
             if (orderKeys.isNotEmpty()) {
@@ -1090,11 +1027,9 @@ class LayoutPreferenceDataStore @Inject constructor(
     }
 
     private fun readHomeCatalogSettingsState(prefs: Preferences): LocalHomeCatalogSettingsState {
-        val rawOrder = prefs.getStringOrMigrateSet(homeCatalogOrderKeysKey)
-        val rawDisabled = prefs.getStringOrMigrateSet(disabledHomeCatalogKeysKey)
         return LocalHomeCatalogSettingsState(
-            orderKeys = if (rawOrder != null) parseCatalogKeys(rawOrder) else MyListsDefaultSeed.DEFAULT_HOME_CATALOG_ORDER_KEYS,
-            disabledKeys = (if (rawDisabled != null) parseCatalogKeys(rawDisabled) else MyListsDefaultSeed.DEFAULT_DISABLED_STOCK_CATALOG_KEYS).toSet(),
+            orderKeys = parseCatalogKeys(prefs.getStringOrMigrateSet(homeCatalogOrderKeysKey)),
+            disabledKeys = parseCatalogKeys(prefs.getStringOrMigrateSet(disabledHomeCatalogKeysKey)).toSet(),
             customTitles = parseCustomTitles(prefs.getStringOrMigrateSet(customCatalogTitlesKey)),
             hideUnreleasedContent = prefs[hideUnreleasedContentKey] ?: false
         )

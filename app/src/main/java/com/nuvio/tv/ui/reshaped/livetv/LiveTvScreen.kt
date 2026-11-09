@@ -204,9 +204,6 @@ fun LiveTvScreen(
     LaunchedEffect(uiState.isLoaded, uiState.isLoading, uiState.hasSource) {
         if (!uiState.isLoaded && !uiState.isLoading && !uiState.hasSource) viewModel.ensureLoaded()
     }
-    LaunchedEffect(Unit) {
-        com.nuvio.tv.reshaped.livetv.lists.ListChannels.myListsTvSyncManager()?.requestSyncInBackground(force = true)
-    }
     val scope = rememberCoroutineScope()
     var filterKey by rememberSaveable { mutableStateOf(FILTER_ALL) }
     var query by rememberSaveable { mutableStateOf("") }
@@ -222,7 +219,6 @@ fun LiveTvScreen(
     var showMenu by remember { mutableStateOf(false) }
     var showPlaylists by remember { mutableStateOf(false) }
     var showListChannels by remember { mutableStateOf(false) }
-    var showMyListsAccountDialog by remember { mutableStateOf(false) }
     // Naming a new playlist (from "+ New playlist" in the categories).
     var naming by remember { mutableStateOf(false) }
     // Categories, search and settings slide in beside the channels on ◀ (or Back), and away again
@@ -474,7 +470,7 @@ fun LiveTvScreen(
                     preview = if (previewsEnabled) preview else null,
                     playVideo = (gridFocused || settingsFocused || categoriesOpen) && started && !launching &&
                         !showSourceDialog && !showCategoryDialog && !showMenu && !showPlaylists && !showListChannels &&
-                        !showMyListsAccountDialog && !naming && editingList == null,
+                        !naming && editingList == null,
                 )
                 Spacer(Modifier.height(NuvioTheme.spacing.sm))
                 LaunchedEffect(gridFocused) { if (gridFocused) categoriesOpen = false }
@@ -594,11 +590,6 @@ fun LiveTvScreen(
     if (showListChannels) {
         LiveTvListChannelsDialog(onDismiss = { showListChannels = false })
     }
-    if (showMyListsAccountDialog) {
-        com.nuvio.tv.ui.components.mylists.MyListsLinkAccountDialog(
-            onDismiss = { showMyListsAccountDialog = false }
-        )
-    }
     editingList?.let { id ->
         LiveTvPlaylistsDialog(onDismiss = { editingList = null }, openOnly = id)
     }
@@ -622,7 +613,7 @@ fun LiveTvScreen(
     }
     // A closed dialog gives the focus back where the viewer was, so ◀▶ never find nothing focused.
     val anyDialog = showSourceDialog || showCategoryDialog || showPlaylists || showListChannels ||
-        showMyListsAccountDialog || editingList != null || naming || showMenu
+        editingList != null || naming || showMenu
     var hadDialog by remember { mutableStateOf(false) }
     LaunchedEffect(anyDialog) {
         if (anyDialog) {
@@ -660,10 +651,6 @@ fun LiveTvScreen(
             onListChannels = {
                 showMenu = false
                 showListChannels = true
-            },
-            onMyListsAccount = {
-                showMenu = false
-                showMyListsAccountDialog = true
             },
             onDismiss = { showMenu = false },
         )
@@ -715,7 +702,6 @@ private fun LiveTvMenuDialog(
     onSources: () -> Unit,
     onPlaylists: () -> Unit,
     onListChannels: () -> Unit,
-    onMyListsAccount: () -> Unit,
     onDismiss: () -> Unit,
 ) {
     val context = LocalContext.current
@@ -735,15 +721,10 @@ private fun LiveTvMenuDialog(
         contentSpacing = NuvioTheme.spacing.sm,
     ) {
         LiveTvMenuRow(
-            title = "My Lists Addon Account",
-            description = "Scan QR code to create or sign into your My Lists Addon account",
-            onClick = onMyListsAccount,
-            modifier = Modifier.focusRequester(first),
-        )
-        LiveTvMenuRow(
             title = stringResource(R.string.live_tv_menu_sources),
             description = stringResource(R.string.live_tv_menu_sources_description),
             onClick = onSources,
+            modifier = Modifier.focusRequester(first),
         )
         LiveTvMenuRow(
             title = stringResource(R.string.live_tv_menu_categories),

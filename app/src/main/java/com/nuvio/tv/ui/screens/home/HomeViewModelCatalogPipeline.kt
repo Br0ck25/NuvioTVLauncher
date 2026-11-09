@@ -243,24 +243,19 @@ internal suspend fun HomeViewModel.loadAllCatalogsPipeline(
             return
         }
 
-        val catalogsToLoad = addons
-            .filterNot { it.id.equals(com.nuvio.tv.core.mylists.MyListsDefaultSeed.MY_LISTS_COLLECTIONS_ADDON_ID, ignoreCase = true) }
-            .flatMap { addon ->
-                addon.catalogs
-                    .filterNot {
-                        com.nuvio.tv.core.mylists.MyListsDefaultSeed.isRemovedCatalog(it.id, it.apiType) ||
-                        !it.shouldShowOnHome() ||
-                        com.nuvio.tv.core.mylists.MyListsDefaultSeed.isCollectionCatalogSource(collectionsCache, addon.id, it.apiType, it.id) ||
-                        isCatalogDisabled(
-                            addonBaseUrl = addon.baseUrl,
-                            addonId = addon.id,
-                            type = it.apiType,
-                            catalogId = it.id,
-                            catalogName = it.name
-                        )
-                    }
-                    .map { catalog -> addon to catalog }
-            }
+        val catalogsToLoad = addons.flatMap { addon ->
+            addon.catalogs
+                .filterNot {
+                    !it.shouldShowOnHome() || isCatalogDisabled(
+                        addonBaseUrl = addon.baseUrl,
+                        addonId = addon.id,
+                        type = it.apiType,
+                        catalogId = it.id,
+                        catalogName = it.name
+                    )
+                }
+                .map { catalog -> addon to catalog }
+        }
 
         // Load hero-selected catalogs even if disabled from home rows —
         // the hero has its own catalog source independent of home rows.
@@ -760,7 +755,7 @@ internal suspend fun HomeViewModel.updateCatalogRowsPipeline() {
             }
         }
         for (key in orderedKeys) {
-            if (key in disabledHomeCatalogKeys || com.nuvio.tv.core.mylists.MyListsDefaultSeed.isRemovedCatalogKey(key)) continue
+            if (key in disabledHomeCatalogKeys) continue
             if (key == INSTALLED_APPS_CATALOG_KEY) {
                 installedAppsCache.takeIf { it.isNotEmpty() }?.let { add(HomeRow.InstalledApps(it)) }
                 continue
@@ -1207,18 +1202,11 @@ internal fun HomeViewModel.mergeRefreshedCatalogRow(
 }
 
 
-internal fun HomeViewModel.refreshVisibleCatalogsPipeline(
-    requestedByUser: Boolean = false,
-    forceReplace: Boolean = false,
-    /** When set, only catalogs of these addons are re-requested (e.g. after a My Lists sync). */
-    onlyAddonIds: Set<String>? = null
-) {
+internal fun HomeViewModel.refreshVisibleCatalogsPipeline(requestedByUser: Boolean = false, forceReplace: Boolean = false) {
     val loadedKeys = synchronized(catalogStateLock) { catalogsMap.keys.toSet() }
     if (loadedKeys.isEmpty()) return
 
-    val toRefresh = addonsCache
-        .filter { addon -> onlyAddonIds == null || onlyAddonIds.any { it.equals(addon.id, ignoreCase = true) } }
-        .flatMap { addon ->
+    val toRefresh = addonsCache.flatMap { addon ->
         addon.catalogs
             .filter { catalog ->
                 !catalog.isSearchOnlyCatalog() && catalogKey(

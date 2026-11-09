@@ -9,9 +9,6 @@ import org.json.JSONObject
  * `server/schedules_sample.json`, a trimmed copy of the Worker's real answer).
  */
 
-/** Whether a server whose sync payload listed [features] has the batch schedule route. Unknown (an older server) is tried. */
-internal fun serverSupportsSchedules(features: Set<String>?): Boolean = features == null || "schedules" in features
-
 /** The programmes in one channel's `slots` array. An entry without a video id or a positive length is skipped. */
 internal fun parseServerSlots(array: JSONArray): List<ListSlot> =
     (0 until array.length()).mapNotNull { index ->
