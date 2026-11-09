@@ -117,8 +117,18 @@ class LauncherAccessibilityService : AccessibilityService() {
         if (event.keyCode == KeyEvent.KEYCODE_HOME) {
             LauncherSetup.observeNativeHome(this, nativeHome)
             val homeMapping = handler?.repository?.activeMappingFor(KeyEvent.KEYCODE_HOME, isGlobal = !isForeground)
+            // TEMP diagnostics: remove once the Google-launcher flash is understood.
+            Log.d(
+                DIAG_TAG,
+                "HOME key action=${event.action} repeat=${event.repeatCount} canceled=${event.isCanceled} " +
+                    "foreground=$isForeground nativeHome=$nativeHome " +
+                    "fallbackAllowed=${LauncherSetup.accessibilityFallbackAllowed(this)} " +
+                    "handler=${handler != null} mapping=${homeMapping != null} " +
+                    "factoryDefaults=${homeMapping?.matchesFactoryHomeDefaults()}"
+            )
             if (handler != null && homeMapping == null) {
                 // User explicitly disabled or removed the Home mapping for this context.
+                Log.d(DIAG_TAG, "HOME -> passed to system (mapping disabled)")
                 return super.onKeyEvent(event)
             }
             if (handler != null && homeMapping != null && !homeMapping.matchesFactoryHomeDefaults()) {
@@ -128,6 +138,7 @@ class LauncherAccessibilityService : AccessibilityService() {
                     accessibilityEnabled = true,
                     nativeHomeActive = nativeHome
                 )
+                Log.d(DIAG_TAG, "HOME -> custom mapping handled=$handled")
                 if (handled) {
                     delivery.onLaunch(SystemClock.uptimeMillis())
                     return true
@@ -135,10 +146,13 @@ class LauncherAccessibilityService : AccessibilityService() {
             }
             if (nativeHome || !LauncherSetup.accessibilityFallbackAllowed(this)) {
                 // Native HOME is preferred. In particular, don't fight a working HOME role.
+                Log.d(DIAG_TAG, "HOME -> passed to system (nativeHome=$nativeHome or fallback not allowed)")
                 return super.onKeyEvent(event)
             }
             // Consume the whole sequence, but only forward uncanceled releases, never held-key DOWNs.
+            Log.d(DIAG_TAG, "HOME -> consumed by fallback, action=${event.action}")
             if (delivery.acceptKeyRelease(event.eventTime, event.action == KeyEvent.ACTION_UP, event.isCanceled)) {
+                Log.d(DIAG_TAG, "HOME -> launchHome()")
                 launchHome(event.eventTime)
                 // Not tied to a stock-launcher window event: re-fronting its existing task may not emit one.
                 scheduleHomeRecheck()
@@ -184,6 +198,7 @@ class LauncherAccessibilityService : AccessibilityService() {
             // keys. Dialogs, SystemUI and arbitrary windows in the launcher package are not HOME.
             val now = SystemClock.uptimeMillis()
             if (delivery.acceptLauncherWindow(now)) {
+                Log.d(DIAG_TAG, "launcher window $pkg/$className appeared -> launchHome() (window fallback)")
                 launchHome(now)
             } else if (delivery.shouldScheduleRecheck(now) && !recheckPending) {
                 scheduleHomeRecheck()
@@ -244,6 +259,7 @@ class LauncherAccessibilityService : AccessibilityService() {
 
     companion object {
         private const val TAG = "LauncherAccessibility"
+        private const val DIAG_TAG = "HomeKeyDiag"
         private const val BOOT_WINDOW_MS = 5 * 60 * 1000L
         private const val BOOT_OPEN_DELAY_MS = 4_000L
         private val operational = MutableStateFlow(false)
