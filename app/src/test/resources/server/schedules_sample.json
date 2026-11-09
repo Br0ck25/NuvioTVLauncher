@@ -1,0 +1,50 @@
+{
+ "ok": true,
+ "versionHash": "de3303a34d9155de3743a6cb2a4cf3781937fe28bebfdf857c338201be4b11d8",
+ "schedules": {
+  "ch_a": [
+   {
+    "videoId": "tt0108778:1:1",
+    "itemId": "tt0108778",
+    "type": "series",
+    "season": 1,
+    "episode": 1,
+    "title": "Friends · S1E1 The Pilot",
+    "description": "Rachel runs out on her wedding.",
+    "image": "https://example.com/e1.jpg",
+    "runtimeMin": 22,
+    "startMs": 1794229800000,
+    "endMs": 1794231120000
+   },
+   {
+    "videoId": "tt0133093",
+    "itemId": "tt0133093",
+    "type": "movie",
+    "season": null,
+    "episode": null,
+    "title": "The Matrix",
+    "description": null,
+    "image": null,
+    "runtimeMin": 136,
+    "startMs": 1794231120000,
+    "endMs": 1794239280000
+   },
+   {
+    "videoId": "tt0108778:1:1",
+    "itemId": "tt0108778",
+    "type": "series",
+    "season": 1,
+    "episode": 1,
+    "title": "Friends · S1E1 The Pilot",
+    "description": "Rachel runs out on her wedding.",
+    "image": "https://example.com/e1.jpg",
+    "runtimeMin": 22,
+    "startMs": 1794239280000,
+    "endMs": 1794240600000
+   }
+  ]
+ },
+ "missing": [
+  "ch_missing"
+ ]
+}

@@ -697,6 +697,8 @@ internal object ListChannels {
         val saved = store
         if (channels.isEmpty() || saved == null) return@withLock
         serverBatchNextAsk = LiveTvClock.nowEpochMs() + SERVER_SCHEDULE_RETRY_MS
+        // A server that says what it offers is only asked for what it has; one that does not say (older) is tried.
+        if (!serverSupportsSchedules(runCatching { deps().myListsTvSyncManager().serverFeatures }.getOrNull())) return@withLock
         withContext(Dispatchers.IO) {
             val target = runCatching { deps().myListsTvSyncManager().currentTargetId() }.getOrNull() ?: return@withContext
             val encodedTarget = URLEncoder.encode(target, "UTF-8").replace("+", "%20")
@@ -722,13 +724,8 @@ internal object ListChannels {
                     if (!response.isSuccessful) return@use
                     val root = JSONObject(response.body?.string().orEmpty())
                     if (!root.optBoolean("ok")) return@use
-                    val schedules = root.optJSONObject("schedules") ?: return@use
-                    val adopted = HashMap<String, List<ListSlot>>()
-                    channels.forEach { channel ->
-                        val array = schedules.optJSONArray(channel.id) ?: return@forEach
-                        val slots = parseServerSlots(array)
-                        if (slots.isNotEmpty()) adopted[myListsChannelInternalId(channel.id)] = slots
-                    }
+                    val adopted = parseServerSchedules(root, channels.map { it.id })
+                        .mapKeys { myListsChannelInternalId(it.key) }
                     channels.forEach { channel ->
                         val internalId = myListsChannelInternalId(channel.id)
                         val slots = adopted[internalId]
@@ -750,27 +747,6 @@ internal object ListChannels {
             }.onFailure { Log.w(TAG, "Could not read the server schedules", it) }
         }
     }
-
-    private fun parseServerSlots(array: JSONArray): List<ListSlot> =
-        (0 until array.length()).mapNotNull { index ->
-            val item = array.optJSONObject(index) ?: return@mapNotNull null
-            val videoId = item.optString("videoId").takeIf(String::isNotBlank) ?: return@mapNotNull null
-            val start = item.optLong("startMs", -1L)
-            val end = item.optLong("endMs", -1L)
-            if (start < 0L || end <= start) return@mapNotNull null
-            ListSlot(
-                itemId = item.optString("itemId").ifBlank { videoId.substringBefore(':') },
-                itemType = item.optString("type").ifBlank { "series" },
-                videoId = videoId,
-                season = item.optInt("season", -1).takeIf { it >= 0 && !item.isNull("season") },
-                episode = item.optInt("episode", -1).takeIf { it >= 0 && !item.isNull("episode") },
-                title = item.optString("title"),
-                description = item.optString("description").takeIf { it.isNotBlank() && !item.isNull("description") },
-                image = item.optString("image").takeIf { it.isNotBlank() && !item.isNull("image") },
-                startMs = start,
-                endMs = end,
-            )
-        }
 
     /**
      * Fetches the current lineup for a [MyListsTvChannel] from `{addonBaseUrl}/catalog/tv/{channel.catalogId}.json`

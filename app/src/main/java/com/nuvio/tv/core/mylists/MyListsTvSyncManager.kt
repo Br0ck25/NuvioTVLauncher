@@ -76,7 +76,9 @@ data class MyListsSyncResponse(
     val collections: JsonArray? = null,
     val channels: List<MyListsTvChannel>? = null,
     val betterPosters: Boolean? = null,
-    val customPosterPattern: String? = null
+    val customPosterPattern: String? = null,
+    /** What the server offers beyond the original payload (`etag`, `schedule`, `schedules`); null from an older server. */
+    val features: List<String>? = null
 )
 
 @Keep
@@ -445,6 +447,7 @@ class MyListsTvSyncManager @Inject constructor(
                 return@withLock false
             }
             val syncResponse = fetched.payload ?: return@withLock false
+            serverFeatures = syncResponse.features?.toSet()
             val incomingEtag = fetched.etag
             val incomingHash = syncResponse.versionHash?.takeIf { it.isNotBlank() }
             val channelIdsSig = syncResponse.channels?.joinToString(",") { it.id }.orEmpty()
@@ -683,6 +686,10 @@ class MyListsTvSyncManager @Inject constructor(
             Log.w(TAG, "Failed cleaning up legacy My Lists addon: ${e.message}")
         }
     }
+
+    /** What the server said it offers in the last full sync payload; null until one arrives, or from an older server. */
+    @Volatile var serverFeatures: Set<String>? = null
+        private set
 
     /** What asking the sync endpoint gave: not modified, the payload (with its tag), or nothing usable. */
     private class SyncFetch(val payload: MyListsSyncResponse?, val etag: String?, val notModified: Boolean = false)
