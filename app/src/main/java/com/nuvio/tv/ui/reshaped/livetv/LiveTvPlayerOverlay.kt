@@ -550,6 +550,17 @@ private fun LiveTvListChannelEffects(state: LiveTvPlayerState, uiState: PlayerUi
     LaunchedEffect(url, listUrl) {
         if (url != null && listUrl != null) state.joinListProgramme(url, listUrl)
     }
+    // The server's schedule is the same on every device, so a file longer than its slot is cut where the
+    // slot ends: the channel moves to the programme that is airing then.
+    LaunchedEffect(url, listUrl) {
+        if (url == null || listUrl == null || !ListChannels.isServerScheduled(listUrl)) return@LaunchedEffect
+        val slot = ListChannels.openedSlot(listUrl) ?: return@LaunchedEffect
+        val wait = slot.endMs - System.currentTimeMillis()
+        // A slot already over when this opens (the schedule has run out) is not cut: nothing follows it.
+        if (wait <= 0L) return@LaunchedEffect
+        delay(wait)
+        if (state.player.currentStreamUrl == url) state.advanceListChannel(listUrl)
+    }
     // An ended flag left over from the previous programme must not advance the one just opened.
     val endedAtOpen = remember(url) { uiState.playbackEnded }
     LaunchedEffect(uiState.playbackEnded, url) {

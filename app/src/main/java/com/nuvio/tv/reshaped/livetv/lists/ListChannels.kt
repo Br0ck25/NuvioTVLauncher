@@ -143,6 +143,10 @@ internal object ListChannels {
     private const val NETWORK_TIMEOUT_MS = 20_000L
     private const val STREAMS_TIMEOUT_MS = 25_000L
     private const val TMDB_MISS_TTL_MS = 10L * 60 * 1000
+    /** How often a My Lists channel's schedule is asked of the server again (it notices edits within this). */
+    private const val SERVER_SCHEDULE_REFRESH_MS = 5L * 60 * 1000
+    /** After a failed ask (no schedule for the channel, or offline), how long before the next. */
+    private const val SERVER_SCHEDULE_RETRY_MS = 30L * 60 * 1000
     private const val DEFAULT_MOVIE_MIN = 100
     private const val DEFAULT_EPISODE_MIN = 45
     private const val MAX_BUILD_FAILURES = 6
@@ -173,6 +177,12 @@ internal object ListChannels {
     private var myListsCollectJob: Job? = null
     private val poolCache = HashMap<String, Pair<Long, List<ListItem>>>()
     private val myListsLineupCache = HashMap<String, Pair<Long, List<MyListsLineupEntry>>>()
+    /** Channels whose schedule is the server's, which every device shows alike: this device never reshapes it. */
+    private val serverScheduled: MutableSet<String> = ConcurrentHashMap.newKeySet()
+    private val serverScheduleNextAsk = ConcurrentHashMap<String, Long>()
+    private val serverScheduleTags = ConcurrentHashMap<String, String>()
+    /** Channels whose programme was left early: the next resolve moves on from it rather than replaying it. */
+    private val leftEarly = ConcurrentHashMap<String, Long>()
     /** The programme each channel was last opened on, for where in it playback starts. */
     private val opened = ConcurrentHashMap<String, ListSlot>()
     /** Programmes already looked at ahead (by episode or film id), so each is looked at once. */
@@ -401,6 +411,8 @@ internal object ListChannels {
      */
     fun reconcileDuration(channelUrl: String, actualMs: Long) {
         val id = listChannelIdOf(channelUrl)
+        // The server's schedule is the same on every device: a file that differs is cut or left early, not stretched here.
+        if (id in serverScheduled) return
         val opened0 = opened[id] ?: return
         if (actualMs < 5 * 60_000L) return
         val now = System.currentTimeMillis()
@@ -430,6 +442,12 @@ internal object ListChannels {
         val id = listChannelIdOf(channelUrl)
         val opened0 = opened[id] ?: return
         val now = System.currentTimeMillis()
+        if (id in serverScheduled) {
+            // Left before its slot ends (a short file, or cut at the end of a long one): the next resolve
+            // goes on to the programme after it, without moving anything in the shared schedule.
+            if (now < opened0.endMs) leftEarly[id] = opened0.startMs
+            return
+        }
         val delta = now - opened0.endMs
         if (delta >= 0L) return
         val current = slotsById[id] ?: return
@@ -469,7 +487,7 @@ internal object ListChannels {
             if (extendedMyListsCount >= 6) break
             val internalId = myListsChannelInternalId(channel.id)
             val last = slotsById[internalId]?.lastOrNull()?.endMs ?: 0L
-            if (last < now + HORIZON_MS / 2) {
+            if (last < now + HORIZON_MS / 2 || serverScheduleDue(internalId, now)) {
                 try {
                     extendMyListsChannel(channel, now)
                     extendedMyListsCount++
@@ -560,6 +578,22 @@ internal object ListChannels {
         val lock = channelLocks.computeIfAbsent(internalId) { Mutex() }
         return lock.withLock {
             val saved = store ?: return@withLock emptyList()
+            // The server's schedule, when it has one for this channel, is the one every device shows.
+            if (serverScheduleDue(internalId, now)) {
+                val fromServer = fetchServerSchedule(channel, internalId, now)
+                if (fromServer != null) {
+                    serverScheduled += internalId
+                    saved.saveSchedule(internalId, fromServer, saved.state(internalId))
+                    slotsById = slotsById + (internalId to fromServer)
+                    onProgrammesChanged()
+                    return@withLock fromServer
+                }
+            }
+            if (internalId in serverScheduled) {
+                val held = slotsById[internalId].orEmpty()
+                // Offline or between refreshes: what the server last gave stays, never a local plan beside it.
+                if (held.isNotEmpty()) return@withLock held
+            }
             var slots = (slotsById[internalId] ?: saved.slots(internalId)).filter { it.endMs > now - KEEP_PAST_MS }
             if (slots.isNotEmpty() && slots.last().endMs < now) slots = emptyList()
             if ((slots.lastOrNull()?.endMs ?: 0L) >= now + HORIZON_MS) return@withLock slots
@@ -651,6 +685,73 @@ internal object ListChannels {
             played
         )
     }
+
+    private fun serverScheduleDue(internalId: String, now: Long): Boolean =
+        now >= (serverScheduleNextAsk[internalId] ?: 0L)
+
+    /** Whether [channelUrl]'s schedule is the server's (so this device must not reshape it). */
+    fun isServerScheduled(channelUrl: String): Boolean = listChannelIdOf(channelUrl) in serverScheduled
+
+    /**
+     * The schedule the server keeps for [channel]: the same programmes with the same times on every
+     * device of the account. Null when the server has none for it or cannot be reached; the channel
+     * then plans on this device as before.
+     */
+    private suspend fun fetchServerSchedule(channel: MyListsTvChannel, internalId: String, now: Long): List<ListSlot>? =
+        withContext(Dispatchers.IO) {
+            serverScheduleNextAsk[internalId] = now + SERVER_SCHEDULE_RETRY_MS
+            val target = runCatching { deps().myListsTvSyncManager().currentTargetId() }.getOrNull() ?: return@withContext null
+            val encodedTarget = URLEncoder.encode(target, "UTF-8").replace("+", "%20")
+            val encodedChannel = URLEncoder.encode(channel.id, "UTF-8").replace("+", "%20")
+            val url = "${MyListsDefaultSeed.MY_LISTS_BASE_ORIGIN}/api/nuvio-tv/schedule/$encodedTarget/$encodedChannel"
+            val request = Request.Builder()
+                .url(url)
+                .cacheControl(CacheControl.FORCE_NETWORK)
+                .header("Accept", "application/json")
+                .header("Origin", MyListsDefaultSeed.MY_LISTS_BASE_ORIGIN)
+                .header("Referer", "${MyListsDefaultSeed.MY_LISTS_BASE_ORIGIN}/")
+                .apply {
+                    // An unchanged schedule comes back as a bare 304.
+                    if (internalId in serverScheduled) serverScheduleTags[internalId]?.let { header("If-None-Match", it) }
+                }
+                .get()
+                .build()
+            runCatching {
+                deps().okHttpClient().newCall(request).execute().use { response ->
+                    if (response.code == 304) {
+                        serverScheduleNextAsk[internalId] = now + SERVER_SCHEDULE_REFRESH_MS
+                        return@use slotsById[internalId]?.takeIf { it.isNotEmpty() }
+                    }
+                    if (!response.isSuccessful) return@use null
+                    val root = JSONObject(response.body?.string().orEmpty())
+                    if (!root.optBoolean("ok")) return@use null
+                    val array = root.optJSONArray("slots") ?: return@use null
+                    val slots = (0 until array.length()).mapNotNull { index ->
+                        val item = array.optJSONObject(index) ?: return@mapNotNull null
+                        val videoId = item.optString("videoId").takeIf(String::isNotBlank) ?: return@mapNotNull null
+                        val start = item.optLong("startMs", -1L)
+                        val end = item.optLong("endMs", -1L)
+                        if (start < 0L || end <= start) return@mapNotNull null
+                        ListSlot(
+                            itemId = item.optString("itemId").ifBlank { videoId.substringBefore(':') },
+                            itemType = item.optString("type").ifBlank { "series" },
+                            videoId = videoId,
+                            season = item.optInt("season", -1).takeIf { it >= 0 && !item.isNull("season") },
+                            episode = item.optInt("episode", -1).takeIf { it >= 0 && !item.isNull("episode") },
+                            title = item.optString("title"),
+                            description = item.optString("description").takeIf { it.isNotBlank() && !item.isNull("description") },
+                            image = item.optString("image").takeIf { it.isNotBlank() && !item.isNull("image") },
+                            startMs = start,
+                            endMs = end,
+                        )
+                    }
+                    if (slots.isEmpty()) return@use null
+                    response.header("ETag")?.let { serverScheduleTags[internalId] = it }
+                    serverScheduleNextAsk[internalId] = now + SERVER_SCHEDULE_REFRESH_MS
+                    slots
+                }
+            }.onFailure { Log.w(TAG, "Could not read the server schedule of ${channel.name}", it) }.getOrNull()
+        }
 
     /**
      * Fetches the current lineup for a [MyListsTvChannel] from `{addonBaseUrl}/catalog/tv/{channel.catalogId}.json`
@@ -1226,7 +1327,10 @@ internal object ListChannels {
             extend(definition, now)
         }
         if (slots.isEmpty()) throw ListChannelUnavailableException("No titles could be loaded from its lists")
-        val initialIndex = slots.indexOfFirst { now in it.startMs until it.endMs }.takeIf { it >= 0 } ?: slots.lastIndex
+        val airingIndex = slots.indexOfFirst { now in it.startMs until it.endMs }.takeIf { it >= 0 } ?: slots.lastIndex
+        // Having left the programme airing now early, the channel goes on to the one after it.
+        val leftStart = leftEarly.remove(id)
+        val initialIndex = if (leftStart != null && slots.getOrNull(airingIndex)?.startMs == leftStart && airingIndex + 1 in slots.indices) airingIndex + 1 else airingIndex
         var index = initialIndex
         var tries = 0
         while (index in slots.indices && tries < 3) {
@@ -1235,7 +1339,10 @@ internal object ListChannels {
             val url = stream?.getStreamUrl()
             val hash = stream?.getEffectiveInfoHash()
             if (stream != null && (url != null || hash != null)) {
-                val effectiveSlot = if (index != initialIndex) {
+                val effectiveSlot = if (id in serverScheduled) {
+                    // Shared with every device: played as scheduled (joined part-way, or from its start when early).
+                    slot
+                } else if (index != airingIndex) {
                     val shiftDelta = now - slot.startMs
                     val updatedSlots = slots.mapIndexed { idx, s ->
                         if (idx < index) {

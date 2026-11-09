@@ -623,6 +623,12 @@ class MyListsTvSyncManager @Inject constructor(
         }
     }
 
+    /** The account (or "default") this profile syncs with: what the server's per-account routes are asked for. */
+    suspend fun currentTargetId(): String = withContext(Dispatchers.IO) {
+        val profileId = currentProfileId()
+        resolveEffectiveTargetId(factory.get(profileId, FEATURE).data.first(), profileId)
+    }
+
     private suspend fun resolveEffectiveTargetId(prefs: Preferences, profileId: Int): String {
         val storedTarget = prefs[targetIdKey]?.trim().orEmpty()
         if (storedTarget.isNotBlank() && storedTarget != DEFAULT_TARGET_ID) {
