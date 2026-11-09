@@ -555,7 +555,7 @@ private fun LiveTvListChannelEffects(state: LiveTvPlayerState, uiState: PlayerUi
     LaunchedEffect(url, listUrl) {
         if (url == null || listUrl == null || !ListChannels.isServerScheduled(listUrl)) return@LaunchedEffect
         val slot = ListChannels.openedSlot(listUrl) ?: return@LaunchedEffect
-        val wait = slot.endMs - System.currentTimeMillis()
+        val wait = slot.endMs - LiveTvClock.nowEpochMs()
         // A slot already over when this opens (the schedule has run out) is not cut: nothing follows it.
         if (wait <= 0L) return@LaunchedEffect
         delay(wait)

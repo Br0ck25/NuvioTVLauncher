@@ -703,7 +703,10 @@ class MyListsTvSyncManager @Inject constructor(
             .get()
             .build()
         return try {
+            val sentAt = System.currentTimeMillis()
             okHttpClient.newCall(request).execute().use { response ->
+                // The server's clock, so Live TV shows the same programme on a TV whose own clock is off.
+                com.nuvio.tv.reshaped.livetv.LiveTvClock.observeServerDate(response.headers, sentAt, System.currentTimeMillis())
                 if (response.code == 304) return SyncFetch(payload = null, etag = ifNoneMatch, notModified = true)
                 if (!response.isSuccessful) {
                     Log.d(TAG, "Sync endpoint returned HTTP ${response.code} for url=$url")
