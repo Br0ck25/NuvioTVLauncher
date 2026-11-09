@@ -457,6 +457,7 @@ internal class LiveTvPlayerState(
     /** A list channel's programme ended: the channel carries on with what is on next. */
     internal fun advanceListChannel(listUrl: String) {
         val channel = LiveTvRepository.uiState.value.channels.firstOrNull { it.streamUrl == listUrl } ?: return
+        ListChannels.finishOpenedNow(listUrl)
         switchTo(channel, force = true)
     }
 

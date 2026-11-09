@@ -434,7 +434,10 @@ fun PlayerScreen(
         postPlayRecommendationState.blocksNaturalCompletion
     ) {
         val explicitReason = uiState.pendingExitReason
+        // A list channel (Live TV) carries on with the next programme itself: see LiveTvListChannelEffects.
+        val listChannelCarriesOn = liveTvPlayer.playingListChannelUrl() != null
         val shouldDispatchNatural = uiState.playbackEnded &&
+            !listChannelCarriesOn &&
             uiState.error == null &&
             uiState.postPlayMode?.blocksNaturalCompletion() != true &&
             !postPlayRecommendationState.blocksNaturalCompletion &&

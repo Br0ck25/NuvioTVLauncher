@@ -421,6 +421,31 @@ internal object ListChannels {
         onProgrammesChanged()
     }
 
+    /**
+     * The file of the programme opened on [channelUrl] ended: its slot ends now, if the guide still
+     * had it running (an estimated length is rarely exact), and what follows moves up to meet it, so
+     * the channel carries on with the next programme instead of replaying the end of this one.
+     */
+    fun finishOpenedNow(channelUrl: String) {
+        val id = listChannelIdOf(channelUrl)
+        val opened0 = opened[id] ?: return
+        val now = System.currentTimeMillis()
+        val delta = now - opened0.endMs
+        if (delta >= 0L) return
+        val current = slotsById[id] ?: return
+        val updated = current.map { s ->
+            when {
+                s.startMs == opened0.startMs && s.videoId == opened0.videoId -> s.copy(endMs = now)
+                s.startMs >= opened0.endMs -> s.copy(startMs = s.startMs + delta, endMs = s.endMs + delta)
+                else -> s
+            }
+        }
+        slotsById = slotsById + (id to updated)
+        opened[id] = opened0.copy(endMs = now)
+        store?.let { it.saveSchedule(id, updated, it.state(id)) }
+        onProgrammesChanged()
+    }
+
     private suspend fun keepSchedulesCurrent() {
         val now = System.currentTimeMillis()
         _channels.value.forEach { channel ->
