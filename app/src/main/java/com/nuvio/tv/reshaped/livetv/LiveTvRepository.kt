@@ -832,10 +832,10 @@ object LiveTvRepository {
                 val picked = source.addon.channels.map { channel ->
                     LiveTvChannel(
                         id = "${channel.type}|${channel.id}",
-                        name = channel.name,
+                        name = LiveTvAddons.cleanLabel(channel.name),
                         streamUrl = "nuvio-addon://${source.id}/${channel.type}/${java.net.URLEncoder.encode(channel.id, "UTF-8")}",
                         logoUrl = channel.logo,
-                        group = channel.group,
+                        group = LiveTvAddons.cleanLabel(channel.group),
                         addonRef = "${channel.type}|${channel.id}",
                     )
                 }

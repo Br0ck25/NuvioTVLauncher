@@ -37,6 +37,11 @@ internal object LiveTvAddons {
     private fun deps(context: Context): LiveTvAddonsEntryPoint =
         EntryPointAccessors.fromApplication(context.applicationContext, LiveTvAddonsEntryPoint::class.java)
 
+    private val LEADING_SYMBOLS = Regex("""^[\p{So}\p{Sk}\u200D\uFE0F\u20E3\s]+""")
+
+    /** [text] without the emoji addons put in front of names ("📺 ABC"); unchanged if nothing else is left. */
+    fun cleanLabel(text: String): String = text.replace(LEADING_SYMBOLS, "").trim().ifBlank { text.trim() }
+
     /** A catalog that lists channels and can be read without a search term or other required input. */
     private fun CatalogDescriptor.isChannelCatalog(): Boolean =
         apiType.lowercase() in CHANNEL_TYPES && !isSearchOnlyCatalog() && extra.none { it.isRequired }
@@ -76,9 +81,9 @@ internal object LiveTvAddons {
                         result += LiveTvAddonChannel(
                             id = item.id,
                             type = catalog.apiType,
-                            name = item.name,
+                            name = cleanLabel(item.name),
                             logo = item.logo ?: item.poster,
-                            group = catalog.name,
+                            group = cleanLabel(catalog.name),
                         )
                     }
                 }
