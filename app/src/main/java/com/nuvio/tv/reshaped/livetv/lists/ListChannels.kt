@@ -41,6 +41,7 @@ import com.nuvio.tv.domain.repository.LibraryRepository
 import com.nuvio.tv.domain.repository.MetaRepository
 import com.nuvio.tv.domain.repository.StreamRepository
 import com.nuvio.tv.reshaped.livetv.LiveTvChannel
+import com.nuvio.tv.reshaped.livetv.LiveTvClock
 import com.nuvio.tv.reshaped.livetv.LiveTvPreferences
 import com.nuvio.tv.reshaped.livetv.LiveTvProgramme
 import com.nuvio.tv.reshaped.livetv.liveTvHideKey
@@ -179,8 +180,10 @@ internal object ListChannels {
     private val myListsLineupCache = HashMap<String, Pair<Long, List<MyListsLineupEntry>>>()
     /** Channels whose schedule is the server's, which every device shows alike: this device never reshapes it. */
     private val serverScheduled: MutableSet<String> = ConcurrentHashMap.newKeySet()
-    private val serverScheduleNextAsk = ConcurrentHashMap<String, Long>()
-    private val serverScheduleTags = ConcurrentHashMap<String, String>()
+    /** When the server's schedules are next asked for (all channels at once), and the tag of the last answer. */
+    @Volatile private var serverBatchNextAsk = 0L
+    @Volatile private var serverBatchTag: String? = null
+    private val serverBatchMutex = Mutex()
     /** Channels whose programme was left early: the next resolve moves on from it rather than replaying it. */
     private val leftEarly = ConcurrentHashMap<String, Long>()
     /** The programme each channel was last opened on, for where in it playback starts. */
@@ -298,7 +301,7 @@ internal object ListChannels {
         saved.saveChannels(list)
         _channels.value = list
         onChannelsChanged()
-        scope.launch { runCatching { extend(channel, System.currentTimeMillis()) }; onProgrammesChanged() }
+        scope.launch { runCatching { extend(channel, LiveTvClock.nowEpochMs()) }; onProgrammesChanged() }
     }
 
     fun remove(id: String) {
@@ -378,7 +381,7 @@ internal object ListChannels {
     // region Guide
 
     /** What is on now for each list channel, by guide key. A memory lookup. */
-    fun nowProgrammes(nowMs: Long = System.currentTimeMillis()): Map<String, LiveTvProgramme> {
+    fun nowProgrammes(nowMs: Long = LiveTvClock.nowEpochMs()): Map<String, LiveTvProgramme> {
         val result = HashMap<String, LiveTvProgramme>()
         slotsById.forEach { (id, slots) ->
             slots.firstOrNull { nowMs in it.startMs until it.endMs }?.let { result[listChannelGuideKey(id)] = it.toProgramme() }
@@ -400,7 +403,7 @@ internal object ListChannels {
     /** How far into the programme opened last on [channelUrl] playback should start. */
     fun startOffsetMs(channelUrl: String): Long {
         val slot = opened[listChannelIdOf(channelUrl)] ?: return 0L
-        val offset = System.currentTimeMillis() - slot.startMs
+        val offset = LiveTvClock.nowEpochMs() - slot.startMs
         return offset.coerceIn(0L, (slot.durationMs - 20_000L).coerceAtLeast(0L))
     }
 
@@ -415,7 +418,7 @@ internal object ListChannels {
         if (id in serverScheduled) return
         val opened0 = opened[id] ?: return
         if (actualMs < 5 * 60_000L) return
-        val now = System.currentTimeMillis()
+        val now = LiveTvClock.nowEpochMs()
         val newEnd = opened0.startMs + actualMs
         if (kotlin.math.abs(newEnd - opened0.endMs) < 60_000L || newEnd < now + 20_000L) return
         val delta = newEnd - opened0.endMs
@@ -441,7 +444,7 @@ internal object ListChannels {
     fun finishOpenedNow(channelUrl: String) {
         val id = listChannelIdOf(channelUrl)
         val opened0 = opened[id] ?: return
-        val now = System.currentTimeMillis()
+        val now = LiveTvClock.nowEpochMs()
         if (id in serverScheduled) {
             // Left before its slot ends (a short file, or cut at the end of a long one): the next resolve
             // goes on to the programme after it, without moving anything in the shared schedule.
@@ -465,7 +468,7 @@ internal object ListChannels {
     }
 
     private suspend fun keepSchedulesCurrent() {
-        val now = System.currentTimeMillis()
+        val now = LiveTvClock.nowEpochMs()
         _channels.value.forEach { channel ->
             val last = slotsById[channel.id]?.lastOrNull()?.endMs ?: 0L
             if (last < now + HORIZON_MS / 2) {
@@ -487,7 +490,7 @@ internal object ListChannels {
             if (extendedMyListsCount >= 6) break
             val internalId = myListsChannelInternalId(channel.id)
             val last = slotsById[internalId]?.lastOrNull()?.endMs ?: 0L
-            if (last < now + HORIZON_MS / 2 || serverScheduleDue(internalId, now)) {
+            if (last < now + HORIZON_MS / 2 || now >= serverBatchNextAsk) {
                 try {
                     extendMyListsChannel(channel, now)
                     extendedMyListsCount++
@@ -523,7 +526,7 @@ internal object ListChannels {
     /** The player shows [channelUrl] (a list channel) and the app is in front, or null when nothing is watched. */
     fun setWatching(channelUrl: String?) {
         watchingChannelId = channelUrl?.takeIf { it.isListChannelUrl() }?.let(::listChannelIdOf)
-        if (watchingChannelId != null) scope.launch { prepareNext(System.currentTimeMillis()) }
+        if (watchingChannelId != null) scope.launch { prepareNext(LiveTvClock.nowEpochMs()) }
     }
 
     /** [channelUrl] stopped being watched; another channel taking over is left alone. */
@@ -579,16 +582,8 @@ internal object ListChannels {
         return lock.withLock {
             val saved = store ?: return@withLock emptyList()
             // The server's schedule, when it has one for this channel, is the one every device shows.
-            if (serverScheduleDue(internalId, now)) {
-                val fromServer = fetchServerSchedule(channel, internalId, now)
-                if (fromServer != null) {
-                    serverScheduled += internalId
-                    saved.saveSchedule(internalId, fromServer, saved.state(internalId))
-                    slotsById = slotsById + (internalId to fromServer)
-                    onProgrammesChanged()
-                    return@withLock fromServer
-                }
-            }
+            // One request refreshes every channel's, so asking for this one covers the rest.
+            if (now >= serverBatchNextAsk) refreshServerSchedules(now)
             if (internalId in serverScheduled) {
                 val held = slotsById[internalId].orEmpty()
                 // Offline or between refreshes: what the server last gave stays, never a local plan beside it.
@@ -686,72 +681,72 @@ internal object ListChannels {
         )
     }
 
-    private fun serverScheduleDue(internalId: String, now: Long): Boolean =
-        now >= (serverScheduleNextAsk[internalId] ?: 0L)
-
     /** Whether [channelUrl]'s schedule is the server's (so this device must not reshape it). */
     fun isServerScheduled(channelUrl: String): Boolean = listChannelIdOf(channelUrl) in serverScheduled
 
     /**
-     * The schedule the server keeps for [channel]: the same programmes with the same times on every
-     * device of the account. Null when the server has none for it or cannot be reached; the channel
-     * then plans on this device as before.
+     * Asks the server for the schedule of every My Lists channel in one request (`/schedules`). It is
+     * the same programmes with the same times on every device of the account. A channel the server
+     * has none for stays planned on this device, as does every channel when the server is an older
+     * one or cannot be reached; the next ask is then thirty minutes away rather than five. An
+     * unchanged answer is a bare 304.
      */
-    private suspend fun fetchServerSchedule(channel: MyListsTvChannel, internalId: String, now: Long): List<ListSlot>? =
+    private suspend fun refreshServerSchedules(now: Long) = serverBatchMutex.withLock {
+        if (LiveTvClock.nowEpochMs() < serverBatchNextAsk) return@withLock
+        val channels = myListsChannels
+        val saved = store
+        if (channels.isEmpty() || saved == null) return@withLock
+        serverBatchNextAsk = LiveTvClock.nowEpochMs() + SERVER_SCHEDULE_RETRY_MS
+        // A server that says what it offers is only asked for what it has; one that does not say (older) is tried.
+        if (!serverSupportsSchedules(runCatching { deps().myListsTvSyncManager().serverFeatures }.getOrNull())) return@withLock
         withContext(Dispatchers.IO) {
-            serverScheduleNextAsk[internalId] = now + SERVER_SCHEDULE_RETRY_MS
-            val target = runCatching { deps().myListsTvSyncManager().currentTargetId() }.getOrNull() ?: return@withContext null
+            val target = runCatching { deps().myListsTvSyncManager().currentTargetId() }.getOrNull() ?: return@withContext
             val encodedTarget = URLEncoder.encode(target, "UTF-8").replace("+", "%20")
-            val encodedChannel = URLEncoder.encode(channel.id, "UTF-8").replace("+", "%20")
-            val url = "${MyListsDefaultSeed.MY_LISTS_BASE_ORIGIN}/api/nuvio-tv/schedule/$encodedTarget/$encodedChannel"
+            val ids = channels.joinToString(",") { URLEncoder.encode(it.id, "UTF-8").replace(",", "%2C") }
+            val url = "${MyListsDefaultSeed.MY_LISTS_BASE_ORIGIN}/api/nuvio-tv/schedules/$encodedTarget?channels=$ids"
             val request = Request.Builder()
                 .url(url)
                 .cacheControl(CacheControl.FORCE_NETWORK)
                 .header("Accept", "application/json")
                 .header("Origin", MyListsDefaultSeed.MY_LISTS_BASE_ORIGIN)
                 .header("Referer", "${MyListsDefaultSeed.MY_LISTS_BASE_ORIGIN}/")
-                .apply {
-                    // An unchanged schedule comes back as a bare 304.
-                    if (internalId in serverScheduled) serverScheduleTags[internalId]?.let { header("If-None-Match", it) }
-                }
+                .apply { serverBatchTag?.let { header("If-None-Match", it) } }
                 .get()
                 .build()
             runCatching {
+                val sentAt = System.currentTimeMillis()
                 deps().okHttpClient().newCall(request).execute().use { response ->
+                    LiveTvClock.observeServerDate(response.headers, sentAt, System.currentTimeMillis())
                     if (response.code == 304) {
-                        serverScheduleNextAsk[internalId] = now + SERVER_SCHEDULE_REFRESH_MS
-                        return@use slotsById[internalId]?.takeIf { it.isNotEmpty() }
+                        serverBatchNextAsk = LiveTvClock.nowEpochMs() + SERVER_SCHEDULE_REFRESH_MS
+                        return@use
                     }
-                    if (!response.isSuccessful) return@use null
+                    if (!response.isSuccessful) return@use
                     val root = JSONObject(response.body?.string().orEmpty())
-                    if (!root.optBoolean("ok")) return@use null
-                    val array = root.optJSONArray("slots") ?: return@use null
-                    val slots = (0 until array.length()).mapNotNull { index ->
-                        val item = array.optJSONObject(index) ?: return@mapNotNull null
-                        val videoId = item.optString("videoId").takeIf(String::isNotBlank) ?: return@mapNotNull null
-                        val start = item.optLong("startMs", -1L)
-                        val end = item.optLong("endMs", -1L)
-                        if (start < 0L || end <= start) return@mapNotNull null
-                        ListSlot(
-                            itemId = item.optString("itemId").ifBlank { videoId.substringBefore(':') },
-                            itemType = item.optString("type").ifBlank { "series" },
-                            videoId = videoId,
-                            season = item.optInt("season", -1).takeIf { it >= 0 && !item.isNull("season") },
-                            episode = item.optInt("episode", -1).takeIf { it >= 0 && !item.isNull("episode") },
-                            title = item.optString("title"),
-                            description = item.optString("description").takeIf { it.isNotBlank() && !item.isNull("description") },
-                            image = item.optString("image").takeIf { it.isNotBlank() && !item.isNull("image") },
-                            startMs = start,
-                            endMs = end,
-                        )
+                    if (!root.optBoolean("ok")) return@use
+                    val adopted = parseServerSchedules(root, channels.map { it.id })
+                        .mapKeys { myListsChannelInternalId(it.key) }
+                    channels.forEach { channel ->
+                        val internalId = myListsChannelInternalId(channel.id)
+                        val slots = adopted[internalId]
+                        if (slots != null) {
+                            serverScheduled += internalId
+                            saved.saveSchedule(internalId, slots, saved.state(internalId))
+                        } else {
+                            // The server no longer has one: this device plans it again.
+                            serverScheduled -= internalId
+                        }
                     }
-                    if (slots.isEmpty()) return@use null
-                    response.header("ETag")?.let { serverScheduleTags[internalId] = it }
-                    serverScheduleNextAsk[internalId] = now + SERVER_SCHEDULE_REFRESH_MS
-                    slots
+                    if (adopted.isNotEmpty()) {
+                        slotsById = slotsById + adopted
+                        onProgrammesChanged()
+                    }
+                    serverBatchTag = response.header("ETag")
+                    serverBatchNextAsk = LiveTvClock.nowEpochMs() + SERVER_SCHEDULE_REFRESH_MS
                 }
-            }.onFailure { Log.w(TAG, "Could not read the server schedule of ${channel.name}", it) }.getOrNull()
+            }.onFailure { Log.w(TAG, "Could not read the server schedules", it) }
         }
+    }
 
     /**
      * Fetches the current lineup for a [MyListsTvChannel] from `{addonBaseUrl}/catalog/tv/{channel.catalogId}.json`
@@ -1313,7 +1308,7 @@ internal object ListChannels {
 
     private suspend fun resolveNow(channel: LiveTvChannel): LiveTvChannel {
         val id = listChannelIdOf(channel.streamUrl)
-        val now = System.currentTimeMillis()
+        val now = LiveTvClock.nowEpochMs()
         val slots = if (isMyListsChannelInternalId(id)) {
             val rawId = stripMyListsChannelInternalId(id)
             val myListsChannel = myListsChannels.firstOrNull { it.id == rawId }

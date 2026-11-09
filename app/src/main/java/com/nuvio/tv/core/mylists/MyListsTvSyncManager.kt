@@ -76,7 +76,9 @@ data class MyListsSyncResponse(
     val collections: JsonArray? = null,
     val channels: List<MyListsTvChannel>? = null,
     val betterPosters: Boolean? = null,
-    val customPosterPattern: String? = null
+    val customPosterPattern: String? = null,
+    /** What the server offers beyond the original payload (`etag`, `schedule`, `schedules`); null from an older server. */
+    val features: List<String>? = null
 )
 
 @Keep
@@ -445,6 +447,7 @@ class MyListsTvSyncManager @Inject constructor(
                 return@withLock false
             }
             val syncResponse = fetched.payload ?: return@withLock false
+            serverFeatures = syncResponse.features?.toSet()
             val incomingEtag = fetched.etag
             val incomingHash = syncResponse.versionHash?.takeIf { it.isNotBlank() }
             val channelIdsSig = syncResponse.channels?.joinToString(",") { it.id }.orEmpty()
@@ -684,6 +687,10 @@ class MyListsTvSyncManager @Inject constructor(
         }
     }
 
+    /** What the server said it offers in the last full sync payload; null until one arrives, or from an older server. */
+    @Volatile var serverFeatures: Set<String>? = null
+        private set
+
     /** What asking the sync endpoint gave: not modified, the payload (with its tag), or nothing usable. */
     private class SyncFetch(val payload: MyListsSyncResponse?, val etag: String?, val notModified: Boolean = false)
 
@@ -703,7 +710,10 @@ class MyListsTvSyncManager @Inject constructor(
             .get()
             .build()
         return try {
+            val sentAt = System.currentTimeMillis()
             okHttpClient.newCall(request).execute().use { response ->
+                // The server's clock, so Live TV shows the same programme on a TV whose own clock is off.
+                com.nuvio.tv.reshaped.livetv.LiveTvClock.observeServerDate(response.headers, sentAt, System.currentTimeMillis())
                 if (response.code == 304) return SyncFetch(payload = null, etag = ifNoneMatch, notModified = true)
                 if (!response.isSuccessful) {
                     Log.d(TAG, "Sync endpoint returned HTTP ${response.code} for url=$url")

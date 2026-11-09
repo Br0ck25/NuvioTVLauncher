@@ -671,7 +671,27 @@ private const val NAME_KEY_PREFIX = "\u0001"
 internal object LiveTvClock {
     private val clockFormatter = DateTimeFormatter.ofLocalizedTime(FormatStyle.SHORT)
 
-    fun nowEpochMs(): Long = System.currentTimeMillis()
+    /**
+     * How far the device's clock is from the server's, from the Date header of a My Lists reply (see
+     * [observeServerDate]). Guides, "on now" and the shared schedule all run on [nowEpochMs], so a TV
+     * with a wrong clock still shows the same programme as the viewer's other devices.
+     */
+    @Volatile private var offsetMs: Long = 0L
+
+    fun nowEpochMs(): Long = System.currentTimeMillis() + offsetMs
+
+    /**
+     * Learns the device clock's error from a response's Date header, which has one-second resolution
+     * (so the true time is taken as half a second into it) and is only trusted when the round trip was
+     * short. Differences under three seconds are noise and leave the clock alone.
+     */
+    fun observeServerDate(headers: okhttp3.Headers?, sentAtMs: Long, receivedAtMs: Long) {
+        val serverDate = headers?.getDate("Date")?.time ?: return
+        if (receivedAtMs - sentAtMs !in 0L..5_000L) return
+        val deviceMid = (sentAtMs + receivedAtMs) / 2
+        val diff = serverDate + 500L - deviceMid
+        offsetMs = if (kotlin.math.abs(diff) >= 3_000L) diff else 0L
+    }
 
     /** The device's own short time format (13:00 or 1:00 PM) in its time zone. */
     fun formatClock(epochMs: Long): String =
