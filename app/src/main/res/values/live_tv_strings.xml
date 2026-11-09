@@ -131,7 +131,7 @@
     <string name="live_tv_settings">Live TV settings</string>
     <string name="live_tv_cancel">Cancel</string>
     <string name="live_tv_menu_sources">Sources</string>
-    <string name="live_tv_menu_sources_description">Add, edit or remove your M3U, Xtream and Stalker logins</string>
+    <string name="live_tv_menu_sources_description">Add, edit or remove your M3U, Xtream and Stalker logins, and channels from your addons</string>
     <string name="live_tv_menu_categories">Categories</string>
     <string name="live_tv_menu_categories_description">Show, hide, rename and order categories and channels</string>
     <string name="live_tv_menu_playlists_description">Make, rename, order or delete your own channel lists</string>
@@ -165,4 +165,16 @@
         <item quantity="one">Give it a name. %d channel will be in it.</item>
         <item quantity="other">Give it a name. %d channels will be in it.</item>
     </plurals>
+    <string name="live_tv_source_addon">Addon</string>
+    <string name="live_tv_addon_pick_addon">Choose an installed addon that has TV channels</string>
+    <string name="live_tv_addon_none">None of your installed addons list TV channels. Install one in Addons first.</string>
+    <string name="live_tv_addon_loading">Loading channels…</string>
+    <string name="live_tv_addon_no_channels">This addon listed no channels.</string>
+    <string name="live_tv_addon_select_all">Select all</string>
+    <string name="live_tv_addon_clear">Clear</string>
+    <plurals name="live_tv_addon_add_selected">
+        <item quantity="one">Add %d channel</item>
+        <item quantity="other">Add %d channels</item>
+    </plurals>
+    <string name="live_tv_addon_change_addon">Change addon</string>
 </resources>

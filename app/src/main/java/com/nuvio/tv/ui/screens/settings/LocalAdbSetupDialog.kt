@@ -10,7 +10,7 @@ import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.foundation.verticalScroll
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.DisposableEffect
-import androidx.compose.runtime.collectAsState
+import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
@@ -54,7 +54,7 @@ internal fun LocalAdbSetupDialog(
             ExternalPlaybackKeepAliveService.stop(context)
         }
     }
-    val sessionState by session.state.collectAsState()
+    val sessionState by session.state.collectAsStateWithLifecycle()
     var pairingPort by remember { mutableStateOf("") }
     var pairingCode by remember { mutableStateOf("") }
     var connectPort by remember { mutableStateOf("") }

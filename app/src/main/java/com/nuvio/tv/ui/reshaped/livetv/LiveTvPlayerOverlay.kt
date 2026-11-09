@@ -457,13 +457,13 @@ internal class LiveTvPlayerState(
     /** A list channel's programme ended: the channel carries on with what is on next. */
     internal fun advanceListChannel(listUrl: String) {
         val channel = LiveTvRepository.uiState.value.channels.firstOrNull { it.streamUrl == listUrl } ?: return
+        ListChannels.finishOpenedNow(listUrl)
         switchTo(channel, force = true)
     }
 
     /** Tuning in to a list channel joins its programme part-way: seeks there once the player knows the length. */
     internal suspend fun joinListProgramme(url: String, listUrl: String) {
-        val offset = ListChannels.startOffsetMs(listUrl)
-        if (offset < JOIN_MIN_MS) return
+        var offset = ListChannels.startOffsetMs(listUrl)
         // On a zap the player is kept, so the previous programme's length is still there: wait until
         // the new one is really playing before seeking, then check the seek landed.
         var seeked = false
@@ -472,6 +472,10 @@ internal class LiveTvPlayerState(
             val timeline = controller._playbackTimeline.value
             val ready = !controller._uiState.value.isBuffering && timeline.duration > 0L
             if (ready && !seeked) {
+                // The file's real length wins over the guide's estimate.
+                ListChannels.reconcileDuration(listUrl, timeline.duration)
+                offset = ListChannels.startOffsetMs(listUrl)
+                if (offset < JOIN_MIN_MS) return
                 controller.onEvent(PlayerEvent.OnSeekTo(offset))
                 seeked = true
                 delay(3_000L)
@@ -545,6 +549,17 @@ private fun LiveTvListChannelEffects(state: LiveTvPlayerState, uiState: PlayerUi
     val listUrl = state.playingListChannelUrl()
     LaunchedEffect(url, listUrl) {
         if (url != null && listUrl != null) state.joinListProgramme(url, listUrl)
+    }
+    // The server's schedule is the same on every device, so a file longer than its slot is cut where the
+    // slot ends: the channel moves to the programme that is airing then.
+    LaunchedEffect(url, listUrl) {
+        if (url == null || listUrl == null || !ListChannels.isServerScheduled(listUrl)) return@LaunchedEffect
+        val slot = ListChannels.openedSlot(listUrl) ?: return@LaunchedEffect
+        val wait = slot.endMs - System.currentTimeMillis()
+        // A slot already over when this opens (the schedule has run out) is not cut: nothing follows it.
+        if (wait <= 0L) return@LaunchedEffect
+        delay(wait)
+        if (state.player.currentStreamUrl == url) state.advanceListChannel(listUrl)
     }
     // An ended flag left over from the previous programme must not advance the one just opened.
     val endedAtOpen = remember(url) { uiState.playbackEnded }

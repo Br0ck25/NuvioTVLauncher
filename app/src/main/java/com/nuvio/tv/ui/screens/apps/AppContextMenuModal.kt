@@ -49,7 +49,7 @@ import androidx.compose.material.icons.filled.Tune
 import androidx.compose.material.icons.filled.VisibilityOff
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
-import androidx.compose.runtime.collectAsState
+import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import androidx.compose.runtime.compositionLocalOf
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
@@ -113,7 +113,7 @@ fun AppContextMenuModal(
     viewModel: AppContextMenuViewModel = hiltViewModel()
 ) {
     val activityContext = androidx.compose.ui.platform.LocalContext.current
-    val uiState by viewModel.uiState.collectAsState()
+    val uiState by viewModel.uiState.collectAsStateWithLifecycle()
     var currentMode by remember { mutableStateOf(MenuScreenMode.MAIN) }
     var renameText by remember(app.displayLabel) { mutableStateOf(app.displayLabel) }
     val initialFocusRequester = remember { FocusRequester() }

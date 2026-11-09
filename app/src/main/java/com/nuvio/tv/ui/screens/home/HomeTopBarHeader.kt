@@ -29,7 +29,7 @@ import androidx.compose.material.icons.filled.Settings
 import androidx.compose.material.icons.filled.Tv
 import androidx.compose.material.icons.filled.Wifi
 import androidx.compose.runtime.Composable
-import androidx.compose.runtime.collectAsState
+import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.remember
 import androidx.compose.ui.Alignment
@@ -58,7 +58,7 @@ fun HomeTopBarHeader(
     modifier: Modifier = Modifier
 ) {
     val context = LocalContext.current
-    val notifications by LauncherNotificationListenerService.notifications.collectAsState()
+    val notifications by LauncherNotificationListenerService.notifications.collectAsStateWithLifecycle()
     val notificationCount = notifications.size
 
     val hasTvInputs = remember {

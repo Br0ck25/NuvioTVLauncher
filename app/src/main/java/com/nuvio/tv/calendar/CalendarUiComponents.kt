@@ -29,7 +29,7 @@ import androidx.compose.foundation.lazy.itemsIndexed
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
-import androidx.compose.runtime.collectAsState
+import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
@@ -311,7 +311,7 @@ object CalendarNotice {
 
 @Composable
 fun CalendarNoticeHost() {
-    val message by CalendarNotice.text.collectAsState()
+    val message by CalendarNotice.text.collectAsStateWithLifecycle()
     LaunchedEffect(message) {
         if (message != null) {
             delay(4_500)

@@ -2,7 +2,7 @@ package com.nuvio.tv.reshaped.livetv
 
 import android.content.Context
 import androidx.compose.runtime.Composable
-import androidx.compose.runtime.collectAsState
+import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import androidx.compose.runtime.getValue
 import androidx.compose.ui.platform.LocalContext
 import kotlinx.coroutines.flow.MutableStateFlow
@@ -80,7 +80,7 @@ object LiveTvPreferences {
 @Composable
 fun rememberLiveTvEnabled(): Boolean {
     LiveTvPreferences.ensureLoaded(LocalContext.current)
-    val enabled by LiveTvPreferences.enabled.collectAsState()
+    val enabled by LiveTvPreferences.enabled.collectAsStateWithLifecycle()
     return enabled
 }
 
@@ -88,7 +88,7 @@ fun rememberLiveTvEnabled(): Boolean {
 @Composable
 fun rememberLiveTvPreviewsEnabled(): Boolean {
     LiveTvPreferences.ensureLoaded(LocalContext.current)
-    val enabled by LiveTvPreferences.previews.collectAsState()
+    val enabled by LiveTvPreferences.previews.collectAsStateWithLifecycle()
     return enabled
 }
 
@@ -96,7 +96,7 @@ fun rememberLiveTvPreviewsEnabled(): Boolean {
 @Composable
 fun rememberLiveTvPreviewSoundEnabled(): Boolean {
     LiveTvPreferences.ensureLoaded(LocalContext.current)
-    val enabled by LiveTvPreferences.previewSound.collectAsState()
+    val enabled by LiveTvPreferences.previewSound.collectAsStateWithLifecycle()
     return enabled
 }
 

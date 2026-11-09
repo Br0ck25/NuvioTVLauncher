@@ -42,7 +42,6 @@ import androidx.compose.material.icons.filled.Timer
 import androidx.compose.material.icons.filled.Wifi
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
-import androidx.compose.runtime.collectAsState
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
@@ -507,7 +506,7 @@ fun AdvancedSettingsContent(
                         ProfileManagerEntryPoint::class.java
                     ).profileManager()
                 }
-                val startupSplashEnabled by profileManager.startupSplashEnabled.collectAsState()
+                val startupSplashEnabled by profileManager.startupSplashEnabled.collectAsStateWithLifecycle()
                 SettingsToggleRow(
                     title = stringResource(R.string.appearance_startup_splash),
                     subtitle = stringResource(R.string.appearance_startup_splash_subtitle),
@@ -518,7 +517,7 @@ fun AdvancedSettingsContent(
                         }
                     }
                 )
-                val rememberLastProfileEnabled by profileManager.rememberLastProfileEnabled.collectAsState()
+                val rememberLastProfileEnabled by profileManager.rememberLastProfileEnabled.collectAsStateWithLifecycle()
                 SettingsToggleRow(
                     title = stringResource(R.string.advanced_remember_last_profile),
                     subtitle = stringResource(R.string.advanced_remember_last_profile_subtitle),
@@ -530,7 +529,7 @@ fun AdvancedSettingsContent(
                     }
                 )
 
-                val confirmExitEnabled by profileManager.confirmExitEnabled.collectAsState()
+                val confirmExitEnabled by profileManager.confirmExitEnabled.collectAsStateWithLifecycle()
                 SettingsToggleRow(
                     title = stringResource(R.string.advanced_confirm_exit),
                     subtitle = stringResource(R.string.advanced_confirm_exit_subtitle),
@@ -542,7 +541,7 @@ fun AdvancedSettingsContent(
                     }
                 )
 
-                val profileIdleSwitchEnabled by profileManager.profileIdleSwitchEnabled.collectAsState()
+                val profileIdleSwitchEnabled by profileManager.profileIdleSwitchEnabled.collectAsStateWithLifecycle()
                 SettingsToggleRow(
                     title = stringResource(R.string.advanced_profile_switch_after_idle),
                     subtitle = stringResource(R.string.advanced_profile_switch_after_idle_subtitle),

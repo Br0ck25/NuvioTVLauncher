@@ -437,7 +437,15 @@ class MyListsTvSyncManager @Inject constructor(
             val effectiveTarget = resolveEffectiveTargetId(prefs, syncProfileId)
             val lastHash = prefs[lastVersionHashKey]
 
-            val syncResponse = fetchSyncPayload(effectiveTarget) ?: return@withLock false
+            // Sends the tag of the payload last applied, so an unchanged one comes back as a bare 304.
+            // A forced sync always downloads it in full.
+            val fetched = fetchSyncPayload(effectiveTarget, ifNoneMatch = if (force) null else syncEtags[syncEtagKey(syncProfileId, effectiveTarget)])
+            if (fetched.notModified) {
+                Log.d(TAG, "My Lists sync not modified (profile=$syncProfileId target=$effectiveTarget)")
+                return@withLock false
+            }
+            val syncResponse = fetched.payload ?: return@withLock false
+            val incomingEtag = fetched.etag
             val incomingHash = syncResponse.versionHash?.takeIf { it.isNotBlank() }
             val channelIdsSig = syncResponse.channels?.joinToString(",") { it.id }.orEmpty()
             val catalogOrderSig = (syncResponse.catalogOrder ?: syncResponse.catalogIds)?.joinToString(",").orEmpty()
@@ -451,6 +459,7 @@ class MyListsTvSyncManager @Inject constructor(
 
             if (!force && effectiveIncomingHash.isNotBlank() && effectiveIncomingHash == lastHash) {
                 Log.d(TAG, "My Lists sync up-to-date (profile=$syncProfileId target=$effectiveTarget hash=$effectiveIncomingHash)")
+                incomingEtag?.let { syncEtags[syncEtagKey(syncProfileId, effectiveTarget)] = it }
                 return@withLock false
             }
 
@@ -561,7 +570,9 @@ class MyListsTvSyncManager @Inject constructor(
 
             // 5. Better Posters synchronization
             var hasBetterPosters = syncResponse.betterPosters == true
-            if (!hasBetterPosters && isCustomAccount && refreshedAddon != null) {
+            // A server that reports the setting (it sends the field, true or false) needs no probe; an older
+            // one is asked the old way, by looking for its poster URLs in a catalog.
+            if (syncResponse.betterPosters == null && !hasBetterPosters && isCustomAccount && refreshedAddon != null) {
                 val firstCatalog = refreshedAddon.catalogs.firstOrNull { !it.isSearchOnlyCatalog() }
                 if (firstCatalog != null) {
                     val probeUrl = "${refreshedAddon.baseUrl}/catalog/${firstCatalog.apiType}/${firstCatalog.id}.json"
@@ -604,9 +615,18 @@ class MyListsTvSyncManager @Inject constructor(
                 }
             }
 
+            // Remembered only now that the payload is applied: a sync that stopped half way must not be
+            // answered "not modified" next time.
+            incomingEtag?.let { syncEtags[syncEtagKey(syncProfileId, effectiveTarget)] = it }
             _syncRefreshEvents.tryEmit(Unit)
             true
         }
+    }
+
+    /** The account (or "default") this profile syncs with: what the server's per-account routes are asked for. */
+    suspend fun currentTargetId(): String = withContext(Dispatchers.IO) {
+        val profileId = currentProfileId()
+        resolveEffectiveTargetId(factory.get(profileId, FEATURE).data.first(), profileId)
     }
 
     private suspend fun resolveEffectiveTargetId(prefs: Preferences, profileId: Int): String {
@@ -664,7 +684,14 @@ class MyListsTvSyncManager @Inject constructor(
         }
     }
 
-    private fun fetchSyncPayload(targetId: String): MyListsSyncResponse? {
+    /** What asking the sync endpoint gave: not modified, the payload (with its tag), or nothing usable. */
+    private class SyncFetch(val payload: MyListsSyncResponse?, val etag: String?, val notModified: Boolean = false)
+
+    /** The tag of the payload last applied, per profile and target. In memory: a restart downloads it once. */
+    private val syncEtags = java.util.concurrent.ConcurrentHashMap<String, String>()
+    private fun syncEtagKey(profileId: Int, targetId: String) = "$profileId|$targetId"
+
+    private fun fetchSyncPayload(targetId: String, ifNoneMatch: String?): SyncFetch {
         val encodedTarget = URLEncoder.encode(targetId, "UTF-8").replace("+", "%20")
         val url = "${MyListsDefaultSeed.MY_LISTS_BASE_ORIGIN}/api/nuvio-tv/sync/$encodedTarget"
         val request = Request.Builder()
@@ -672,21 +699,23 @@ class MyListsTvSyncManager @Inject constructor(
             .header("Origin", MyListsDefaultSeed.MY_LISTS_BASE_ORIGIN)
             .header("Referer", "${MyListsDefaultSeed.MY_LISTS_BASE_ORIGIN}/")
             .cacheControl(CacheControl.FORCE_NETWORK)
+            .apply { if (!ifNoneMatch.isNullOrBlank()) header("If-None-Match", ifNoneMatch) }
             .get()
             .build()
         return try {
             okHttpClient.newCall(request).execute().use { response ->
+                if (response.code == 304) return SyncFetch(payload = null, etag = ifNoneMatch, notModified = true)
                 if (!response.isSuccessful) {
                     Log.d(TAG, "Sync endpoint returned HTTP ${response.code} for url=$url")
-                    return null
+                    return SyncFetch(null, null)
                 }
-                val body = response.body?.string()?.takeIf { it.isNotBlank() } ?: return null
+                val body = response.body?.string()?.takeIf { it.isNotBlank() } ?: return SyncFetch(null, null)
                 val parsed = gson.fromJson(body, MyListsSyncResponse::class.java)
-                if (parsed?.ok == true) parsed else null
+                if (parsed?.ok == true) SyncFetch(parsed, response.header("ETag")) else SyncFetch(null, null)
             }
         } catch (e: Exception) {
             Log.d(TAG, "Failed to reach My Lists sync endpoint: ${e.message}")
-            null
+            SyncFetch(null, null)
         }
     }
 

@@ -38,7 +38,7 @@ import androidx.compose.material.icons.filled.Close
 import androidx.compose.material.icons.filled.Notifications
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
-import androidx.compose.runtime.collectAsState
+import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.remember
 import androidx.compose.runtime.withFrameNanos
@@ -82,7 +82,7 @@ fun NotificationsDrawer(
 ) {
     val context = LocalContext.current
     val hasAccess = remember(context) { LauncherNotificationListenerService.isAccessGranted(context) }
-    val notifications by LauncherNotificationListenerService.notifications.collectAsState()
+    val notifications by LauncherNotificationListenerService.notifications.collectAsStateWithLifecycle()
     val initialFocusRequester = remember { FocusRequester() }
 
     AmbientDialogEffect(onDismiss)

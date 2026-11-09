@@ -299,6 +299,7 @@ internal fun LiveTvPreviewVideo(
         // Stalker links are created per play, and portals flag a device that asks for many: those
         // channels show their logo, without a picture.
         if (LiveTvRepository.isStalker(channel)) return@LaunchedEffect
+        if (LiveTvRepository.isAddonChannel(channel)) return@LaunchedEffect
         if (landed) delay(PREVIEW_DELAY_MS)
         landed = true
         preview.play(channel)

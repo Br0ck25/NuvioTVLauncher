@@ -217,6 +217,8 @@ fun LiveTvScreen(
     val preview = rememberLiveTvPreviewPlayer()
     var gridFocused by remember { mutableStateOf(false) }
     var settingsFocused by remember { mutableStateOf(false) }
+    /** The search field has focus: ▶ there moves to the settings button, not to the guide. */
+    var searchFocused by remember { mutableStateOf(false) }
     var showMenu by remember { mutableStateOf(false) }
     var showPlaylists by remember { mutableStateOf(false) }
     var showListChannels by remember { mutableStateOf(false) }
@@ -544,6 +546,7 @@ fun LiveTvScreen(
                             onEditList = { editingList = it },
                             pickMode = guide.selecting,
                             onChoose = choosePlaylist,
+                            onSearchFocusChange = { searchFocused = it },
                             settingsButton = {
                                 LiveTvPillButton(
                                     text = "",
@@ -570,7 +573,7 @@ fun LiveTvScreen(
                                 }
                                 // ▶ that nothing in the column used goes back to the guide.
                                 .onKeyEvent { event ->
-                                    event.type == KeyEventType.KeyDown && event.key == Key.DirectionRight && toGuide()
+                                    event.type == KeyEventType.KeyDown && event.key == Key.DirectionRight && !searchFocused && toGuide()
                                 },
                         )
                     }
@@ -1055,6 +1058,7 @@ private fun LiveTvCategoryColumn(
     onEditList: (String) -> Unit,
     settingsButton: @Composable () -> Unit,
     modifier: Modifier = Modifier,
+    onSearchFocusChange: (Boolean) -> Unit = {},
     /** Channels are being picked: only Favorites and the playlists, to choose where they go. */
     pickMode: Boolean = false,
     onChoose: (String) -> Unit = {},
@@ -1176,6 +1180,8 @@ private fun LiveTvCategoryColumn(
             return@LazyColumn
         }
         item(key = "\u0000search") {
+            // Scrolled away, the field can no longer report losing focus.
+            androidx.compose.runtime.DisposableEffect(Unit) { onDispose { onSearchFocusChange(false) } }
             // Search, and the settings for everything else on this screen.
             Row(
                 modifier = Modifier.fillMaxWidth().padding(bottom = 4.dp),
@@ -1187,7 +1193,7 @@ private fun LiveTvCategoryColumn(
                     onValueChange = onQueryChange,
                     placeholder = stringResource(R.string.live_tv_search),
                     keyboardType = androidx.compose.ui.text.input.KeyboardType.Text,
-                    modifier = Modifier.weight(1f),
+                    modifier = Modifier.weight(1f).onFocusChanged { onSearchFocusChange(it.hasFocus) },
                 )
                 settingsButton()
             }

@@ -47,6 +47,7 @@ import androidx.tv.material3.Text
 import com.nuvio.tv.R
 import com.nuvio.tv.core.qr.QrCodeGenerator
 import com.nuvio.tv.reshaped.net.LanAddress
+import com.nuvio.tv.reshaped.livetv.LiveTvAddonSettings
 import com.nuvio.tv.reshaped.livetv.LiveTvRepository
 import com.nuvio.tv.reshaped.livetv.LiveTvSetupServer
 import com.nuvio.tv.reshaped.livetv.LiveTvSource
@@ -159,26 +160,29 @@ internal fun LiveTvSourceDialog(onDismiss: () -> Unit) {
             modifier = Modifier.fillMaxWidth(),
             horizontalArrangement = Arrangement.spacedBy(NuvioTheme.spacing.xl),
         ) {
-            Column(
-                modifier = Modifier.width(200.dp),
-                verticalArrangement = Arrangement.spacedBy(NuvioTheme.spacing.sm),
-                horizontalAlignment = Alignment.CenterHorizontally,
-            ) {
-                serverState?.qr?.let { qr ->
-                    Image(
-                        bitmap = remember(qr) { qr.asImageBitmap() },
-                        contentDescription = stringResource(R.string.cd_qr_code),
-                        modifier = Modifier.size(170.dp),
-                        contentScale = ContentScale.Fit,
+            // Choosing addon channels needs the room: the phone setup code is only for typed-in sources.
+            if (!(adding && tab == LiveTvSourceType.Addon)) {
+                Column(
+                    modifier = Modifier.width(200.dp),
+                    verticalArrangement = Arrangement.spacedBy(NuvioTheme.spacing.sm),
+                    horizontalAlignment = Alignment.CenterHorizontally,
+                ) {
+                    serverState?.qr?.let { qr ->
+                        Image(
+                            bitmap = remember(qr) { qr.asImageBitmap() },
+                            contentDescription = stringResource(R.string.cd_qr_code),
+                            modifier = Modifier.size(170.dp),
+                            contentScale = ContentScale.Fit,
+                        )
+                    }
+                    Text(
+                        text = serverState?.error ?: stringResource(R.string.live_tv_phone_instruction),
+                        style = MaterialTheme.typography.bodySmall,
+                        color = NuvioTheme.colors.TextSecondary,
                     )
-                }
-                Text(
-                    text = serverState?.error ?: stringResource(R.string.live_tv_phone_instruction),
-                    style = MaterialTheme.typography.bodySmall,
-                    color = NuvioTheme.colors.TextSecondary,
-                )
-                serverState?.url?.let { url ->
-                    Text(text = url, style = MaterialTheme.typography.labelSmall, color = NuvioTheme.colors.TextTertiary)
+                    serverState?.url?.let { url ->
+                        Text(text = url, style = MaterialTheme.typography.labelSmall, color = NuvioTheme.colors.TextTertiary)
+                    }
                 }
             }
 
@@ -255,6 +259,11 @@ internal fun LiveTvSourceDialog(onDismiss: () -> Unit) {
                             selected = tab == LiveTvSourceType.Stalker,
                             onClick = { tab = LiveTvSourceType.Stalker },
                         )
+                        LiveTvPillButton(
+                            text = stringResource(R.string.live_tv_source_addon),
+                            selected = tab == LiveTvSourceType.Addon,
+                            onClick = { tab = LiveTvSourceType.Addon },
+                        )
                     }
                 }
                 if (adding) {
@@ -268,7 +277,24 @@ internal fun LiveTvSourceDialog(onDismiss: () -> Unit) {
                             keyboardType = KeyboardType.Text,
                         )
                     }
+                    if (tab == LiveTvSourceType.Addon) {
+                        LiveTvAddonPicker(
+                            initial = editing?.addon,
+                            onConfirm = { picked: LiveTvAddonSettings ->
+                                if (editing != null) {
+                                    LiveTvRepository.updateSource(editing.id, editing.copy(addon = picked, name = sourceName))
+                                } else {
+                                    LiveTvRepository.loadAddon(picked)
+                                }
+                            },
+                            onBack = {
+                                if (uiState.hasSource) { adding = false; editingId = null } else onDismiss()
+                            },
+                        )
+                        return@Column
+                    }
                     when (tab) {
+                        LiveTvSourceType.Addon -> Unit
                         LiveTvSourceType.M3u -> {
                             if (editing != null && !editing.url.startsWith("http", ignoreCase = true)) {
                                 // An imported file: only its guide can change.
@@ -337,6 +363,7 @@ internal fun LiveTvSourceDialog(onDismiss: () -> Unit) {
                                         LiveTvSourceType.M3u -> LiveTvRepository.loadM3uUrl(m3uUrl, epgLink)
                                         LiveTvSourceType.Xtream -> LiveTvRepository.loadXtream(xtream, epgLink)
                                         LiveTvSourceType.Stalker -> LiveTvRepository.loadStalker(stalker, epgLink)
+                                        LiveTvSourceType.Addon -> Unit
                                     }
                                 }
                             },
@@ -365,6 +392,7 @@ private fun LiveTvSourceRow(
             LiveTvSourceType.M3u -> R.string.live_tv_source_m3u
             LiveTvSourceType.Xtream -> R.string.live_tv_source_xtream
             LiveTvSourceType.Stalker -> R.string.live_tv_source_stalker
+            LiveTvSourceType.Addon -> R.string.live_tv_source_addon
         },
     )
     Row(

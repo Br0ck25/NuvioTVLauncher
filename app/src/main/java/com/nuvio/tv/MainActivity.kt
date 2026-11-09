@@ -59,6 +59,7 @@ import androidx.compose.runtime.Composable
 import androidx.compose.runtime.CompositionLocalProvider
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.collectAsState
+import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import androidx.compose.runtime.compositionLocalOf
 import androidx.compose.runtime.derivedStateOf
 import androidx.compose.runtime.getValue
@@ -485,7 +486,7 @@ open class MainActivity : ComponentActivity() {
                 appOnboardingDataStore.hasSeenAuthQrOnFirstLaunch.map<Boolean, Boolean?> { it }
             }
             val hasSeenAuthQrOnFirstLaunch by hasSeenAuthQrFlow.collectAsState(initial = null)
-            val authState by authManager.authState.collectAsState()
+            val authState by authManager.authState.collectAsStateWithLifecycle()
             val context = LocalContext.current
 
             LaunchedEffect(authSessionNoticeDataStore, context) {
@@ -503,12 +504,12 @@ open class MainActivity : ComponentActivity() {
 
             PartyEffects(partyRepository)
 
-            val activeProfileId by profileManager.activeProfileId.collectAsState()
-            val startupSplashEnabled by profileManager.startupSplashEnabled.collectAsState()
+            val activeProfileId by profileManager.activeProfileId.collectAsStateWithLifecycle()
+            val startupSplashEnabled by profileManager.startupSplashEnabled.collectAsStateWithLifecycle()
             val startupLoadingState = remember(activeProfileId, startupSession) { StartupLoadingState() }
-            val profiles by profileManager.profiles.collectAsState()
-            val hasEverSelectedProfile by profileManager.hasEverSelectedProfile.collectAsState()
-            val rememberLastProfileEnabled by profileManager.rememberLastProfileEnabled.collectAsState()
+            val profiles by profileManager.profiles.collectAsStateWithLifecycle()
+            val hasEverSelectedProfile by profileManager.hasEverSelectedProfile.collectAsStateWithLifecycle()
+            val rememberLastProfileEnabled by profileManager.rememberLastProfileEnabled.collectAsStateWithLifecycle()
             val activeProfile = remember(activeProfileId, profiles) {
                 profiles.firstOrNull { it.id == activeProfileId }
             }
@@ -549,7 +550,7 @@ open class MainActivity : ComponentActivity() {
             }
 
             var avatarCatalog by remember { mutableStateOf(emptyList<com.nuvio.tv.data.remote.supabase.AvatarCatalogItem>()) }
-            val avatarMemberAccess by memberAccessRepository.access.collectAsState()
+            val avatarMemberAccess by memberAccessRepository.access.collectAsStateWithLifecycle()
             val hasProfileAvatarAccess = avatarMemberAccess.entitlements
                 .includes(CosmeticEntitlement.PROFILE_AVATARS)
 
@@ -699,7 +700,7 @@ open class MainActivity : ComponentActivity() {
                     profile = activeProfile,
                     entitlements = mainUiPrefs.memberAccess.entitlements
                 )
-                val profileBgCatalog by profileBackgroundRepository.catalog.collectAsState()
+                val profileBgCatalog by profileBackgroundRepository.catalog.collectAsStateWithLifecycle()
                 // Cache splash background in SharedPreferences so the splash
                 // can show the correct background on cold start when
                 // "remember last profile" skips the profile selection screen.
@@ -902,7 +903,7 @@ open class MainActivity : ComponentActivity() {
                         effectiveExperienceMode == ExperienceMode.ESSENTIAL &&
                             installedAddons.orEmpty().isEmpty() &&
                             !mainUiPrefs.addonSetupSkipped
-                    val pendingDeepLink by pendingDeepLinkUrl.collectAsState()
+                    val pendingDeepLink by pendingDeepLinkUrl.collectAsStateWithLifecycle()
 
                     LaunchedEffect(pendingDeepLink) {
                         val url = pendingDeepLink ?: return@LaunchedEffect
@@ -953,7 +954,7 @@ open class MainActivity : ComponentActivity() {
 
                     // Device HOME key / HOME-category launch: always land on Home, scrolled to the top,
                     // whatever screen (tab, detail page, search, settings, player) is showing.
-                    val homeRequestNonce by pendingHomeRequestNonce.collectAsState()
+                    val homeRequestNonce by pendingHomeRequestNonce.collectAsStateWithLifecycle()
                     var pendingHomeScrollReset by remember { mutableStateOf(false) }
                     LaunchedEffect(homeRequestNonce, layoutChosen) {
                         if (homeRequestNonce == 0 || layoutChosen != true) return@LaunchedEffect
@@ -982,8 +983,8 @@ open class MainActivity : ComponentActivity() {
                         pendingHomeScrollReset = false
                     }
 
-                    val mappedRoute by pendingMappedRouteRequest.collectAsState()
-                    val mappedRouteNonce by pendingMappedRouteNonce.collectAsState()
+                    val mappedRoute by pendingMappedRouteRequest.collectAsStateWithLifecycle()
+                    val mappedRouteNonce by pendingMappedRouteNonce.collectAsStateWithLifecycle()
                     LaunchedEffect(mappedRoute, mappedRouteNonce, layoutChosen) {
                         val targetRoute = mappedRoute ?: return@LaunchedEffect
                         if (layoutChosen != true) return@LaunchedEffect
@@ -1011,9 +1012,9 @@ open class MainActivity : ComponentActivity() {
 
                     // Long inactivity or a fresh power-on should hand the TV back to whoever picks
                     // up the remote, so the profile picker becomes the default screen again.
-                    val profileIdleSwitchEnabled by profileManager.profileIdleSwitchEnabled.collectAsState()
+                    val profileIdleSwitchEnabled by profileManager.profileIdleSwitchEnabled.collectAsStateWithLifecycle()
                     val canSwitchProfiles = profiles.size > 1 || activeProfileHasPin
-                    val ambientShowing by ambientIdleController.isShowing.collectAsState()
+                    val ambientShowing by ambientIdleController.isShowing.collectAsStateWithLifecycle()
                     val appLifecycleState by LocalLifecycleOwner.current.lifecycle.currentStateAsState()
                     var profileSwitchDue by remember { mutableStateOf(false) }
 
@@ -1169,7 +1170,7 @@ open class MainActivity : ComponentActivity() {
                         }
                     }
 
-                    val pendingLaunch by pendingLaunchIntent.collectAsState()
+                    val pendingLaunch by pendingLaunchIntent.collectAsStateWithLifecycle()
                     LaunchedEffect(navController, layoutChosen, pendingLaunch) {
                         val intent = pendingLaunch ?: return@LaunchedEffect
                         if (!layoutChosen) return@LaunchedEffect
@@ -1414,7 +1415,7 @@ open class MainActivity : ComponentActivity() {
                     }?.route
                     val selectedDrawerItem = drawerItems.firstOrNull { it.route == selectedDrawerRoute } ?: drawerItems.first()
 
-                    val confirmExitEnabled by profileManager.confirmExitEnabled.collectAsState()
+                    val confirmExitEnabled by profileManager.confirmExitEnabled.collectAsStateWithLifecycle()
                     var backPressedOnce by remember { mutableStateOf(false) }
                     LaunchedEffect(backPressedOnce) {
                         if (backPressedOnce) {
@@ -1437,7 +1438,7 @@ open class MainActivity : ComponentActivity() {
                     }
 
                     val updateViewModel: UpdateViewModel = hiltViewModel(this@MainActivity)
-                    val updateState by updateViewModel.uiState.collectAsState()
+                    val updateState by updateViewModel.uiState.collectAsStateWithLifecycle()
                     val updateBannerState = updateState.copy(
                         showBanner = updateState.showBanner && currentRoute?.startsWith("player/") != true
                     )
@@ -1464,7 +1465,7 @@ open class MainActivity : ComponentActivity() {
 
                         // Double-tapping HOME asks for the profile switcher. Consumed on read so a
                         // later recomposition (or returning from the switcher) cannot repeat it.
-                        val profileSwitchRequested by pendingProfileSwitchRequest.collectAsState()
+                        val profileSwitchRequested by pendingProfileSwitchRequest.collectAsStateWithLifecycle()
                         LaunchedEffect(profileSwitchRequested) {
                             if (!profileSwitchRequested) return@LaunchedEffect
                             pendingProfileSwitchRequest.value = false
@@ -1517,7 +1518,7 @@ open class MainActivity : ComponentActivity() {
                                 }
                             }
 
-                            val autoNextOverlay by externalPlaybackTracker.autoNextOverlay.collectAsState()
+                            val autoNextOverlay by externalPlaybackTracker.autoNextOverlay.collectAsStateWithLifecycle()
                             autoNextOverlay?.let { ov ->
                                 com.nuvio.tv.ui.screens.player.LoadingOverlay(
                                     visible = true,
@@ -1530,7 +1531,7 @@ open class MainActivity : ComponentActivity() {
                                 )
                             }
 
-                            val isTrailerPlaying by trailerPlayerPool.isTrailerPlaying.collectAsState()
+                            val isTrailerPlaying by trailerPlayerPool.isTrailerPlaying.collectAsStateWithLifecycle()
                             LaunchedEffect(isTrailerPlaying) {
                                 if (!isTrailerPlaying) ambientIdleController.onInteraction()
                             }

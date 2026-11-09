@@ -334,6 +334,20 @@ class TmdbService @Inject constructor(
 
     fun apiKey(): String = TMDB_API_KEY
 
+    /** The runtime in minutes TMDB lists for [imdbId] (a film's, or a show's usual episode length), or null. */
+    suspend fun fetchImdbRuntimeMinutes(imdbId: String, mediaType: String): Int? =
+        withContext(Dispatchers.IO) {
+            if (!imdbId.startsWith("tt")) return@withContext null
+            val tmdbId = imdbToTmdb(imdbId, mediaType) ?: return@withContext null
+            runCatching {
+                if (normalizeMediaType(mediaType) == "movie") {
+                    tmdbApi.getMovieDetails(tmdbId, TMDB_API_KEY).body()?.runtime
+                } else {
+                    tmdbApi.getTvDetails(tmdbId, TMDB_API_KEY).body()?.episodeRunTime?.firstOrNull()
+                }
+            }.getOrNull()?.takeIf { it > 0 }
+        }
+
     /**
      * Fetches backdrop and poster URLs from TMDB for the given IMDB ID.
      * Returns null if the IMDB ID doesn't start with "tt" or if TMDB has no data.

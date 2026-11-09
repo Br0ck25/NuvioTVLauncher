@@ -32,7 +32,7 @@ import androidx.compose.material.icons.filled.GridView
 import androidx.compose.material.icons.filled.Settings
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
-import androidx.compose.runtime.collectAsState
+import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
@@ -95,7 +95,7 @@ fun HomeSettingsDrawer(
     appsViewModel: AppsViewModel = hiltViewModel()
 ) {
     val context = LocalContext.current
-    val appsState by appsViewModel.state.collectAsState()
+    val appsState by appsViewModel.state.collectAsStateWithLifecycle()
     val navigateToManageHomeApps = LocalNavigateToManageHomeApps.current
     var currentMode by remember { mutableStateOf(DrawerScreenMode.MENU) }
     var contextMenuApp by remember { mutableStateOf<InstalledApp?>(null) }
