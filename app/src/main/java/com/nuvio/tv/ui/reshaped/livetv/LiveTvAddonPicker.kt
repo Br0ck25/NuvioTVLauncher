@@ -15,6 +15,13 @@ import androidx.compose.runtime.remember
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.focus.FocusRequester
+import androidx.compose.ui.focus.focusRequester
+import androidx.compose.ui.input.key.Key
+import androidx.compose.ui.input.key.KeyEventType
+import androidx.compose.ui.input.key.key
+import androidx.compose.ui.input.key.onPreviewKeyEvent
+import androidx.compose.ui.input.key.type
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.res.pluralStringResource
 import androidx.compose.ui.res.stringResource
@@ -39,6 +46,9 @@ internal fun LiveTvAddonPicker(
     onBack: () -> Unit,
 ) {
     val context = LocalContext.current
+    val topFocus = remember { FocusRequester() }
+    val bottomFocus = remember { FocusRequester() }
+    val backFocus = remember { FocusRequester() }
     var addons by remember { mutableStateOf<List<Addon>?>(null) }
     var chosen by remember { mutableStateOf<Addon?>(null) }
     var channels by remember { mutableStateOf<List<LiveTvAddonChannel>?>(null) }
@@ -64,38 +74,16 @@ internal fun LiveTvAddonPicker(
         val currentAddons = addons
         val currentChannels = channels
         val currentChosen = chosen
-        // The actions sit above the list so they are always in reach, however long the list is.
-        Row(
-            modifier = Modifier.fillMaxWidth(),
-            horizontalArrangement = Arrangement.spacedBy(NuvioTheme.spacing.sm),
-            verticalAlignment = Alignment.CenterVertically,
-        ) {
-            if (currentChosen != null && currentChannels != null) {
+        // ◀ from the list goes to the buttons above it, ▶ to the ones below, so a long list needs no scrolling.
+        if (currentChosen != null && currentChannels != null && currentChannels.isNotEmpty()) {
+            Row(horizontalArrangement = Arrangement.spacedBy(NuvioTheme.spacing.sm), verticalAlignment = Alignment.CenterVertically) {
                 LiveTvPillButton(
-                    text = pluralStringResource(R.plurals.live_tv_addon_add_selected, selected.size, selected.size),
-                    enabled = selected.isNotEmpty(),
-                    onClick = {
-                        onConfirm(
-                            LiveTvAddonSettings(
-                                addonUrl = currentChosen.baseUrl,
-                                addonName = currentChosen.displayName,
-                                channels = currentChannels.filter { (it.type to it.id) in selected },
-                            ),
-                        )
-                    },
+                    text = stringResource(R.string.live_tv_addon_select_all),
+                    onClick = { selected = currentChannels.map { it.type to it.id }.toSet() },
+                    modifier = Modifier.focusRequester(topFocus),
                 )
-                if (currentChannels.isNotEmpty()) {
-                    LiveTvPillButton(
-                        text = stringResource(R.string.live_tv_addon_select_all),
-                        onClick = { selected = currentChannels.map { it.type to it.id }.toSet() },
-                    )
-                    LiveTvPillButton(text = stringResource(R.string.live_tv_addon_clear), onClick = { selected = emptySet() })
-                }
-                if (initial == null) {
-                    LiveTvPillButton(text = stringResource(R.string.live_tv_addon_change_addon), onClick = { chosen = null })
-                }
+                LiveTvPillButton(text = stringResource(R.string.live_tv_addon_clear), onClick = { selected = emptySet() })
             }
-            LiveTvPillButton(text = stringResource(R.string.live_tv_back), onClick = onBack)
         }
         when {
             currentAddons == null -> Hint(stringResource(R.string.live_tv_addon_loading))
@@ -124,10 +112,45 @@ internal fun LiveTvAddonPicker(
                                 (channel.group.takeIf(String::isNotBlank)?.let { "  ·  $it" } ?: ""),
                             selected = key in selected,
                             onClick = { selected = if (key in selected) selected - key else selected + key },
-                            modifier = Modifier.fillMaxWidth(),
+                            modifier = Modifier.fillMaxWidth().onPreviewKeyEvent { event ->
+                                if (event.type != KeyEventType.KeyDown) return@onPreviewKeyEvent false
+                                when (event.key) {
+                                    Key.DirectionLeft -> runCatching { topFocus.requestFocus() }.isSuccess
+                                    Key.DirectionRight ->
+                                        // Add is disabled until something is picked: then Back is the nearest button.
+                                        runCatching { bottomFocus.requestFocus() }.isSuccess ||
+                                            runCatching { backFocus.requestFocus() }.isSuccess
+                                    else -> false
+                                }
+                            },
                         )
                     }
                 }
+            }
+        }
+        Row(
+            modifier = Modifier.fillMaxWidth(),
+            horizontalArrangement = Arrangement.spacedBy(NuvioTheme.spacing.sm, Alignment.End),
+        ) {
+            if (currentChosen != null && initial == null) {
+                LiveTvPillButton(text = stringResource(R.string.live_tv_addon_change_addon), onClick = { chosen = null })
+            }
+            LiveTvPillButton(text = stringResource(R.string.live_tv_back), onClick = onBack, modifier = Modifier.focusRequester(backFocus))
+            if (currentChosen != null && currentChannels != null) {
+                LiveTvPillButton(
+                    text = pluralStringResource(R.plurals.live_tv_addon_add_selected, selected.size, selected.size),
+                    enabled = selected.isNotEmpty(),
+                    modifier = Modifier.focusRequester(bottomFocus),
+                    onClick = {
+                        onConfirm(
+                            LiveTvAddonSettings(
+                                addonUrl = currentChosen.baseUrl,
+                                addonName = currentChosen.displayName,
+                                channels = currentChannels.filter { (it.type to it.id) in selected },
+                            ),
+                        )
+                    },
+                )
             }
         }
     }
