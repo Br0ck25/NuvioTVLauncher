@@ -1,8 +1,11 @@
 name: Build APK
 
-# Run it by hand from the Actions tab (Run workflow, with your branch selected). It needs no secrets:
-# it builds a debug APK and attaches it to the run as a download (Artifacts, at the bottom of the run page).
+# Builds a debug APK on every push to this branch (GitHub only lists "Run workflow" buttons for workflows
+# that exist on the default branch, so this one starts itself instead). It needs no secrets: the APK is
+# attached to the run as a download (Artifacts, at the bottom of the run page).
 on:
+  push:
+    branches: [claude/bold-goldberg-w50bnp]
   workflow_dispatch:
 
 permissions:
