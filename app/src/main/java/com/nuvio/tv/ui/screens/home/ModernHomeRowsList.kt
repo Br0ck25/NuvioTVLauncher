@@ -499,6 +499,10 @@ internal fun ModernHomeRowsList(
                 if (liveTvHere && liveTvRowAbove == false && hasContinueWatching) {
                     com.nuvio.tv.livetv.home.LiveTvHomeRow(hideUnlessFocused = true, above = false, startPadding = 52.dp, titleStyle = androidx.tv.material3.MaterialTheme.typography.titleMedium.copy(fontWeight = androidx.compose.ui.text.font.FontWeight.SemiBold))
                 }
+                // Launcher: the installed apps, under Continue watching (or under the first row without it).
+                if (if (hasContinueWatching) row.key == MODERN_CONTINUE_WATCHING_ROW_KEY else rowIndex == 0) {
+                    com.nuvio.tv.ui.components.InstalledAppsHomeRow(startPadding = 52.dp, titleStyle = androidx.tv.material3.MaterialTheme.typography.titleMedium.copy(fontWeight = androidx.compose.ui.text.font.FontWeight.SemiBold))
+                }
                 }
             }
         }

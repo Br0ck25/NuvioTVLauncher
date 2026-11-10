@@ -1,0 +1,116 @@
+package com.nuvio.tv.core.apps
+
+import android.content.BroadcastReceiver
+import android.content.Context
+import android.content.Intent
+import android.content.IntentFilter
+import android.content.pm.PackageManager
+import android.graphics.Bitmap
+import android.net.Uri
+import android.provider.Settings
+import android.util.LruCache
+import androidx.core.graphics.drawable.toBitmap
+import dagger.hilt.android.qualifiers.ApplicationContext
+import kotlinx.coroutines.Dispatchers
+import kotlinx.coroutines.channels.awaitClose
+import kotlinx.coroutines.flow.Flow
+import kotlinx.coroutines.flow.callbackFlow
+import kotlinx.coroutines.flow.conflate
+import kotlinx.coroutines.flow.flowOn
+import kotlinx.coroutines.flow.map
+import kotlinx.coroutines.withContext
+import javax.inject.Inject
+import javax.inject.Singleton
+
+/** One app that can be opened from the launcher. */
+data class InstalledApp(
+    val packageName: String,
+    val label: String,
+    /** True when the app has a TV (leanback) entry; those show their banner. */
+    val isTvApp: Boolean
+)
+
+/**
+ * The apps on this device, the way FLauncher / ArcLauncher list them: everything with a
+ * LEANBACK_LAUNCHER entry, plus (for phones and apps with only a normal icon) LAUNCHER entries.
+ * Updates itself when an app is installed, updated or removed.
+ */
+@Singleton
+class InstalledAppsRepository @Inject constructor(
+    @ApplicationContext private val context: Context
+) {
+    private val pm: PackageManager get() = context.packageManager
+
+    // Banners are 320x180, icons much smaller; 48 entries covers a home row + the Apps grid.
+    private val images = LruCache<String, Bitmap>(48)
+
+    /** Emits the current list at once, then again whenever the set of apps changes. */
+    val apps: Flow<List<InstalledApp>> = callbackFlow {
+        val receiver = object : BroadcastReceiver() {
+            override fun onReceive(c: Context?, i: Intent?) { trySend(Unit) }
+        }
+        val filter = IntentFilter().apply {
+            addAction(Intent.ACTION_PACKAGE_ADDED)
+            addAction(Intent.ACTION_PACKAGE_REMOVED)
+            addAction(Intent.ACTION_PACKAGE_CHANGED)
+            addAction(Intent.ACTION_PACKAGE_REPLACED)
+            addDataScheme("package")
+        }
+        context.registerReceiver(receiver, filter)
+        trySend(Unit)
+        awaitClose { runCatching { context.unregisterReceiver(receiver) } }
+    }.conflate().map { query() }.flowOn(Dispatchers.IO)
+
+    private fun query(): List<InstalledApp> {
+        fun list(category: String) = pm.queryIntentActivities(
+            Intent(Intent.ACTION_MAIN).addCategory(category), 0
+        )
+        val tv = list(Intent.CATEGORY_LEANBACK_LAUNCHER)
+        val tvPackages = tv.map { it.activityInfo.packageName }.toSet()
+        val normal = list(Intent.CATEGORY_LAUNCHER).filter { it.activityInfo.packageName !in tvPackages }
+        return (tv.map { it to true } + normal.map { it to false })
+            .filter { (ri, _) -> ri.activityInfo.packageName != context.packageName }
+            .distinctBy { (ri, _) -> ri.activityInfo.packageName }
+            .map { (ri, isTv) ->
+                InstalledApp(
+                    packageName = ri.activityInfo.packageName,
+                    label = ri.loadLabel(pm).toString(),
+                    isTvApp = isTv
+                )
+            }
+            .sortedBy { it.label.lowercase() }
+    }
+
+    /** The app's banner (TV apps) or icon, loaded off the main thread and remembered. */
+    suspend fun image(app: InstalledApp): Bitmap? {
+        images.get(app.packageName)?.let { return it }
+        return withContext(Dispatchers.IO) {
+            runCatching {
+                val info = pm.getApplicationInfo(app.packageName, 0)
+                val drawable = (if (app.isTvApp) info.loadBanner(pm) else null) ?: info.loadIcon(pm)
+                // Banners are wider than tall; keep their shape, size icons to the card.
+                val w = if (app.isTvApp) 320 else 144
+                val h = if (app.isTvApp) 180 else 144
+                drawable.toBitmap(w, h)
+            }.getOrNull()?.also { images.put(app.packageName, it) }
+        }
+    }
+
+    /** Opens the app. False when it has nothing to open (for example it was just removed). */
+    fun launch(app: InstalledApp): Boolean {
+        val intent = pm.getLeanbackLaunchIntentForPackage(app.packageName)
+            ?: pm.getLaunchIntentForPackage(app.packageName)
+            ?: return false
+        return runCatching {
+            context.startActivity(intent.addFlags(Intent.FLAG_ACTIVITY_NEW_TASK))
+        }.isSuccess
+    }
+
+    /** The system's page for the app: Force stop, Uninstall, Clear data. */
+    fun openAppInfo(app: InstalledApp): Boolean = runCatching {
+        context.startActivity(
+            Intent(Settings.ACTION_APPLICATION_DETAILS_SETTINGS, Uri.parse("package:${app.packageName}"))
+                .addFlags(Intent.FLAG_ACTIVITY_NEW_TASK)
+        )
+    }.isSuccess
+}

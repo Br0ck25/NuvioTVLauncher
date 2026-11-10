@@ -611,6 +611,10 @@ fun GridHomeContent(
             if (liveTvRowAbove == false) item(key = "live_tv_home_below", span = { GridItemSpan(maxLineSpan) }, contentType = "live_tv_home") {
                 com.nuvio.tv.livetv.home.LiveTvHomeRow(above = false, startPadding = 0.dp, titleStyle = MaterialTheme.typography.headlineMedium)
             }
+            // Launcher: the installed apps, under Continue watching.
+            item(key = "installed_apps_home", span = { GridItemSpan(maxLineSpan) }, contentType = "installed_apps_home") {
+                com.nuvio.tv.ui.components.InstalledAppsHomeRow(startPadding = 0.dp, titleStyle = MaterialTheme.typography.headlineMedium)
+            }
             if (uiState.continueWatchingEnabled && uiState.upcomingItems.isNotEmpty()) {
                 item(
                     key = "upcoming_section",

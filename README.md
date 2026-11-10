@@ -315,7 +315,27 @@ The app registers as a normal Android Home app (the same way FLauncher, ArcLaunc
 2. Select **Make Nuvio the Home app** and accept Android's own confirmation. The status line updates when you come back.
 3. To go back, use **Open Home app settings** and pick the original launcher.
 
-Some TV firmware (many Google TV and Fire TV builds) does not let you choose a different Home app. If the picker never offers Nuvio, the TV is blocking it and Nuvio keeps working as a normal app. There is no accessibility service or ADB step in this build.
+Some TV firmware (many Google TV and Fire TV builds) does not let you choose a different Home app. If the picker never offers Nuvio, the TV is blocking it and Nuvio keeps working as a normal app. There is no accessibility service in this build, and nothing runs ADB for you.
+
+**Apps.** *Apps* is a page in the side menu (every installed app, TV apps with their banner; OK opens one, long-press opens its system page for Uninstall or Force stop) and an *Apps* row on Home under Continue Watching. Turn both off together in **Settings → Menu & Features → Apps**.
+
+**Phone setup.** Under **Settings → Default launcher → Set up from your phone**, scan the QR code and the phone shows the ADB commands with this app's own package filled in and a Copy button on each (the page runs only while that dialog is open, on your home network). They are the same commands FLauncher and ArcLauncher document:
+
+```
+adb shell cmd package set-home-activity <package>/com.nuvio.tv.MainActivity     # make this the Home app
+adb shell cmd package resolve-activity -c android.intent.category.HOME -a android.intent.action.MAIN   # who is Home now
+adb shell cmd package query-activities -c android.intent.category.HOME -a android.intent.action.MAIN   # list launchers
+adb shell cmd package set-home-activity <package>/<activity>                      # go back to the original
+```
+
+Optional, from FLauncher's guide, for Chromecast with Google TV when the TV keeps returning to its own launcher (reversible; the remote's YouTube button stops working while it is disabled, which Button Mapper can remap):
+
+```
+adb shell pm disable-user --user 0 com.google.android.apps.tv.launcherx
+adb shell pm disable-user --user 0 com.google.android.tungsten.setupwraith
+adb shell pm enable com.google.android.apps.tv.launcherx          # undo
+adb shell pm enable com.google.android.tungsten.setupwraith       # undo
+```
 
 ## 🎮 Remote controls
 

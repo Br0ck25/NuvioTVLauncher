@@ -52,6 +52,7 @@ import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.LiveTv
+import androidx.compose.material.icons.filled.Apps
 import androidx.compose.material.icons.filled.EmojiEvents
 import androidx.compose.material.icons.filled.VideoLibrary
 import androidx.compose.material.icons.filled.FiberManualRecord
@@ -1211,6 +1212,7 @@ open class MainActivity : ComponentActivity() {
                             add(Screen.Calendar.route)
                             add(Screen.Search.route)
                             add(Screen.Library.route)
+                            add(Screen.Apps.route)
                             add(Screen.Settings.route)
                             if (discoverLocation == DiscoverLocation.IN_SIDEBAR) {
                                 add(Screen.Discover.route)
@@ -1223,6 +1225,7 @@ open class MainActivity : ComponentActivity() {
                     val strNavSearch = stringResource(R.string.nav_search)
                     val strNavLibrary = stringResource(R.string.nav_library)
                     val strNavSettings = stringResource(R.string.nav_settings)
+                    val strNavApps = stringResource(R.string.apps_title)
                     // Live TV fork: Home first and Settings at the bottom; the pages between in the
                     // order set in Settings → Menu & Features, with a thin line above Live TV's own pages.
                     val drawerItems = remember(
@@ -1231,6 +1234,7 @@ open class MainActivity : ComponentActivity() {
                         strNavSearch,
                         strNavLibrary,
                         strNavSettings,
+                        strNavApps,
                         discoverLocation,
                         liveTvInSidebar,
                         onDemandInSidebar,
@@ -1252,6 +1256,7 @@ open class MainActivity : ComponentActivity() {
                             } else null
                             pages.SEARCH -> if (id !in hiddenPages) DrawerItem(route = Screen.Search.route, label = strNavSearch, iconRes = R.raw.sidebar_search) else null
                             pages.LIBRARY -> if (id !in hiddenPages) DrawerItem(route = Screen.Library.route, label = strNavLibrary, iconRes = R.raw.sidebar_library) else null
+                            pages.APPS -> if (id !in hiddenPages) DrawerItem(route = Screen.Apps.route, label = strNavApps, icon = Icons.Default.Apps) else null
                             pages.CALENDAR -> if (calendarInSidebar && id !in hiddenPages) DrawerItem(route = Screen.Calendar.route, label = "Calendar", icon = Icons.Default.DateRange) else null
                             // Live TV's dot: something is recording (Recordings opens from the guide).
                             pages.LIVE_TV -> if (liveTvInSidebar) DrawerItem(route = Screen.LiveTv.route, label = "Live TV", icon = Icons.Default.LiveTv, badge = recordingNow && !recordingsInSidebar) else null

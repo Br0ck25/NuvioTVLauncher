@@ -1457,6 +1457,10 @@ private fun PlaybackNavHost(
             )
         }
 
+        composable(Screen.Apps.route) {
+            com.nuvio.tv.ui.screens.apps.AppsScreen()
+        }
+
         composable(Screen.Calendar.route) {
             // Live TV fork: when your shows' new episodes and your movies come out.
             com.nuvio.tv.livetv.calendar.CalendarScreen(

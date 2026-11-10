@@ -10,6 +10,7 @@ import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.verticalScroll
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.Home
+import androidx.compose.material.icons.filled.Phone
 import androidx.compose.material.icons.filled.Settings
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.DisposableEffect
@@ -34,6 +35,7 @@ import com.nuvio.tv.ui.theme.NuvioTheme
 fun DefaultLauncherSettingsContent(initialFocusRequester: FocusRequester? = null) {
     val context = LocalContext.current
     var isDefault by remember { mutableStateOf(HomeApp.isDefault(context)) }
+    var showPhoneSetup by remember { mutableStateOf(false) }
 
     // The chooser is another screen, so re-check whenever we come back to this one.
     val lifecycleOwner = LocalLifecycleOwner.current
@@ -96,6 +98,12 @@ fun DefaultLauncherSettingsContent(initialFocusRequester: FocusRequester? = null
                     leadingIcon = Icons.Default.Home
                 )
             }
+            SettingsActionRow(
+                title = stringResource(R.string.launcher_phone_setup_title),
+                subtitle = stringResource(R.string.launcher_phone_setup_hint),
+                onClick = { showPhoneSetup = true },
+                leadingIcon = Icons.Default.Phone
+            )
             if (HomeApp.homeSettingsIntent(context) != null) {
                 SettingsActionRow(
                     title = stringResource(R.string.default_launcher_open_home_settings),
@@ -110,4 +118,5 @@ fun DefaultLauncherSettingsContent(initialFocusRequester: FocusRequester? = null
             modifier = Modifier.padding(top = NuvioTheme.spacing.sm)
         )
     }
+    if (showPhoneSetup) LauncherPhoneSetupDialog(onDismiss = { showPhoneSetup = false })
 }
