@@ -28,6 +28,26 @@ jobs:
           java-version: "17"
           cache: gradle
 
+      # The debug build is signed with the repo's "release" signing config, which needs a keystore file.
+      # This uses the fork's committed key (store/key password "livetvfork", alias "livetv"), so every
+      # build is signed the same way and can update the previous install. To use your own private key
+      # instead, add a secret named LIVETV_KEYSTORE_BASE64 (same alias and passwords).
+      - name: Signing
+        env:
+          LIVETV_KEYSTORE_BASE64: ${{ secrets.LIVETV_KEYSTORE_BASE64 }}
+        run: |
+          if [ -n "$LIVETV_KEYSTORE_BASE64" ]; then
+            printf '%s' "$LIVETV_KEYSTORE_BASE64" | base64 --decode > "$RUNNER_TEMP/key.jks"
+          else
+            cp keystore/livetv-fork.jks "$RUNNER_TEMP/key.jks"
+          fi
+          {
+            echo "NUVIO_RELEASE_STORE_FILE=$RUNNER_TEMP/key.jks"
+            echo "NUVIO_RELEASE_KEY_ALIAS=livetv"
+            echo "NUVIO_RELEASE_KEY_PASSWORD=livetvfork"
+            echo "NUVIO_RELEASE_STORE_PASSWORD=livetvfork"
+          } >> "$GITHUB_ENV"
+
       - name: Build the debug APK
         run: ./gradlew --console=plain :app:assembleFullDebug --parallel --build-cache
 
