@@ -374,7 +374,7 @@ android {
 androidComponents {
     onVariants(selector().withBuildType("debug")) { variant ->
         val isPlaystore = variant.productFlavors.any { it.second == "playstore" }
-        variant.applicationId.set(if (isPlaystore) "com.nuvio.appdebug" else "${variant.applicationId.get()}.debug")
+        variant.applicationId.set(if (isPlaystore) "com.nuvio.appdebug" else "com.nuviodebug.com")
     }
     // Only the full flavor ships the in-app updater.
     onVariants(selector().withFlavor("distribution" to "full")) { variant ->

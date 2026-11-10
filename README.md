@@ -78,7 +78,8 @@ can turn Wireless debugging off.
 ### 3. Manual ADB from a computer
 
 Use this only if the TV has no Wireless debugging option (some Fire TV and older devices). The release
-package is `com.nuvio.tv.launcher`; the debug build is `com.nuvio.tv.launcher.debug`.
+package is `com.nuvio.tv.launcher`; a `fullDebug` build installs separately as `com.nuviodebug.com`,
+so do not configure the debug copy when you mean the release one.
 
 ```bash
 ./adb pair IP_ADDRESS:PAIRING_PORT        # then enter the 6-digit code
