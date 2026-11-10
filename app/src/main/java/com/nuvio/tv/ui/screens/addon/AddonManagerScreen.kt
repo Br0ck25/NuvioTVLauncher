@@ -1,6 +1,5 @@
 package com.nuvio.tv.ui.screens.addon
 
-import com.nuvio.tv.core.mylists.MyListsDefaultSeed
 import com.nuvio.tv.ui.theme.NuvioPrimitives
 import com.nuvio.tv.ui.theme.NuvioTheme
 
@@ -53,7 +52,6 @@ import androidx.compose.runtime.CompositionLocalProvider
 import androidx.compose.runtime.DisposableEffect
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.collectAsState
-import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
@@ -143,7 +141,7 @@ fun AddonManagerScreen(
     onNavigateToCatalogOrder: () -> Unit = {},
     onNavigateToCollections: () -> Unit = {}
 ) {
-    val uiState by viewModel.uiState.collectAsStateWithLifecycle()
+    val uiState by viewModel.uiState.collectAsState()
     val firstAddonToggleFocusRequester = remember { FocusRequester() }
     val catalogOrderFocusRequester = remember { FocusRequester() }
     val collectionsFocusRequester = remember { FocusRequester() }
@@ -596,7 +594,6 @@ fun AddonManagerScreen(
                         onEnabledChange = { enabled -> viewModel.setAddonEnabled(addon.baseUrl, enabled) },
                         isReadOnly = viewModel.isReadOnly,
                         showReorder = !isEssential,
-                        canRemove = !MyListsDefaultSeed.isMyListsDefaultUrl(addon.baseUrl),
                         toggleFocusRequester = if (index == 0) firstAddonToggleFocusRequester else null
                     )
                 }
@@ -1385,7 +1382,6 @@ private fun AddonCard(
     onEnabledChange: (Boolean) -> Unit,
     isReadOnly: Boolean = false,
     showReorder: Boolean = true,
-    canRemove: Boolean = true,
     toggleFocusRequester: FocusRequester? = null
 ) {
     if (isReadOnly) {
@@ -1433,7 +1429,6 @@ private fun AddonCard(
                 onRemove = onRemove,
                 onEnabledChange = onEnabledChange,
                 showReorder = showReorder,
-                canRemove = canRemove,
                 toggleFocusRequester = effectiveToggleFocusRequester
             )
         }
@@ -1452,7 +1447,6 @@ private fun AddonCardContent(
     onRemove: () -> Unit = {},
     onEnabledChange: (Boolean) -> Unit = {},
     showReorder: Boolean = true,
-    canRemove: Boolean = true,
     toggleFocusRequester: FocusRequester? = null
 ) {
     Column(modifier = Modifier.padding(20.dp)) {
@@ -1561,20 +1555,18 @@ private fun AddonCardContent(
                             Icon(imageVector = Icons.Default.ArrowDownward, contentDescription = stringResource(R.string.cd_move_down))
                         }
                     }
-                    if (canRemove) {
-                        Button(
-                            onClick = onRemove,
-                            modifier = Modifier.semantics { role = Role.Button },
-                            colors = ButtonDefaults.colors(
-                                containerColor = NuvioTheme.colors.BackgroundCard,
-                                contentColor = NuvioTheme.colors.TextSecondary,
-                                focusedContainerColor = NuvioTheme.colors.FocusBackground,
-                                focusedContentColor = NuvioTheme.colors.Error
-                            ),
-                            shape = ButtonDefaults.shape(RoundedCornerShape(NuvioTheme.radii.md))
-                        ) {
-                            Text(text = stringResource(R.string.addon_remove))
-                        }
+                    Button(
+                        onClick = onRemove,
+                        modifier = Modifier.semantics { role = Role.Button },
+                        colors = ButtonDefaults.colors(
+                            containerColor = NuvioTheme.colors.BackgroundCard,
+                            contentColor = NuvioTheme.colors.TextSecondary,
+                            focusedContainerColor = NuvioTheme.colors.FocusBackground,
+                            focusedContentColor = NuvioTheme.colors.Error
+                        ),
+                        shape = ButtonDefaults.shape(RoundedCornerShape(NuvioTheme.radii.md))
+                    ) {
+                        Text(text = stringResource(R.string.addon_remove))
                     }
                 }
             }

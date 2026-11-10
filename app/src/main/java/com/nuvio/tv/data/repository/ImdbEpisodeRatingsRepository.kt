@@ -1,7 +1,6 @@
 package com.nuvio.tv.data.repository
 
 import android.util.Log
-import com.nuvio.tv.BuildConfig
 import com.nuvio.tv.data.remote.api.ImdbTapframeApi
 import com.nuvio.tv.data.remote.api.SeriesGraphApi
 import kotlinx.coroutines.CoroutineScope
@@ -82,18 +81,13 @@ class ImdbEpisodeRatingsRepository @Inject constructor(
         imdbId: String?,
         tmdbId: Int?
     ): Map<Pair<Int, Int>, Double> {
-        // Unconfigured endpoints would resolve to a localhost placeholder; skip them quietly.
-        val tapframeConfigured = BuildConfig.IMDB_TAPFRAME_API_BASE_URL.isNotBlank()
-        val seriesGraphConfigured = BuildConfig.IMDB_RATINGS_API_BASE_URL.isNotBlank()
-        if (!tapframeConfigured && !seriesGraphConfigured) return emptyMap()
-
-        if (tapframeConfigured && !imdbId.isNullOrBlank()) {
+        if (!imdbId.isNullOrBlank()) {
             val primary = fetchFromImdbTapframe(imdbId)
             if (primary.isNotEmpty()) return primary
             Log.w(tag, "Primary episode ratings empty for imdbId=$imdbId, trying fallback.")
         }
 
-        if (seriesGraphConfigured && tmdbId != null && tmdbId > 0) {
+        if (tmdbId != null && tmdbId > 0) {
             return fetchFromSeriesGraph(tmdbId)
         }
 

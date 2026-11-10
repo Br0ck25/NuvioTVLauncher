@@ -148,6 +148,8 @@ internal fun ModernHomeRowsList(
     blockLeftOnFirstExpandedItem: Boolean = false,
     modifier: Modifier = Modifier
 ) {
+    // Live TV fork: where the Live TV row goes (null = hidden).
+    val liveTvRowAbove = com.nuvio.tv.livetv.home.rememberLiveTvHomeRowPosition()
     // Unwrap StableRef wrappers for internal use (not passed to child composables)
     val focusedItemByRowMap = focusedItemByRow.value
     val rowListStatesMap = rowListStates.value
@@ -294,11 +296,15 @@ internal fun ModernHomeRowsList(
                 .onPreviewKeyEvent { event ->
                     val firstRowKey = carouselRows.list.firstOrNull()?.key
                     val lastRowKey = carouselRows.list.lastOrNull()?.key
+                    // Live TV fork: not when the Live TV row is waiting above the top row (with no
+                    // Continue watching, the top row is a catalog whose card expands, and this
+                    // swallowed Up, so the Live TV row could never be opened).
                     if (event.type == KeyEventType.KeyDown &&
                         event.key == Key.DirectionUp &&
                         effectiveExpandEnabled &&
                         expandedCatalogFocusKey.value != null &&
-                        activeRowKey.value == firstRowKey
+                        activeRowKey.value == firstRowKey &&
+                        !(liveTvRowAbove == true && com.nuvio.tv.livetv.home.LiveTvHomeReveal.available.value)
                     ) return@onPreviewKeyEvent true
                     if (event.type == KeyEventType.KeyDown &&
                         event.key == Key.DirectionDown &&
@@ -370,7 +376,12 @@ internal fun ModernHomeRowsList(
                 items = carouselRows.list,
                 key = { index, row -> "${row.key}_$index" },
                 contentType = { _, row -> row.apiType ?: "modern_home_row" }
-            ) { _, row ->
+            ) { rowIndex, row ->
+                // Live TV fork: the Live TV row sits with Continue watching (above or below it),
+                // or above the first row when there's no Continue watching.
+                val hasContinueWatching = carouselRows.list.any { it.key == MODERN_CONTINUE_WATCHING_ROW_KEY }
+                val liveTvHere = liveTvRowAbove != null &&
+                    (if (hasContinueWatching) row.key == MODERN_CONTINUE_WATCHING_ROW_KEY else rowIndex == 0)
                 val stableOnContinueWatchingOptions = remember(onContinueWatchingOptions) {
                     { item: ContinueWatchingItem -> onContinueWatchingOptions(item) }
                 }
@@ -398,10 +409,6 @@ internal fun ModernHomeRowsList(
                             focusedItemByRowMap[rowKey] = index
                         }
 
-                        if (rowKey == com.nuvio.tv.core.apps.INSTALLED_APPS_CATALOG_KEY) {
-                            onFocusedCatalogSelectionChange(null)
-                            onExpandedCatalogFocusKeyChange(null)
-                        }
                         if (isContinueWatchingRow) {
                             if (lastFocusedContinueWatchingIndex.value != index) {
                                 onLastFocusedContinueWatchingIndexChange(index)
@@ -427,6 +434,11 @@ internal fun ModernHomeRowsList(
                         }
                     }
                 }
+                androidx.compose.foundation.layout.Column {
+                if (liveTvHere && (liveTvRowAbove == true || !hasContinueWatching)) {
+                    com.nuvio.tv.livetv.home.LiveTvHomeRow(hideUnlessFocused = true, above = liveTvRowAbove == true, startPadding = 52.dp, titleStyle = androidx.tv.material3.MaterialTheme.typography.titleMedium.copy(fontWeight = androidx.compose.ui.text.font.FontWeight.SemiBold))
+                }
+                androidx.compose.runtime.CompositionLocalProvider(com.nuvio.tv.livetv.home.LocalLiveTvHintHere provides (liveTvHere && liveTvRowAbove == true)) {
                 ModernRowSection(
                     row = row,
                     isActiveRow = isActiveRowLambda,
@@ -483,6 +495,11 @@ internal fun ModernHomeRowsList(
                         StableRef(mutableMapOf())
                     }
                 )
+                }
+                if (liveTvHere && liveTvRowAbove == false && hasContinueWatching) {
+                    com.nuvio.tv.livetv.home.LiveTvHomeRow(hideUnlessFocused = true, above = false, startPadding = 52.dp, titleStyle = androidx.tv.material3.MaterialTheme.typography.titleMedium.copy(fontWeight = androidx.compose.ui.text.font.FontWeight.SemiBold))
+                }
+                }
             }
         }
     }

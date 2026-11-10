@@ -27,7 +27,7 @@ import androidx.compose.material3.CardDefaults
 import androidx.compose.material3.Switch
 import androidx.compose.material3.SwitchDefaults
 import androidx.compose.runtime.Composable
-import androidx.lifecycle.compose.collectAsStateWithLifecycle
+import androidx.compose.runtime.collectAsState
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.rememberCoroutineScope
 import androidx.compose.ui.Alignment
@@ -55,10 +55,9 @@ import kotlinx.coroutines.launch
 @Composable
 fun CatalogOrderScreen(
     viewModel: CatalogOrderViewModel = hiltViewModel(),
-    onBackPress: () -> Unit,
-    onManageInstalledApps: () -> Unit
+    onBackPress: () -> Unit
 ) {
-    val uiState by viewModel.uiState.collectAsStateWithLifecycle()
+    val uiState by viewModel.uiState.collectAsState()
     val listState = rememberLazyListState()
     val scope = rememberCoroutineScope()
 
@@ -163,8 +162,7 @@ fun CatalogOrderScreen(
                                     )
                                 }
                             },
-                            onToggleEnabled = { viewModel.toggleCatalogEnabled(item.disableKey) },
-                            onManageInstalledApps = onManageInstalledApps
+                            onToggleEnabled = { viewModel.toggleCatalogEnabled(item.disableKey) }
                         )
                     }
                 }
@@ -178,8 +176,7 @@ private fun CatalogOrderCard(
     item: CatalogOrderItem,
     onMoveUp: () -> Unit,
     onMoveDown: () -> Unit,
-    onToggleEnabled: () -> Unit,
-    onManageInstalledApps: () -> Unit
+    onToggleEnabled: () -> Unit
 ) {
     Card(
         modifier = Modifier.fillMaxWidth(),
@@ -205,12 +202,6 @@ private fun CatalogOrderCard(
                     style = MaterialTheme.typography.bodySmall,
                     color = NuvioTheme.colors.TextSecondary
                 )
-                if (item.key == com.nuvio.tv.core.apps.INSTALLED_APPS_CATALOG_KEY) {
-                    Spacer(modifier = Modifier.height(NuvioTheme.spacing.sm))
-                    Button(onClick = onManageInstalledApps) {
-                        Text(stringResource(R.string.installed_apps_manage))
-                    }
-                }
                 if (item.isDisabled) {
                     Spacer(modifier = Modifier.height(NuvioTheme.spacing.xs))
                     Text(
@@ -271,18 +262,7 @@ private fun CatalogOrderCard(
                     )
                 }
 
-                if (item.key == com.nuvio.tv.core.apps.INSTALLED_APPS_CATALOG_KEY) {
-                    val label = stringResource(R.string.installed_apps_toggle)
-                    Switch(
-                        checked = !item.isDisabled,
-                        onCheckedChange = { onToggleEnabled() },
-                        modifier = Modifier.semantics { contentDescription = label },
-                        colors = SwitchDefaults.colors(
-                            checkedThumbColor = NuvioTheme.colors.Primary,
-                            checkedTrackColor = NuvioTheme.colors.Primary.copy(alpha = 0.5f)
-                        )
-                    )
-                } else Button(
+                Button(
                     onClick = onToggleEnabled,
                     colors = ButtonDefaults.colors(
                         containerColor = NuvioTheme.colors.BackgroundCard,

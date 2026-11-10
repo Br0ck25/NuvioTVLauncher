@@ -2,7 +2,6 @@ package com.nuvio.tv
 
 import android.app.ActivityManager
 import android.app.Application
-import kotlinx.coroutines.launch
 import android.content.Context
 import android.os.Build
 import android.os.StrictMode
@@ -39,7 +38,6 @@ import okhttp3.CookieJar
 import okhttp3.HttpUrl
 import okhttp3.OkHttpClient
 import java.util.concurrent.ConcurrentHashMap
-import com.nuvio.tv.core.launcher.AccessibilityWatchdog
 import java.util.concurrent.TimeUnit
 import javax.inject.Inject
 
@@ -83,10 +81,6 @@ class NuvioApplication : Application(), SingletonImageLoader.Factory {
         }
     }
 
-    private val startupScope = kotlinx.coroutines.CoroutineScope(
-        kotlinx.coroutines.SupervisorJob() + kotlinx.coroutines.Dispatchers.Default
-    )
-
     @androidx.annotation.OptIn(androidx.media3.common.util.UnstableApi::class)
     override fun onCreate() {
         // Before super.onCreate(): Hilt creates injected services there, and the budget is read once.
@@ -94,11 +88,10 @@ class NuvioApplication : Application(), SingletonImageLoader.Factory {
         super.onCreate()
         SentryInitializer.start(this, sentrySettingsDataStore)
         PluginRuntimeHooks.onApplicationCreate(this)
-        // Both do disk / system-settings / JobScheduler IPC work, so they run off the main thread.
-        startupScope.launch {
-            androidTvChannelSyncService.start()
-            AccessibilityWatchdog.start(this@NuvioApplication)
-        }
+        // Live TV fork: VPN progress lines go into the start-up report.
+        com.nuvio.vpn.android.VpnPlaybackProtection.diagnostics =
+            java.util.function.Consumer { line -> com.nuvio.tv.livetv.model.LiveTvLoadReport.add(line) }
+        androidTvChannelSyncService.start()
         serverUserStateProjection.start()
         // Load locale synchronously so it's available before Activity.attachBaseContext.
         // SharedPreferences reads are fast (cached in memory after first access).

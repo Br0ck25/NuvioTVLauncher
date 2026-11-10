@@ -7,8 +7,6 @@ import androidx.compose.runtime.mutableStateMapOf
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
 import com.nuvio.tv.LocaleCache
-import com.nuvio.tv.core.apps.InstalledApp
-import com.nuvio.tv.core.apps.InstalledAppsRepository
 import com.nuvio.tv.core.player.StreamAutoPlayPolicy
 import com.nuvio.tv.core.recommendations.TvRecommendationManager
 import com.nuvio.tv.core.tmdb.MetaPreviewEnricher
@@ -25,10 +23,7 @@ import com.nuvio.tv.data.local.TraktSettingsDataStore
 import com.nuvio.tv.data.local.ContinueWatchingEnrichmentCache
 import com.nuvio.tv.data.mediaserver.ServerCatalog
 import com.nuvio.tv.data.trailer.TrailerService
-import com.nuvio.tv.core.auth.AuthManager
 import com.nuvio.tv.domain.model.Addon
-import com.nuvio.tv.domain.model.AuthState
-import com.nuvio.tv.domain.model.enabledAddons
 import com.nuvio.tv.domain.model.CatalogDescriptor
 import com.nuvio.tv.domain.model.CatalogRow
 import com.nuvio.tv.domain.model.Collection
@@ -49,7 +44,6 @@ import dagger.hilt.android.qualifiers.ApplicationContext
 import dagger.hilt.android.lifecycle.HiltViewModel
 import kotlinx.coroutines.Job
 import kotlinx.coroutines.delay
-import kotlinx.coroutines.flow.Flow
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.update
@@ -72,7 +66,6 @@ class HomeViewModel @Inject constructor(
     @ApplicationContext internal val appContext: Context,
     internal val addonRepository: AddonRepository,
     internal val startupSyncService: com.nuvio.tv.core.sync.StartupSyncService,
-    internal val myListsTvSyncManager: com.nuvio.tv.core.mylists.MyListsTvSyncManager? = null,
     internal val catalogRepository: CatalogRepository,
     internal val watchProgressRepository: WatchProgressRepository,
     internal val libraryRepository: LibraryRepository,
@@ -96,9 +89,6 @@ class HomeViewModel @Inject constructor(
     internal val profileManager: com.nuvio.tv.core.profile.ProfileManager,
     internal val tvRecommendationManager: TvRecommendationManager,
     internal val serverCatalog: ServerCatalog,
-    internal val installedAppsRepository: InstalledAppsRepository,
-    internal val installedAppsPreferences: com.nuvio.tv.data.local.InstalledAppsPreferencesDataStore,
-    internal val authManager: dagger.Lazy<AuthManager>? = null,
     internal val metaPreviewEnricher: MetaPreviewEnricher = MetaPreviewEnricher(
         tmdbService,
         tmdbMetadataService,
@@ -117,8 +107,6 @@ class HomeViewModel @Inject constructor(
 
         /** How long a home catalog is left alone before a return to Home re-requests it. */
         private const val HOME_CATALOG_REFRESH_TTL_MS = 15L * 60L * 1000L
-        /** A My Lists sync often lands as several events in a row; handle them as one. */
-        internal const val MY_LISTS_REFRESH_DEBOUNCE_MS = 1_500L
         internal const val EXTERNAL_META_PREFETCH_FOCUS_DEBOUNCE_MS = 220L
         internal const val EXTERNAL_META_PREFETCH_ADJACENT_DEBOUNCE_MS = 120L
         private const val MAX_ENRICHMENT_CACHE_SIZE = 64
@@ -156,8 +144,6 @@ class HomeViewModel @Inject constructor(
     val effectiveAutoplayEnabled = playerSettingsDataStore.playerSettings
         .map(StreamAutoPlayPolicy::isEffectivelyEnabled)
         .distinctUntilChanged()
-    val myListsTargetId: Flow<String> = myListsTvSyncManager?.targetIdFlow
-        ?: kotlinx.coroutines.flow.flowOf(com.nuvio.tv.core.mylists.MyListsTvSyncManager.DEFAULT_TARGET_ID)
     internal val _fullCatalogRows = MutableStateFlow<List<CatalogRow>>(emptyList())
     val fullCatalogRows: StateFlow<List<CatalogRow>> = _fullCatalogRows.asStateFlow()
 
@@ -245,7 +231,6 @@ class HomeViewModel @Inject constructor(
     internal val catalogOrder = mutableListOf<String>()
     internal var addonsCache: List<Addon> = emptyList()
     internal var collectionsCache: List<Collection> = emptyList()
-    @Volatile internal var installedAppsCache: List<InstalledApp> = emptyList()
     internal var homeCatalogOrderKeys: List<String> = emptyList()
     internal var disabledHomeCatalogKeys: Set<String> = emptySet()
     internal var followAddonsOrderEnabled: Boolean = false
@@ -378,10 +363,12 @@ class HomeViewModel @Inject constructor(
         }
 
         observeStartupAuthNotice()
+        // Live TV fork: the Calendar's cards changed (a new episode is out, a bell rung): put
+        // them in again without waiting for Continue Watching's next update.
         viewModelScope.launch {
-            com.nuvio.tv.calendar.CalendarHomeFeed.version.collect {
+            com.nuvio.tv.livetv.calendar.CalendarHomeFeed.version.collect {
                 _uiState.update { st ->
-                    val (main, up) = com.nuvio.tv.calendar.CalendarHomeFeed.apply(st.continueWatchingItems, st.upcomingItems)
+                    val (main, up) = com.nuvio.tv.livetv.calendar.CalendarHomeFeed.apply(st.continueWatchingItems, st.upcomingItems)
                     if (main == st.continueWatchingItems && up == st.upcomingItems) st
                     else st.copy(continueWatchingItems = main, upcomingItems = up)
                 }
@@ -399,7 +386,6 @@ class HomeViewModel @Inject constructor(
             loadFollowAddonsOrder()
             loadDisabledHomeCatalogPreference()
             loadCustomCatalogTitles()
-            observeInstalledAppsRow()
             observeLibraryState()
             observeTmdbSettings()
             observeMdbListSettings()
@@ -447,65 +433,6 @@ class HomeViewModel @Inject constructor(
                     _movieWatchedStatus.value = emptyMap()
                     _pendingWatchedBatch.value = emptyMap()
                     _uiState.update { it.copy(movieWatchedStatus = emptyMap()) }
-                }
-            }
-        }
-        if (authManager != null) {
-            viewModelScope.launch {
-                var lastIsAuthenticated: Boolean? = null
-                authManager.get().authState.collect { authState ->
-                    val isAuth = authState is AuthState.FullAccount
-                    if (lastIsAuthenticated != null && lastIsAuthenticated != isAuth) {
-                        Log.d(TAG, "Auth state changed (isAuthenticated: $lastIsAuthenticated -> $isAuth), refreshing Home")
-                        cwPipelineJob?.cancel()
-                        cwPipelineJob = null
-                        cwMetaCache.clear()
-                        cwMetaNegativeCacheTimestamps.clear()
-                        cwBadgeEpisodeCache.clear()
-                        cwBadgeNextSeasonMs.clear()
-                        cwTmdbIdCache.clear()
-                        cwNextUpResolutionCache.clear()
-                        cwNextUpNegativeCacheTimestamps.clear()
-                        discoveredOlderNextUpItems.clear()
-                        cwLastProcessedNextUpContentIds.clear()
-                        cwProcessedOlderSeedContentIds.clear()
-                        cwEnrichedNextUpOverlay.clear()
-                        cwEnrichedInProgressOverlay.clear()
-                        cwLastBadgeEpisodeKeys = emptySet()
-                        cwLastShowIdSiblings = emptyMap()
-                        _uiState.update {
-                            it.copy(layoutPreferencesReady = false, continueWatchingItems = emptyList())
-                        }
-                        clearFocusState()
-                        _gridFocusState.value = HomeScreenFocusState()
-                        _initialCwResolved.value = false
-                        loadContinueWatching()
-
-                        val currentProfileId = profileManager.activeProfileId.value
-                        watchedSeriesStateHolder.clearInMemory()
-                        watchedSeriesStateHolder.loadFromDisk(profileId = currentProfileId)
-                        _movieWatchedStatus.value = emptyMap()
-                        _pendingWatchedBatch.value = emptyMap()
-                        _uiState.update { it.copy(movieWatchedStatus = emptyMap()) }
-
-                        clearCatalogData()
-                        synchronized(catalogStateLock) {
-                            catalogOrder.clear()
-                        }
-                        scheduleUpdateCatalogRows()
-                        val freshAddons = runCatching { addonRepository.getInstalledAddons().first().enabledAddons() }.getOrNull()
-                        val targetAddons = if (!freshAddons.isNullOrEmpty()) {
-                            addonsCache = freshAddons
-                            freshAddons
-                        } else {
-                            addonsCache.enabledAddons()
-                        }
-                        if (targetAddons.isNotEmpty()) {
-                            lastHomeCatalogRefreshAtMs = android.os.SystemClock.elapsedRealtime()
-                            loadAllCatalogs(targetAddons, forceReload = true)
-                        }
-                    }
-                    lastIsAuthenticated = isAuth
                 }
             }
         }
@@ -780,7 +707,8 @@ class HomeViewModel @Inject constructor(
             is HomeEvent.OnLoadMoreCatalog -> loadMoreCatalogItems(event.catalogId, event.addonId, event.type)
             is HomeEvent.OnMarkContinueWatchingWatched -> markContinueWatchingWatched(event.item)
             is HomeEvent.OnRemoveContinueWatching -> {
-                if (!com.nuvio.tv.calendar.CalendarHomeFeed.dismiss(event.contentId, event.season, event.episode)) {
+                // Live TV fork: a Calendar card is just taken away (there's no progress to remove).
+                if (!com.nuvio.tv.livetv.calendar.CalendarHomeFeed.dismiss(event.contentId, event.season, event.episode)) {
                     removeContinueWatching(
                         contentId = event.contentId,
                         season = event.season,
@@ -901,10 +829,6 @@ class HomeViewModel @Inject constructor(
 
     private fun observeCollections() = observeCollectionsPipeline()
 
-    private fun observeInstalledAppsRow() = observeInstalledAppsRowPipeline()
-
-    fun refreshInstalledApps() = installedAppsRepository.refresh()
-
     private fun observeInstalledAddons() = observeInstalledAddonsPipeline()
 
     /**
@@ -950,49 +874,6 @@ class HomeViewModel @Inject constructor(
                 refreshVisibleCatalogsPipeline(requestedByUser = true)
             }
         }
-        if (myListsTvSyncManager != null) {
-            viewModelScope.launch {
-                // Bursts (profile + auth + periodic) collapse into one pass.
-                myListsTvSyncManager.syncRefreshEvents.debounce(MY_LISTS_REFRESH_DEBOUNCE_MS).collect {
-                    val freshAddons = runCatching { addonRepository.getInstalledAddons().first().enabledAddons() }.getOrNull()
-                    val targetAddons = if (!freshAddons.isNullOrEmpty()) {
-                        addonsCache = freshAddons
-                        freshAddons
-                    } else {
-                        addonsCache.enabledAddons()
-                    }
-                    if (targetAddons.isEmpty()) {
-                        clearCatalogData()
-                        synchronized(catalogStateLock) {
-                            catalogOrder.clear()
-                        }
-                        scheduleUpdateCatalogRows()
-                        return@collect
-                    }
-                    lastHomeCatalogRefreshAtMs = android.os.SystemClock.elapsedRealtime()
-                    // A full forced reload wipes every row and re-requests every addon. Only do that when
-                    // the set of catalogs actually changed (a list was added/removed/renamed); otherwise
-                    // swap in fresh My Lists rows in place and leave all other addons alone.
-                    val catalogSetChanged = buildHomeCatalogLoadSignature(targetAddons) != activeCatalogLoadSignature
-                    if (catalogSetChanged || !hasAnyCatalogRows()) {
-                        loadAllCatalogs(targetAddons, forceReload = true)
-                    } else {
-                        refreshVisibleCatalogsPipeline(
-                            requestedByUser = true,
-                            forceReplace = true,
-                            onlyAddonIds = setOf(
-                                com.nuvio.tv.core.mylists.MyListsDefaultSeed.MY_LISTS_TV_ADDON_ID,
-                                com.nuvio.tv.core.mylists.MyListsDefaultSeed.MY_LISTS_ADDON_ID
-                            )
-                        )
-                    }
-                }
-            }
-        }
-    }
-
-    fun syncMyListsIfNeeded() {
-        myListsTvSyncManager?.requestSyncInBackground(force = false)
     }
 
     fun refreshHomeCatalogsIfStale() {

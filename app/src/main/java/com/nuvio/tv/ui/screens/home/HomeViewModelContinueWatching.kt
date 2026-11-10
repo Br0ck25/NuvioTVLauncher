@@ -561,23 +561,11 @@ internal fun HomeViewModel.loadContinueWatchingPipeline() {
                         )
                     )
                 }
-                // Keep the card of a series whose episode was just finished until its fresh
-                // next-up replaces it. Dropping it here and adding it back below moved focus
-                // to the neighbouring card.
-                val awaitingNextUpItems = continueWatchingCardsAwaitingNextUp(
-                    shownItems = _uiState.value.continueWatchingItems,
-                    placedContentIds = inProgressOnly.mapTo(mutableSetOf()) { it.progress.contentId } +
-                        cachedNextUpItems.map { it.info.contentId },
-                    seededContentIds = activeSeedContentIds,
-                    dismissedNextUpKeys = dismissedNextUp
-                )
                 if (inProgressOnly.isNotEmpty() || cachedNextUpItems.isNotEmpty()) {
                     val initialItems = applyContinueWatchingEnrichmentOverlay(
                         mergeContinueWatchingItems(
-                            inProgressItems = inProgressOnly +
-                                awaitingNextUpItems.filterIsInstance<ContinueWatchingItem.InProgress>(),
-                            nextUpItems = cachedNextUpItems +
-                                awaitingNextUpItems.filterIsInstance<ContinueWatchingItem.NextUp>(),
+                            inProgressItems = inProgressOnly,
+                            nextUpItems = cachedNextUpItems,
                             mode = continueWatchingSortMode
                         )
                     )
@@ -664,15 +652,10 @@ internal fun HomeViewModel.loadContinueWatchingPipeline() {
                                 val retainedCached = cachedNextUpItems.filter {
                                     it.info.contentId !in freshIds
                                 }
-                                val retainedAwaiting = awaitingNextUpItems.filter {
-                                    it.contentId() !in freshIds
-                                }
                                 val partialItems = applyContinueWatchingEnrichmentOverlay(
                                     mergeContinueWatchingItems(
-                                        inProgressItems = inProgressOnly +
-                                            retainedAwaiting.filterIsInstance<ContinueWatchingItem.InProgress>(),
-                                        nextUpItems = cachedPartialNextUp + retainedCached +
-                                            retainedAwaiting.filterIsInstance<ContinueWatchingItem.NextUp>(),
+                                        inProgressItems = inProgressOnly,
+                                        nextUpItems = cachedPartialNextUp + retainedCached,
                                         mode = continueWatchingSortMode
                                     )
                                 )
@@ -1806,7 +1789,9 @@ internal fun splitUpcomingItems(
     mode: ContinueWatchingSortMode
 ): Pair<List<ContinueWatchingItem>, List<ContinueWatchingItem>> {
     if (mode != ContinueWatchingSortMode.SPLIT_UPCOMING) {
-        return com.nuvio.tv.calendar.CalendarHomeFeed.apply(items, emptyList())
+        // Live TV fork: the Calendar's cards (new episodes of shows whose bell is rung, and the
+        // Upcoming row) go in here, where every update of Continue Watching passes.
+        return com.nuvio.tv.livetv.calendar.CalendarHomeFeed.apply(items, emptyList())
     }
     val (upcoming, main) = items.partition { item ->
         item is ContinueWatchingItem.NextUp && !item.info.hasAired
@@ -1826,7 +1811,7 @@ internal fun splitUpcomingItems(
             else -> dateA.compareTo(dateB)
         }
     }
-    return com.nuvio.tv.calendar.CalendarHomeFeed.apply(main, sortedUpcoming)
+    return com.nuvio.tv.livetv.calendar.CalendarHomeFeed.apply(main, sortedUpcoming)
 }
 
 private suspend fun HomeViewModel.buildNextUpItem(

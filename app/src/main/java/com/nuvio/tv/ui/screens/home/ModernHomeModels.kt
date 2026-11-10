@@ -71,7 +71,6 @@ data class HeroPreview(
 @Immutable
 sealed class ModernPayload {
     data class ContinueWatching(val item: ContinueWatchingItem) : ModernPayload()
-    data class InstalledApp(val app: com.nuvio.tv.core.apps.InstalledApp) : ModernPayload()
     data class Catalog(
         val focusKey: String,
         val itemId: String,
@@ -225,9 +224,6 @@ internal fun ModernCarouselItem.catalogCardMetrics(
     landscapeCardWidth: androidx.compose.ui.unit.Dp,
     landscapeCardHeight: androidx.compose.ui.unit.Dp
 ): ModernCatalogCardMetrics {
-    if (payload is ModernPayload.InstalledApp) {
-        return ModernCatalogCardMetrics(com.nuvio.tv.ui.components.InstalledAppTileWidth, com.nuvio.tv.ui.components.InstalledAppTileHeight)
-    }
     // Collection folders define their own tile shape — never override with
     // the global landscape-posters toggle.
     if (useLandscapePosters && payload !is ModernPayload.CollectionFolder) {
@@ -276,7 +272,7 @@ internal fun ModernCarouselItem.catalogCardRequestMetrics(
         landscapeCardWidth = landscapeCardWidth,
         landscapeCardHeight = landscapeCardHeight
     )
-    if (!expandEnabled || payload is ModernPayload.InstalledApp) return base
+    if (!expandEnabled) return base
 
     val expandedWidth = if (useLandscapePosters && payload !is ModernPayload.CollectionFolder) {
         base.width
@@ -589,10 +585,13 @@ internal fun buildCollectionFolderItem(
     )
 }
 
-// One key per show, like the shuffle key: when its card moves to another episode it stays the
-// same row item, so focus stays on it instead of passing to the next card.
 internal fun continueWatchingItemKey(item: ContinueWatchingItem): String {
-    return item.shuffleFocusKey ?: "cw_${item.contentId()}"
+    return item.shuffleFocusKey ?: when (item) {
+        is ContinueWatchingItem.InProgress ->
+            "cw_inprogress_${item.progress.contentId}_${item.progress.season ?: -1}_${item.progress.episode ?: -1}"
+        is ContinueWatchingItem.NextUp ->
+            "cw_nextup_${item.info.contentId}_${item.info.season}_${item.info.episode}"
+    }
 }
 
 internal fun catalogRowKey(row: CatalogRow): String {

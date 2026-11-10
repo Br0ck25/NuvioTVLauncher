@@ -23,6 +23,7 @@ internal fun PlayerRuntimeController.attachMpvView(view: NuvioMpvSurfaceView?) {
 
     runCatching {
         performPendingMpvHardRestartIfNeeded(view)
+        view.applyVpnProxy(nativeVpnProxy?.address())
         view.applyHi10pGnextSoftwareFallback(shouldUseMpvHi10pGnextSoftwareFallback())
         view.applyHardwareDecodeMode(mpvHardwareDecodeModeSetting)
         registerMpvEventRelay(view)
@@ -126,6 +127,7 @@ internal fun PlayerRuntimeController.initializeMpvPlayer(
             showOverlay = true
         )
         performPendingMpvHardRestartIfNeeded(view)
+        view.applyVpnProxy(nativeVpnProxy?.address())
         view.applyHi10pGnextSoftwareFallback(shouldUseMpvHi10pGnextSoftwareFallback())
         view.applyHardwareDecodeMode(mpvHardwareDecodeModeSetting)
         registerMpvEventRelay(view)
@@ -216,6 +218,8 @@ internal fun PlayerRuntimeController.initializeMpvPlayer(
 }
 
 internal fun PlayerRuntimeController.releaseMpvPlayer() {
+    nativeVpnProxy?.close()
+    nativeVpnProxy = null
     unregisterMpvEventRelay()
     runCatching { mpvView?.releasePlayer() }
 }
@@ -241,8 +245,6 @@ internal fun PlayerRuntimeController.pauseForLifecycle() {
     if (isUsingMpvEngine()) {
         mpvView?.setPaused(true)
         emitPauseScrobbleForCurrentProgress()
-        // The process may be killed while backgrounded; Exo saves on its pause, MPV has to here.
-        saveWatchProgress()
         stopWatchProgressSaving()
         stopProgressUpdates()
         _uiState.update { it.copy(isPlaying = false) }

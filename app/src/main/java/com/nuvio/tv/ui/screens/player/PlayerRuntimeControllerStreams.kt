@@ -1,6 +1,5 @@
-﻿package com.nuvio.tv.ui.screens.player
+package com.nuvio.tv.ui.screens.player
 
-import com.nuvio.tv.ui.reshaped.livetv.keepPlayerForLiveTvZap
 import android.content.Intent
 import android.net.Uri
 import android.util.Log
@@ -164,25 +163,22 @@ private data class SourceStreamsRequest(
     val episode: Int?
 )
 
-private fun PlayerRuntimeController.currentSourceStreamsRequest(): SourceStreamsRequest? {
-    val isSeries = (contentType in listOf("series", "tv")) ||
-        (contentType == "channel" && ((currentSeason != null && currentEpisode != null) || currentVideoId?.contains(":") == true))
-    return if (isSeries && currentSeason != null && currentEpisode != null) {
+private fun PlayerRuntimeController.currentSourceStreamsRequest(): SourceStreamsRequest? =
+    if (contentType in listOf("series", "tv") && currentSeason != null && currentEpisode != null) {
         SourceStreamsRequest(
-            type = if (contentType == "channel") "series" else (contentType ?: return null),
+            type = contentType ?: return null,
             videoId = currentVideoId ?: contentId ?: return null,
             season = currentSeason,
             episode = currentEpisode
         )
     } else {
         SourceStreamsRequest(
-            type = if (contentType == "channel") "movie" else (contentType ?: "movie"),
-            videoId = currentVideoId ?: contentId ?: return null,
+            type = contentType ?: "movie",
+            videoId = contentId ?: return null,
             season = null,
             episode = null
         )
     }
-}
 
 internal fun PlayerRuntimeController.loadSourceStreams(forceRefresh: Boolean) {
     streamRepository.setLocalPluginSearchPaused(false)
@@ -239,13 +235,24 @@ internal fun PlayerRuntimeController.loadSourceStreams(forceRefresh: Boolean) {
             updateSourceChipsForFetchStart(type, vid, installedAddons)
         }
 
-        streamRepository.getStreamsFromAllAddons(
+        com.nuvio.tv.livetv.ondemand.OnDemandStreams.withOnDemand(
+            // Live TV fork: your provider's copy (📡 On Demand) here too, for source switching
+            // and the next episode.
+            context = context,
+            source = streamRepository.getStreamsFromAllAddons(
             type = type,
             videoId = vid,
             season = seasonArg,
             episode = episodeArg,
             forceRefresh = forceRefresh,
             priorityBingeGroup = currentStreamBingeGroup
+            ),
+            type = type,
+            videoId = vid,
+            season = seasonArg,
+            episode = episodeArg,
+            title = navigationArgs.contentName ?: navigationArgs.title,
+            year = navigationArgs.year
         ).collect { result ->
             when (result) {
                 is NetworkResult.Success -> {
@@ -990,7 +997,7 @@ internal fun PlayerRuntimeController.switchToSourceStream(
     )
 
     resetLoadingOverlayForNewStream()
-    if (!keepPlayerForLiveTvZap(url)) releasePlayer(flushPlaybackState = false) // Live TV zaps keep the player
+    releasePlayer(flushPlaybackState = false)
 
     applySelectedStreamState(
         stream = stream,
@@ -1000,7 +1007,6 @@ internal fun PlayerRuntimeController.switchToSourceStream(
     val playbackUrl = currentStreamUrl
     val playbackHeaders = currentHeaders
     persistSelectedStreamForReuse(stream = stream, url = playbackUrl, headers = playbackHeaders)
-    persistStreamRouteState(stream, isTorrent = false)
 
     // Reset stream-state error flags for the new stream.
     hasRetriedCurrentStreamAfter416 = false
@@ -1121,7 +1127,7 @@ internal fun PlayerRuntimeController.selectEpisodesSeason(season: Int) {
 }
 
 @androidx.annotation.OptIn(UnstableApi::class)
-internal fun PlayerRuntimeController.switchToTorrentSourceStream(
+private fun PlayerRuntimeController.switchToTorrentSourceStream(
     stream: Stream
 ) {
     val infoHash = stream.getEffectiveInfoHash() ?: return
@@ -1170,7 +1176,6 @@ internal fun PlayerRuntimeController.switchToTorrentSourceStream(
     resetPostPlayOverlayState(clearEpisode = false)
     launchTorrentSourceStream(stream, infoHash, loadSavedProgress = true)
     persistTorrentStreamForReuse(stream)
-    persistStreamRouteState(stream, isTorrent = true)
 }
 
 private fun PlayerRuntimeController.switchToTorrentEpisodeStream(
@@ -1187,7 +1192,6 @@ private fun PlayerRuntimeController.switchToTorrentEpisodeStream(
     switchToEpisodeStreamCommon(stream, forcedTargetVideo, showSourceIndicator = !isAutoPlay)
     launchTorrentSourceStream(stream, infoHash, loadSavedProgress = true)
     persistTorrentStreamForReuse(stream)
-    persistStreamRouteState(stream, isTorrent = true)
 }
 
 internal fun PlayerRuntimeController.loadEpisodesIfNeeded() {
@@ -1354,13 +1358,24 @@ internal fun PlayerRuntimeController.loadStreamsForEpisode(
             installedAddons
         )
 
-        streamRepository.getStreamsFromAllAddons(
+        com.nuvio.tv.livetv.ondemand.OnDemandStreams.withOnDemand(
+            // Live TV fork: your provider's copy (📡 On Demand) here too, for source switching
+            // and the next episode.
+            context = context,
+            source = streamRepository.getStreamsFromAllAddons(
             type = type,
             videoId = video.id,
             season = video.season,
             episode = video.episode,
             forceRefresh = forceRefresh,
             priorityBingeGroup = currentStreamBingeGroup
+            ),
+            type = type,
+            videoId = video.id,
+            season = video.season,
+            episode = video.episode,
+            title = navigationArgs.contentName ?: navigationArgs.title,
+            year = navigationArgs.year
         ).collect { result ->
             when (result) {
                 is NetworkResult.Success -> {
@@ -1698,7 +1713,6 @@ internal fun PlayerRuntimeController.switchToEpisodeStream(
     currentSeason = targetVideo?.season ?: _uiState.value.episodeStreamsSeason ?: currentSeason
     currentEpisode = targetVideo?.episode ?: _uiState.value.episodeStreamsEpisode ?: currentEpisode
     currentEpisodeTitle = targetVideo?.title ?: _uiState.value.episodeStreamsTitle ?: currentEpisodeTitle
-    persistStreamRouteState(stream, isTorrent = false)
     // Until the new file loads, MPV keeps reporting the old one, which is often at its end.
     hasRenderedFirstFrame = false
     mpvView?.markMediaRequested(playbackUrl)
@@ -2196,14 +2210,24 @@ internal fun PlayerRuntimeController.playNextEpisode(userInitiated: Boolean = fa
 
             val continuingPlugin = scraperIdFromPluginBingeGroup(currentStreamBingeGroup) != null
             val innerJob = launch {
-                streamRepository.getStreamsFromAllAddons(
+                com.nuvio.tv.livetv.ondemand.OnDemandStreams.withOnDemand(
+                    // Live TV fork: your provider's next episode (📡 On Demand) is a candidate too.
+                    context = context,
+                    source = streamRepository.getStreamsFromAllAddons(
+                        type = type,
+                        videoId = nextVideo.id,
+                        season = nextVideo.season,
+                        episode = nextVideo.episode,
+                        priorityBingeGroup = currentStreamBingeGroup,
+                        preferredPluginOnly = continuingPlugin,
+                        continuePluginOnly = continuingPlugin
+                    ),
                     type = type,
                     videoId = nextVideo.id,
                     season = nextVideo.season,
                     episode = nextVideo.episode,
-                    priorityBingeGroup = currentStreamBingeGroup,
-                    preferredPluginOnly = continuingPlugin,
-                    continuePluginOnly = continuingPlugin
+                    title = navigationArgs.contentName ?: navigationArgs.title,
+                    year = navigationArgs.year
                 ).collect { result ->
                     when (result) {
                         is NetworkResult.Success -> {

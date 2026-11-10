@@ -62,6 +62,7 @@ import androidx.lifecycle.Lifecycle
 import androidx.lifecycle.LifecycleEventObserver
 import androidx.lifecycle.compose.LocalLifecycleOwner
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
+import androidx.compose.runtime.collectAsState
 import androidx.tv.material3.MaterialTheme
 import androidx.tv.material3.Text
 import androidx.compose.ui.graphics.ColorFilter
@@ -426,7 +427,7 @@ private fun TmdbEntityHero(
 
             // Detect dark monochrome logo and tint white if needed
             var logoColorFilter by remember { mutableStateOf<ColorFilter?>(null) }
-            val painterState by logoPainter.state.collectAsStateWithLifecycle()
+            val painterState by logoPainter.state.collectAsState()
             LaunchedEffect(painterState) {
                 if (painterState is AsyncImagePainter.State.Success) {
                     val bitmap = ((painterState as AsyncImagePainter.State.Success).result.image as? coil3.BitmapImage)?.bitmap

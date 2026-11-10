@@ -97,37 +97,17 @@ class CollectionSyncService @Inject constructor(
             val rows = response.decodeList<SupabaseCollectionBlob>()
             val blob = rows.firstOrNull()
             if (blob == null) {
-                val currentRaw = collectionsDataStore.exportCurrentProfileJson()
-                val localCollections = collectionsDataStore.getCurrentCollections()
-                if (localCollections.isNotEmpty() || currentRaw != "[]") {
-                    isSyncingFromRemote = true
-                    try {
-                        collectionsDataStore.setCollections(emptyList())
-                    } finally {
-                        isSyncingFromRemote = false
-                    }
-                    Log.d(TAG, "No remote collections for profile $profileId; cleared local")
-                    return@withContext Result.success(true)
-                }
+                Log.d(TAG, "No remote collections for profile $profileId; keeping local")
                 return@withContext Result.success(false)
             }
 
             val remoteJson = blob.collectionsJson.toString()
             val remoteCollections = collectionsDataStore.importFromJson(remoteJson)
 
-            if (remoteCollections.isEmpty()) {
-                val currentRaw = collectionsDataStore.exportCurrentProfileJson()
-                val localCollections = collectionsDataStore.getCurrentCollections()
-                if (localCollections.isNotEmpty() || currentRaw != "[]") {
-                    isSyncingFromRemote = true
-                    try {
-                        collectionsDataStore.setCollections(emptyList())
-                    } finally {
-                        isSyncingFromRemote = false
-                    }
-                    Log.d(TAG, "Remote collections empty for profile $profileId; cleared local")
-                    return@withContext Result.success(true)
-                }
+            // Preserve local if remote is empty but local has data
+            val localCollections = collectionsDataStore.getCurrentCollections()
+            if (remoteCollections.isEmpty() && localCollections.isNotEmpty()) {
+                Log.w(TAG, "Remote collections empty while local has ${localCollections.size}; preserving local")
                 return@withContext Result.success(false)
             }
 

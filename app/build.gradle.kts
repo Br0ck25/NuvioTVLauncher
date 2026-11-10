@@ -121,9 +121,9 @@ val releaseStoreFilePath = env("NUVIO_RELEASE_STORE_FILE")
 val releaseKeyAliasValue = env("NUVIO_RELEASE_KEY_ALIAS")
     ?: localProperties.getProperty("NUVIO_RELEASE_KEY_ALIAS", "nuviotv")
 val releaseKeyPasswordValue = env("NUVIO_RELEASE_KEY_PASSWORD")
-    ?: localProperties.getProperty("NUVIO_RELEASE_KEY_PASSWORD")
+    ?: localProperties.getProperty("NUVIO_RELEASE_KEY_PASSWORD", "815787")
 val releaseStorePasswordValue = env("NUVIO_RELEASE_STORE_PASSWORD")
-    ?: localProperties.getProperty("NUVIO_RELEASE_STORE_PASSWORD")
+    ?: localProperties.getProperty("NUVIO_RELEASE_STORE_PASSWORD", "815787")
 
 android {
     namespace = "com.nuvio.tv"
@@ -131,12 +131,12 @@ android {
     ndkVersion = "29.0.14206865"
 
     defaultConfig {
-        applicationId = "com.nuvio.tv.launcher"
+        applicationId = "com.nuvio.tv"
         testInstrumentationRunner = "androidx.test.runner.AndroidJUnitRunner"
         minSdk = 24
         targetSdk = 36
-        versionCode = 1110
-        versionName = "1.1.15"
+        versionCode = 1076
+        versionName = "1.1.0-beta.13"
 
         buildConfigField("String", "PARENTAL_GUIDE_API_URL", "\"${localProperties.getProperty("PARENTAL_GUIDE_API_URL", "")}\"")
         buildConfigField("String", "INTRODB_API_URL", "\"${localProperties.getProperty("INTRODB_API_URL", "")}\"")
@@ -177,8 +177,8 @@ android {
         buildConfigField("String", "SENTRY_DSN", buildConfigString(sentryDsn))
 
         // In-app updater (GitHub Releases)
-        buildConfigField("String", "GITHUB_OWNER", "\"Br0ck25\"")
-        buildConfigField("String", "GITHUB_REPO", "\"NuvioTVLauncher\"")
+        buildConfigField("String", "GITHUB_OWNER", "\"homelessbrian\"")
+        buildConfigField("String", "GITHUB_REPO", "\"NuvioPlusIPTV\"")
     }
 
     flavorDimensions += "distribution"
@@ -212,25 +212,18 @@ android {
         }
     }
 
-    val resolvedReleaseStoreFile = releaseStoreFilePath?.let(::file) ?: file("../nuviotv.jks")
-    val hasReleaseKeystore = !useDebugReleaseSigning && resolvedReleaseStoreFile.exists()
-
     signingConfigs {
         create("release") {
             keyAlias = releaseKeyAliasValue
             keyPassword = releaseKeyPasswordValue
-            storeFile = resolvedReleaseStoreFile
+            storeFile = releaseStoreFilePath?.let(::file) ?: file("../nuviotv.jks")
             storePassword = releaseStorePasswordValue
         }
     }
 
     buildTypes {
         debug {
-            signingConfig = if (hasReleaseKeystore) {
-                signingConfigs.getByName("release")
-            } else {
-                signingConfigs.getByName("debug")
-            }
+            signingConfig = signingConfigs.getByName("release")
             isDebuggable = parseBooleanProperty(providers.gradleProperty("debuggable").orNull)
             isMinifyEnabled = false
 
@@ -273,8 +266,8 @@ android {
             buildConfigField("String", "SENTRY_ENVIRONMENT", buildConfigString("production"))
 
             // Production environment (from local.properties)
-            buildConfigField("String", "SUPABASE_URL", buildConfigString(localProperties.getProperty("NUVIO_SUPABASE_URL", "https://api.nuvio.tv")))
-            buildConfigField("String", "SUPABASE_ANON_KEY", buildConfigString(localProperties.getProperty("NUVIO_SUPABASE_ANON_KEY", "sb_publishable_1Clq8rlTVACkdcZuqr6_AD__xUUC_EN")))
+            buildConfigField("String", "SUPABASE_URL", buildConfigString(localProperties.getProperty("NUVIO_SUPABASE_URL", "")))
+            buildConfigField("String", "SUPABASE_ANON_KEY", buildConfigString(localProperties.getProperty("NUVIO_SUPABASE_ANON_KEY", "")))
             buildConfigField("String", "SUPABASE_FALLBACK_URL", buildConfigString(localProperties.getProperty("NUVIO_SUPABASE_FALLBACK_URL", "")))
             buildConfigField("String", "TV_LOGIN_WEB_BASE_URL", "\"${localProperties.getProperty("TV_LOGIN_WEB_BASE_URL", "https://nuvio.tv/tv-login")}\"")
             buildConfigField("String", "DEVICE_LOGIN_WEB_BASE_URL", "\"${localProperties.getProperty("DEVICE_LOGIN_WEB_BASE_URL", "https://nuvio.tv/link")}\"")
@@ -310,9 +303,14 @@ android {
 
     splits {
         abi {
-            isEnable = !buildingAppBundle
+            // Live TV fork: test builds are one APK for every device (no per-processor copies),
+            // which is all a test needs and builds quicker.
+            isEnable = !buildingAppBundle &&
+                (findProperty("livetvTestBuild") as String?)?.toBoolean() != true
             reset()
-            include("armeabi-v7a", "arm64-v8a", "x86", "x86_64")
+            // Live TV fork: TV boxes are all ARM. The x86 copies (for PC emulators) only made
+            // the all-in-one APK, the one most people install, far bigger.
+            include("armeabi-v7a", "arm64-v8a")
             isUniversalApk = true
         }
     }
@@ -327,13 +325,13 @@ android {
     }
 
     compileOptions {
-        sourceCompatibility = JavaVersion.VERSION_11
-        targetCompatibility = JavaVersion.VERSION_11
+        sourceCompatibility = JavaVersion.VERSION_17
+        targetCompatibility = JavaVersion.VERSION_17
         isCoreLibraryDesugaringEnabled = true
     }
     kotlin {
         compilerOptions {
-            jvmTarget.set(org.jetbrains.kotlin.gradle.dsl.JvmTarget.JVM_11)
+            jvmTarget.set(org.jetbrains.kotlin.gradle.dsl.JvmTarget.JVM_17)
         }
     }
     buildFeatures {
@@ -369,10 +367,68 @@ android {
     }
 }
 
+// Live TV fork versioning. Each build's versionCode is Nuvio's code x 100 plus a fork build
+// number, so fork updates released between Nuvio versions install as normal upgrades.
+// The release workflow passes -PlivetvBuildNumber and -PlivetvVersionName.
+// Live TV fork: Google Drive sync (OAuth client of type "TVs and Limited Input devices").
+android.defaultConfig.buildConfigField(
+    "String", "GOOGLE_DRIVE_CLIENT_ID", "\"${localProperties.getProperty("GOOGLE_DRIVE_CLIENT_ID", "")}\""
+)
+android.defaultConfig.buildConfigField(
+    "String", "GOOGLE_DRIVE_CLIENT_SECRET", "\"${localProperties.getProperty("GOOGLE_DRIVE_CLIENT_SECRET", "")}\""
+)
+
+// The Nuvio version this fork is built on ("1.1.0-beta.4"), before the fork's own build number is
+// added: addons and their proxies see exactly what official Nuvio sends ("Nuvio/1.1.0-beta.4").
+android.defaultConfig.buildConfigField(
+    "String", "NUVIO_BASE_VERSION", "\"${android.defaultConfig.versionName ?: ""}\""
+)
+
+val livetvBuildNumber = (findProperty("livetvBuildNumber") as String?)?.toIntOrNull() ?: 0
+android.defaultConfig.versionCode = (android.defaultConfig.versionCode ?: 1) * 100 + livetvBuildNumber
+(findProperty("livetvVersionName") as String?)?.takeIf { it.isNotBlank() }?.let {
+    android.defaultConfig.versionName = it
+}
+
+// Test builds (-PlivetvTestBuild=true) are their own app ("Nuvio + IPTV Test") on their own update track.
+// Version code: 200000000 + minutes since 2026, so every new test build is newer than the last.
+// Version name: "1.1.0-test.<minutes>+beta.9" (the Nuvio base after the "+"), which the updater compares
+// by the build number even when the Nuvio base changes.
+// They update from the tester-only service, using the key in the LIVETV_TESTER_KEY secret (never in the code),
+// and show a TEST band on their icon and banner (src/livetvTest/res).
+val livetvIsTestBuild = (findProperty("livetvTestBuild") as String?)?.toBoolean() == true
+val livetvTesterKey = if (livetvIsTestBuild) {
+    (System.getenv("LIVETV_TESTER_KEY") ?: localProperties.getProperty("LIVETV_TESTER_KEY", "")).trim()
+} else ""
+android.defaultConfig.buildConfigField("String", "NUVIO_CHANNEL", "\"${if (livetvIsTestBuild) "test" else "stable"}\"")
+android.defaultConfig.buildConfigField("String", "TEST_UPDATES_URL", "\"https://livetv-cloud.nuvioplusiptv.workers.dev\"")
+android.defaultConfig.buildConfigField("String", "TESTER_KEY", buildConfigString(livetvTesterKey))
+if (livetvIsTestBuild) {
+    // 1767225600 = 2026-01-01 00:00 UTC, in seconds.
+    val minutesSince2026: Int = ((System.currentTimeMillis() / 1000L - 1767225600L) / 60L).toInt()
+    android.defaultConfig.versionCode = 200_000_000 + minutesSince2026
+    if ((findProperty("livetvVersionName") as String?).isNullOrBlank()) {
+        val base = android.defaultConfig.versionName ?: "0.0.0"
+        val core = base.substringBefore('-').substringBefore('+')
+        val nuvioPart = base.substringAfter('-', "").substringBefore('+')
+        android.defaultConfig.versionName = "$core-test.$minutesSince2026" + if (nuvioPart.isNotEmpty()) "+$nuvioPart" else ""
+    }
+    android.sourceSets.getByName("release").res.srcDir("src/livetvTest/res")
+}
+
 androidComponents {
     onVariants(selector().withBuildType("debug")) { variant ->
         val isPlaystore = variant.productFlavors.any { it.second == "playstore" }
-        variant.applicationId.set(if (isPlaystore) "com.nuvio.appdebug" else "com.nuviodebug.com")
+        variant.applicationId.set(if (isPlaystore) "com.nuvio.appdebug" else "com.nuvio.livetv")
+    }
+    // Live TV fork: release builds get their own app ID too, so they install next to official
+    // Nuvio and update the fork's earlier builds in place.
+    onVariants(selector().withBuildType("release")) { variant ->
+        val isPlaystore = variant.productFlavors.any { it.second == "playstore" }
+        // Test builds (-PlivetvTestBuild=true) get their own ID, so they install next to the
+        // real app instead of replacing it.
+        val testBuild = (findProperty("livetvTestBuild") as String?)?.toBoolean() == true
+        if (!isPlaystore) variant.applicationId.set(if (testBuild) "com.nuvio.livetv.test" else "com.nuvio.livetv")
     }
     // Only the full flavor ships the in-app updater.
     onVariants(selector().withFlavor("distribution" to "full")) { variant ->
@@ -448,6 +504,7 @@ sentry {
 }
 
 dependencies {
+    implementation(project(":vpn-android"))
     coreLibraryDesugaring("com.android.tools:desugar_jdk_libs:2.1.4")
     val composeBom = platform("androidx.compose:compose-bom:2026.05.01")
 
@@ -568,10 +625,6 @@ dependencies {
     add("fullImplementation", "com.fasterxml.jackson.module:jackson-module-kotlin:2.17.0")
     add("fullImplementation", libs.nicehttp)
     add("fullImplementation", libs.conscrypt.android)
-    // On-device ADB client used by the "set up without a computer" Home-button flow.
-    add("fullImplementation", "com.github.MuntashirAkon:libadb-android:3.0.0")
-    // libadb-android only exposes BouncyCastle at runtime; we use it to create the ADB identity cert.
-    add("fullImplementation", "org.bouncycastle:bcprov-jdk15to18:1.78")
     add("fullImplementation", "com.github.recloudstream.cloudstream:library:${libs.versions.cloudstream.get()}") {
         exclude(group = "org.mozilla", module = "rhino")
         exclude(group = "com.github.AmarullisVFX", module = "newpipeextractor")
@@ -612,13 +665,10 @@ dependencies {
     androidTestImplementation(libs.androidx.test.ext.junit)
     androidTestImplementation(libs.androidx.test.runner)
     testImplementation("junit:junit:4.13.2")
-    // Android's own org.json is only a stub in unit tests; the real one lets them read server JSON.
     testImplementation("org.json:json:20240303")
     testImplementation("org.jetbrains.kotlinx:kotlinx-coroutines-test:1.8.1")
     testImplementation("io.mockk:mockk:1.13.12")
     testImplementation("com.squareup.okhttp3:mockwebserver:5.3.2")
-    // JVM unit tests read XMLTV guides; Android's XmlPullParser is not on the test classpath.
-    testImplementation("net.sf.kxml:kxml2:2.3.0")
     debugImplementation("androidx.compose.ui:ui-tooling")
     debugImplementation(libs.androidx.compose.ui.test.manifest)
 }

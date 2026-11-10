@@ -2,7 +2,6 @@ package com.nuvio.tv.data.repository
 
 import android.content.Context
 import android.util.Log
-import com.nuvio.tv.core.mylists.MyListsDefaultSeed
 import com.nuvio.tv.core.network.NetworkResult
 import com.nuvio.tv.core.network.safeApiCall
 import com.nuvio.tv.core.poster.withCustomPosterUrls
@@ -69,19 +68,7 @@ class CatalogRepositoryImpl @Inject constructor(
             "Fetching catalog addonId=$addonId addonName=$addonName type=$type catalogId=$catalogId skip=$skip skipStep=$skipStep supportsSkip=$supportsSkip url=$url"
         )
 
-        val cacheHeader = if (MyListsDefaultSeed.isMyListsAddonUrl(addonBaseUrl)) "no-cache" else null
-        val initialResult = safeApiCall(context) { api.getCatalog(url, cacheControl = cacheHeader) }
-        val effectiveResult = if (
-            initialResult is NetworkResult.Error &&
-            MyListsDefaultSeed.isMyListsDefaultUrl(addonBaseUrl)
-        ) {
-            val fallbackUrl = buildCatalogUrl(MyListsDefaultSeed.MY_LISTS_BASE_ORIGIN, type, catalogId, skip, extraArgs)
-            safeApiCall(context) { api.getCatalog(fallbackUrl, cacheControl = cacheHeader) }
-        } else {
-            initialResult
-        }
-
-        when (val result = effectiveResult) {
+        when (val result = safeApiCall(context) { api.getCatalog(url) }) {
             is NetworkResult.Success -> {
                 val rawItemCount = result.data.metas.size
                 val posterPattern = layoutPreferenceDataStore.customPosterUrlPattern
@@ -140,13 +127,12 @@ class CatalogRepositoryImpl @Inject constructor(
         val queryStart = trimmedBase.indexOf('?')
         val basePath = if (queryStart >= 0) trimmedBase.substring(0, queryStart).trimEnd('/') else trimmedBase
         val baseQuery = if (queryStart >= 0) trimmedBase.substring(queryStart) else ""
-        val safeCatalogId = if (catalogId.contains('/')) encodeArg(catalogId) else catalogId
 
         val catalogPath = if (extraArgs.isEmpty()) {
             if (skip > 0) {
-                "$basePath/catalog/$type/$safeCatalogId/skip=$skip.json"
+                "$basePath/catalog/$type/$catalogId/skip=$skip.json"
             } else {
-                "$basePath/catalog/$type/$safeCatalogId.json"
+                "$basePath/catalog/$type/$catalogId.json"
             }
         } else {
             val allArgs = LinkedHashMap<String, String>()
@@ -160,7 +146,7 @@ class CatalogRepositoryImpl @Inject constructor(
                 "${encodeArg(key)}=${encodeArg(value)}"
             }
 
-            "$basePath/catalog/$type/$safeCatalogId/$encodedArgs.json"
+            "$basePath/catalog/$type/$catalogId/$encodedArgs.json"
         }
 
         return catalogPath + baseQuery

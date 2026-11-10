@@ -26,8 +26,7 @@ read_version_code() {
 
 current_version="$(read_version "$target_ref")"
 current_version_code="$(read_version_code "$target_ref")"
-release_commit="$(git rev-parse "${target_ref}^{commit}")"
-current_bump="$release_commit"
+current_bump=""
 previous_version=""
 previous_version_code=""
 previous_bump=""
@@ -40,6 +39,7 @@ while IFS= read -r commit; do
 
     if [[ "$phase" == "current" ]]; then
         if [[ "$version" == "$current_version" ]]; then
+            current_bump="$commit"
             continue
         fi
         previous_version="$version"
@@ -108,7 +108,7 @@ printf 'version_code=%s\n' "$current_version_code"
 printf 'tag=%s\n' "$current_version"
 printf 'title=%s\n' "$release_title"
 printf 'prerelease=%s\n' "$release_prerelease"
-printf 'release_commit=%s\n' "$release_commit"
+printf 'release_commit=%s\n' "$(git rev-parse "${target_ref}^{commit}")"
 printf 'current_bump=%s\n' "$current_bump"
 printf 'previous_version=%s\n' "$previous_version"
 printf 'previous_version_code=%s\n' "$previous_version_code"

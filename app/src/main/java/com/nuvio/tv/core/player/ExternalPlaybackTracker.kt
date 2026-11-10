@@ -1435,9 +1435,7 @@ class ExternalPlaybackTracker @Inject constructor(
     ) {
         // The synthetic sequence values are only for Cloud Library auto-next. Do not create
         // Continue Watching or tracking entries for files that did not have them before.
-        if (metadata.contentType.equals("cloud", ignoreCase = true) ||
-            metadata.contentType.equals("channel", ignoreCase = true)
-        ) return
+        if (metadata.contentType.equals("cloud", ignoreCase = true)) return
         val effectiveDuration = durationMs ?: 0L
 
         scope.launch {

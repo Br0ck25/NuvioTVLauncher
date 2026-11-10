@@ -37,7 +37,6 @@ import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
 import androidx.compose.runtime.rememberCoroutineScope
 import androidx.compose.runtime.rememberUpdatedState
-import androidx.compose.runtime.saveable.rememberSaveable
 import androidx.compose.runtime.snapshotFlow
 import androidx.compose.runtime.snapshots.Snapshot
 import androidx.compose.runtime.setValue
@@ -303,27 +302,10 @@ fun ModernHomeContent(
         }
     }
 
-    // Scroll Home back to the top when the sidebar Home button or the device HOME key asks for it.
-    // The handled value is saved so returning to Home normally (e.g. Back) keeps the previous
-    // position instead of snapping to the top.
-    var handledScrollToTopTrigger by rememberSaveable { mutableIntStateOf(0) }
     LaunchedEffect(scrollToTopTrigger) {
-        if (scrollToTopTrigger <= handledScrollToTopTrigger) return@LaunchedEffect
-        handledScrollToTopTrigger = scrollToTopTrigger
-        verticalRowListState.scrollToItem(0, 0)
-        // Move focus back to the first row, otherwise the D-pad has nothing to act on once the
-        // previously focused row has been scrolled out of the composition.
-        val firstRow = carouselRows.list.firstOrNull() ?: return@LaunchedEffect
-        if (firstRow.items.list.isEmpty()) return@LaunchedEffect
-        focusHolder.activeRowKey = firstRow.key
-        focusHolder.activeItemIndex = 0
-        focusedItemByRow[firstRow.key] = 0
-        activeRowKey.value = firstRow.key
-        activeItemIndex.intValue = 0
-        heroItem.value = firstRow.items.list.firstOrNull()?.heroPreview
-        pendingRowFocusKey.value = firstRow.key
-        pendingRowFocusIndex.value = 0
-        pendingRowFocusNonce.intValue++
+        if (scrollToTopTrigger > 0) {
+            verticalRowListState.scrollToItem(0, 0)
+        }
     }
 
     val currentView = LocalView.current
@@ -443,7 +425,7 @@ fun ModernHomeContent(
                         (item.payload as? ModernPayload.CollectionFolder)?.focusKey == selection.focusKey
                     }
                 }
-                is ModernPayload.ContinueWatching, is ModernPayload.InstalledApp -> true
+                is ModernPayload.ContinueWatching -> true
             }
         } ?: false
         if (staleSelection) {

@@ -82,7 +82,6 @@ class TmdbMetadataService(
             enrichmentInFlight[cacheKey]?.let { return@withContext it.await() }
 
             val numericId = tmdbId.toIntOrNull() ?: return@withContext null
-            if (TMDB_API_KEY.isBlank()) return@withContext null
             val requestDeferred = CompletableDeferred<TmdbEnrichment?>()
             enrichmentInFlight.putIfAbsent(cacheKey, requestDeferred)?.let { existing ->
                 return@withContext existing.await()

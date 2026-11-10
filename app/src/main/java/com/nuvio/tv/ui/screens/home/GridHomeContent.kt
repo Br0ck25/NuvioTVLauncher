@@ -82,8 +82,6 @@ import com.nuvio.tv.domain.model.MetaPreview
 import com.nuvio.tv.domain.model.catalogRowStableKey
 import com.nuvio.tv.domain.model.PosterShape
 import com.nuvio.tv.ui.components.GridContentCard
-import com.nuvio.tv.ui.components.InstalledAppsRowSection
-import com.nuvio.tv.core.apps.INSTALLED_APPS_CATALOG_KEY
 import com.nuvio.tv.ui.components.LocalCardDepthStyle
 import com.nuvio.tv.ui.components.LocalLandscapePosterMode
 import com.nuvio.tv.ui.components.GridContinueWatchingSection
@@ -119,8 +117,15 @@ fun GridHomeContent(
     catalogSeeAllLabel: String? = null,
     onSaveGridFocusState: (Int, Int, String?) -> Unit,
     onFocusedRowKeyChanged: (String?) -> Unit = {},
-    scrollToTopTrigger: Int = 0
+    scrollToTopTrigger: Int = 0,
+    /**
+     * Live TV fork: a fixed title for the header at the top (On Demand shows "On Demand - the
+     * playlist" there) instead of the name of the group scrolled to.
+     */
+    stickyTitle: String? = null
 ) {
+    // Live TV fork: where the Live TV row goes (null = hidden).
+    val liveTvRowAbove = com.nuvio.tv.livetv.home.rememberLiveTvHomeRowPosition()
     val gridState = rememberLazyGridState(
         initialFirstVisibleItemIndex = gridFocusState.verticalScrollIndex,
         initialFirstVisibleItemScrollOffset = gridFocusState.verticalScrollOffset
@@ -139,8 +144,6 @@ fun GridHomeContent(
     val upcomingRowFocusRequester = remember { FocusRequester() }
     val cwListState = androidx.compose.foundation.lazy.rememberLazyListState()
     val upcomingListState = androidx.compose.foundation.lazy.rememberLazyListState()
-    val installedAppsListState = androidx.compose.foundation.lazy.rememberLazyListState()
-    val installedAppsRowFocusRequester = remember { FocusRequester() }
 
     // Improved Back navigation for CW/Upcoming rows: scroll to first item
     val contentHasFocus = remember { mutableStateOf(false) }
@@ -159,6 +162,13 @@ fun GridHomeContent(
         } else {
             lastFocusedUpcomingIndex.intValue = 0
             upcomingPendingScrollToStart.intValue++
+        }
+    }
+
+    // Scroll to top when triggered from sidebar Home button.
+    LaunchedEffect(scrollToTopTrigger) {
+        if (scrollToTopTrigger > 0) {
+            gridState.scrollToItem(0, 0)
         }
     }
 
@@ -209,21 +219,17 @@ fun GridHomeContent(
         if (restoredSavedGridFocus) return@LaunchedEffect
         val targetKey = gridFocusState.focusedItemKey ?: return@LaunchedEffect
         if (!gridFocusState.hasSavedFocus) return@LaunchedEffect
-        repeat(8) {
-            withFrameNanos { }
-            val requester = focusRequesters[targetKey]
-            if (requester != null && runCatching { requester.requestFocus() }.getOrDefault(false)) {
-                restoredSavedGridFocus = true
-                lastFocusedGridItemKey.value = targetKey
-                return@LaunchedEffect
-            }
+        val requester = focusRequesters[targetKey] ?: return@LaunchedEffect
+        repeat(2) { withFrameNanos { } }
+        if (runCatching { requester.requestFocus() }.getOrDefault(false)) {
+            restoredSavedGridFocus = true
+            lastFocusedGridItemKey.value = targetKey
         }
     }
 
     // Build index-to-section mapping for sticky header
-    val installedAppsTitle = stringResource(R.string.installed_apps_title)
-    val sectionMapping = remember(gridItems, continueWatchingOffset, installedAppsTitle) {
-        buildSectionMapping(gridItems, continueWatchingOffset, installedAppsTitle)
+    val sectionMapping = remember(gridItems, continueWatchingOffset) {
+        buildSectionMapping(gridItems, continueWatchingOffset)
     }
 
     // Pre-compute whether hero exists to avoid repeated list scan in derivedStateOf
@@ -257,35 +263,8 @@ fun GridHomeContent(
         gridFocusState.focusedItemKey == "hero"
     val firstGridItemFocusRequester = remember { FocusRequester() }
     val hasContinueWatching = continueWatchingItems.isNotEmpty()
-    val firstGridSectionIsApps = remember(gridItems) {
-        gridItems.firstOrNull { it is GridItem.Content || it is GridItem.SeeAll || it is GridItem.CollectionFolder || it is GridItem.InstalledAppsRow } is GridItem.InstalledAppsRow
-    }
     val hasStandaloneFocusableGridItem = remember(gridItems) {
-        gridItems.any { it is GridItem.Content || it is GridItem.SeeAll || it is GridItem.InstalledAppsRow }
-    }
-
-    // Scroll Home back to the top when asked for (sidebar Home button or the device HOME key).
-    // Only trigger values this screen has not handled yet are applied, so a normal return to Home
-    // (e.g. Back) keeps the previous scroll position.
-    val handledScrollToTopTrigger = rememberSaveable { mutableIntStateOf(0) }
-    LaunchedEffect(scrollToTopTrigger) {
-        if (scrollToTopTrigger <= handledScrollToTopTrigger.intValue) return@LaunchedEffect
-        handledScrollToTopTrigger.intValue = scrollToTopTrigger
-        gridState.scrollToItem(0, 0)
-        // Re-focus whatever now sits at the top; the previously focused card was scrolled out of the
-        // composition, which would otherwise leave the D-pad without a focused target.
-        val candidates = buildList {
-            if (hasHero) add(heroFocusRequester)
-            if (hasContinueWatching) add(cwRowFocusRequester)
-            if (hasStandaloneFocusableGridItem) add(firstGridItemFocusRequester)
-        }
-        if (candidates.isEmpty()) return@LaunchedEffect
-        repeat(4) {
-            withFrameNanos { }
-            for (requester in candidates) {
-                if (runCatching { requester.requestFocus() }.isSuccess) return@LaunchedEffect
-            }
-        }
+        gridItems.any { it is GridItem.Content || it is GridItem.SeeAll }
     }
 
     // Once the user scrolls, initial focus must not pull back to the hero.
@@ -361,7 +340,6 @@ fun GridHomeContent(
                 is GridItem.SeeAll -> "see_all_${item.addonBaseUrl.hashCode()}_${item.catalogId}_${item.addonId}_${item.type}"
                 is GridItem.CollectionHeader -> "col_header_${item.collectionId}"
                 is GridItem.CollectionFolder -> "col_folder_${item.collectionId}_${item.folder.id}"
-                is GridItem.InstalledAppsRow -> INSTALLED_APPS_CATALOG_KEY
             }
             item to key
         }
@@ -371,7 +349,7 @@ fun GridHomeContent(
     // are "pre-section" items (e.g. Hero). Continue Watching goes between them and the rest.
     val firstSectionIndex = remember(gridItemsWithKeys) {
         gridItemsWithKeys.indexOfFirst { (item, _) ->
-            item is GridItem.SectionDivider || item is GridItem.CollectionHeader || item is GridItem.InstalledAppsRow
+            item is GridItem.SectionDivider || item is GridItem.CollectionHeader
         }
     }
     val preItems = remember(gridItemsWithKeys, firstSectionIndex) {
@@ -422,16 +400,13 @@ fun GridHomeContent(
             var i = 0
             while (i < postItems.size) {
                 val (item, _) = postItems[i]
-                if (item is GridItem.InstalledAppsRow) {
-                    result.add(postItems[i])
-                    i++
-                } else if (item is GridItem.SectionDivider || item is GridItem.CollectionHeader) {
+                if (item is GridItem.SectionDivider || item is GridItem.CollectionHeader) {
                     // Collect all items in this section
                     result.add(postItems[i])
                     i++
                     val sectionContent = mutableListOf<Pair<GridItem, String>>()
                     var seeAllItem: Pair<GridItem, String>? = null
-                    while (i < postItems.size && postItems[i].first !is GridItem.SectionDivider && postItems[i].first !is GridItem.CollectionHeader && postItems[i].first !is GridItem.InstalledAppsRow) {
+                    while (i < postItems.size && postItems[i].first !is GridItem.SectionDivider && postItems[i].first !is GridItem.CollectionHeader) {
                         if (postItems[i].first is GridItem.SeeAll) {
                             seeAllItem = postItems[i]
                         } else if (postItems[i].first is GridItem.Content) {
@@ -505,7 +480,7 @@ fun GridHomeContent(
                     key = { it.second },
                     span = { pair ->
                         val spanCount = when (pair.first) {
-                            is GridItem.Hero, is GridItem.SectionDivider, is GridItem.CollectionHeader, is GridItem.InstalledAppsRow -> maxLineSpan
+                            is GridItem.Hero, is GridItem.SectionDivider, is GridItem.CollectionHeader -> maxLineSpan
                             else -> 1
                         }
                         GridItemSpan(spanCount)
@@ -518,7 +493,6 @@ fun GridHomeContent(
                             is GridItem.SeeAll -> "see_all"
                             is GridItem.CollectionHeader -> "collection_header"
                             is GridItem.CollectionFolder -> "collection_folder"
-                            is GridItem.InstalledAppsRow -> "installed_apps_row"
                         }
                     }
                 ) { (gridItem, itemKey) ->
@@ -559,6 +533,10 @@ fun GridHomeContent(
             }
 
             // Emit Continue Watching as a dedicated item
+            // Live TV fork: the Live TV row, above Continue watching (when set so).
+            if (liveTvRowAbove == true) item(key = "live_tv_home_above", span = { GridItemSpan(maxLineSpan) }, contentType = "live_tv_home") {
+                com.nuvio.tv.livetv.home.LiveTvHomeRow(above = true, startPadding = 0.dp, titleStyle = MaterialTheme.typography.headlineMedium)
+            }
             if (continueWatchingItems.isNotEmpty()) {
                 item(
                     key = "continue_watching",
@@ -572,6 +550,7 @@ fun GridHomeContent(
                             cwPendingScrollToStart.intValue = 0
                         }
                     }
+                    androidx.compose.runtime.CompositionLocalProvider(com.nuvio.tv.livetv.home.LocalLiveTvHintHere provides (liveTvRowAbove == true)) {
                     GridContinueWatchingSection(
                         modifier = Modifier.fillMaxWidth(),
                         fullWidth = gridWidth,
@@ -623,10 +602,15 @@ fun GridHomeContent(
                         posterCardWidth = posterCardStyle.width,
                         posterCardHeight = posterCardStyle.height
                     )
+                    }
                 }
             }
 
             // Emit Upcoming section if SPLIT_UPCOMING mode has upcoming items
+            // Live TV fork: the Live TV row, below Continue watching (the default).
+            if (liveTvRowAbove == false) item(key = "live_tv_home_below", span = { GridItemSpan(maxLineSpan) }, contentType = "live_tv_home") {
+                com.nuvio.tv.livetv.home.LiveTvHomeRow(above = false, startPadding = 0.dp, titleStyle = MaterialTheme.typography.headlineMedium)
+            }
             if (uiState.continueWatchingEnabled && uiState.upcomingItems.isNotEmpty()) {
                 item(
                     key = "upcoming_section",
@@ -658,13 +642,7 @@ fun GridHomeContent(
                         rowFocusRequester = upcomingRowFocusRequester,
                         listState = upcomingListState,
                         onItemFocused = { lastFocusedUpcomingIndex.intValue = it; activeCwRowKey.value = "upcoming_section" },
-                        onItemClick = { item ->
-                            val (id, type) = when (item) {
-                                is ContinueWatchingItem.InProgress -> item.progress.contentId to item.progress.contentType
-                                is ContinueWatchingItem.NextUp -> item.info.contentId to item.info.contentType
-                            }
-                            onNavigateToDetail(id, type, "")
-                        },
+                        onItemClick = onContinueWatchingClick,
                         onStartFromBeginning = onContinueWatchingStartFromBeginning,
                         showManualPlayOption = showContinueWatchingManualPlayOption,
                         onPlayManually = onContinueWatchingPlayManually,
@@ -703,8 +681,7 @@ fun GridHomeContent(
                         cardStyle = uiState.continueWatchingCardStyle,
                         cornerRadius = posterCardStyle.cornerRadius,
                         posterCardWidth = posterCardStyle.width,
-                        posterCardHeight = posterCardStyle.height,
-                        isUpcomingSection = true
+                        posterCardHeight = posterCardStyle.height
                     )
                 }
             }
@@ -716,7 +693,7 @@ fun GridHomeContent(
                     key = { it.second },
                     span = { pair ->
                         val spanCount = when (pair.first) {
-                            is GridItem.Hero, is GridItem.SectionDivider, is GridItem.CollectionHeader, is GridItem.InstalledAppsRow -> maxLineSpan
+                            is GridItem.Hero, is GridItem.SectionDivider, is GridItem.CollectionHeader -> maxLineSpan
                             else -> 1
                         }
                         GridItemSpan(spanCount)
@@ -729,7 +706,6 @@ fun GridHomeContent(
                             is GridItem.SeeAll -> "see_all"
                             is GridItem.CollectionHeader -> "collection_header"
                             is GridItem.CollectionFolder -> "collection_folder"
-                            is GridItem.InstalledAppsRow -> "installed_apps_row"
                         }
                     }
                 ) { (gridItem, itemKey) ->
@@ -783,29 +759,11 @@ fun GridHomeContent(
                         )
                     }
 
-                    is GridItem.InstalledAppsRow -> {
-                        InstalledAppsRowSection(
-                            apps = gridItem.apps,
-                            listState = installedAppsListState,
-                            rowFocusRequester = installedAppsRowFocusRequester,
-                            horizontalPadding = 0.dp,
-                            focusedItemIndex = if (shouldRequestInitialFocus && !hasHero && !hasContinueWatching && firstGridSectionIsApps && gridItem.apps.isNotEmpty()) 0 else -1,
-                            focusRequesterForPackage = { packageName ->
-                                focusRequesters.getOrPut("installed_app_$packageName") { FocusRequester() }
-                            },
-                            onItemFocused = { index ->
-                                lastFocusedGridItemKey.value = "installed_app_${gridItem.apps.getOrNull(index)?.packageName}"
-                                activeCwRowKey.value = null
-                                onFocusedRowKeyChanged(INSTALLED_APPS_CATALOG_KEY)
-                            }
-                        )
-                    }
                     is GridItem.Content -> {
                         val focusRequester = if (
                             shouldRequestInitialFocus &&
                             !hasHero &&
                             !hasContinueWatching &&
-                            !firstGridSectionIsApps &&
                             !firstGridFocusableAssigned
                         ) {
                             firstGridFocusableAssigned = true
@@ -857,7 +815,6 @@ fun GridHomeContent(
                             shouldRequestInitialFocus &&
                             !hasHero &&
                             !hasContinueWatching &&
-                            !firstGridSectionIsApps &&
                             !firstGridFocusableAssigned
                         ) {
                             firstGridFocusableAssigned = true
@@ -915,7 +872,8 @@ fun GridHomeContent(
         GridStickyHeader(
             gridState = gridState,
             sectionMapping = sectionMapping,
-            isScrolledPastHeroState = isScrolledPastHeroState
+            isScrolledPastHeroState = isScrolledPastHeroState,
+            fixedTitle = stickyTitle
         )
     }
 }
@@ -924,13 +882,15 @@ fun GridHomeContent(
 private fun GridStickyHeader(
     gridState: androidx.compose.foundation.lazy.grid.LazyGridState,
     sectionMapping: SectionMapping,
-    isScrolledPastHeroState: androidx.compose.runtime.State<Boolean>
+    isScrolledPastHeroState: androidx.compose.runtime.State<Boolean>,
+    fixedTitle: String? = null
 ) {
-    val currentSectionName by remember(gridState, sectionMapping) {
+    val sectionName by remember(gridState, sectionMapping) {
         derivedStateOf {
             sectionMapping.findSectionForIndex(gridState.firstVisibleItemIndex)?.catalogName
         }
     }
+    val currentSectionName = fixedTitle ?: sectionName
 
     AnimatedVisibility(
         visible = isScrolledPastHeroState.value && currentSectionName != null,
@@ -1237,23 +1197,16 @@ private class SectionMapping(
     }
 }
 
-private fun buildSectionMapping(gridItems: List<GridItem>, indexOffset: Int = 0, installedAppsTitle: String = ""): SectionMapping {
+private fun buildSectionMapping(gridItems: List<GridItem>, indexOffset: Int = 0): SectionMapping {
     val mapping = mutableMapOf<Int, SectionInfo>()
     gridItems.forEachIndexed { index, item ->
-        when (item) {
-            is GridItem.SectionDivider -> mapping[index + indexOffset] = SectionInfo(
+        if (item is GridItem.SectionDivider) {
+            mapping[index + indexOffset] = SectionInfo(
                 catalogName = item.catalogName,
                 catalogId = item.catalogId,
                 addonId = item.addonId,
                 type = item.type
             )
-            is GridItem.InstalledAppsRow -> mapping[index + indexOffset] = SectionInfo(
-                catalogName = installedAppsTitle,
-                catalogId = INSTALLED_APPS_CATALOG_KEY,
-                addonId = "",
-                type = "apps"
-            )
-            else -> Unit
         }
     }
     return SectionMapping(mapping)

@@ -175,6 +175,21 @@ internal fun PlayerRuntimeController.initializePlayer(
 
     scope.launch {
         try {
+            com.nuvio.tv.core.vpn.awaitVpnForPlayback(context, url)
+            val proxy = com.nuvio.tv.core.vpn.awaitNativeVpnProxy(context)
+            if (!afrPreflightGate.isCurrent(afrPreflightToken)) { proxy?.close(); return@launch }
+            nativeVpnProxy?.close()
+            nativeVpnProxy = proxy
+        } catch (cancelled: kotlinx.coroutines.CancellationException) {
+            throw cancelled
+        } catch (failure: Exception) {
+            _uiState.update {
+                it.copy(error = failure.message ?: "VPN connection could not be verified.", showLoadingOverlay = false)
+            }
+            return@launch
+        }
+        if (!afrPreflightGate.isCurrent(afrPreflightToken)) return@launch
+        try {
             if (allowEngineFailover) {
                 startupEngineFailoverTriggered = false
             }
@@ -836,7 +851,7 @@ internal fun PlayerRuntimeController.initializePlayer(
 
             // ── Extractors & DV Hook ──
             val extractorsFactory = DefaultExtractorsFactory()
-                .setTsExtractorFlags(DefaultTsPayloadReaderFactory.FLAG_ENABLE_HDMV_DTS_AUDIO_STREAMS or com.nuvio.tv.reshaped.livetv.LiveTvTsFlags.extraFor(url)) // Live TV starts on any I-frame
+                .setTsExtractorFlags(DefaultTsPayloadReaderFactory.FLAG_ENABLE_HDMV_DTS_AUDIO_STREAMS)
                 .setTsExtractorTimestampSearchBytes(1500 * TsExtractor.TS_PACKET_SIZE)
 
             // Manual Convert-to-DV8.1 uses mode 2; if a prior attempt at this stream
@@ -1489,7 +1504,6 @@ internal fun PlayerRuntimeController.initializePlayer(
 
                     override fun onPlayerError(error: PlaybackException) {
                         if (isReleasingPlayer && error.errorCode == PlaybackException.ERROR_CODE_TIMEOUT) return
-                        if (!isInBackground && com.nuvio.tv.reshaped.livetv.LiveEdgeRecovery.tryRejoin(error, _exoPlayer)) return // Live TV: rejoin the live edge
                         cancelFirstFrameWatchdog()
                         val detailedError = error.toDisplayMessage(context)
                         cancelStableProgressReset()
@@ -2256,8 +2270,7 @@ private class SubtitleOffsetRenderersFactory(
                     .setAudioCapabilities(AudioOutputRouteDetector.bluetoothPcmOnlyCapabilities())
             }
             forceOpticalPassthrough -> {
-                @Suppress("DEPRECATION")
-                DefaultAudioSink.Builder()
+                DefaultAudioSink.Builder(context)
                     .setAudioCapabilities(buildStableAudioCapabilities(context, true))
             }
             else -> DefaultAudioSink.Builder(context)

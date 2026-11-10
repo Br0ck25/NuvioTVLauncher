@@ -11,7 +11,9 @@ import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.SupervisorJob
 import kotlinx.coroutines.flow.distinctUntilChanged
+import kotlinx.coroutines.flow.first
 import kotlinx.coroutines.launch
+import kotlinx.coroutines.runBlocking
 
 object SentryInitializer {
     private val droppedIssueText = listOf(
@@ -25,8 +27,10 @@ object SentryInitializer {
     fun start(application: Application, settings: SentrySettingsDataStore) {
         if (started) return
         started = true
-        // The DataStore read stays off the main thread: Application.onCreate must not wait on disk.
-        // The first emission applies the stored setting, so only crashes in the first moments go unreported.
+        val initialEnabled = runBlocking(Dispatchers.IO) {
+            settings.enabled.first()
+        }
+        applyEnabled(application, initialEnabled)
         scope.launch {
             settings.enabled.distinctUntilChanged().collect { enabled ->
                 applyEnabled(application, enabled)

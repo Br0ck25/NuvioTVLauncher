@@ -1,7 +1,6 @@
 package com.nuvio.tv.data.local
 
 import android.util.Log
-import com.nuvio.tv.BuildConfig
 import androidx.datastore.core.DataStore
 import androidx.datastore.preferences.core.booleanPreferencesKey
 import androidx.datastore.preferences.core.edit
@@ -502,7 +501,7 @@ class WatchProgressPreferences @Inject constructor(
                     }
                     else -> {
                         local[key] = mergeDisplayMetadata(remote, existing)
-                        if (BuildConfig.DEBUG) Log.d("WatchProgressPrefs", "  merged key=$key (existing=${existing != null})")
+                        Log.d("WatchProgressPrefs", "  merged key=$key (existing=${existing != null})")
                     }
                 }
             }

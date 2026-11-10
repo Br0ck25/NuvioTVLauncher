@@ -99,7 +99,6 @@ class MdbListEpisodeMappingService @Inject constructor(
     }
 
     private suspend fun load(contentId: String, tmdbShowId: Long?): MdbListEpisodeMapping? {
-        if (BuildConfig.TMDB_API_KEY.isBlank()) return null
         val addon = addonEpisodes.episodes(contentId, "series")
         if (addon.isEmpty()) return null
         val tmdbId = tmdbShowId?.takeIf { it in 1..Int.MAX_VALUE }?.toInt() ?: lookupTmdbShowId(contentId) ?: return null

@@ -10,7 +10,6 @@ import `is`.xyz.mpv.BaseMPVView
 import `is`.xyz.mpv.MPV
 import `is`.xyz.mpv.Utils
 import java.util.Locale
-import kotlin.math.abs
 import kotlin.math.pow
 import kotlin.math.roundToLong
 
@@ -47,6 +46,20 @@ class NuvioMpvSurfaceView @JvmOverloads constructor(
             cacheDir = context.cacheDir.path
         )
         initialized = true
+    }
+
+    private var vpnProxy: String? = null
+    private var originalHttpProxy: String? = null
+    fun applyVpnProxy(address: String?) {
+        ensureInitialized()
+        if (vpnProxy == null && address != null) originalHttpProxy = mpv.getPropertyString("options/http-proxy") ?: ""
+        if (vpnProxy != address) {
+            val expected = address ?: originalHttpProxy.orEmpty()
+            mpv.setPropertyString("options/http-proxy", expected)
+            check(mpv.getPropertyString("options/http-proxy").orEmpty() == expected) { "Playback VPN proxy could not be applied." }
+            vpnProxy = address
+            lastMediaRequestKey = null
+        }
     }
 
     fun setMedia(url: String, headers: Map<String, String>, startPositionMs: Long = 0L) {
@@ -242,15 +255,9 @@ class NuvioMpvSurfaceView @JvmOverloads constructor(
 
     fun currentPositionMs(): Long {
         if (!initialized) return 0L
-        val timePos = mpv.getPropertyDouble("time-pos/full")
+        val seconds = mpv.getPropertyDouble("time-pos/full")
             ?: mpv.getPropertyDouble("time-pos")
             ?: 0.0
-        val seconds = mpvPlaybackPositionSec(
-            timePosSec = timePos,
-            audioPtsSec = mpv.getPropertyDouble("audio-pts"),
-            seeking = mpv.getPropertyBoolean("seeking") == true,
-            audioDelaySec = mpv.getPropertyDouble("audio-delay") ?: 0.0
-        )
         return (seconds * 1000.0).roundToLong().coerceAtLeast(0L)
     }
 
@@ -738,6 +745,8 @@ class NuvioMpvSurfaceView @JvmOverloads constructor(
         runCatching { destroy() }
             .onFailure { Log.w(TAG, "Failed to destroy libmpv view cleanly: ${it.message}") }
         initialized = false
+        vpnProxy = null
+        originalHttpProxy = null
         hasQueuedInitialMedia = false
         lastMediaRequestKey = null
         pendingInitialMediaUrl = null
@@ -957,25 +966,4 @@ internal fun isMpvPositionFromMediaRequest(
     if (requestedUrl == null) return true
     if (currentPath.isNullOrEmpty()) return false
     return currentPath == requestedUrl || currentPath != pathAtRequest
-}
-
-/** How far video may trail the audio clock outside a seek before its position is distrusted. */
-internal const val MPV_VIDEO_PTS_GLITCH_MIN_SEC = 10.0
-
-/**
- * h264_mediacodec stamps a packet that has no PTS with 0 instead of leaving it unset. On streams
- * with such packets (seen on some HLS hosts) mpv shows that frame as `time-pos` 0 while audio keeps
- * playing at the real position, so the position snaps to the start for a moment: the Skip Intro
- * button flashes mid-episode and a seek made then is counted from 0. When the video position is far
- * behind a running audio clock outside a seek, the audio clock holds the real position.
- */
-internal fun mpvPlaybackPositionSec(
-    timePosSec: Double,
-    audioPtsSec: Double?,
-    seeking: Boolean,
-    audioDelaySec: Double
-): Double {
-    if (audioPtsSec == null || seeking) return timePosSec
-    val glitchMinSec = MPV_VIDEO_PTS_GLITCH_MIN_SEC + abs(audioDelaySec)
-    return if (audioPtsSec - timePosSec > glitchMinSec) audioPtsSec else timePosSec
 }

@@ -193,19 +193,6 @@ class HomeCatalogSyncSupportTest {
         assertFalse(payload.items.last().enabled)
     }
 
-    @Test
-    fun `installed apps row stays device local and keeps its position and disabled state`() {
-        val local = listOf("addon_movie_movies", com.nuvio.tv.core.apps.INSTALLED_APPS_CATALOG_KEY, "addon_series_shows")
-        val remote = listOf("addon_movie_movies", "addon_series_shows")
-        assertEquals(local, remote.withDeviceLocalCatalogKeys(local))
-        assertTrue(isDeviceLocalCatalogKey(com.nuvio.tv.core.apps.INSTALLED_APPS_CATALOG_KEY))
-        val payload = buildHomeCatalogSyncPayload(emptyList(), emptyList(), LocalHomeCatalogSettingsState(orderKeys = local, disabledKeys = setOf(com.nuvio.tv.core.apps.INSTALLED_APPS_CATALOG_KEY)))
-        assertTrue(payload.items.isEmpty())
-        val disabled = payload.items.filterNot { it.enabled }.map { homeCatalogKey(it.addonId, it.type, it.catalogId) } +
-            local.filter(::isDeviceLocalCatalogKey)
-        assertEquals(listOf(com.nuvio.tv.core.apps.INSTALLED_APPS_CATALOG_KEY), disabled)
-    }
-
     private fun testAddon(
         id: String,
         baseUrl: String,

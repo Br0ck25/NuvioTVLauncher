@@ -21,15 +21,17 @@ class SettingsCatalogTest {
                 SettingsCategory.PROFILES,
                 SettingsCategory.APPEARANCE,
                 SettingsCategory.LAYOUT,
+                SettingsCategory.SIDE_MENU,
                 SettingsCategory.CONTENT_DISCOVERY,
-                SettingsCategory.CALENDAR,
-                SettingsCategory.LIVE_TV,
                 SettingsCategory.PLAYBACK,
+                SettingsCategory.LIVE_TV,
+                SettingsCategory.ON_DEMAND,
+                SettingsCategory.SPORTS,
+                SettingsCategory.CALENDAR,
+                SettingsCategory.VPN,
                 SettingsCategory.INTEGRATION,
                 SettingsCategory.TRACKING,
                 SettingsCategory.ADVANCED,
-                SettingsCategory.DEFAULT_LAUNCHER,
-                SettingsCategory.REMOTE_BUTTONS,
                 SettingsCategory.ABOUT,
                 SettingsCategory.DEBUG
             ),
@@ -95,6 +97,7 @@ class SettingsCatalogTest {
             listOf(
                 SettingsCategory.APPEARANCE,
                 SettingsCategory.CONTENT_DISCOVERY,
+                SettingsCategory.LIVE_TV,
                 SettingsCategory.INTEGRATION,
                 SettingsCategory.ADVANCED
             ),
@@ -126,21 +129,6 @@ class SettingsCatalogTest {
             listOf(SettingsCategory.ACCOUNT, SettingsCategory.PROFILES, SettingsCategory.WATCH_PARTY),
             visibleSettingsCategories(true, isEssentialMode = false, isDebugBuild = false, isWatchPartyAvailable = true).take(3)
         )
-    }
-
-    @Test
-    fun `default launcher setup is available in every profile and experience mode`() {
-        allCombinations().forEach { categories ->
-            assertTrue(SettingsCategory.DEFAULT_LAUNCHER in categories)
-        }
-    }
-
-    @Test
-    fun `remote buttons mapper is available in every profile and experience mode under system`() {
-        assertEquals(SettingsRailGroup.SYSTEM, SettingsCategory.REMOTE_BUTTONS.group)
-        allCombinations().forEach { categories ->
-            assertTrue(SettingsCategory.REMOTE_BUTTONS in categories)
-        }
     }
 
     private fun allCombinations(): List<List<SettingsCategory>> =

@@ -42,19 +42,21 @@ import androidx.compose.material.icons.rounded.PlayArrow
 import androidx.compose.material.icons.filled.BugReport
 import androidx.compose.material.icons.filled.Build
 import androidx.compose.material.icons.filled.CloudDownload
-import androidx.compose.material.icons.filled.DateRange
 import androidx.compose.material.icons.filled.Explore
 import androidx.compose.material.icons.filled.FastForward
 import androidx.compose.material.icons.filled.GridView
-import androidx.compose.material.icons.filled.Home
 import androidx.compose.material.icons.filled.Info
 import androidx.compose.material.icons.filled.Link
 import androidx.compose.material.icons.filled.LiveTv
+import androidx.compose.material.icons.filled.EmojiEvents
+import androidx.compose.material.icons.filled.Menu
+import androidx.compose.material.icons.filled.Movie
+import androidx.compose.material.icons.filled.DateRange
 import androidx.compose.material.icons.filled.Palette
 import androidx.compose.material.icons.filled.People
 import androidx.compose.material.icons.filled.Person
 import androidx.compose.material.icons.filled.Settings
-import androidx.compose.material.icons.filled.SettingsRemote
+import androidx.compose.material.icons.filled.Shield
 import androidx.compose.material.icons.filled.Sync
 import androidx.compose.material.icons.filled.Tune
 import androidx.compose.runtime.Composable
@@ -164,23 +166,27 @@ private fun settingsSectionSpec(category: SettingsCategory): SettingsSectionSpec
     SettingsCategory.APPEARANCE -> SettingsSectionSpec(category, stringResource(R.string.appearance_title), Icons.Default.Palette, destination = SettingsSectionDestination.Inline)
     SettingsCategory.LAYOUT -> SettingsSectionSpec(category, stringResource(R.string.settings_layout), Icons.Default.GridView, destination = SettingsSectionDestination.Inline)
     SettingsCategory.CONTENT_DISCOVERY -> SettingsSectionSpec(category, stringResource(R.string.settings_content_discovery), Icons.Default.Explore, destination = SettingsSectionDestination.Inline)
-    SettingsCategory.CALENDAR -> SettingsSectionSpec(category, "Calendar", Icons.Filled.DateRange, destination = SettingsSectionDestination.Inline)
-    SettingsCategory.LIVE_TV -> SettingsSectionSpec(category, stringResource(R.string.live_tv_title), Icons.Default.LiveTv, destination = SettingsSectionDestination.Inline)
     SettingsCategory.PLAYBACK -> SettingsSectionSpec(category, stringResource(R.string.settings_playback), Icons.Rounded.PlayArrow, destination = SettingsSectionDestination.Inline)
     SettingsCategory.INTEGRATION -> SettingsSectionSpec(category, stringResource(R.string.settings_integration), Icons.Default.Link, destination = SettingsSectionDestination.Inline)
     SettingsCategory.TRACKING -> SettingsSectionSpec(category, stringResource(R.string.settings_tracking_title), Icons.Default.Sync, destination = SettingsSectionDestination.Inline)
+    SettingsCategory.VPN -> SettingsSectionSpec(category, stringResource(com.nuvio.vpn.android.R.string.vpn_profiles_title), Icons.Default.Shield, destination = SettingsSectionDestination.Inline)
     SettingsCategory.ADVANCED -> SettingsSectionSpec(category, stringResource(R.string.settings_advanced), Icons.Default.Build, destination = SettingsSectionDestination.Inline)
-    SettingsCategory.DEFAULT_LAUNCHER -> SettingsSectionSpec(category, stringResource(R.string.settings_default_launcher), Icons.Default.Home, destination = SettingsSectionDestination.Inline)
-    SettingsCategory.REMOTE_BUTTONS -> SettingsSectionSpec(category, stringResource(R.string.settings_remote_buttons), Icons.Default.SettingsRemote, destination = SettingsSectionDestination.Inline)
     SettingsCategory.ABOUT -> SettingsSectionSpec(category, stringResource(R.string.about_title), Icons.Default.Info, destination = SettingsSectionDestination.Inline)
     SettingsCategory.DEBUG -> SettingsSectionSpec(category, stringResource(R.string.settings_debug), Icons.Default.BugReport, destination = SettingsSectionDestination.Inline)
+    // Live TV fork
+    SettingsCategory.LIVE_TV -> SettingsSectionSpec(category, "Live TV", Icons.Default.LiveTv, destination = SettingsSectionDestination.Inline)
+    SettingsCategory.ON_DEMAND -> SettingsSectionSpec(category, "On Demand", Icons.Default.Movie, destination = SettingsSectionDestination.Inline)
+    SettingsCategory.SPORTS -> SettingsSectionSpec(category, "Sports", Icons.Default.EmojiEvents, destination = SettingsSectionDestination.Inline)
+    SettingsCategory.SIDE_MENU -> SettingsSectionSpec(category, "Menu & Features", Icons.Default.Menu, destination = SettingsSectionDestination.Inline)
+    SettingsCategory.CALENDAR -> SettingsSectionSpec(category, "Calendar", Icons.Default.DateRange, destination = SettingsSectionDestination.Inline)
     SettingsCategory.EXPERIENCE -> SettingsSectionSpec(category, stringResource(R.string.settings_experience), Icons.Default.Tune, destination = SettingsSectionDestination.Inline)
 }
 
 @Composable
 fun SettingsScreen(
     showBuiltInHeader: Boolean = true,
-    onBackPress: (() -> Unit)? = null,
+    onNavigateToLiveTv: () -> Unit = {},
+    onNavigateToSportsTeams: () -> Unit = {},
     onNavigateToAddons: () -> Unit = {},
     onNavigateToPlugins: () -> Unit = {},
     onNavigateToAuthQrSignIn: () -> Unit = {},
@@ -241,14 +247,16 @@ fun SettingsScreen(
             SettingsCategory.WATCH_PARTY to FocusRequester(),
             SettingsCategory.LAYOUT to FocusRequester(),
             SettingsCategory.CONTENT_DISCOVERY to FocusRequester(),
-            SettingsCategory.CALENDAR to FocusRequester(),
-            SettingsCategory.LIVE_TV to FocusRequester(),
             SettingsCategory.INTEGRATION to FocusRequester(),
             SettingsCategory.TRACKING to FocusRequester(),
+            SettingsCategory.LIVE_TV to FocusRequester(),
+            SettingsCategory.ON_DEMAND to FocusRequester(),
+            SettingsCategory.SPORTS to FocusRequester(),
+            SettingsCategory.VPN to FocusRequester(),
+            SettingsCategory.SIDE_MENU to FocusRequester(),
+            SettingsCategory.CALENDAR to FocusRequester(),
             SettingsCategory.PLAYBACK to FocusRequester(),
             SettingsCategory.ADVANCED to FocusRequester(),
-            SettingsCategory.DEFAULT_LAUNCHER to FocusRequester(),
-            SettingsCategory.REMOTE_BUTTONS to FocusRequester(),
             SettingsCategory.ABOUT to FocusRequester(),
             SettingsCategory.ACCOUNT to FocusRequester()
         )
@@ -368,10 +376,6 @@ fun SettingsScreen(
     // Back inside the options pane returns to the category rail before it leaves settings, the
     // way back inside a row returns to the start of that row. Anything the pane declares itself,
     // such as the integrations sub sections, composes later and so is asked first.
-    BackHandler(enabled = !detailHasFocus && onBackPress != null) {
-        onBackPress?.invoke()
-    }
-
     BackHandler(enabled = detailHasFocus) {
         // Cleared up front rather than after the request. The rail reports its own focus a frame
         // later, and until it does a second quick press would be consumed here again instead of
@@ -448,6 +452,7 @@ fun SettingsScreen(
                     allowDetailAutofocus = false
                     when (section.category) {
                         SettingsCategory.ACCOUNT -> onNavigateToAuthQrSignIn()
+                        SettingsCategory.LIVE_TV -> onNavigateToLiveTv()
                         else -> Unit
                     }
                 } else {
@@ -678,7 +683,8 @@ fun SettingsScreen(
                                 onNavigateToAuthQrSignIn = onNavigateToAuthQrSignIn,
                                 onNavigateToSupportersContributors = onNavigateToSupportersContributors,
                                 onNavigateToLicensesAttributions = onNavigateToLicensesAttributions,
-                                onNavigateToWatchParty = onNavigateToWatchParty
+                                onNavigateToWatchParty = onNavigateToWatchParty,
+                                onNavigateToSportsTeams = onNavigateToSportsTeams
                             )
                         }
                     }
@@ -838,7 +844,8 @@ fun SettingsScreen(
                         onNavigateToAuthQrSignIn = onNavigateToAuthQrSignIn,
                         onNavigateToSupportersContributors = onNavigateToSupportersContributors,
                         onNavigateToLicensesAttributions = onNavigateToLicensesAttributions,
-                        onNavigateToWatchParty = onNavigateToWatchParty
+                        onNavigateToWatchParty = onNavigateToWatchParty,
+                        onNavigateToSportsTeams = onNavigateToSportsTeams
                     )
                 }
             }
@@ -868,9 +875,17 @@ private fun SettingsDetailPane(
     onNavigateToAuthQrSignIn: () -> Unit,
     onNavigateToSupportersContributors: () -> Unit,
     onNavigateToLicensesAttributions: () -> Unit,
-    onNavigateToWatchParty: () -> Unit
+    onNavigateToWatchParty: () -> Unit,
+    onNavigateToSportsTeams: () -> Unit = {}
 ) {
     when (selectedCategory) {
+        SettingsCategory.VPN -> VpnSettingsContent(
+            initialFocusRequester = if (allowDetailAutofocus) {
+                contentFocusRequesters[SettingsCategory.VPN]
+            } else {
+                null
+            }
+        )
         SettingsCategory.EXPERIENCE -> EssentialAdvancedSettingsContent(
             experienceModeViewModel = experienceModeViewModel,
             initialFocusRequester = if (allowDetailAutofocus) {
@@ -962,20 +977,6 @@ private fun SettingsDetailPane(
             animeSkipFocusRequester = integrationAnimeSkipFocusRequester,
             autoFocusEnabled = allowDetailAutofocus
         )
-        SettingsCategory.DEFAULT_LAUNCHER -> DefaultLauncherSettingsContent(
-            initialFocusRequester = if (allowDetailAutofocus) {
-                contentFocusRequesters[SettingsCategory.DEFAULT_LAUNCHER]
-            } else {
-                null
-            }
-        )
-        SettingsCategory.REMOTE_BUTTONS -> ButtonMapperSettingsContent(
-            initialFocusRequester = if (allowDetailAutofocus) {
-                contentFocusRequesters[SettingsCategory.REMOTE_BUTTONS]
-            } else {
-                null
-            }
-        )
         SettingsCategory.ABOUT -> AboutSettingsContent(
             onNavigateToSupportersContributors = onNavigateToSupportersContributors,
             onNavigateToLicensesAttributions = onNavigateToLicensesAttributions,
@@ -991,20 +992,6 @@ private fun SettingsDetailPane(
             showPlugins = AppFeaturePolicy.pluginsEnabled && !isEssentialMode,
             initialFocusRequester = if (allowDetailAutofocus) {
                 contentFocusRequesters[SettingsCategory.CONTENT_DISCOVERY]
-            } else {
-                null
-            }
-        )
-        SettingsCategory.CALENDAR -> CalendarSettingsContent(
-            initialFocusRequester = if (allowDetailAutofocus) {
-                contentFocusRequesters[SettingsCategory.CALENDAR]
-            } else {
-                null
-            }
-        )
-        SettingsCategory.LIVE_TV -> LiveTvSettingsContent(
-            initialFocusRequester = if (allowDetailAutofocus) {
-                contentFocusRequesters[SettingsCategory.LIVE_TV]
             } else {
                 null
             }
@@ -1025,6 +1012,44 @@ private fun SettingsDetailPane(
             }
         )
         SettingsCategory.DEBUG -> DebugSettingsContent()
+        SettingsCategory.LIVE_TV -> LiveTvSettingsContent(
+            page = LiveTvPage.HUB,
+            initialFocusRequester = if (allowDetailAutofocus) {
+                contentFocusRequesters[SettingsCategory.LIVE_TV]
+            } else {
+                null
+            }
+        )
+        SettingsCategory.ON_DEMAND -> LiveTvSettingsContent(
+            page = LiveTvPage.ON_DEMAND,
+            initialFocusRequester = if (allowDetailAutofocus) {
+                contentFocusRequesters[SettingsCategory.ON_DEMAND]
+            } else {
+                null
+            }
+        )
+        SettingsCategory.SIDE_MENU -> SideMenuSettingsContent(
+            initialFocusRequester = if (allowDetailAutofocus) {
+                contentFocusRequesters[SettingsCategory.SIDE_MENU]
+            } else {
+                null
+            }
+        )
+        SettingsCategory.CALENDAR -> CalendarSettingsContent(
+            initialFocusRequester = if (allowDetailAutofocus) {
+                contentFocusRequesters[SettingsCategory.CALENDAR]
+            } else {
+                null
+            }
+        )
+        SettingsCategory.SPORTS -> SportsSettingsContent(
+            onOpenTeams = onNavigateToSportsTeams,
+            initialFocusRequester = if (allowDetailAutofocus) {
+                contentFocusRequesters[SettingsCategory.SPORTS]
+            } else {
+                null
+            }
+        )
     }
 }
 

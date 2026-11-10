@@ -36,7 +36,7 @@ class LongPressKeyTracker(
             handledLongPress = false
         }
 
-        if (event.isLongPress || heldDurationMillis(event) >= timeoutMillis) {
+        if (event.isLongPress || event.repeatCount > 0 || heldDurationMillis(event) >= timeoutMillis) {
             if (!handledLongPress) {
                 handledLongPress = true
                 onLongPress()
@@ -49,7 +49,7 @@ class LongPressKeyTracker(
 
     private fun handleUp(event: KeyEvent, onLongPress: () -> Unit): Boolean {
         val wasHandled = handledLongPress && pressedKeyCode == event.keyCode
-        val isLongPress = !wasHandled && pressedKeyCode == event.keyCode && heldDurationMillis(event) >= timeoutMillis
+        val isLongPress = !wasHandled && heldDurationMillis(event) >= timeoutMillis
 
         reset()
 
@@ -66,7 +66,7 @@ class LongPressKeyTracker(
         return event.eventTime - startedAt
     }
 
-    fun reset() {
+    private fun reset() {
         pressedKeyCode = null
         pressedAtMillis = 0L
         handledLongPress = false

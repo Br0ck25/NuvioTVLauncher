@@ -10,14 +10,7 @@ import com.nuvio.tv.ui.theme.ThemeColors
 import com.nuvio.tv.ui.theme.brandWordmarkResource
 import com.nuvio.tv.ui.theme.createFocusRingStyle
 
-import android.content.Intent
 import android.graphics.Rect
-import android.provider.Settings
-import android.widget.Toast
-import androidx.compose.material.icons.Icons
-import androidx.compose.material.icons.filled.Settings
-import androidx.compose.material.icons.filled.Tv
-import androidx.compose.material3.Icon
 import android.view.KeyEvent as AndroidKeyEvent
 import androidx.activity.compose.BackHandler
 import androidx.compose.animation.AnimatedContent
@@ -69,7 +62,7 @@ import androidx.compose.runtime.Composable
 import androidx.compose.runtime.CompositionLocalProvider
 import androidx.compose.runtime.DisposableEffect
 import androidx.compose.runtime.LaunchedEffect
-import androidx.lifecycle.compose.collectAsStateWithLifecycle
+import androidx.compose.runtime.collectAsState
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
@@ -221,16 +214,16 @@ fun ProfileSelectionScreen(
     viewModel: ProfileSelectionViewModel = hiltViewModel()
 ) {
     val context = LocalContext.current
-    val profiles by viewModel.profiles.collectAsStateWithLifecycle()
-    val activeProfileId by viewModel.activeProfileId.collectAsStateWithLifecycle()
-    val avatarCatalog by viewModel.avatarCatalog.collectAsStateWithLifecycle()
-    val profileBackgroundCatalog by viewModel.profileBackgroundCatalog.collectAsStateWithLifecycle()
-    val hasProfileBackgroundAccess by viewModel.hasProfileBackgroundAccess.collectAsStateWithLifecycle()
-    val isCreating by viewModel.isCreating.collectAsStateWithLifecycle()
-    val isSaving by viewModel.isSaving.collectAsStateWithLifecycle()
-    val isCopyingSettings by viewModel.isCopyingSettings.collectAsStateWithLifecycle()
-    val profilePinEnabled by viewModel.profilePinEnabled.collectAsStateWithLifecycle()
-    val isPinOperationInProgress by viewModel.isPinOperationInProgress.collectAsStateWithLifecycle()
+    val profiles by viewModel.profiles.collectAsState()
+    val activeProfileId by viewModel.activeProfileId.collectAsState()
+    val avatarCatalog by viewModel.avatarCatalog.collectAsState()
+    val profileBackgroundCatalog by viewModel.profileBackgroundCatalog.collectAsState()
+    val hasProfileBackgroundAccess by viewModel.hasProfileBackgroundAccess.collectAsState()
+    val isCreating by viewModel.isCreating.collectAsState()
+    val isSaving by viewModel.isSaving.collectAsState()
+    val isCopyingSettings by viewModel.isCopyingSettings.collectAsState()
+    val profilePinEnabled by viewModel.profilePinEnabled.collectAsState()
+    val isPinOperationInProgress by viewModel.isPinOperationInProgress.collectAsState()
     val avatarImageUrlsById = remember(avatarCatalog, profiles) {
         buildMap {
             avatarCatalog.forEach { avatar -> put(avatar.id, avatar.imageUrl) }
@@ -263,7 +256,7 @@ fun ProfileSelectionScreen(
         }
     }
     val focusedProfile = profiles.firstOrNull { it.id == focusedProfileId }
-    val profileThemes by viewModel.profileThemes.collectAsStateWithLifecycle()
+    val profileThemes by viewModel.profileThemes.collectAsState()
     val focusedBrandWordmarkRes = remember(focusedProfileId, profileThemes) {
         val pid = focusedProfileId ?: return@remember null
         val theme = profileThemes[pid]
@@ -968,107 +961,12 @@ private fun ProfileSelectionMainContent(
 
         Spacer(modifier = Modifier.weight(1f, fill = true))
 
-        Box(modifier = Modifier.fillMaxWidth().height(48.dp)) {
-            Text(
-                text = screenHint,
-                modifier = Modifier.align(Alignment.Center),
-                color = NuvioTheme.colors.TextTertiary.copy(alpha = 0.9f),
-                fontSize = 14.sp,
-                fontWeight = FontWeight.Medium
-            )
-            if (!isManagementMode) {
-                val context = LocalContext.current
-                var settingsFocused by remember { mutableStateOf(false) }
-                var inputsFocused by remember { mutableStateOf(false) }
-                val settingsLabel = stringResource(R.string.apps_android_settings)
-                val inputsLabel = stringResource(R.string.profile_tv_inputs_label)
-                val hasTvInputs = remember {
-                    val candidateIntents = listOf(
-                        Intent("com.android.tv.action.VIEW_INPUTS"),
-                        Intent("com.google.android.tv.action.VIEW_INPUTS"),
-                        Intent("android.settings.TV_INPUTS"),
-                        Intent("android.settings.TV_INPUT_SETTINGS"),
-                        Intent("android.media.tv.action.VIEW_INPUTS")
-                    )
-                    candidateIntents.any { context.packageManager.resolveActivity(it, 0) != null }
-                }
-                Row(
-                    modifier = Modifier.align(Alignment.CenterEnd),
-                    horizontalArrangement = Arrangement.spacedBy(8.dp),
-                    verticalAlignment = Alignment.CenterVertically
-                ) {
-                    if (hasTvInputs) {
-                        Box(
-                            modifier = Modifier
-                                .size(48.dp)
-                                .onFocusChanged { inputsFocused = it.isFocused }
-                                .clip(CircleShape)
-                                .background(if (inputsFocused) NuvioTheme.colors.TextPrimary.copy(alpha = 0.2f) else Color.Transparent)
-                                .clickable(onClickLabel = inputsLabel) {
-                                    val intents = listOf(
-                                        Intent("com.android.tv.action.VIEW_INPUTS"),
-                                        Intent("com.google.android.tv.action.VIEW_INPUTS"),
-                                        Intent("android.settings.TV_INPUTS"),
-                                        Intent("android.settings.TV_INPUT_SETTINGS"),
-                                        Intent("android.media.tv.action.VIEW_INPUTS")
-                                    )
-                                    var launched = false
-                                    for (intent in intents) {
-                                        try {
-                                            intent.addFlags(Intent.FLAG_ACTIVITY_NEW_TASK)
-                                            if (context.packageManager.resolveActivity(intent, 0) != null) {
-                                                context.startActivity(intent)
-                                                launched = true
-                                                break
-                                            }
-                                        } catch (_: Exception) {}
-                                    }
-                                    if (!launched) {
-                                        try {
-                                            context.startActivity(Intent("com.android.tv.action.VIEW_INPUTS").addFlags(Intent.FLAG_ACTIVITY_NEW_TASK))
-                                        } catch (_: Exception) {
-                                            Toast.makeText(context, R.string.profile_tv_inputs_unavailable, Toast.LENGTH_SHORT).show()
-                                        }
-                                    }
-                                },
-                            contentAlignment = Alignment.Center
-                        ) {
-                            Icon(
-                                imageVector = Icons.Default.Tv,
-                                contentDescription = inputsLabel,
-                                tint = if (inputsFocused) NuvioTheme.colors.TextPrimary else NuvioTheme.colors.TextTertiary,
-                                modifier = Modifier.size(24.dp)
-                            )
-                        }
-                    }
-
-                    Box(
-                        modifier = Modifier
-                            .size(48.dp)
-                            .onFocusChanged { settingsFocused = it.isFocused }
-                            .clip(CircleShape)
-                            .background(if (settingsFocused) NuvioTheme.colors.TextPrimary.copy(alpha = 0.2f) else Color.Transparent)
-                            .clickable(onClickLabel = settingsLabel) {
-                                try {
-                                    context.startActivity(Intent(Settings.ACTION_SETTINGS).addFlags(Intent.FLAG_ACTIVITY_NEW_TASK))
-                                } catch (error: android.content.ActivityNotFoundException) {
-                                    Toast.makeText(context, R.string.profile_android_settings_unavailable, Toast.LENGTH_SHORT).show()
-                                } catch (error: SecurityException) {
-                                    Toast.makeText(context, R.string.profile_android_settings_unavailable, Toast.LENGTH_SHORT).show()
-                                }
-                            },
-                        contentAlignment = Alignment.Center
-                    ) {
-                        Icon(
-                            imageVector = Icons.Default.Settings,
-                            contentDescription = settingsLabel,
-                            tint = if (settingsFocused) NuvioTheme.colors.TextPrimary else NuvioTheme.colors.TextTertiary,
-                            modifier = Modifier.size(24.dp)
-                        )
-                    }
-                }
-            }
-        }
+        Text(
+            text = screenHint,
+            color = NuvioTheme.colors.TextTertiary.copy(alpha = 0.9f),
+            fontSize = 14.sp,
+            fontWeight = FontWeight.Medium
+        )
     }
 }
 

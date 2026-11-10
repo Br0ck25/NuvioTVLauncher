@@ -23,8 +23,7 @@ data class SimklPinSession(
     val userCode: String,
     val verificationUri: String,
     val expiresAtEpochMs: Long,
-    val intervalSeconds: Int,
-    val deviceCode: String? = null
+    val intervalSeconds: Int
 )
 
 data class SimklAuthState(
@@ -91,18 +90,6 @@ internal data class SimklPinResponse(
     @SerialName("expires_in") val expiresIn: Long? = null,
     val interval: Int? = null,
     @SerialName("access_token") val accessToken: String? = null
-)
-
-@Serializable
-internal data class SimklDeviceCodeRequest(
-    @SerialName("client_id") val clientId: String
-)
-
-@Serializable
-internal data class SimklDeviceTokenRequest(
-    @SerialName("grant_type") val grantType: String = "urn:ietf:params:oauth:grant-type:device_code",
-    @SerialName("device_code") val deviceCode: String,
-    @SerialName("client_id") val clientId: String
 )
 
 @Serializable

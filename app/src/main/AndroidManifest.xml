@@ -6,91 +6,7 @@
     <!-- https://stackoverflow.com/questions/64319117/speechrecognizer-not-available-when-targeting-android-11 -->
     <queries>
         <intent>
-            <action android:name="android.settings.HOME_SETTINGS" />
-        </intent>
-        <!-- Resolve the selected HOME app when reporting launcher status on Android 11+. -->
-        <intent>
-            <action android:name="android.intent.action.MAIN" />
-            <category android:name="android.intent.category.HOME" />
-        </intent>
-        <intent>
             <action android:name="android.speech.RecognitionService" />
-        </intent>
-        <intent>
-            <action android:name="android.intent.action.MAIN" />
-            <category android:name="android.intent.category.LAUNCHER" />
-        </intent>
-        <intent>
-            <action android:name="android.intent.action.MAIN" />
-            <category android:name="android.intent.category.LEANBACK_LAUNCHER" />
-        </intent>
-        <intent>
-            <action android:name="com.android.tv.action.VIEW_INPUTS" />
-        </intent>
-        <intent>
-            <action android:name="com.google.android.tv.action.VIEW_INPUTS" />
-        </intent>
-        <intent>
-            <action android:name="android.settings.TV_INPUTS" />
-        </intent>
-        <intent>
-            <action android:name="android.media.tv.action.VIEW_INPUTS" />
-        </intent>
-        <!-- Icon Pack and Theme discovery on Android 11+ -->
-        <intent>
-            <action android:name="org.adw.launcher.THEMES" />
-        </intent>
-        <intent>
-            <action android:name="com.novalauncher.THEME" />
-        </intent>
-        <intent>
-            <action android:name="com.gau.go.launcherex.theme" />
-        </intent>
-        <intent>
-            <action android:name="com.fede.launcher.THEME_ICONPACK" />
-        </intent>
-        <intent>
-            <action android:name="com.teslacoilsw.launcher.THEME" />
-        </intent>
-        <intent>
-            <action android:name="com.anddoes.launcher.THEME" />
-        </intent>
-        <intent>
-            <action android:name="com.dlto.atom.launcher.THEME" />
-        </intent>
-        <intent>
-            <action android:name="com.actionlauncher.THEME" />
-        </intent>
-        <intent>
-            <action android:name="mobi.bbase.ahome.THEME" />
-        </intent>
-        <intent>
-            <action android:name="com.sonymobile.home.ICON_PACK" />
-        </intent>
-        <intent>
-            <action android:name="com.spocky.projengmenu.ACTION_THEME" />
-        </intent>
-        <intent>
-            <action android:name="com.spocky.projengmenu.THEME" />
-        </intent>
-        <intent>
-            <action android:name="com.spocky.projectivy.THEME" />
-        </intent>
-        <intent>
-            <action android:name="com.spocky.projectivy.ICON_PACK" />
-        </intent>
-        <intent>
-            <action android:name="com.projectivy.intent.action.ICON_PACK" />
-        </intent>
-        <intent>
-            <action android:name="com.projectivy.theme.ICON_PACK" />
-        </intent>
-        <intent>
-            <action android:name="org.adw.launcher.icons.ACTION_PICK_ICON" />
-        </intent>
-        <intent>
-            <action android:name="android.intent.action.DELETE" />
-            <data android:scheme="package" />
         </intent>
     </queries>
 
@@ -99,12 +15,19 @@
     <uses-permission android:name="com.android.providers.tv.permission.WRITE_EPG_DATA" />
     <uses-permission android:name="android.permission.ACCESS_NETWORK_STATE" />
     <uses-permission android:name="android.permission.REQUEST_INSTALL_PACKAGES" />
-    <uses-permission android:name="android.permission.REQUEST_DELETE_PACKAGES" />
     <uses-permission android:name="android.permission.ACCESS_WIFI_STATE" />
     <uses-permission android:name="android.permission.RECORD_AUDIO" />
     <uses-permission android:name="android.permission.RECEIVE_BOOT_COMPLETED" />
     <uses-permission android:name="android.permission.FOREGROUND_SERVICE" />
     <uses-permission android:name="android.permission.FOREGROUND_SERVICE_MEDIA_PLAYBACK" />
+    <!-- Live TV fork: recordings keep running in the background (foreground service, awake, Wi-Fi on). -->
+    <uses-permission android:name="android.permission.FOREGROUND_SERVICE_DATA_SYNC" />
+    <uses-permission android:name="android.permission.WAKE_LOCK" />
+    <!-- Live TV fork: scheduled recordings start on time. -->
+    <uses-permission android:name="android.permission.SCHEDULE_EXACT_ALARM" android:maxSdkVersion="32" />
+    <!-- Android 13+: granted automatically (SCHEDULE_EXACT_ALARM isn't on Android 14+), so
+         recordings start on time and can run in the background with the app closed. -->
+    <uses-permission android:name="android.permission.USE_EXACT_ALARM" />
 
     <uses-feature
         android:name="android.hardware.touchscreen"
@@ -146,6 +69,21 @@
                 android:resource="@xml/file_paths" />
         </provider>
 
+        <!-- Live TV fork: brings the launcher's home screen rows up to date (a new show, a new score). -->
+        <receiver
+            android:name=".livetv.home.LauncherRowsReceiver"
+            android:exported="false">
+            <intent-filter>
+                <action android:name="com.nuvio.tv.livetv.LAUNCHER_ROWS" />
+            </intent-filter>
+        </receiver>
+
+        <!-- Live TV fork: the pictures for the launcher's home screen rows. -->
+        <provider
+            android:name=".livetv.home.LauncherImageProvider"
+            android:authorities="${applicationId}.launcherimg"
+            android:exported="true" />
+
         <receiver
             android:name=".core.sync.androidtv.TvChannelBootReceiver"
             android:exported="true">
@@ -155,59 +93,38 @@
             </intent-filter>
         </receiver>
 
-        <receiver
-            android:name=".core.launcher.LauncherBootReceiver"
-            android:exported="true">
-            <intent-filter>
-                <action android:name="android.intent.action.BOOT_COMPLETED" />
-                <action android:name="android.intent.action.MY_PACKAGE_REPLACED" />
-            </intent-filter>
-        </receiver>
-
         <service
             android:name=".core.sync.androidtv.TvChannelRefreshJobService"
             android:exported="false"
             android:permission="android.permission.BIND_JOB_SERVICE" />
+
+        <!-- Live TV fork: wakes the app for scheduled recordings, and sets them again after a restart. -->
+        <receiver
+            android:name=".livetv.record.RecordingAlarmReceiver"
+            android:exported="false">
+            <intent-filter>
+                <action android:name="com.nuvio.tv.livetv.RECORD" />
+                <action android:name="android.intent.action.BOOT_COMPLETED" />
+            </intent-filter>
+        </receiver>
+
+        <!-- Live TV fork: keeps recordings going while the app is in the background. -->
+        <service
+            android:name=".livetv.record.LiveTvRecordingService"
+            android:exported="false"
+            android:foregroundServiceType="dataSync" />
 
         <service
             android:name=".core.player.ExternalPlaybackKeepAliveService"
             android:exported="false"
             android:foregroundServiceType="mediaPlayback" />
 
-        <service
-            android:name=".core.launcher.LauncherAccessibilityService"
-            android:permission="android.permission.BIND_ACCESSIBILITY_SERVICE"
-            android:exported="true">
-            <intent-filter>
-                <action android:name="android.accessibilityservice.AccessibilityService" />
-            </intent-filter>
-            <meta-data
-                android:name="android.accessibilityservice"
-                android:resource="@xml/launcher_accessibility_service_config" />
-        </service>
-
-        <service
-            android:name=".core.notification.LauncherNotificationListenerService"
-            android:label="@string/app_name"
-            android:permission="android.permission.BIND_NOTIFICATION_LISTENER_SERVICE"
-            android:exported="true">
-            <intent-filter>
-                <action android:name="android.service.notification.NotificationListenerService" />
-            </intent-filter>
-        </service>
-
         <activity
             android:name=".MainActivity"
             android:exported="true"
-            android:launchMode="singleTask"
+            android:launchMode="singleTop"
             android:configChanges="orientation|screenSize|smallestScreenSize|screenLayout|density|uiMode|keyboard|keyboardHidden|navigation|layoutDirection|fontScale|locale"
             android:theme="@style/Theme.MyApplication.Launcher">
-            <intent-filter>
-                <action android:name="android.intent.action.MAIN" />
-
-                <category android:name="android.intent.category.HOME" />
-                <category android:name="android.intent.category.DEFAULT" />
-            </intent-filter>
             <intent-filter>
                 <action android:name="android.intent.action.VIEW" />
 
@@ -226,98 +143,107 @@
             </intent-filter>
         </activity>
 
-        <!-- Keep every icon entry on the same HOME task. Separate MainActivity subclasses
-             create independent instances, so HOME can miss the screen the user has open. -->
-        <activity-alias
+        <activity
             android:name=".launcher.AppIconDefault"
             android:banner="@mipmap/banner"
+            android:configChanges="orientation|screenSize|smallestScreenSize|screenLayout|density|uiMode|keyboard|keyboardHidden|navigation|layoutDirection|fontScale|locale"
             android:enabled="true"
             android:exported="true"
             android:icon="@mipmap/ic_launcher"
             android:label="@string/app_name"
-            android:targetActivity=".MainActivity">
+            android:launchMode="singleTop"
+            android:theme="@style/Theme.MyApplication.Launcher">
             <intent-filter>
                 <action android:name="android.intent.action.MAIN" />
                 <category android:name="android.intent.category.LAUNCHER" />
                 <category android:name="android.intent.category.LEANBACK_LAUNCHER" />
             </intent-filter>
-        </activity-alias>
+        </activity>
 
-        <activity-alias
+        <activity
             android:name=".launcher.AppIconArcticBlue"
             android:banner="@mipmap/banner_arctic_blue"
+            android:configChanges="orientation|screenSize|smallestScreenSize|screenLayout|density|uiMode|keyboard|keyboardHidden|navigation|layoutDirection|fontScale|locale"
             android:enabled="false"
             android:exported="true"
             android:icon="@mipmap/ic_launcher_arctic_blue"
             android:label="@string/app_name"
-            android:targetActivity=".MainActivity">
+            android:launchMode="singleTop"
+            android:theme="@style/Theme.MyApplication.Launcher">
             <intent-filter>
                 <action android:name="android.intent.action.MAIN" />
                 <category android:name="android.intent.category.LAUNCHER" />
                 <category android:name="android.intent.category.LEANBACK_LAUNCHER" />
             </intent-filter>
-        </activity-alias>
+        </activity>
 
-        <activity-alias
+        <activity
             android:name=".launcher.AppIconEmerald"
             android:banner="@mipmap/banner_emerald"
+            android:configChanges="orientation|screenSize|smallestScreenSize|screenLayout|density|uiMode|keyboard|keyboardHidden|navigation|layoutDirection|fontScale|locale"
             android:enabled="false"
             android:exported="true"
             android:icon="@mipmap/ic_launcher_emerald"
             android:label="@string/app_name"
-            android:targetActivity=".MainActivity">
+            android:launchMode="singleTop"
+            android:theme="@style/Theme.MyApplication.Launcher">
             <intent-filter>
                 <action android:name="android.intent.action.MAIN" />
                 <category android:name="android.intent.category.LAUNCHER" />
                 <category android:name="android.intent.category.LEANBACK_LAUNCHER" />
             </intent-filter>
-        </activity-alias>
+        </activity>
 
-        <activity-alias
+        <activity
             android:name=".launcher.AppIconRoseGold"
             android:banner="@mipmap/banner_rose_gold"
+            android:configChanges="orientation|screenSize|smallestScreenSize|screenLayout|density|uiMode|keyboard|keyboardHidden|navigation|layoutDirection|fontScale|locale"
             android:enabled="false"
             android:exported="true"
             android:icon="@mipmap/ic_launcher_rose_gold"
             android:label="@string/app_name"
-            android:targetActivity=".MainActivity">
+            android:launchMode="singleTop"
+            android:theme="@style/Theme.MyApplication.Launcher">
             <intent-filter>
                 <action android:name="android.intent.action.MAIN" />
                 <category android:name="android.intent.category.LAUNCHER" />
                 <category android:name="android.intent.category.LEANBACK_LAUNCHER" />
             </intent-filter>
-        </activity-alias>
+        </activity>
 
-        <activity-alias
+        <activity
             android:name=".launcher.AppIconCopper"
             android:banner="@mipmap/banner_copper"
+            android:configChanges="orientation|screenSize|smallestScreenSize|screenLayout|density|uiMode|keyboard|keyboardHidden|navigation|layoutDirection|fontScale|locale"
             android:enabled="false"
             android:exported="true"
             android:icon="@mipmap/ic_launcher_copper"
             android:label="@string/app_name"
-            android:targetActivity=".MainActivity">
+            android:launchMode="singleTop"
+            android:theme="@style/Theme.MyApplication.Launcher">
             <intent-filter>
                 <action android:name="android.intent.action.MAIN" />
                 <category android:name="android.intent.category.LAUNCHER" />
                 <category android:name="android.intent.category.LEANBACK_LAUNCHER" />
             </intent-filter>
-        </activity-alias>
+        </activity>
 
-        <activity-alias
+        <activity
             android:name=".launcher.AppIconGraphite"
             android:banner="@mipmap/banner_graphite"
+            android:configChanges="orientation|screenSize|smallestScreenSize|screenLayout|density|uiMode|keyboard|keyboardHidden|navigation|layoutDirection|fontScale|locale"
             android:enabled="false"
             android:exported="true"
             android:icon="@mipmap/ic_launcher_graphite"
             android:label="@string/app_name"
-            android:targetActivity=".MainActivity">
+            android:launchMode="singleTop"
+            android:theme="@style/Theme.MyApplication.Launcher">
             <intent-filter>
                 <action android:name="android.intent.action.MAIN" />
                 <category android:name="android.intent.category.LAUNCHER" />
                 <category android:name="android.intent.category.LEANBACK_LAUNCHER" />
             </intent-filter>
-        </activity-alias>
-
+        </activity>
 
         <profileable android:shell="true" />
     </application>

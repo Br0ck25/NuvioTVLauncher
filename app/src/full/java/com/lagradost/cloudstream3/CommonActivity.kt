@@ -6,12 +6,9 @@ import android.app.Activity
 
 /** Stub for CommonActivity referenced by some extensions. */
 object CommonActivity {
-    @JvmField
     var activity: Activity? = null
 
-    fun getActivity(): Activity? = activity
-
-    fun showToast(message: String, duration: Int? = null) {}
-
-    fun showToast(activity: Activity?, message: String, duration: Int? = null) {}
+    fun showToast(message: String, duration: Int = 0) {
+        // No-op stub — extensions may call this for user notifications
+    }
 }

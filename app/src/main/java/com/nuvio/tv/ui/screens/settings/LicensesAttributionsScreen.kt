@@ -207,13 +207,6 @@ private fun LicensesAttributionsDetailsPanel(
                             url = HazeLicenseUrl
                         )
                     )
-                    AttributionDetailRow(
-                        item = LicenseAttributionItem(
-                            title = "tvOS-Launcher (Button Mapper patterns)",
-                            body = "Portions of the remote button keycode catalog and media key dispatch patterns are adapted from tvOS-Launcher by techgenius under the Apache License 2.0.",
-                            url = "https://github.com/techgenius1/tvOS-Launcher/blob/main/LICENSE"
-                        )
-                    )
                 }
             }
             SettingsVerticalScrollIndicators(state = scrollState)
