@@ -307,6 +307,16 @@ Requires **Android 7.0 or newer** (Fire OS 6 or later). It installs **alongside*
 
 ---
 
+## 🏠 Use it as your Home screen
+
+The app registers as a normal Android Home app (the same way FLauncher, ArcLauncher and Projectivy do): `MainActivity` declares `MAIN` + `HOME` + `DEFAULT` and is `singleTask`, so the Home button returns to the app instead of stacking copies. It is not set as Home automatically.
+
+1. Open **Settings → Default launcher**.
+2. Select **Make Nuvio the Home app** and accept Android's own confirmation. The status line updates when you come back.
+3. To go back, use **Open Home app settings** and pick the original launcher.
+
+Some TV firmware (many Google TV and Fire TV builds) does not let you choose a different Home app. If the picker never offers Nuvio, the TV is blocking it and Nuvio keeps working as a normal app. There is no accessibility service or ADB step in this build.
+
 ## 🎮 Remote controls
 
 Every button for the guide, full screen, Sports, the Calendar, On Demand and Recordings: see **[CONTROLS.md](CONTROLS.md)**.

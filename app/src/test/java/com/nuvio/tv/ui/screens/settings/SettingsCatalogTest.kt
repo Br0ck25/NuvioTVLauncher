@@ -31,6 +31,7 @@ class SettingsCatalogTest {
                 SettingsCategory.VPN,
                 SettingsCategory.INTEGRATION,
                 SettingsCategory.TRACKING,
+                SettingsCategory.DEFAULT_LAUNCHER,
                 SettingsCategory.ADVANCED,
                 SettingsCategory.ABOUT,
                 SettingsCategory.DEBUG

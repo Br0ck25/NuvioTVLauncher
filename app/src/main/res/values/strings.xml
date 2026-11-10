@@ -507,6 +507,17 @@
     <string name="simkl_name">Simkl</string>
     <string name="settings_network">Network speed</string>
     <string name="settings_network_subtitle">Latency and download diagnostics</string>
+    <string name="settings_default_launcher">Default launcher</string>
+    <string name="settings_default_launcher_subtitle">Use Nuvio as your TV's Home screen, so the Home button opens it.</string>
+    <string name="default_launcher_status_on">Nuvio is your Home app</string>
+    <string name="default_launcher_status_on_hint">The Home button opens Nuvio.</string>
+    <string name="default_launcher_status_off">Nuvio is not your Home app yet</string>
+    <string name="default_launcher_status_off_hint">Select to choose Nuvio in Android's Home app picker.</string>
+    <string name="default_launcher_make_default">Make Nuvio the Home app</string>
+    <string name="default_launcher_make_default_hint">Opens Android's own confirmation. Nothing changes until you accept it.</string>
+    <string name="default_launcher_open_home_settings">Open Home app settings</string>
+    <string name="default_launcher_open_home_settings_hint">Android's list of Home apps, to switch back to the original at any time.</string>
+    <string name="default_launcher_firmware_note">Some TVs (many Google TV and Fire TV builds) don't let you pick a different Home app. If the picker doesn't offer Nuvio, the TV is blocking it and Nuvio still works as a normal app.</string>
     <string name="settings_advanced">Advanced</string>
     <string name="settings_advanced_subtitle">Performance, navigation, cache, and diagnostics</string>
     <string name="experience_mode_essential">Essential</string>
