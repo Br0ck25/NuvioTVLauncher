@@ -309,33 +309,27 @@ Requires **Android 7.0 or newer** (Fire OS 6 or later). It installs **alongside*
 
 ## 🏠 Use it as your Home screen
 
-The app registers as a normal Android Home app (the same way FLauncher, ArcLauncher and Projectivy do): `MainActivity` declares `MAIN` + `HOME` + `DEFAULT` and is `singleTask`, so the Home button returns to the app instead of stacking copies. It is not set as Home automatically.
+The app is a real Android Home app (the same way FLauncher and ArcLauncher are): `MainActivity` declares `MAIN` + `HOME` + `DEFAULT` and is `singleTask`, so Home returns to the one running copy. It is not set as Home automatically. What you get once it is:
 
-1. Open **Settings → Default launcher**.
-2. Select **Make Nuvio the Home app** and accept Android's own confirmation. The status line updates when you come back.
-3. To go back, use **Open Home app settings** and pick the original launcher.
+- **Home** goes to the launcher's home page, scrolled to the top, from anywhere (another app, a detail page, the player).
+- **Double-tap Home** opens the profile switcher.
+- **Back** never leaves the launcher: on the home screen it only opens and closes the side menu. (When the app is not your Home app, Back still exits as usual.)
+- **Apps** is a page in the side menu (every installed app, TV apps with their banner; OK opens one, long-press opens its system page) and an *Apps* row on Home under Continue Watching. Turn both off in **Settings → Menu & Features → Apps**.
 
-Some TV firmware (many Google TV and Fire TV builds) does not let you choose a different Home app. If the picker never offers Nuvio, the TV is blocking it and Nuvio keeps working as a normal app. There is no accessibility service in this build, and nothing runs ADB for you.
+### Simple setup: from the TV and your phone, no computer
 
-**Apps.** *Apps* is a page in the side menu (every installed app, TV apps with their banner; OK opens one, long-press opens its system page for Uninstall or Force stop) and an *Apps* row on Home under Continue Watching. Turn both off together in **Settings → Menu & Features → Apps**.
+Open **Settings → Default launcher → Set up without a computer**. The TV shows a phone address; open it on a phone on the same Wi-Fi. On the TV turn on **Developer options → Wireless debugging** and open **Pair device with pairing code**, then type the port and code into the phone page and tap **Pair and set up**. The TV runs the commands itself (a phone can't run ADB), so there is nothing to copy:
 
-**Phone setup.** Under **Settings → Default launcher → Set up from your phone**, scan the QR code and the phone shows the ADB commands with this app's own package filled in and a Copy button on each (the page runs only while that dialog is open, on your home network). They are the same commands FLauncher and ArcLauncher document:
+| Button on the phone page | What it does on the TV |
+|---|---|
+| Pair and set up | Pairs once, lets the app keep its accessibility setting on, makes it the Home app |
+| Make this the Home app | `cmd package set-home-activity` |
+| Turn on Home button override | Turns on the app's accessibility setting (it stays on after a restart) so Home still opens the launcher on TVs that won't switch Home apps |
+| Which launcher is Home now? | `cmd package resolve-activity` (read-only) |
+| Switch back to the original launcher | Finds the stock launcher and points Home back at it |
+| Turn off / back on the stock launcher | FLauncher's `pm disable-user` / `pm enable` for Google TV's launcher and its fallback (optional; the remote's YouTube button stops working while it is off, Button Mapper can remap it) |
 
-```
-adb shell cmd package set-home-activity <package>/com.nuvio.tv.MainActivity     # make this the Home app
-adb shell cmd package resolve-activity -c android.intent.category.HOME -a android.intent.action.MAIN   # who is Home now
-adb shell cmd package query-activities -c android.intent.category.HOME -a android.intent.action.MAIN   # list launchers
-adb shell cmd package set-home-activity <package>/<activity>                      # go back to the original
-```
-
-Optional, from FLauncher's guide, for Chromecast with Google TV when the TV keeps returning to its own launcher (reversible; the remote's YouTube button stops working while it is disabled, which Button Mapper can remap):
-
-```
-adb shell pm disable-user --user 0 com.google.android.apps.tv.launcherx
-adb shell pm disable-user --user 0 com.google.android.tungsten.setupwraith
-adb shell pm enable com.google.android.apps.tv.launcherx          # undo
-adb shell pm enable com.google.android.tungsten.setupwraith       # undo
-```
+Already paired? Leave the port and code empty. The page also lists every command, with this TV's address filled in (`adb -s IP:PORT shell ...`), for anyone who would rather run them from a computer. Needs Android 11+ Wireless debugging and the `full` build; some TV firmware (many Fire TVs) refuses a different Home app however it is set.
 
 ## 🎮 Remote controls
 

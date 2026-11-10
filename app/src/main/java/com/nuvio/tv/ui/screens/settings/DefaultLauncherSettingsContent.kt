@@ -1,122 +1,113 @@
 package com.nuvio.tv.ui.screens.settings
 
-import android.content.ActivityNotFoundException
-import androidx.activity.compose.rememberLauncherForActivityResult
-import androidx.activity.result.contract.ActivityResultContracts
+import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.fillMaxSize
-import androidx.compose.foundation.layout.padding
+import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.verticalScroll
-import androidx.compose.material.icons.Icons
-import androidx.compose.material.icons.filled.Home
-import androidx.compose.material.icons.filled.Phone
-import androidx.compose.material.icons.filled.Settings
 import androidx.compose.runtime.Composable
-import androidx.compose.runtime.DisposableEffect
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
 import androidx.compose.runtime.setValue
+import androidx.compose.ui.platform.LocalContext
+import com.nuvio.tv.core.launcher.AccessibilityWatchdog
+import com.nuvio.tv.core.launcher.LocalAdbSetupFactory
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.focus.FocusRequester
 import androidx.compose.ui.focus.focusRequester
-import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.res.stringResource
-import androidx.lifecycle.Lifecycle
-import androidx.lifecycle.LifecycleEventObserver
-import androidx.lifecycle.compose.LocalLifecycleOwner
 import com.nuvio.tv.R
-import com.nuvio.tv.core.launcher.HomeApp
+import com.nuvio.tv.ui.components.rememberLauncherSetupState
 import com.nuvio.tv.ui.theme.NuvioTheme
 
-/** Settings → Default launcher: make this app the Home app through Android's own chooser. */
 @Composable
-fun DefaultLauncherSettingsContent(initialFocusRequester: FocusRequester? = null) {
+internal fun DefaultLauncherSettingsContent(initialFocusRequester: FocusRequester? = null) {
+    val setup = rememberLauncherSetupState()
     val context = LocalContext.current
-    var isDefault by remember { mutableStateOf(HomeApp.isDefault(context)) }
-    var showPhoneSetup by remember { mutableStateOf(false) }
-
-    // The chooser is another screen, so re-check whenever we come back to this one.
-    val lifecycleOwner = LocalLifecycleOwner.current
-    DisposableEffect(lifecycleOwner) {
-        val observer = LifecycleEventObserver { _, event ->
-            if (event == Lifecycle.Event.ON_RESUME) isDefault = HomeApp.isDefault(context)
-        }
-        lifecycleOwner.lifecycle.addObserver(observer)
-        onDispose { lifecycleOwner.lifecycle.removeObserver(observer) }
-    }
-
-    // The framework decides; RESULT_OK is not proof, so read the resolver again afterwards.
-    val roleLauncher = rememberLauncherForActivityResult(ActivityResultContracts.StartActivityForResult()) {
-        isDefault = HomeApp.isDefault(context)
-    }
-
-    fun requestHome() {
-        val role = HomeApp.roleRequestIntent(context)
-        try {
-            if (role != null) {
-                roleLauncher.launch(role)
-            } else {
-                HomeApp.bestRequestIntent(context)?.let(context::startActivity)
-            }
-        } catch (_: ActivityNotFoundException) {
-            // This firmware hides the picker. The status line stays accurate; nothing else to do.
-        }
-    }
-
-    fun open(intent: android.content.Intent?) {
-        try { intent?.let(context::startActivity) } catch (_: ActivityNotFoundException) { }
-    }
-
+    // Null on flavors/Android versions without the on-device ADB setup.
+    val selfSetup = remember { LocalAdbSetupFactory.create(context) }
+    var showSelfSetup by remember { mutableStateOf(false) }
+    var setupRevision by remember { mutableStateOf(0) }
+    val secureGranted = remember(setupRevision) { AccessibilityWatchdog.canWriteSecureSettings(context) }
+    var keepOverride by remember(setupRevision) { mutableStateOf(AccessibilityWatchdog.isOptedIn(context)) }
     Column(
-        modifier = Modifier
-            .fillMaxSize()
-            .verticalScroll(rememberScrollState())
+        modifier = Modifier.fillMaxSize().verticalScroll(rememberScrollState()),
+        verticalArrangement = Arrangement.spacedBy(NuvioTheme.spacing.md)
     ) {
         SettingsDetailHeader(
             title = stringResource(R.string.settings_default_launcher),
             subtitle = stringResource(R.string.settings_default_launcher_subtitle)
         )
-        SettingsGroupCard {
+        SettingsGroupCard(modifier = Modifier.fillMaxWidth()) {
             SettingsActionRow(
                 title = stringResource(
-                    if (isDefault) R.string.default_launcher_status_on else R.string.default_launcher_status_off
+                    if (setup.isDefaultHome) R.string.apps_default_launcher_active
+                    else R.string.settings_make_home_app
                 ),
                 subtitle = stringResource(
-                    if (isDefault) R.string.default_launcher_status_on_hint else R.string.default_launcher_status_off_hint
+                    if (setup.showFallback) R.string.settings_home_role_not_selected
+                    else R.string.settings_make_home_app_subtitle
                 ),
-                onClick = { if (!isDefault) requestHome() },
-                leadingIcon = Icons.Default.Home,
-                modifier = if (initialFocusRequester != null) Modifier.focusRequester(initialFocusRequester) else Modifier
+                onClick = setup.requestDefaultHome,
+                modifier = if (initialFocusRequester != null) {
+                    Modifier.focusRequester(initialFocusRequester)
+                } else {
+                    Modifier
+                }
             )
-            if (!isDefault) {
+            SettingsActionRow(
+                title = stringResource(R.string.settings_open_home_settings),
+                subtitle = stringResource(
+                    if (setup.settingsUnavailable) R.string.settings_home_settings_unavailable
+                    else R.string.settings_open_home_settings_subtitle
+                ),
+                onClick = setup.openHomeSettings
+            )
+            SettingsActionRow(
+                title = stringResource(
+                    if (setup.isAccessibilityActive) R.string.apps_home_override_active
+                    else if (setup.isAccessibilityEnabled) R.string.apps_home_override_pending
+                    else R.string.apps_home_override
+                ),
+                subtitle = stringResource(R.string.settings_home_override_subtitle),
+                onClick = setup.openAccessibilitySettings
+            )
+            if (selfSetup != null) {
                 SettingsActionRow(
-                    title = stringResource(R.string.default_launcher_make_default),
-                    subtitle = stringResource(R.string.default_launcher_make_default_hint),
-                    onClick = ::requestHome,
-                    leadingIcon = Icons.Default.Home
+                    title = stringResource(R.string.settings_self_setup_title),
+                    subtitle = stringResource(
+                        if (secureGranted) R.string.settings_self_setup_done_subtitle
+                        else R.string.settings_self_setup_subtitle
+                    ),
+                    onClick = { showSelfSetup = true }
                 )
             }
-            SettingsActionRow(
-                title = stringResource(R.string.launcher_phone_setup_title),
-                subtitle = stringResource(R.string.launcher_phone_setup_hint),
-                onClick = { showPhoneSetup = true },
-                leadingIcon = Icons.Default.Phone
-            )
-            if (HomeApp.homeSettingsIntent(context) != null) {
-                SettingsActionRow(
-                    title = stringResource(R.string.default_launcher_open_home_settings),
-                    subtitle = stringResource(R.string.default_launcher_open_home_settings_hint),
-                    onClick = { open(HomeApp.homeSettingsIntent(context)) },
-                    leadingIcon = Icons.Default.Settings
+            if (secureGranted) {
+                SettingsToggleRow(
+                    title = stringResource(R.string.settings_keep_override_title),
+                    subtitle = stringResource(R.string.settings_keep_override_subtitle),
+                    checked = keepOverride,
+                    onToggle = {
+                        keepOverride = !keepOverride
+                        AccessibilityWatchdog.setOptIn(context, keepOverride)
+                    }
                 )
             }
         }
-        SettingsNote(
-            text = stringResource(R.string.default_launcher_firmware_note),
-            modifier = Modifier.padding(top = NuvioTheme.spacing.sm)
-        )
+        if (showSelfSetup && selfSetup != null) {
+            LocalAdbSetupDialog(
+                setup = selfSetup,
+                onDismiss = {
+                    showSelfSetup = false
+                    setupRevision++
+                },
+                onFinished = {
+                    showSelfSetup = false
+                    setupRevision++
+                }
+            )
+        }
     }
-    if (showPhoneSetup) LauncherPhoneSetupDialog(onDismiss = { showPhoneSetup = false })
 }

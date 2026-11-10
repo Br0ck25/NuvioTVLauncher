@@ -2,6 +2,7 @@ package com.nuvio.tv.core.launcher
 
 import org.junit.Assert.assertEquals
 import org.junit.Assert.assertFalse
+import org.junit.Assert.assertNull
 import org.junit.Assert.assertTrue
 import org.junit.Test
 
@@ -10,31 +11,30 @@ class LauncherSetupCommandsTest {
     private val all get() = LauncherSetupCommands.sections(component, "192.168.1.50").flatMap { it.commands }.map { it.command }
 
     @Test
-    fun setHomeCommandUsesThisAppsComponent() {
-        assertTrue("adb shell cmd package set-home-activity $component" in all)
+    fun referenceCommandsNameTheTvAddress() {
+        assertTrue("adb -s 192.168.1.50:PORT shell cmd package set-home-activity $component" in all)
+        // Every shell command goes to this TV explicitly, never to "whatever device is attached".
+        all.flatMap { it.lines() }.filter { "shell" in it }.forEach { assertTrue(it, it.startsWith("adb -s 192.168.1.50:PORT shell ")) }
     }
 
     @Test
-    fun includesArcStyleCheckAndRestoreCommands() {
-        assertTrue(all.any { it.startsWith("adb shell cmd package resolve-activity -c android.intent.category.HOME") })
-        assertTrue(all.any { it.startsWith("adb shell cmd package query-activities -c android.intent.category.HOME") })
-        assertTrue("adb shell cmd package set-home-activity <package>/<activity>" in all)
+    fun withoutAnAddressThePlaceholderIsShown() {
+        assertTrue(LauncherSetupCommands.sections(component, null).flatMap { it.commands }.any { "TV_IP" in it.command })
     }
 
     @Test
     fun includesFLauncherDisableAndReenableCommands() {
-        val disable = listOf("com.google.android.apps.tv.launcherx", "com.google.android.tungsten.setupwraith")
-            .map { "adb shell pm disable-user --user 0 $it" }
-        disable.forEach { assertTrue(it in all) }
-        val reenable = all.first { it.startsWith("adb shell pm enable ") }
-        assertTrue("pm enable com.google.android.apps.tv.launcherx" in reenable)
-        assertTrue("pm enable com.google.android.tungsten.setupwraith" in reenable)
-    }
-
-    @Test
-    fun usesTheTvAddressInTheConnectCommands() {
-        assertTrue(all.any { it == "adb connect 192.168.1.50:5555" })
-        assertTrue(LauncherSetupCommands.sections(component, null).flatMap { it.commands }.any { "TV_IP" in it.command })
+        listOf("com.google.android.apps.tv.launcherx", "com.google.android.tungsten.setupwraith").forEach {
+            assertTrue(all.any { c -> "pm disable-user --user 0 $it" in c })
+            assertTrue(all.any { c -> "pm enable $it" in c })
+        }
+        assertEquals(
+            listOf(
+                "pm disable-user --user 0 com.google.android.apps.tv.launcherx",
+                "pm disable-user --user 0 com.google.android.tungsten.setupwraith"
+            ),
+            DeviceCommands.disableStock
+        )
     }
 
     @Test
@@ -44,12 +44,78 @@ class LauncherSetupCommandsTest {
     }
 
     @Test
-    fun pageEscapesHtmlAndHasACopyButtonPerCommand() {
+    fun arcStyleCommandsAreExact() {
+        assertEquals("cmd package set-home-activity $component", DeviceCommands.setHome(component))
+        assertEquals("cmd package resolve-activity -c android.intent.category.HOME -a android.intent.action.MAIN", DeviceCommands.resolveHome)
+        assertEquals("cmd package query-activities -c android.intent.category.HOME -a android.intent.action.MAIN", DeviceCommands.listHomes)
+    }
+
+    @Test
+    fun everyButtonHasADistinctId() {
+        assertEquals(DeviceAction.entries.size, DeviceAction.entries.map { it.id }.toSet().size)
+        DeviceAction.entries.forEach { assertEquals(it, DeviceAction.fromId(it.id)) }
+        assertNull(DeviceAction.fromId("rm -rf"))
+        assertNull(DeviceAction.fromId(null))
+    }
+
+    @Test
+    fun accessibilityServiceIsAddedWithoutDroppingOthersOrDuplicating() {
+        val svc = "com.nuvio.livetv/com.nuvio.tv.core.launcher.LauncherAccessibilityService"
+        assertEquals(svc, DeviceCommands.withAccessibilityService(null, svc))
+        assertEquals(svc, DeviceCommands.withAccessibilityService("null", svc))
+        assertEquals(svc, DeviceCommands.withAccessibilityService("  ", svc))
+        assertEquals("a/b:$svc", DeviceCommands.withAccessibilityService("a/b", svc))
+        assertEquals("a/b:$svc", DeviceCommands.withAccessibilityService("a/b:$svc", svc))
+    }
+
+    private val queryOutput = """
+        2 activities found:
+          Activity #0:
+            priority=0 preferredOrder=0 match=0x108000 specificIndex=-1 isDefault=true
+            ActivityInfo:
+              name=com.nuvio.tv.MainActivity
+              packageName=com.nuvio.livetv
+              enabled=true exported=true directBootAware=false
+          Activity #1:
+            priority=0 preferredOrder=0 match=0x108000 specificIndex=-1 isDefault=true
+            ActivityInfo:
+              name=com.google.android.apps.tv.launcherx.home.HomeActivity
+              packageName=com.google.android.apps.tv.launcherx
+              enabled=true exported=true directBootAware=false
+    """.trimIndent()
+
+    @Test
+    fun findsTheOriginalLauncherToGoBackTo() {
+        assertEquals(
+            "com.google.android.apps.tv.launcherx/com.google.android.apps.tv.launcherx.home.HomeActivity",
+            DeviceCommands.otherHomeComponent(queryOutput, "com.nuvio.livetv")
+        )
+    }
+
+    @Test
+    fun noOtherLauncherMeansNothingToRestore() {
+        val only = queryOutput.lines().take(8).joinToString("\n")
+        assertNull(DeviceCommands.otherHomeComponent(only, "com.nuvio.livetv"))
+        assertNull(DeviceCommands.otherHomeComponent("", "com.nuvio.livetv"))
+    }
+
+    @Test
+    fun readsTheResolvedHomePackage() {
+        val out = "priority=0 preferredOrder=0\n  ActivityInfo:\n    name=com.nuvio.tv.MainActivity\n    packageName=com.nuvio.livetv\n"
+        assertEquals("com.nuvio.livetv", DeviceCommands.resolvedHomePackage(out))
+        assertNull(DeviceCommands.resolvedHomePackage("No activity found"))
+    }
+
+    @Test
+    fun pageHasARunButtonPerActionAndEscapesHtml() {
         val sections = listOf(SetupSection("T <x>", "i", listOf(SetupCommand("a", "n", "echo \"<b>\" & ok"))))
-        val html = LauncherSetupServer.page("App", sections)
+        val html = LauncherSetupPage.html("App", sections)
+        DeviceAction.entries.forEach { assertTrue(it.id, "data-action=\"${it.id}\"" in html) }
         assertTrue("T &lt;x&gt;" in html)
         assertTrue("echo &quot;&lt;b&gt;&quot; &amp; ok" in html)
         assertFalse("<b>\"" in html)
-        assertEquals(1, Regex("onclick=\"copyCmd").findAll(html).count())
+        // The destructive-looking button asks first.
+        assertTrue(Regex("data-action=\"disable-stock\" data-confirm=").containsMatchIn(html))
+        assertFalse("%%" in html)
     }
 }

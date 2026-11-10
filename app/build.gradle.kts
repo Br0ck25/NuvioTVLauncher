@@ -625,6 +625,10 @@ dependencies {
     add("fullImplementation", "com.fasterxml.jackson.module:jackson-module-kotlin:2.17.0")
     add("fullImplementation", libs.nicehttp)
     add("fullImplementation", libs.conscrypt.android)
+    // On-device ADB client used by the phone-driven Home button setup (runs the commands on this TV).
+    add("fullImplementation", "com.github.MuntashirAkon:libadb-android:3.0.0")
+    // libadb-android only exposes BouncyCastle at runtime; used to create the ADB identity cert.
+    add("fullImplementation", "org.bouncycastle:bcprov-jdk15to18:1.78")
     add("fullImplementation", "com.github.recloudstream.cloudstream:library:${libs.versions.cloudstream.get()}") {
         exclude(group = "org.mozilla", module = "rhino")
         exclude(group = "com.github.AmarullisVFX", module = "newpipeextractor")

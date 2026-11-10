@@ -92,6 +92,11 @@ class NuvioApplication : Application(), SingletonImageLoader.Factory {
         com.nuvio.vpn.android.VpnPlaybackProtection.diagnostics =
             java.util.function.Consumer { line -> com.nuvio.tv.livetv.model.LiveTvLoadReport.add(line) }
         androidTvChannelSyncService.start()
+        // Launcher: keeps this app's own accessibility service switched on once the phone setup has
+        // granted the permission. Reads system settings, so it runs off the main thread.
+        kotlin.concurrent.thread(name = "launcher-watchdog", isDaemon = true) {
+            com.nuvio.tv.core.launcher.AccessibilityWatchdog.start(this)
+        }
         serverUserStateProjection.start()
         // Load locale synchronously so it's available before Activity.attachBaseContext.
         // SharedPreferences reads are fast (cached in memory after first access).

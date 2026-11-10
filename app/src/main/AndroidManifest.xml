@@ -8,6 +8,9 @@
         <intent>
             <action android:name="android.speech.RecognitionService" />
         </intent>
+        <intent>
+            <action android:name="android.settings.HOME_SETTINGS" />
+        </intent>
         <!-- Launcher: installed apps are listed through these, and the Home chooser needs the HOME query. -->
         <intent>
             <action android:name="android.intent.action.MAIN" />
@@ -126,6 +129,29 @@
             android:name=".livetv.record.LiveTvRecordingService"
             android:exported="false"
             android:foregroundServiceType="dataSync" />
+
+        <!-- Launcher: brings the app up on the Home button when Android won't deliver it as the Home app,
+             and re-enables itself after a reboot or update. Authorised by the user (or the phone setup). -->
+        <receiver
+            android:name=".core.launcher.LauncherBootReceiver"
+            android:exported="true">
+            <intent-filter>
+                <action android:name="android.intent.action.BOOT_COMPLETED" />
+                <action android:name="android.intent.action.MY_PACKAGE_REPLACED" />
+            </intent-filter>
+        </receiver>
+
+        <service
+            android:name=".core.launcher.LauncherAccessibilityService"
+            android:permission="android.permission.BIND_ACCESSIBILITY_SERVICE"
+            android:exported="true">
+            <intent-filter>
+                <action android:name="android.accessibilityservice.AccessibilityService" />
+            </intent-filter>
+            <meta-data
+                android:name="android.accessibilityservice"
+                android:resource="@xml/launcher_accessibility_service_config" />
+        </service>
 
         <service
             android:name=".core.player.ExternalPlaybackKeepAliveService"
