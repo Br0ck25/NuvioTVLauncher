@@ -55,6 +55,7 @@ import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
 import androidx.hilt.navigation.compose.hiltViewModel
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
+import androidx.compose.runtime.collectAsState
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
@@ -916,7 +917,7 @@ private fun PersonAvatar(
             .border(NuvioTheme.spacing.hairline, NuvioTheme.colors.Border, CircleShape),
         contentAlignment = Alignment.Center
     ) {
-        if (avatarUrl.isNullOrBlank() || painter.state.collectAsStateWithLifecycle().value is AsyncImagePainter.State.Error) {
+        if (avatarUrl.isNullOrBlank() || painter.state.collectAsState().value is AsyncImagePainter.State.Error) {
             Text(
                 text = label.take(1).uppercase(),
                 style = MaterialTheme.typography.titleMedium,

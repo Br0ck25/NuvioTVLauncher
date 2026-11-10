@@ -5,92 +5,17 @@
     <!-- Android 11+ fix: SpeechRecognizer not available without this -->
     <!-- https://stackoverflow.com/questions/64319117/speechrecognizer-not-available-when-targeting-android-11 -->
     <queries>
+        <!-- Reported by the "Default launcher" settings section and opened by its Home-app action. -->
         <intent>
             <action android:name="android.settings.HOME_SETTINGS" />
         </intent>
-        <!-- Resolve the selected HOME app when reporting launcher status on Android 11+. -->
+        <!-- Resolve which app currently owns HOME, on Android 11+. -->
         <intent>
             <action android:name="android.intent.action.MAIN" />
             <category android:name="android.intent.category.HOME" />
         </intent>
         <intent>
             <action android:name="android.speech.RecognitionService" />
-        </intent>
-        <intent>
-            <action android:name="android.intent.action.MAIN" />
-            <category android:name="android.intent.category.LAUNCHER" />
-        </intent>
-        <intent>
-            <action android:name="android.intent.action.MAIN" />
-            <category android:name="android.intent.category.LEANBACK_LAUNCHER" />
-        </intent>
-        <intent>
-            <action android:name="com.android.tv.action.VIEW_INPUTS" />
-        </intent>
-        <intent>
-            <action android:name="com.google.android.tv.action.VIEW_INPUTS" />
-        </intent>
-        <intent>
-            <action android:name="android.settings.TV_INPUTS" />
-        </intent>
-        <intent>
-            <action android:name="android.media.tv.action.VIEW_INPUTS" />
-        </intent>
-        <!-- Icon Pack and Theme discovery on Android 11+ -->
-        <intent>
-            <action android:name="org.adw.launcher.THEMES" />
-        </intent>
-        <intent>
-            <action android:name="com.novalauncher.THEME" />
-        </intent>
-        <intent>
-            <action android:name="com.gau.go.launcherex.theme" />
-        </intent>
-        <intent>
-            <action android:name="com.fede.launcher.THEME_ICONPACK" />
-        </intent>
-        <intent>
-            <action android:name="com.teslacoilsw.launcher.THEME" />
-        </intent>
-        <intent>
-            <action android:name="com.anddoes.launcher.THEME" />
-        </intent>
-        <intent>
-            <action android:name="com.dlto.atom.launcher.THEME" />
-        </intent>
-        <intent>
-            <action android:name="com.actionlauncher.THEME" />
-        </intent>
-        <intent>
-            <action android:name="mobi.bbase.ahome.THEME" />
-        </intent>
-        <intent>
-            <action android:name="com.sonymobile.home.ICON_PACK" />
-        </intent>
-        <intent>
-            <action android:name="com.spocky.projengmenu.ACTION_THEME" />
-        </intent>
-        <intent>
-            <action android:name="com.spocky.projengmenu.THEME" />
-        </intent>
-        <intent>
-            <action android:name="com.spocky.projectivy.THEME" />
-        </intent>
-        <intent>
-            <action android:name="com.spocky.projectivy.ICON_PACK" />
-        </intent>
-        <intent>
-            <action android:name="com.projectivy.intent.action.ICON_PACK" />
-        </intent>
-        <intent>
-            <action android:name="com.projectivy.theme.ICON_PACK" />
-        </intent>
-        <intent>
-            <action android:name="org.adw.launcher.icons.ACTION_PICK_ICON" />
-        </intent>
-        <intent>
-            <action android:name="android.intent.action.DELETE" />
-            <data android:scheme="package" />
         </intent>
     </queries>
 
@@ -99,7 +24,6 @@
     <uses-permission android:name="com.android.providers.tv.permission.WRITE_EPG_DATA" />
     <uses-permission android:name="android.permission.ACCESS_NETWORK_STATE" />
     <uses-permission android:name="android.permission.REQUEST_INSTALL_PACKAGES" />
-    <uses-permission android:name="android.permission.REQUEST_DELETE_PACKAGES" />
     <uses-permission android:name="android.permission.ACCESS_WIFI_STATE" />
     <uses-permission android:name="android.permission.RECORD_AUDIO" />
     <uses-permission android:name="android.permission.RECEIVE_BOOT_COMPLETED" />
@@ -155,15 +79,6 @@
             </intent-filter>
         </receiver>
 
-        <receiver
-            android:name=".core.launcher.LauncherBootReceiver"
-            android:exported="true">
-            <intent-filter>
-                <action android:name="android.intent.action.BOOT_COMPLETED" />
-                <action android:name="android.intent.action.MY_PACKAGE_REPLACED" />
-            </intent-filter>
-        </receiver>
-
         <service
             android:name=".core.sync.androidtv.TvChannelRefreshJobService"
             android:exported="false"
@@ -174,34 +89,16 @@
             android:exported="false"
             android:foregroundServiceType="mediaPlayback" />
 
-        <service
-            android:name=".core.launcher.LauncherAccessibilityService"
-            android:permission="android.permission.BIND_ACCESSIBILITY_SERVICE"
-            android:exported="true">
-            <intent-filter>
-                <action android:name="android.accessibilityservice.AccessibilityService" />
-            </intent-filter>
-            <meta-data
-                android:name="android.accessibilityservice"
-                android:resource="@xml/launcher_accessibility_service_config" />
-        </service>
-
-        <service
-            android:name=".core.notification.LauncherNotificationListenerService"
-            android:label="@string/app_name"
-            android:permission="android.permission.BIND_NOTIFICATION_LISTENER_SERVICE"
-            android:exported="true">
-            <intent-filter>
-                <action android:name="android.service.notification.NotificationListenerService" />
-            </intent-filter>
-        </service>
-
         <activity
             android:name=".MainActivity"
             android:exported="true"
             android:launchMode="singleTask"
             android:configChanges="orientation|screenSize|smallestScreenSize|screenLayout|density|uiMode|keyboard|keyboardHidden|navigation|layoutDirection|fontScale|locale"
             android:theme="@style/Theme.MyApplication.Launcher">
+            <!-- Declaring HOME is what lets Android pick Nuvio as the Home app, the way FLauncher
+                 and ArcLauncher do. It changes nothing until the user selects it, and Nuvio never
+                 intercepts the HOME key itself. singleTask keeps one instance for HOME and for the
+                 app-icon entry points. -->
             <intent-filter>
                 <action android:name="android.intent.action.MAIN" />
 
@@ -226,8 +123,10 @@
             </intent-filter>
         </activity>
 
-        <!-- Keep every icon entry on the same HOME task. Separate MainActivity subclasses
-             create independent instances, so HOME can miss the screen the user has open. -->
+        <!-- Every app-icon entry is an alias of MainActivity, not a subclass of it. Separate
+             activities would each own a task, so HOME could land on a different instance than
+             the one the app icon opened, and switching icons would strand the recorded Home
+             preference on a disabled component. -->
         <activity-alias
             android:name=".launcher.AppIconDefault"
             android:banner="@mipmap/banner"
@@ -317,7 +216,6 @@
                 <category android:name="android.intent.category.LEANBACK_LAUNCHER" />
             </intent-filter>
         </activity-alias>
-
 
         <profileable android:shell="true" />
     </application>

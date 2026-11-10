@@ -4,10 +4,6 @@ package com.nuvio.tv.ui.screens.home
 
 import com.nuvio.tv.ui.theme.NuvioTheme
 
-import androidx.hilt.navigation.compose.hiltViewModel
-import com.nuvio.tv.core.apps.InstalledApp
-import com.nuvio.tv.ui.screens.apps.AppContextMenuModal
-import com.nuvio.tv.ui.screens.apps.AppContextMenuViewModel
 import android.view.KeyEvent as AndroidKeyEvent
 import androidx.compose.animation.core.AnimationSpec
 import androidx.compose.animation.core.animateDpAsState
@@ -118,9 +114,7 @@ import com.nuvio.tv.domain.model.ContinueWatchingCardStyle
 import com.nuvio.tv.domain.model.PLACEHOLDER_IMAGE_URL
 import com.nuvio.tv.domain.model.isPlaceholder
 import com.nuvio.tv.ui.components.ContinueWatchingCard
-import com.nuvio.tv.ui.components.UPCOMING_SCHEDULE_CARD_WIDTH
 import com.nuvio.tv.ui.components.continueWatchingArtworkWidth
-import com.nuvio.tv.ui.components.continueWatchingArtworkHeight
 import com.nuvio.tv.ui.components.continueWatchingImageCacheKey
 import com.nuvio.tv.ui.components.continueWatchingImageModel
 import com.nuvio.tv.ui.components.continueWatchingShouldBlur
@@ -180,7 +174,6 @@ private fun ModernContinueWatchingRowItem(
     onFocused: () -> Unit,
     onContinueWatchingClick: (ContinueWatchingItem) -> Unit,
     onShowOptions: (ContinueWatchingItem) -> Unit,
-    isUpcomingCard: Boolean = false,
     modifier: Modifier = Modifier
 ) {
     val item = payload.item
@@ -219,7 +212,6 @@ private fun ModernContinueWatchingRowItem(
         cardStyle = continueWatchingCardStyle,
         cornerRadius = continueWatchingCornerRadius,
         isFocused = isCardFocused,
-        isUpcomingCard = isUpcomingCard,
         modifier = modifier
             .focusRequester(requester)
             .onFocusChanged {
@@ -271,7 +263,7 @@ private fun ModernCatalogRowItem(
     val focusKey = when (payload) {
         is ModernPayload.Catalog -> payload.focusKey
         is ModernPayload.CollectionFolder -> payload.focusKey
-        is ModernPayload.ContinueWatching, is ModernPayload.InstalledApp -> error("Unsupported payload for ModernCatalogRowItem")
+        is ModernPayload.ContinueWatching -> error("Unsupported payload for ModernCatalogRowItem")
     }
 
     val metaPreview = item.metaPreview
@@ -333,7 +325,7 @@ private fun ModernCatalogRowItem(
                     )
                 )
             }
-            is ModernPayload.ContinueWatching, is ModernPayload.InstalledApp -> Unit
+            is ModernPayload.ContinueWatching -> Unit
         }
     }
 
@@ -431,7 +423,7 @@ private fun ModernCatalogRowItem(
                         payload.folderId
                     )
                 }
-                is ModernPayload.ContinueWatching, is ModernPayload.InstalledApp -> Unit
+                is ModernPayload.ContinueWatching -> Unit
             }
         },
         onLongPress = onLongPress,
@@ -508,9 +500,6 @@ internal fun ModernRowSection(
     val rowFocusedIndex = remember(rowKey) {
         derivedStateOf { focusedItemByRow[rowKey] ?: 0 }
     }
-
-    var contextMenuApp by remember { mutableStateOf<InstalledApp?>(null) }
-    var contextMenuIndex by remember { mutableIntStateOf(-1) }
 
     // Blocks vertical focus exit during placeholder→data transition.
     val blockingFocusExit = remember { mutableStateOf(false) }
@@ -682,18 +671,14 @@ internal fun ModernRowSection(
         ) {
             if (!isActiveRow() || isVerticalRowsScrollingState.value) return@LaunchedEffect
             delay(150) // Wait before spamming image requests to survive rapid vertical D-pad scrolls!
-            val isUpcomingRow = row.key == MODERN_UPCOMING_ROW_KEY
             val cwWidthPx = with(density) {
                 continueWatchingArtworkWidth(
-                    continueWatchingCardStyle, continueWatchingCardWidth, continueWatchingCardHeight, isUpcomingRow
+                    continueWatchingCardStyle, continueWatchingCardWidth, continueWatchingCardHeight
                 ).roundToPx()
             }
-            val cwHeightPx = with(density) {
-                continueWatchingArtworkHeight(continueWatchingCardHeight, isUpcomingRow).roundToPx()
-            }
+            val cwHeightPx = with(density) { continueWatchingCardHeight.roundToPx() }
             fun imageUrlAndKey(item: ModernCarouselItem): Pair<String, String>? {
                 return when (val payload = item.payload) {
-                    is ModernPayload.InstalledApp -> null
                     is ModernPayload.Catalog -> {
                         val url = item.imageUrl ?: return null
                         val metrics = item.catalogCardMetrics(
@@ -722,14 +707,13 @@ internal fun ModernRowSection(
                     }
                     is ModernPayload.ContinueWatching -> {
                         // Use the same model and cache key the card computes so the prefetch warms the entry the card actually reads.
-                        val effectiveCardStyle = if (isUpcomingRow) ContinueWatchingCardStyle.CARD else continueWatchingCardStyle
                         val model = continueWatchingImageModel(
-                            payload.item, continueWatchingUsesEpisodeThumbnails(effectiveCardStyle, useEpisodeThumbnails),
-                            effectiveCardStyle != ContinueWatchingCardStyle.CARD
+                            payload.item, continueWatchingUsesEpisodeThumbnails(continueWatchingCardStyle, useEpisodeThumbnails),
+                            continueWatchingCardStyle != ContinueWatchingCardStyle.CARD
                         ) ?: return null
                         val blur = continueWatchingShouldBlur(
-                            payload.item, blurUnwatchedEpisodes, continueWatchingUsesEpisodeThumbnails(effectiveCardStyle, useEpisodeThumbnails),
-                            effectiveCardStyle != ContinueWatchingCardStyle.CARD
+                            payload.item, blurUnwatchedEpisodes, continueWatchingUsesEpisodeThumbnails(continueWatchingCardStyle, useEpisodeThumbnails),
+                            continueWatchingCardStyle != ContinueWatchingCardStyle.CARD
                         )
                         model to continueWatchingImageCacheKey(model, cwWidthPx, cwHeightPx, blur)
                     }
@@ -782,8 +766,7 @@ internal fun ModernRowSection(
                             )
                             with(density) { metrics.width.roundToPx() } to with(density) { metrics.height.roundToPx() }
                         }
-                        is ModernPayload.InstalledApp -> 0 to 0
-                            is ModernPayload.ContinueWatching -> cwWidthPx to cwHeightPx
+                        is ModernPayload.ContinueWatching -> cwWidthPx to cwHeightPx
                     }
                     enqueueIfNeeded(item, wPx, hPx)
                 }
@@ -819,8 +802,7 @@ internal fun ModernRowSection(
                                     )
                                     with(density) { metrics.width.roundToPx() } to with(density) { metrics.height.roundToPx() }
                                 }
-                                is ModernPayload.InstalledApp -> 0 to 0
-                            is ModernPayload.ContinueWatching -> cwWidthPx to cwHeightPx
+                                is ModernPayload.ContinueWatching -> cwWidthPx to cwHeightPx
                             }
                             enqueueIfNeeded(item, wPx, hPx)
                         }
@@ -950,7 +932,6 @@ internal fun ModernRowSection(
                     },
                     contentType = { _, item ->
                         when (val payload = item.payload) {
-                            is ModernPayload.InstalledApp -> "installed_app"
                             is ModernPayload.ContinueWatching -> "modern_cw_card"
                             is ModernPayload.Catalog -> if (payload.itemId.startsWith("__placeholder_")) "placeholder" else payload.itemType
                             is ModernPayload.CollectionFolder -> "modern_collection_folder_card"
@@ -981,52 +962,20 @@ internal fun ModernRowSection(
                     }
 
                     when (val payload = item.payload) {
-                        is ModernPayload.InstalledApp -> {
-                            val context = LocalContext.current
-                            val error = stringResource(R.string.installed_apps_launch_error)
-                            LaunchedEffect(isTargetItem) {
-                                if (isTargetItem) runCatching { requester.requestFocus() }
-                            }
-                            com.nuvio.tv.ui.components.InstalledAppTile(
-                                app = payload.app,
-                                modifier = Modifier.focusRequester(requester),
-                                onFocused = onFocused,
-                                onClick = {
-                                    onFocused()
-                                    if (!com.nuvio.tv.core.apps.launchInstalledApp(context, payload.app)) {
-                                        android.widget.Toast.makeText(context, error, android.widget.Toast.LENGTH_SHORT).show()
-                                    }
-                                },
-                                onLongClick = {
-                                    contextMenuApp = payload.app
-                                    contextMenuIndex = index
-                                }
-                            )
-                        }
                         is ModernPayload.ContinueWatching -> {
-                            val isUpcoming = row.key == MODERN_UPCOMING_ROW_KEY
                             ModernContinueWatchingRowItem(
                                 payload = payload,
                                 requester = requester,
                                 isTargetItem = isTargetItem,
-                                cardWidth = if (isUpcoming) UPCOMING_SCHEDULE_CARD_WIDTH else continueWatchingCardWidth,
+                                cardWidth = continueWatchingCardWidth,
                                 imageHeight = continueWatchingCardHeight,
                                 blurUnwatchedEpisodes = blurUnwatchedEpisodes,
                                 useEpisodeThumbnails = useEpisodeThumbnails,
                                 continueWatchingCardStyle = continueWatchingCardStyle,
                                 continueWatchingCornerRadius = continueWatchingCornerRadius,
                                 onFocused = onFocused,
-                                onContinueWatchingClick = if (isUpcoming) {
-                                    { item ->
-                                        val (id, type) = when (item) {
-                                            is ContinueWatchingItem.InProgress -> item.progress.contentId to item.progress.contentType
-                                            is ContinueWatchingItem.NextUp -> item.info.contentId to item.info.contentType
-                                        }
-                                        onNavigateToDetail(id, type, "")
-                                    }
-                                } else onContinueWatchingClick,
-                                onShowOptions = onContinueWatchingOptions,
-                                isUpcomingCard = isUpcoming
+                                onContinueWatchingClick = onContinueWatchingClick,
+                                onShowOptions = onContinueWatchingOptions
                             )
                         }
 
@@ -1110,35 +1059,6 @@ internal fun ModernRowSection(
                 }
             }
         }
-    }
-
-    contextMenuApp?.let { app ->
-        val allPackages = remember(row.items.list) {
-            row.items.list.mapNotNull { (it.payload as? ModernPayload.InstalledApp)?.app?.packageName }
-        }
-        val currentIndex = allPackages.indexOfFirst { it == app.packageName }
-        val menuViewModel: AppContextMenuViewModel = hiltViewModel()
-        AppContextMenuModal(
-            app = app,
-            onDismiss = {
-                contextMenuApp = null
-                contextMenuIndex = -1
-            },
-            onMoveLeft = if (currentIndex > 0) {
-                {
-                    menuViewModel.moveApp(app.packageName, -1, allPackages)
-                }
-            } else null,
-            onMoveRight = if (currentIndex in 0 until allPackages.size - 1) {
-                {
-                    menuViewModel.moveApp(app.packageName, 1, allPackages)
-                }
-            } else null,
-            onRemoveFromRow = {
-                menuViewModel.removeFromRow(app.packageName, allPackages)
-            },
-            viewModel = menuViewModel
-        )
     }
 }
 

@@ -129,9 +129,6 @@ internal fun ModernSidebarBlurPanel(
         if (!blurEnabled && isAmoledBlack) borderBase.copy(alpha = 0.9f) else Color.Transparent
     }
 
-    val isDense = drawerItems.size >= 7
-    val itemSpacing = if (isDense) NuvioTheme.spacing.xs else (NuvioTheme.spacing.sm - NuvioTheme.spacing.xxs)
-
     Column(
         modifier = Modifier
             .fillMaxHeight()
@@ -153,13 +150,13 @@ internal fun ModernSidebarBlurPanel(
                     Modifier
                 }
             )
-            .padding(horizontal = NuvioTheme.spacing.md, vertical = NuvioTheme.spacing.md)
+            .padding(horizontal = NuvioTheme.spacing.md, vertical = NuvioTheme.spacing.lg - NuvioTheme.spacing.xxs)
     ) {
         if (showProfileSelector && activeProfileName.isNotEmpty()) {
             Box(
                 modifier = Modifier
                     .fillMaxWidth()
-                    .padding(top = NuvioTheme.spacing.xxs),
+                    .offset(y = NuvioTheme.spacing.md),
                 contentAlignment = Alignment.Center
             ) {
                 SidebarProfileItem(
@@ -168,7 +165,6 @@ internal fun ModernSidebarBlurPanel(
                     profileAvatarImageUrl = activeProfileAvatarImageUrl,
                     focusEnabled = keepSidebarFocusDuringCollapse,
                     labelAlpha = sidebarLabelAlpha,
-                    isDense = isDense,
                     onFocusChanged = { focused ->
                         if (focused) onDrawerItemFocused(drawerItems.size)
                     },
@@ -180,7 +176,7 @@ internal fun ModernSidebarBlurPanel(
             Box(
                 modifier = Modifier
                     .fillMaxWidth()
-                    .padding(top = NuvioTheme.spacing.xxs),
+                    .offset(y = NuvioTheme.spacing.md),
                 contentAlignment = Alignment.Center
             ) {
                 BrandWordmark(
@@ -193,7 +189,7 @@ internal fun ModernSidebarBlurPanel(
             }
         }
 
-        Spacer(modifier = Modifier.height(if (isDense) NuvioTheme.spacing.sm else NuvioTheme.spacing.md))
+        Spacer(modifier = Modifier.height(NuvioTheme.spacing.lg))
 
         Column(
             modifier = Modifier
@@ -203,7 +199,8 @@ internal fun ModernSidebarBlurPanel(
             horizontalAlignment = Alignment.CenterHorizontally
         ) {
             Column(
-                verticalArrangement = Arrangement.spacedBy(itemSpacing)
+                modifier = Modifier.offset(y = (-12).dp),
+                verticalArrangement = Arrangement.spacedBy(NuvioTheme.spacing.sm - NuvioTheme.spacing.xxs)
             ) {
                 drawerItems.forEachIndexed { index, item ->
                     key(item.route) {
@@ -215,7 +212,6 @@ internal fun ModernSidebarBlurPanel(
                             focusEnabled = keepSidebarFocusDuringCollapse,
                             labelAlpha = sidebarLabelAlpha,
                             iconScale = sidebarIconScale,
-                            isDense = isDense,
                             onFocusChanged = {
                                 if (it) {
                                     onDrawerItemFocused(index)
@@ -242,7 +238,6 @@ private fun SidebarNavigationItem(
     focusEnabled: Boolean,
     labelAlpha: Float,
     iconScale: Float,
-    isDense: Boolean = false,
     onFocusChanged: (Boolean) -> Unit,
     modifier: Modifier = Modifier,
     onClick: () -> Unit
@@ -330,10 +325,7 @@ private fun SidebarNavigationItem(
                     this.selected = selected
                 }
                 .fillMaxWidth()
-                .padding(
-                    horizontal = NuvioTheme.spacing.lg - NuvioTheme.spacing.xxs,
-                    vertical = if (isDense) NuvioTheme.spacing.sm - NuvioTheme.spacing.hairline else NuvioTheme.spacing.sm + NuvioTheme.spacing.xxs
-                ),
+                .padding(horizontal = NuvioTheme.spacing.lg - NuvioTheme.spacing.xxs, vertical = NuvioTheme.spacing.sm + NuvioTheme.spacing.xxs),
             verticalAlignment = Alignment.CenterVertically
         ) {
         Box(
@@ -393,7 +385,6 @@ private fun SidebarProfileItem(
     profileAvatarImageUrl: String?,
     focusEnabled: Boolean,
     labelAlpha: Float,
-    isDense: Boolean = false,
     onFocusChanged: (Boolean) -> Unit,
     modifier: Modifier = Modifier,
     onClick: () -> Unit
@@ -431,10 +422,7 @@ private fun SidebarProfileItem(
                     role = Role.Button
                 }
                 .fillMaxWidth()
-                .padding(
-                    horizontal = NuvioTheme.spacing.lg - NuvioTheme.spacing.xxs,
-                    vertical = if (isDense) NuvioTheme.spacing.sm - NuvioTheme.spacing.hairline else NuvioTheme.spacing.sm + NuvioTheme.spacing.xxs
-                ),
+                .padding(horizontal = NuvioTheme.spacing.lg - NuvioTheme.spacing.xxs, vertical = NuvioTheme.spacing.sm + NuvioTheme.spacing.xxs),
             verticalAlignment = Alignment.CenterVertically
         ) {
         Box(

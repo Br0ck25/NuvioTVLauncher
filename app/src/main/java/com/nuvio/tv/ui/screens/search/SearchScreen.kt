@@ -55,7 +55,7 @@ import androidx.compose.material3.TextFieldDefaults
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.DisposableEffect
 import androidx.compose.runtime.LaunchedEffect
-import androidx.lifecycle.compose.collectAsStateWithLifecycle
+import androidx.compose.runtime.collectAsState
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.key
 import androidx.compose.runtime.mutableIntStateOf
@@ -140,9 +140,9 @@ fun SearchScreen(
     onNavigateToSeeAll: (catalogId: String, addonId: String, type: String) -> Unit = { _, _, _ -> },
     onOpenDiscover: () -> Unit = {}
 ) {
-    val uiState by viewModel.uiState.collectAsStateWithLifecycle()
-    val watchedMovieIds by viewModel.watchedMovieIds.collectAsStateWithLifecycle()
-    val watchedSeriesIds by viewModel.watchedSeriesIds.collectAsStateWithLifecycle()
+    val uiState by viewModel.uiState.collectAsState()
+    val watchedMovieIds by viewModel.watchedMovieIds.collectAsState()
+    val watchedSeriesIds by viewModel.watchedSeriesIds.collectAsState()
     val context = LocalContext.current
     val view = LocalView.current
     val keyboardController = LocalSoftwareKeyboardController.current
@@ -936,11 +936,10 @@ fun SearchScreen(
         }
     }
 
-    val posterOptionsState by viewModel.posterOptions.state.collectAsStateWithLifecycle()
+    val posterOptionsState by viewModel.posterOptions.state.collectAsState()
     com.nuvio.tv.ui.components.posteroptions.PosterOptionsHost(
         state = posterOptionsState,
         controller = viewModel.posterOptions,
-        calendarBell = true,
         onNavigateToDetail = { id, type, addonBaseUrl ->
             // Consume it, so a later navigation cannot reuse this row.
             posterOptionsRowKey?.let(saveSearchFocusForDetail)

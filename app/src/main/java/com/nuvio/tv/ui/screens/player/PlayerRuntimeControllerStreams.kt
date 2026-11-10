@@ -1,6 +1,5 @@
-﻿package com.nuvio.tv.ui.screens.player
+package com.nuvio.tv.ui.screens.player
 
-import com.nuvio.tv.ui.reshaped.livetv.keepPlayerForLiveTvZap
 import android.content.Intent
 import android.net.Uri
 import android.util.Log
@@ -164,25 +163,22 @@ private data class SourceStreamsRequest(
     val episode: Int?
 )
 
-private fun PlayerRuntimeController.currentSourceStreamsRequest(): SourceStreamsRequest? {
-    val isSeries = (contentType in listOf("series", "tv")) ||
-        (contentType == "channel" && ((currentSeason != null && currentEpisode != null) || currentVideoId?.contains(":") == true))
-    return if (isSeries && currentSeason != null && currentEpisode != null) {
+private fun PlayerRuntimeController.currentSourceStreamsRequest(): SourceStreamsRequest? =
+    if (contentType in listOf("series", "tv") && currentSeason != null && currentEpisode != null) {
         SourceStreamsRequest(
-            type = if (contentType == "channel") "series" else (contentType ?: return null),
+            type = contentType ?: return null,
             videoId = currentVideoId ?: contentId ?: return null,
             season = currentSeason,
             episode = currentEpisode
         )
     } else {
         SourceStreamsRequest(
-            type = if (contentType == "channel") "movie" else (contentType ?: "movie"),
-            videoId = currentVideoId ?: contentId ?: return null,
+            type = contentType ?: "movie",
+            videoId = contentId ?: return null,
             season = null,
             episode = null
         )
     }
-}
 
 internal fun PlayerRuntimeController.loadSourceStreams(forceRefresh: Boolean) {
     streamRepository.setLocalPluginSearchPaused(false)
@@ -990,7 +986,7 @@ internal fun PlayerRuntimeController.switchToSourceStream(
     )
 
     resetLoadingOverlayForNewStream()
-    if (!keepPlayerForLiveTvZap(url)) releasePlayer(flushPlaybackState = false) // Live TV zaps keep the player
+    releasePlayer(flushPlaybackState = false)
 
     applySelectedStreamState(
         stream = stream,
@@ -1121,7 +1117,7 @@ internal fun PlayerRuntimeController.selectEpisodesSeason(season: Int) {
 }
 
 @androidx.annotation.OptIn(UnstableApi::class)
-internal fun PlayerRuntimeController.switchToTorrentSourceStream(
+private fun PlayerRuntimeController.switchToTorrentSourceStream(
     stream: Stream
 ) {
     val infoHash = stream.getEffectiveInfoHash() ?: return

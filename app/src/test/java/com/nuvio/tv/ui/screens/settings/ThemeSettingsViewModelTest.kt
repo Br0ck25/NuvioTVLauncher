@@ -131,29 +131,9 @@ class ThemeSettingsViewModelTest {
         assertEquals(solid, viewModel.uiState.value.customThemeColors)
     }
 
-    @Test
-    fun selectingIconPackUpdatesDataStore() = runTest {
-        val installedAppsPrefsStore = mockk<com.nuvio.tv.data.local.InstalledAppsPreferencesDataStore>(relaxed = true) {
-            every { preferences } returns MutableStateFlow(com.nuvio.tv.data.local.InstalledAppsPreferences())
-        }
-        val iconPackManager = mockk<com.nuvio.tv.core.apps.IconPackManager>(relaxed = true)
-        val members = mockk<MemberAccessRepository> { every { access } returns this@ThemeSettingsViewModelTest.access }
-        val icons = mockk<AppIconManager> { every { state } returns MutableStateFlow(AppIconSettingsState()) }
-        val viewModel = ThemeSettingsViewModel(store, members, icons, iconPackManager, installedAppsPrefsStore)
-
-        viewModel.onEvent(ThemeSettingsEvent.SelectIconPack("com.test.pack"))
-        runCurrent()
-
-        coVerify { installedAppsPrefsStore.setSelectedIconPack("com.test.pack") }
-    }
-
     private fun createViewModel(): ThemeSettingsViewModel {
         val members = mockk<MemberAccessRepository> { every { access } returns this@ThemeSettingsViewModelTest.access }
         val icons = mockk<AppIconManager> { every { state } returns MutableStateFlow(AppIconSettingsState()) }
-        val iconPackManager = mockk<com.nuvio.tv.core.apps.IconPackManager>(relaxed = true)
-        val installedAppsPreferencesDataStore = mockk<com.nuvio.tv.data.local.InstalledAppsPreferencesDataStore>(relaxed = true) {
-            every { preferences } returns MutableStateFlow(com.nuvio.tv.data.local.InstalledAppsPreferences())
-        }
-        return ThemeSettingsViewModel(store, members, icons, iconPackManager, installedAppsPreferencesDataStore)
+        return ThemeSettingsViewModel(store, members, icons)
     }
 }

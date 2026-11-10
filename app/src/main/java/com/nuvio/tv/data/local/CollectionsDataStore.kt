@@ -6,7 +6,6 @@ import androidx.datastore.preferences.core.stringPreferencesKey
 import com.google.gson.Gson
 import com.google.gson.reflect.TypeToken
 import com.nuvio.tv.R
-import com.nuvio.tv.core.mylists.MyListsDefaultSeed
 import com.nuvio.tv.core.profile.ProfileManager
 import com.nuvio.tv.domain.model.AddonCatalogCollectionSource
 import com.nuvio.tv.domain.model.Collection
@@ -23,7 +22,6 @@ import com.nuvio.tv.domain.model.TmdbCollectionSourceType
 import com.nuvio.tv.domain.model.TraktCollectionSource
 import com.nuvio.tv.domain.model.TraktListSort
 import com.nuvio.tv.domain.model.TraktSortHow
-import com.nuvio.tv.domain.model.AuthState
 import dagger.hilt.android.qualifiers.ApplicationContext
 import kotlinx.coroutines.flow.Flow
 import kotlinx.coroutines.flow.first
@@ -44,8 +42,7 @@ data class ValidationResult(
 class CollectionsDataStore @Inject constructor(
     @ApplicationContext private val appContext: Context,
     private val factory: ProfileDataStoreFactory,
-    private val profileManager: ProfileManager,
-    private val authManager: dagger.Lazy<com.nuvio.tv.core.auth.AuthManager>? = null
+    private val profileManager: ProfileManager
 ) {
     companion object {
         private const val FEATURE = "collections"
@@ -58,51 +55,26 @@ class CollectionsDataStore @Inject constructor(
     private val collectionsKey = stringPreferencesKey("collections_json")
     private fun string(resId: Int, vararg args: Any): String = appContext.getString(resId, *args)
 
-    private val defaultPremadeCollections: List<Collection> by lazy {
-        runCatching {
-            val json = appContext.assets
-                .open(MyListsDefaultSeed.MY_LISTS_DEFAULT_COLLECTIONS_ASSET)
-                .bufferedReader()
-                .use { it.readText() }
-            parseCollections(json)
-        }.getOrDefault(emptyList())
-    }
-
-    private val isAuthFlow: Flow<Boolean> =
-        authManager?.get()?.authState?.map { it is AuthState.FullAccount } ?: kotlinx.coroutines.flow.flowOf(false)
-
-    private fun parseCollectionsOrDefault(
-        json: String?,
-        isAuthenticated: Boolean = authManager?.get()?.isAuthenticated == true
-    ): List<Collection> {
-        if (isAuthenticated) {
-            // When user is logged into a Nuvio account, all collections go through the Nuvio account.
-            if (json.isNullOrBlank() || json.trim() == "[]") return emptyList()
-            return parseCollections(json)
-        }
-        // If not signed in, display collections from My Lists addon.
-        if (json == null) return defaultPremadeCollections
-        return parseCollections(json)
-    }
-
     val collections: Flow<List<Collection>> =
-        kotlinx.coroutines.flow.combine(profileManager.activeProfileId, isAuthFlow) { pid, isAuth ->
-            pid to isAuth
-        }.flatMapLatest { (pid, isAuth) ->
+        profileManager.activeProfileId.flatMapLatest { pid ->
             factory.get(pid, FEATURE).data.map { prefs ->
-                parseCollectionsOrDefault(prefs[collectionsKey], isAuth)
+                parseCollections(prefs[collectionsKey])
             }
         }
 
     suspend fun setCollections(collections: List<Collection>) {
         store().edit { prefs ->
-            prefs[collectionsKey] = gson.toJson(collections.map { it.toSerializable() })
+            if (collections.isEmpty()) {
+                prefs.remove(collectionsKey)
+            } else {
+                prefs[collectionsKey] = gson.toJson(collections.map { it.toSerializable() })
+            }
         }
     }
 
     suspend fun addCollection(collection: Collection) {
         store().edit { prefs ->
-            val current = parseCollectionsOrDefault(prefs[collectionsKey]).toMutableList()
+            val current = parseCollections(prefs[collectionsKey]).toMutableList()
             current.add(collection)
             prefs[collectionsKey] = gson.toJson(current.map { it.toSerializable() })
         }
@@ -110,7 +82,7 @@ class CollectionsDataStore @Inject constructor(
 
     suspend fun updateCollection(collection: Collection) {
         store().edit { prefs ->
-            val current = parseCollectionsOrDefault(prefs[collectionsKey]).toMutableList()
+            val current = parseCollections(prefs[collectionsKey]).toMutableList()
             val index = current.indexOfFirst { it.id == collection.id }
             if (index >= 0) {
                 current[index] = collection
@@ -121,9 +93,13 @@ class CollectionsDataStore @Inject constructor(
 
     suspend fun removeCollection(collectionId: String) {
         store().edit { prefs ->
-            val current = parseCollectionsOrDefault(prefs[collectionsKey]).toMutableList()
+            val current = parseCollections(prefs[collectionsKey]).toMutableList()
             current.removeAll { it.id == collectionId }
-            prefs[collectionsKey] = gson.toJson(current.map { it.toSerializable() })
+            if (current.isEmpty()) {
+                prefs.remove(collectionsKey)
+            } else {
+                prefs[collectionsKey] = gson.toJson(current.map { it.toSerializable() })
+            }
         }
     }
 
@@ -139,7 +115,7 @@ class CollectionsDataStore @Inject constructor(
 
     suspend fun getCurrentCollections(): List<Collection> {
         val prefs = store().data.first()
-        return parseCollectionsOrDefault(prefs[collectionsKey])
+        return parseCollections(prefs[collectionsKey])
     }
 
     suspend fun exportCurrentProfileJson(): String? {
@@ -293,9 +269,7 @@ class CollectionsDataStore @Inject constructor(
         val addonId: String,
         val type: String,
         val catalogId: String,
-        val genre: String? = null,
-        val title: String? = null,
-        val name: String? = null
+        val genre: String? = null
     )
 
     private fun Collection.toSerializable() = SerializableCollection(
@@ -325,8 +299,7 @@ class CollectionsDataStore @Inject constructor(
                         addonId = source.addonId,
                         type = source.type,
                         catalogId = source.catalogId,
-                        genre = source.genre,
-                        title = source.title
+                        genre = source.genre
                     )
                 }
             )
@@ -340,8 +313,7 @@ class CollectionsDataStore @Inject constructor(
                 addonId = addonId,
                 type = type,
                 catalogId = catalogId,
-                genre = genre,
-                title = title
+                genre = genre
             )
             is TmdbCollectionSource -> SerializableSource(
                 provider = "tmdb",
@@ -384,29 +356,10 @@ class CollectionsDataStore @Inject constructor(
         withoutWatchProviders = withoutWatchProviders
     )
 
-    private fun normalizeCollectionAddonId(addonId: String): String {
-        return if (addonId.equals(MyListsDefaultSeed.MY_LISTS_COLLECTIONS_ADDON_ID, ignoreCase = true) ||
-            addonId.equals(MyListsDefaultSeed.MY_LISTS_ADDON_ID, ignoreCase = true)
-        ) {
-            MyListsDefaultSeed.MY_LISTS_TV_ADDON_ID
-        } else {
-            addonId
-        }
-    }
-
-    private fun resolveRelativeMyListsUrl(url: String?): String? {
-        if (url.isNullOrBlank()) return null
-        return if (url.startsWith("/")) {
-            "${MyListsDefaultSeed.MY_LISTS_BASE_ORIGIN}$url"
-        } else {
-            url
-        }
-    }
-
     private fun SerializableCollection.toDomain() = Collection(
         id = id,
         title = title,
-        backdropImageUrl = resolveRelativeMyListsUrl(backdropImageUrl),
+        backdropImageUrl = backdropImageUrl,
         pinToTop = pinToTop,
         focusGlowEnabled = focusGlowEnabled ?: true,
         viewMode = FolderViewMode.fromString(viewMode),
@@ -415,23 +368,22 @@ class CollectionsDataStore @Inject constructor(
             CollectionFolder(
                 id = folder.id,
                 title = folder.title,
-                coverImageUrl = resolveRelativeMyListsUrl(folder.coverImageUrl),
-                focusGifUrl = resolveRelativeMyListsUrl(folder.focusGifUrl),
+                coverImageUrl = folder.coverImageUrl,
+                focusGifUrl = folder.focusGifUrl,
                 focusGifEnabled = folder.focusGifEnabled ?: true,
                 coverEmoji = folder.coverEmoji,
                 tileShape = PosterShape.fromString(folder.tileShape),
                 hideTitle = folder.hideTitle,
-                heroBackdropUrl = resolveRelativeMyListsUrl(folder.heroBackdropUrl),
-                heroVideoUrl = resolveRelativeMyListsUrl(folder.heroVideoUrl),
-                titleLogoUrl = resolveRelativeMyListsUrl(folder.titleLogoUrl),
+                heroBackdropUrl = folder.heroBackdropUrl,
+                heroVideoUrl = folder.heroVideoUrl,
+                titleLogoUrl = folder.titleLogoUrl,
                 sources = folder.sources?.mapNotNull { it.toDomainSource() }
                     ?: folder.catalogSources.map { source ->
                         AddonCatalogCollectionSource(
-                            addonId = normalizeCollectionAddonId(source.addonId),
+                            addonId = source.addonId,
                             type = source.type,
                             catalogId = source.catalogId,
-                            genre = source.genre,
-                            title = (source.title ?: source.name)?.takeIf { it.isNotBlank() }
+                            genre = source.genre
                         )
                     }
             )
@@ -478,15 +430,14 @@ class CollectionsDataStore @Inject constructor(
                 )
             }
             else -> {
-                val sourceAddonId = addonId?.takeIf { it.isNotBlank() }?.let(::normalizeCollectionAddonId) ?: return null
+                val sourceAddonId = addonId?.takeIf { it.isNotBlank() } ?: return null
                 val sourceType = type?.takeIf { it.isNotBlank() } ?: return null
                 val sourceCatalogId = catalogId?.takeIf { it.isNotBlank() } ?: return null
                 AddonCatalogCollectionSource(
                     addonId = sourceAddonId,
                     type = sourceType,
                     catalogId = sourceCatalogId,
-                    genre = genre,
-                    title = title?.takeIf { it.isNotBlank() }
+                    genre = genre
                 )
             }
         }

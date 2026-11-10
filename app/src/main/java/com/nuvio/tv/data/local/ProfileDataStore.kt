@@ -41,7 +41,6 @@ class ProfileDataStore @Inject constructor(
     private val rememberLastProfileEnabledKey = booleanPreferencesKey("remember_last_profile_enabled")
     private val confirmExitEnabledKey = booleanPreferencesKey("confirm_exit_enabled")
     private val startupSplashEnabledKey = booleanPreferencesKey("startup_splash_enabled")
-    private val profileIdleSwitchEnabledKey = booleanPreferencesKey("profile_idle_switch_enabled")
 
     private val profileListType = Types.newParameterizedType(List::class.java, ProfileJson::class.java)
 
@@ -74,11 +73,6 @@ class ProfileDataStore @Inject constructor(
         prefs[startupSplashEnabledKey] ?: true
     }
 
-    /** Return to the profile picker after a long idle period and after the TV powers on. */
-    val profileIdleSwitchEnabled: Flow<Boolean> = dataStore.data.map { prefs ->
-        prefs[profileIdleSwitchEnabledKey] ?: true
-    }
-
     suspend fun setActiveProfile(id: Int) {
         dataStore.edit { prefs ->
             prefs[activeProfileIdKey] = id
@@ -101,12 +95,6 @@ class ProfileDataStore @Inject constructor(
     suspend fun setStartupSplashEnabled(enabled: Boolean) {
         dataStore.edit { prefs ->
             prefs[startupSplashEnabledKey] = enabled
-        }
-    }
-
-    suspend fun setProfileIdleSwitchEnabled(enabled: Boolean) {
-        dataStore.edit { prefs ->
-            prefs[profileIdleSwitchEnabledKey] = enabled
         }
     }
 

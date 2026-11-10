@@ -141,9 +141,7 @@ sealed class Screen(val route: String) {
     data object Search : Screen("search")
     data object Discover : Screen("discover")
     data object Library : Screen("library")
-    data object Calendar : Screen("calendar")
     data object Settings : Screen("settings")
-    data object Apps : Screen("apps")
     data object Tracking : Screen("trakt")
     data object WatchParty : Screen("watch_party?code={code}") {
         fun createRoute(code: String = ""): String = "watch_party?code=$code"
@@ -156,7 +154,6 @@ sealed class Screen(val route: String) {
     data object LicensesAttributions : Screen("licenses_attributions")
     data object AddonManager : Screen("addon_manager")
     data object CatalogOrder : Screen("catalog_order")
-    data object InstalledAppsOrder : Screen("installed_apps_order")
     data object Plugins : Screen("plugins")
     data object ExperienceModeSelection : Screen("experience_mode_selection")
     data object LayoutSelection : Screen("layout_selection")

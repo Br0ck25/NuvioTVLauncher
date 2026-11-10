@@ -95,13 +95,9 @@ fun HomeScreen(
     onContinueWatchingStartFromBeginning: (ContinueWatchingItem) -> Unit = onContinueWatchingClick,
     onContinueWatchingPlayManually: (ContinueWatchingItem) -> Unit = onContinueWatchingClick,
     onNavigateToCatalogSeeAll: (String, String, String) -> Unit = { _, _, _ -> },
-    onNavigateToFolderDetail: (String, String) -> Unit = { _, _ -> },
-    onNavigateToSettings: () -> Unit = {}
+    onNavigateToFolderDetail: (String, String) -> Unit = { _, _ -> }
 ) {
     val uiState by viewModel.uiState.collectAsStateWithLifecycle()
-
-    var showSettingsDrawer by rememberSaveable { mutableStateOf(false) }
-    var showNotificationsDrawer by rememberSaveable { mutableStateOf(false) }
 
     // Home was the only major screen without a lifecycle observer, so nothing ever told it to
     // look at its catalogs again.
@@ -110,9 +106,7 @@ fun HomeScreen(
         val observer = LifecycleEventObserver { _, event ->
             if (event == Lifecycle.Event.ON_RESUME) {
                 viewModel.beginShuffleHomeVisit()
-                viewModel.syncMyListsIfNeeded()
                 viewModel.refreshHomeCatalogsIfStale()
-                viewModel.refreshInstalledApps()
             }
         }
         lifecycleOwner.lifecycle.addObserver(observer)
@@ -121,13 +115,11 @@ fun HomeScreen(
     val modernPresentation by viewModel.modernHomePresentation.collectAsStateWithLifecycle()
     val initialCwResolved by viewModel.initialCwResolved.collectAsStateWithLifecycle()
     val scrollToTopTrigger by viewModel.scrollToTopTrigger.collectAsStateWithLifecycle()
-    var handledDrawerDismissTrigger by rememberSaveable { mutableStateOf(scrollToTopTrigger) }
     val effectiveAutoplayEnabled by viewModel.effectiveAutoplayEnabled.collectAsStateWithLifecycle(
         initialValue = false
     )
     val hasCatalogContent = uiState.catalogRows.any { it.items.isNotEmpty() }
     val hasCollectionContent = uiState.homeRows.any { it is HomeRow.CollectionRow }
-    val hasInstalledAppsContent = uiState.homeRows.any { it is HomeRow.InstalledApps && it.apps.isNotEmpty() }
     val hasHeroContent = uiState.heroItems.isNotEmpty()
     val modernPresentationReady =
         uiState.homeLayout != HomeLayout.MODERN ||
@@ -140,15 +132,6 @@ fun HomeScreen(
     // Track that catalog loading has started at least once (isLoading went true→false).
     var catalogLoadingStarted by rememberSaveable { mutableStateOf(false) }
     var posterOptionsTarget by remember { mutableStateOf<HomePosterOptionsTarget?>(null) }
-
-    LaunchedEffect(scrollToTopTrigger) {
-        if (scrollToTopTrigger != handledDrawerDismissTrigger) {
-            handledDrawerDismissTrigger = scrollToTopTrigger
-            showNotificationsDrawer = false
-            showSettingsDrawer = false
-            posterOptionsTarget = null
-        }
-    }
 
     LaunchedEffect(uiState.homeLayout) {
         if (uiState.homeLayout != HomeLayout.MODERN) {
@@ -197,7 +180,7 @@ fun HomeScreen(
         modernPresentationReady
     ) {
         // Track that addons are known (even if isLoading flipped too fast to catch).
-        if (uiState.installedAddonsCount > 0 || (hasInstalledAppsContent && !uiState.isLoading)) {
+        if (uiState.installedAddonsCount > 0) {
             catalogLoadingStarted = true
         }
         // Wait until catalog loading has completed with content AND the CW
@@ -208,7 +191,7 @@ fun HomeScreen(
             initialCwResolved &&
             modernPresentationReady &&
             // When addons are installed, require at least one catalog row.
-            (hasCatalogContent || hasInstalledAppsContent || uiState.installedAddonsCount == 0)
+            (hasCatalogContent || uiState.installedAddonsCount == 0)
         ) {
             Log.d("HomeGate", "RELEASE: catalogs=$hasCatalogContent cwResolved=$initialCwResolved cwItems=${uiState.continueWatchingItems.size} addons=${uiState.installedAddonsCount}")
             homeStableGateReleased = true
@@ -246,14 +229,13 @@ fun HomeScreen(
     val hasAnyContent = uiState.catalogRows.isNotEmpty() ||
         (uiState.continueWatchingEnabled && uiState.continueWatchingItems.isNotEmpty()) ||
         uiState.heroItems.isNotEmpty() ||
-        hasCollectionContent ||
-        hasInstalledAppsContent
+        hasCollectionContent
     val showStartupLoader = when {
         !uiState.layoutPreferencesReady -> true
         uiState.isLoading && !hasAnyContent -> true
-        uiState.error == noAddonsError && uiState.catalogRows.isEmpty() && !hasInstalledAppsContent -> !homeStableGateReleased
-        uiState.error == noCatalogAddonsError && uiState.catalogRows.isEmpty() && !hasCollectionContent && !hasHeroContent && !hasInstalledAppsContent -> !homeStableGateReleased
-        uiState.error != null && uiState.catalogRows.isEmpty() && !hasInstalledAppsContent -> false
+        uiState.error == noAddonsError && uiState.catalogRows.isEmpty() -> !homeStableGateReleased
+        uiState.error == noCatalogAddonsError && uiState.catalogRows.isEmpty() && !hasCollectionContent && !hasHeroContent -> !homeStableGateReleased
+        uiState.error != null && uiState.catalogRows.isEmpty() -> false
         !uiState.isLoading && !hasAnyContent -> !homeStableGateReleased
         else -> !homeStableGateReleased || !modernPresentationReady || !showHomeContentWithAnimation
     }
@@ -285,7 +267,7 @@ fun HomeScreen(
                 Unit
             }
 
-            uiState.error == noAddonsError && uiState.catalogRows.isEmpty() && !hasInstalledAppsContent -> {
+            uiState.error == noAddonsError && uiState.catalogRows.isEmpty() -> {
                 if (!homeStableGateReleased) {
                     Unit
                 } else {
@@ -302,7 +284,7 @@ fun HomeScreen(
                 }
             }
 
-            uiState.error == noCatalogAddonsError && uiState.catalogRows.isEmpty() && !hasCollectionContent && !hasHeroContent && !hasInstalledAppsContent -> {
+            uiState.error == noCatalogAddonsError && uiState.catalogRows.isEmpty() && !hasCollectionContent && !hasHeroContent -> {
                 if (!homeStableGateReleased) {
                     Unit
                 } else {
@@ -319,7 +301,7 @@ fun HomeScreen(
                 }
             }
 
-            uiState.error != null && uiState.catalogRows.isEmpty() && !hasInstalledAppsContent -> {
+            uiState.error != null && uiState.catalogRows.isEmpty() -> {
                 ErrorState(
                     message = uiState.error ?: stringResource(R.string.error_generic),
                     onRetry = { viewModel.onEvent(HomeEvent.OnRetry) }
@@ -461,27 +443,6 @@ fun HomeScreen(
                     color = NuvioTheme.colors.TextPrimary
                 )
             }
-        }
-
-        if (!showStartupLoader) {
-            HomeTopBarHeader(
-                onNotificationsClick = { showNotificationsDrawer = true },
-                onSettingsClick = { showSettingsDrawer = true },
-                modifier = Modifier.align(Alignment.TopEnd)
-            )
-        }
-
-        if (showSettingsDrawer) {
-            HomeSettingsDrawer(
-                onDismiss = { showSettingsDrawer = false },
-                onOpenNuvioSettings = onNavigateToSettings
-            )
-        }
-
-        if (showNotificationsDrawer) {
-            NotificationsDrawer(
-                onDismiss = { showNotificationsDrawer = false }
-            )
         }
     }
 

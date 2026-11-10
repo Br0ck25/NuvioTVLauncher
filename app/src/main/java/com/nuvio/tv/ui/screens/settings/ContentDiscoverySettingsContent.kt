@@ -2,8 +2,6 @@
 
 package com.nuvio.tv.ui.screens.settings
 
-import androidx.compose.foundation.verticalScroll
-import androidx.compose.foundation.rememberScrollState
 import androidx.activity.compose.BackHandler
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Column
@@ -13,7 +11,6 @@ import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.Dns
 import androidx.compose.material.icons.filled.Extension
 import androidx.compose.material.icons.filled.Power
-import androidx.compose.material.icons.filled.QrCode2
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
@@ -27,7 +24,6 @@ import androidx.compose.ui.focus.focusRequester
 import androidx.compose.ui.res.stringResource
 import androidx.tv.material3.ExperimentalTvMaterial3Api
 import com.nuvio.tv.R
-import com.nuvio.tv.ui.components.mylists.MyListsLinkAccountDialog
 import com.nuvio.tv.ui.theme.NuvioTheme
 
 @Composable
@@ -98,10 +94,8 @@ private fun ContentDiscoveryHub(
     focusPluginsOnReturn: Boolean,
     serversFocusRequester: FocusRequester
 ) {
-    var showMyListsAccountDialog by remember { mutableStateOf(false) }
-
     Column(
-        modifier = Modifier.fillMaxSize().verticalScroll(rememberScrollState()),
+        modifier = Modifier.fillMaxSize(),
         verticalArrangement = Arrangement.spacedBy(NuvioTheme.spacing.md)
     ) {
         SettingsDetailHeader(
@@ -109,12 +103,6 @@ private fun ContentDiscoveryHub(
             subtitle = stringResource(R.string.settings_content_discovery_subtitle)
         )
         SettingsGroupCard(modifier = Modifier.fillMaxWidth()) {
-            SettingsActionRow(
-                title = "My Lists Addon Account",
-                subtitle = "Link or manage your My Lists Addon Catalogs, Collections, and Live TV Channels",
-                onClick = { showMyListsAccountDialog = true },
-                leadingIcon = Icons.Default.QrCode2
-            )
             SettingsActionRow(
                 title = stringResource(R.string.addon_title),
                 subtitle = stringResource(R.string.settings_content_discovery_addons_subtitle),
@@ -147,12 +135,6 @@ private fun ContentDiscoveryHub(
                 )
             }
         }
-    }
-
-    if (showMyListsAccountDialog) {
-        MyListsLinkAccountDialog(
-            onDismiss = { showMyListsAccountDialog = false }
-        )
     }
 }
 

@@ -22,9 +22,7 @@ fun AddonManifestDto.toDomain(baseUrl: String): Addon {
         logo = logo,
         background = background,
         baseUrl = baseUrl,
-        catalogs = catalogs.filterNot {
-            com.nuvio.tv.core.mylists.MyListsDefaultSeed.isRemovedCatalog(it.id, it.type)
-        }.map { it.toDomain() },
+        catalogs = catalogs.map { it.toDomain() },
         types = manifestTypes.map { ContentType.fromString(it) },
         rawTypes = manifestTypes,
         resources = parseResources(resources, manifestTypes),

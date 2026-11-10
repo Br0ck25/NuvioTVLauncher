@@ -94,8 +94,6 @@ data class LayoutSettingsUiState(
         com.nuvio.tv.core.poster.CustomPosterScreen.ALL,
     val alwaysShowLandscapeClearlogo: Boolean = false,
     val heroDescriptionAutoScrollEnabled: Boolean = false,
-    val sidebarItemOrder: List<String> = LayoutPreferenceDataStore.DEFAULT_SIDEBAR_ITEM_ORDER,
-    val disabledSidebarItems: Set<String> = emptySet(),
 )
 
 data class CatalogInfo(
@@ -108,8 +106,6 @@ sealed class LayoutSettingsEvent {
     data class SelectLayout(val layout: HomeLayout) : LayoutSettingsEvent()
     data class ToggleHeroCatalog(val catalogKey: String) : LayoutSettingsEvent()
     data class SetSidebarCollapsed(val collapsed: Boolean) : LayoutSettingsEvent()
-    data class SetSidebarItemEnabled(val key: String, val enabled: Boolean) : LayoutSettingsEvent()
-    data class MoveSidebarItem(val key: String, val direction: Int) : LayoutSettingsEvent()
     data class SetModernSidebarEnabled(val enabled: Boolean) : LayoutSettingsEvent()
     data class SetModernSidebarBlurEnabled(val enabled: Boolean) : LayoutSettingsEvent()
     data class SetModernLandscapePostersEnabled(val enabled: Boolean) : LayoutSettingsEvent()
@@ -223,16 +219,6 @@ class LayoutSettingsViewModel @Inject constructor(
         viewModelScope.launch {
             layoutPreferenceDataStore.sidebarCollapsedByDefault.distinctUntilChanged().collectLatest { collapsed ->
                 updateUiStateIfChanged { it.copy(sidebarCollapsedByDefault = collapsed) }
-            }
-        }
-        viewModelScope.launch {
-            layoutPreferenceDataStore.sidebarItemOrder.distinctUntilChanged().collectLatest { order ->
-                updateUiStateIfChanged { it.copy(sidebarItemOrder = order) }
-            }
-        }
-        viewModelScope.launch {
-            layoutPreferenceDataStore.disabledSidebarItems.distinctUntilChanged().collectLatest { disabled ->
-                updateUiStateIfChanged { it.copy(disabledSidebarItems = disabled) }
             }
         }
         viewModelScope.launch {
@@ -522,16 +508,6 @@ class LayoutSettingsViewModel @Inject constructor(
             is LayoutSettingsEvent.SetCustomPosterUrlPattern -> setCustomPosterUrlPattern(event.pattern)
             LayoutSettingsEvent.ClearCustomPosterSettings -> clearCustomPosterSettings()
             is LayoutSettingsEvent.SetCustomPosterScreenEnabled -> setCustomPosterScreenEnabled(event.screen, event.enabled)
-            is LayoutSettingsEvent.SetSidebarItemEnabled -> {
-                viewModelScope.launch {
-                    layoutPreferenceDataStore.setSidebarItemEnabled(event.key, event.enabled)
-                }
-            }
-            is LayoutSettingsEvent.MoveSidebarItem -> {
-                viewModelScope.launch {
-                    layoutPreferenceDataStore.moveSidebarItem(event.key, event.direction)
-                }
-            }
         }
     }
 

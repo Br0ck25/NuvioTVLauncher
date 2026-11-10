@@ -78,7 +78,6 @@ import androidx.compose.runtime.Composable
 import androidx.compose.runtime.DisposableEffect
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.collectAsState
-import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.mutableFloatStateOf
@@ -214,13 +213,13 @@ fun PlayerScreen(
     onOpenRecommendationDetails: (PostPlayRecommendation) -> Unit = {},
     onOpenPartyMedia: (PartyMedia) -> Unit = {}
 ) {
-    val uiState by viewModel.uiState.collectAsStateWithLifecycle()
+    val uiState by viewModel.uiState.collectAsState()
     val playerBadges = rememberPlayerBadges(viewModel, uiState)
-    val partyState by viewModel.party.state.collectAsStateWithLifecycle()
-    val partyPlayback by viewModel.party.playback.collectAsStateWithLifecycle()
-    val partyAvailable by viewModel.party.available.collectAsStateWithLifecycle()
-    val partyCanUse by viewModel.party.canUse.collectAsStateWithLifecycle()
-    val partyProfile by viewModel.party.profile.collectAsStateWithLifecycle()
+    val partyState by viewModel.party.state.collectAsState()
+    val partyPlayback by viewModel.party.playback.collectAsState()
+    val partyAvailable by viewModel.party.available.collectAsState()
+    val partyCanUse by viewModel.party.canUse.collectAsState()
+    val partyProfile by viewModel.party.profile.collectAsState()
     var partyNotice by remember { mutableStateOf<PartyNotice?>(null) }
     LaunchedEffect(Unit) {
         viewModel.party.notices.collectLatest { next ->
@@ -229,13 +228,12 @@ fun PlayerScreen(
             partyNotice = null
         }
     }
-    val postPlayRecommendationState by viewModel.postPlayRecommendationUiState.collectAsStateWithLifecycle()
+    val postPlayRecommendationState by viewModel.postPlayRecommendationUiState.collectAsState()
     val effectiveAutoplayEnabled by viewModel.effectiveAutoplayEnabled.collectAsState(initial = false)
     val lifecycleOwner = LocalLifecycleOwner.current
     val context = LocalContext.current
     val isRtl = LocalLayoutDirection.current == LayoutDirection.Rtl
     val containerFocusRequester = remember { FocusRequester() }
-    val liveTvPlayer = com.nuvio.tv.ui.reshaped.livetv.rememberLiveTvPlayer(viewModel.controller, containerFocusRequester) // Live TV
     val playPauseFocusRequester = remember { FocusRequester() }
     val progressBarFocusRequester = remember { FocusRequester() }
     val episodesFocusRequester = remember { FocusRequester() }
@@ -434,10 +432,7 @@ fun PlayerScreen(
         postPlayRecommendationState.blocksNaturalCompletion
     ) {
         val explicitReason = uiState.pendingExitReason
-        // A list channel (Live TV) carries on with the next programme itself: see LiveTvListChannelEffects.
-        val listChannelCarriesOn = liveTvPlayer.playingListChannelUrl() != null
         val shouldDispatchNatural = uiState.playbackEnded &&
-            !listChannelCarriesOn &&
             uiState.error == null &&
             uiState.postPlayMode?.blocksNaturalCompletion() != true &&
             !postPlayRecommendationState.blocksNaturalCompletion &&
@@ -672,7 +667,6 @@ fun PlayerScreen(
             .focusRequester(containerFocusRequester)
             .focusable(enabled = uiState.error == null)
             .onPreviewKeyEvent { keyEvent ->
-                if (liveTvPlayer.onPreviewKey(keyEvent.nativeKeyEvent, uiState)) return@onPreviewKeyEvent true // Live TV
                 // Consume the confirm KEY_UP that opened the subtitle timing dialog before
                 // the newly focused "Sync" button can treat it as a second click. Preview
                 // is required: after open, focus moves into the dialog so onKeyEvent on
@@ -848,8 +842,7 @@ fun PlayerScreen(
                         shouldConfirmNextEpisodeOnEnd ||
                         uiState.postPlayMode is PostPlayMode.StillWatching ||
                         postPlayRecommendationState.isVisible ||
-                        uiState.error != null ||
-                        liveTvPlayer.panelOpen // Live TV channel list
+                        uiState.error != null
                 if (panelOrDialogOpen) return@onKeyEvent false
 
                 if (keyEvent.nativeKeyEvent.action == KeyEvent.ACTION_UP) {
@@ -1140,8 +1133,8 @@ fun PlayerScreen(
 
             Box(modifier = playerSurfaceModifier) {
                 val previewConfiguredSubtitlePosition = uiState.showSubtitleOverlay || uiState.showSubtitleStylePanel
-                val subtitleCueState by viewModel.controller.subtitleCueTracker.state.collectAsStateWithLifecycle()
-                val prescannedSubtitleTexts by viewModel.controller.subtitleCueTracker.prescannedTexts.collectAsStateWithLifecycle()
+                val subtitleCueState by viewModel.controller.subtitleCueTracker.state.collectAsState()
+                val prescannedSubtitleTexts by viewModel.controller.subtitleCueTracker.prescannedTexts.collectAsState()
                 val subtitleWidthKey = listOf(uiState.selectedSubtitleTrackIndex, uiState.selectedAddonSubtitle, subtitleTextMetrics)
                 var widestSubtitleBlockPx by remember(subtitleWidthKey) { mutableStateOf<Float?>(null) }
                 val subtitleMeasurePaint = remember { android.graphics.Paint(android.graphics.Paint.ANTI_ALIAS_FLAG) }
@@ -1829,7 +1822,7 @@ fun PlayerScreen(
             exit = slideOutHorizontally(animationSpec = tween(220), targetOffsetX = { it }),
             modifier = playerControlsDim
         ) {
-            val chaptersTimeline by viewModel.playbackTimeline.collectAsStateWithLifecycle()
+            val chaptersTimeline by viewModel.playbackTimeline.collectAsState()
             Box(modifier = Modifier.fillMaxSize()) {
                 ChaptersSidePanel(
                     chapters = uiState.chapters,
@@ -2152,8 +2145,6 @@ fun PlayerScreen(
                 }
             )
         }
-
-        com.nuvio.tv.ui.reshaped.livetv.LiveTvPlayerOverlay(liveTvPlayer, uiState) // Live TV
 
         if (uiState.showSpeedDialog) {
             SpeedSelectionDialog(
@@ -2822,7 +2813,7 @@ private fun PlayerControlsOverlay(
     val customAspectPainter = rememberRawSvgPainter(R.raw.ic_player_aspect_ratio)
     val customEpisodesPainter = rememberRawSvgPainter(R.raw.ic_player_episodes)
     var showEngineSwitchConfirm by remember { mutableStateOf(false) }
-    val playbackTimeline by viewModel.playbackTimeline.collectAsStateWithLifecycle()
+    val playbackTimeline by viewModel.playbackTimeline.collectAsState()
     val isLivePlayback = playbackTimeline.isLive
     val progressUpTarget = if (isLivePlayback) {
         progressBarUpFocusRequester ?: playPauseFocusRequester
@@ -3223,7 +3214,7 @@ private fun PlayerControlsProgressBarHost(
     onFocused: (() -> Unit)? = null,
     onClick: (() -> Unit)? = null
 ) {
-    val playbackTimeline by viewModel.playbackTimeline.collectAsStateWithLifecycle()
+    val playbackTimeline by viewModel.playbackTimeline.collectAsState()
 
     ChapterTitle(chapters = chapters, positionMs = playbackTimeline.currentPosition)
     ProgressBar(
@@ -3248,7 +3239,7 @@ private fun PlayerControlsProgressBarHost(
 
 @Composable
 private fun PlayerControlsTimeTextHost(viewModel: PlayerViewModel) {
-    val playbackTimeline by viewModel.playbackTimeline.collectAsStateWithLifecycle()
+    val playbackTimeline by viewModel.playbackTimeline.collectAsState()
     val timeText = if (playbackTimeline.isLive) {
         stringResource(R.string.player_live_watched, formatTime(playbackTimeline.watchedDurationMs))
     } else {
@@ -3622,7 +3613,7 @@ private fun SeekOverlay(
 
 @Composable
 private fun SeekOverlayHost(viewModel: PlayerViewModel, chapters: List<PlayerChapter>) {
-    val playbackTimeline by viewModel.playbackTimeline.collectAsStateWithLifecycle()
+    val playbackTimeline by viewModel.playbackTimeline.collectAsState()
 
     SeekOverlay(
         currentPosition = playbackTimeline.currentPosition,
@@ -3686,7 +3677,7 @@ private fun PlayerClockOverlay(
 
 @Composable
 private fun PlayerClockOverlayHost(viewModel: PlayerViewModel, playbackSpeed: Float) {
-    val playbackTimeline by viewModel.playbackTimeline.collectAsStateWithLifecycle()
+    val playbackTimeline by viewModel.playbackTimeline.collectAsState()
 
     PlayerClockOverlay(
         currentPosition = playbackTimeline.currentPosition,
@@ -3710,7 +3701,7 @@ private fun SubtitleTimingDialogHost(
     onCaptureNow: () -> Unit,
     onCueSelected: (SubtitleSyncCue) -> Unit
 ) {
-    val playbackTimeline by viewModel.playbackTimeline.collectAsStateWithLifecycle()
+    val playbackTimeline by viewModel.playbackTimeline.collectAsState()
 
     SubtitleTimingDialog(
         modifier = modifier,

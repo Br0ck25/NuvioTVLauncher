@@ -1,7 +1,6 @@
 package com.nuvio.tv.ui.screens.home
 
 import androidx.compose.runtime.Immutable
-import com.nuvio.tv.core.apps.InstalledApp
 import com.nuvio.tv.core.tracking.TrackingMembershipRemovalConfirmation
 import com.nuvio.tv.data.local.StartupAuthNotice
 import com.nuvio.tv.domain.model.CatalogRow
@@ -141,8 +140,7 @@ data class NextUpInfo(
     val seedSeason: Int? = null,
     val seedEpisode: Int? = null,
     val contentLanguage: String? = null,
-    val mdbListRatings: com.nuvio.tv.domain.model.MDBListRatings? = null,
-    val fromCalendar: Boolean = false
+    val mdbListRatings: com.nuvio.tv.domain.model.MDBListRatings? = null
 )
 
 @Immutable
@@ -152,9 +150,6 @@ sealed class HomeRow {
 
     @Immutable
     data class CollectionRow(val collection: Collection) : HomeRow()
-
-    @Immutable
-    data class InstalledApps(val apps: List<InstalledApp>) : HomeRow()
 
     /**
      * Placeholder for a catalog row whose data hasn't been fetched yet.
@@ -208,9 +203,6 @@ sealed class GridItem {
         val collectionId: String,
         val title: String
     ) : GridItem()
-    @Immutable
-    data class InstalledAppsRow(val apps: List<InstalledApp>) : GridItem()
-
     @Immutable
     data class CollectionFolder(
         val collectionId: String,

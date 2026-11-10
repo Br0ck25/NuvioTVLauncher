@@ -131,6 +131,8 @@ android {
     ndkVersion = "29.0.14206865"
 
     defaultConfig {
+        // Separate package from upstream Nuvio TV so both can be installed side by side and the
+        // Home preference recorded by the on-device setup always names this app.
         applicationId = "com.nuvio.tv.launcher"
         testInstrumentationRunner = "androidx.test.runner.AndroidJUnitRunner"
         minSdk = 24
@@ -372,7 +374,7 @@ android {
 androidComponents {
     onVariants(selector().withBuildType("debug")) { variant ->
         val isPlaystore = variant.productFlavors.any { it.second == "playstore" }
-        variant.applicationId.set(if (isPlaystore) "com.nuvio.appdebug" else "com.nuviodebug.com")
+        variant.applicationId.set(if (isPlaystore) "com.nuvio.appdebug" else "${variant.applicationId.get()}.debug")
     }
     // Only the full flavor ships the in-app updater.
     onVariants(selector().withFlavor("distribution" to "full")) { variant ->
@@ -568,9 +570,9 @@ dependencies {
     add("fullImplementation", "com.fasterxml.jackson.module:jackson-module-kotlin:2.17.0")
     add("fullImplementation", libs.nicehttp)
     add("fullImplementation", libs.conscrypt.android)
-    // On-device ADB client used by the "set up without a computer" Home-button flow.
+    // On-device ADB client used by the "set up without a computer" setup flow.
     add("fullImplementation", "com.github.MuntashirAkon:libadb-android:3.0.0")
-    // libadb-android only exposes BouncyCastle at runtime; we use it to create the ADB identity cert.
+    // libadb-android only exposes BouncyCastle at runtime; it builds the ADB identity certificate.
     add("fullImplementation", "org.bouncycastle:bcprov-jdk15to18:1.78")
     add("fullImplementation", "com.github.recloudstream.cloudstream:library:${libs.versions.cloudstream.get()}") {
         exclude(group = "org.mozilla", module = "rhino")
@@ -612,13 +614,9 @@ dependencies {
     androidTestImplementation(libs.androidx.test.ext.junit)
     androidTestImplementation(libs.androidx.test.runner)
     testImplementation("junit:junit:4.13.2")
-    // Android's own org.json is only a stub in unit tests; the real one lets them read server JSON.
-    testImplementation("org.json:json:20240303")
     testImplementation("org.jetbrains.kotlinx:kotlinx-coroutines-test:1.8.1")
     testImplementation("io.mockk:mockk:1.13.12")
     testImplementation("com.squareup.okhttp3:mockwebserver:5.3.2")
-    // JVM unit tests read XMLTV guides; Android's XmlPullParser is not on the test classpath.
-    testImplementation("net.sf.kxml:kxml2:2.3.0")
     debugImplementation("androidx.compose.ui:ui-tooling")
     debugImplementation(libs.androidx.compose.ui.test.manifest)
 }

@@ -11,7 +11,6 @@ internal fun formatContinueWatchingProgressLabel(
     hoursMinLeftLabel: String,
     minLeftLabel: String
 ): String {
-    if (progress.source == com.nuvio.tv.calendar.CalendarHomeFeed.SOURCE) return "Out now"
     val effectiveDuration = progress.duration
     val effectivePosition = if (progress.position > 0L) {
         progress.position

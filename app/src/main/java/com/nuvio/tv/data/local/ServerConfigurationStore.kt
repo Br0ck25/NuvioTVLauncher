@@ -63,7 +63,7 @@ class ServerConfigurationStore @Inject constructor(
         backendUrl = BuildConfig.SUPABASE_URL.trimEnd('/'),
         publishableKey = BuildConfig.SUPABASE_ANON_KEY,
         capabilities = ServerCapabilities(
-            emailPasswordAuth = true,
+            emailPasswordAuth = false,
             tvLogin = true,
             watchParty = true
         ),

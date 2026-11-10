@@ -61,9 +61,7 @@ import androidx.compose.foundation.layout.padding
 import androidx.compose.ui.Alignment
 import com.nuvio.tv.ui.components.CatalogRowSection
 import com.nuvio.tv.ui.components.CollectionRowSection
-import com.nuvio.tv.ui.components.InstalledAppsRowSection
 import com.nuvio.tv.ui.components.ContinueWatchingSection
-import com.nuvio.tv.ui.components.UPCOMING_SCHEDULE_CARD_WIDTH
 import com.nuvio.tv.ui.components.LocalLandscapePosterMode
 import com.nuvio.tv.core.poster.withCustomPosterUrls
 import com.nuvio.tv.domain.model.ContinueWatchingCardStyle
@@ -183,6 +181,13 @@ fun ClassicHomeContent(
         }
     }
 
+    // Scroll to top when triggered from sidebar Home button.
+    LaunchedEffect(scrollToTopTrigger) {
+        if (scrollToTopTrigger > 0) {
+            columnListState.scrollToItem(0, 0)
+        }
+    }
+
     LaunchedEffect(focusState.verticalScrollIndex, focusState.verticalScrollOffset) {
         val targetIndex = focusState.verticalScrollIndex
         val targetOffset = focusState.verticalScrollOffset
@@ -279,7 +284,6 @@ fun ClassicHomeContent(
             when (row) {
                 is HomeRow.Catalog -> row.row.stableKey()
                 is HomeRow.CollectionRow -> "collection_${row.collection.id}"
-                is HomeRow.InstalledApps -> com.nuvio.tv.core.apps.INSTALLED_APPS_CATALOG_KEY
                 is HomeRow.PlaceholderCatalog -> row.stableCatalogKey
             }
         }
@@ -340,39 +344,6 @@ fun ClassicHomeContent(
             if (focused) {
                 restoringFocus = false
                 return@LaunchedEffect
-            }
-        }
-    }
-
-    // Scroll Home back to the top when asked for (sidebar Home button or the device HOME key).
-    // Only trigger values this screen has not handled yet are applied, so a normal return to Home
-    // (e.g. Back) keeps the previous scroll position.
-    val handledScrollToTopTrigger = rememberSaveable { mutableIntStateOf(0) }
-    LaunchedEffect(scrollToTopTrigger) {
-        if (scrollToTopTrigger <= handledScrollToTopTrigger.intValue) return@LaunchedEffect
-        handledScrollToTopTrigger.intValue = scrollToTopTrigger
-        restoringFocus = false
-        columnListState.scrollToItem(0, 0)
-        val firstRowKey = visibleRowKeys.firstOrNull()
-        if (firstRowKey != null) {
-            currentFocusSnapshot.rowIndex = 0
-            currentFocusSnapshot.itemIndex = 0
-            currentFocusSnapshot.rowKey = firstRowKey
-            activeRowKeyState.value = firstRowKey
-            rowFocusedItemIndex[firstRowKey] = 0
-        }
-        // Re-focus whatever now sits at the top; the previously focused row was scrolled out of the
-        // composition, which would otherwise leave the D-pad without a focused target.
-        val candidates = buildList {
-            if (heroVisible) add(heroFocusRequester)
-            val firstRowRequester = firstRowKey?.let { rowFocusRequesters[it] }
-            if (firstRowRequester != null) add(firstRowRequester)
-        }
-        if (candidates.isEmpty()) return@LaunchedEffect
-        repeat(4) {
-            withFrameNanos { }
-            for (requester in candidates) {
-                if (runCatching { requester.requestFocus() }.isSuccess) return@LaunchedEffect
             }
         }
     }
@@ -761,11 +732,7 @@ fun ClassicHomeContent(
                     },
                     title = stringResource(R.string.upcoming_section_title),
                     onItemClick = { item ->
-                        val (id, type) = when (item) {
-                            is ContinueWatchingItem.InProgress -> item.progress.contentId to item.progress.contentType
-                            is ContinueWatchingItem.NextUp -> item.info.contentId to item.info.contentType
-                        }
-                        onNavigateToDetail(id, type, "")
+                        onContinueWatchingClick(item)
                     },
                     onStartFromBeginning = onContinueWatchingStartFromBeginning,
                     showManualPlayOption = showContinueWatchingManualPlayOption,
@@ -817,13 +784,12 @@ fun ClassicHomeContent(
                                 ?.toClassicFocusArtwork(uiState.focusedPosterBackdropExpandEnabled)
                         }
                     },
-                    cardWidth = UPCOMING_SCHEDULE_CARD_WIDTH,
+                    cardWidth = classicContinueWatchingCardWidth,
                     imageHeight = classicContinueWatchingImageHeight,
                     cardStyle = uiState.continueWatchingCardStyle,
                     cornerRadius = posterCardStyle.cornerRadius,
                     posterTitleOverride = classicPosterTitleStyle,
-                    listState = upcomingListState,
-                    isUpcomingSection = true
+                    listState = upcomingListState
                 )
             }
         }
@@ -837,7 +803,6 @@ fun ClassicHomeContent(
                         "${r.stableKey()}_$index"
                     }
                     is HomeRow.CollectionRow -> "collection_${item.collection.id}"
-                    is HomeRow.InstalledApps -> com.nuvio.tv.core.apps.INSTALLED_APPS_CATALOG_KEY
                     is HomeRow.PlaceholderCatalog -> "${item.stableCatalogKey}_$index"
                 }
             },
@@ -845,7 +810,6 @@ fun ClassicHomeContent(
                 when (item) {
                     is HomeRow.Catalog -> "catalog_row"
                     is HomeRow.CollectionRow -> "collection_row"
-                    is HomeRow.InstalledApps -> "installed_apps_row"
                     is HomeRow.PlaceholderCatalog -> "catalog_row"
                 }
             }
@@ -970,32 +934,6 @@ fun ClassicHomeContent(
                     )
                 }
 
-                is HomeRow.InstalledApps -> {
-                    val rowKey = com.nuvio.tv.core.apps.INSTALLED_APPS_CATALOG_KEY
-                    val restore = restoringFocus && currentFocusSnapshot.rowKey == rowKey
-                    InstalledAppsRowSection(
-                        apps = homeRow.apps,
-                        listState = rowStates.getOrPut(rowKey) { LazyListState(firstVisibleItemIndex = focusState.catalogRowScrollStates[rowKey] ?: 0) },
-                        rowFocusRequester = rowFocusRequesters.getOrPut(rowKey) { FocusRequester() },
-                        focusedItemIndex = when {
-                            restore -> focusState.focusedItemIndex
-                            shouldRequestInitialFocus && !heroVisible &&
-                                (!uiState.continueWatchingEnabled || uiState.continueWatchingItems.isEmpty()) && uiState.upcomingItems.isEmpty() &&
-                                visibleHomeRows.firstOrNull() is HomeRow.InstalledApps -> 0
-                            else -> -1
-                        },
-                        onItemFocused = { itemIndex ->
-                            restoringFocus = false
-                            currentFocusSnapshot.rowIndex = index
-                            currentFocusSnapshot.itemIndex = itemIndex
-                            currentFocusSnapshot.rowKey = rowKey
-                            activeRowKeyState.value = rowKey
-                            onFocusedRowKeyChanged(rowKey)
-                            rowFocusedItemIndex[rowKey] = itemIndex
-                            focusedArtwork = null
-                        }
-                    )
-                }
                 is HomeRow.PlaceholderCatalog -> { }
             }
         }

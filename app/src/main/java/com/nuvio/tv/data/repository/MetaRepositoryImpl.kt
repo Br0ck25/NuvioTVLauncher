@@ -50,8 +50,6 @@ class MetaRepositoryImpl @Inject constructor(
          *  Prevents excessive re-fetching on every details screen visit for addons
          *  that don't set meaningful Cache-Control headers. */
         private const val MIN_META_TTL_MS = 5L * 60 * 1000
-        /** How long an "every addon says no such item" answer is reused before asking again. */
-        private const val KNOWN_MISSING_TTL_MS = 5L * 60 * 1000
         private const val MAX_META_CACHE_ENTRIES = 32
         private const val MAX_PRIMARY_META_CACHE_ENTRIES = 16
         private const val SERVER_META_TTL_MS = 60_000L
@@ -136,9 +134,6 @@ class MetaRepositoryImpl @Inject constructor(
     // In-flight deduplication: prevents concurrent coroutines from firing duplicate requests
     private val inFlightMeta = ConcurrentHashMap<String, Deferred<Meta?>>()
     private val inFlightAddonMeta = ConcurrentHashMap<String, Deferred<MetaLookupResult>>()
-    // Items every addon answered "no such item" for (e.g. My Lists channel ids). Remembered briefly so Home
-    // loads and re-syncs do not re-ask every addon for the same ids; cleared with the other caches.
-    private val knownMissingUntilMs = ConcurrentHashMap<String, Long>()
     private val inFlightPrimaryMeta = ConcurrentHashMap<String, Deferred<Meta?>>()
 
     override fun getMeta(
@@ -256,14 +251,6 @@ class MetaRepositoryImpl @Inject constructor(
                 return@flow
             }
             addonMetaCache.remove(cacheKey)
-        }
-
-        knownMissingUntilMs[cacheKey]?.let { until ->
-            if (System.currentTimeMillis() < until) {
-                emit(NetworkResult.Error("Meta not found (recently checked)", code = NetworkResult.META_NOT_FOUND_CODE))
-                return@flow
-            }
-            knownMissingUntilMs.remove(cacheKey)
         }
 
         inFlightAddonMeta[cacheKey]?.let { existingDeferred ->
@@ -495,9 +482,6 @@ class MetaRepositoryImpl @Inject constructor(
                 // so callers can cache the outcome instead of asking again on every focus. Only a
                 // request failure stays retryable.
                 val allMissing = lookupResult.allAttemptsMissing
-                if (allMissing) {
-                    knownMissingUntilMs[cacheKey] = System.currentTimeMillis() + KNOWN_MISSING_TTL_MS
-                }
                 emit(
                     NetworkResult.Error(
                         buildAggregateFailureMessage(
@@ -800,7 +784,6 @@ class MetaRepositoryImpl @Inject constructor(
         inFlightMeta.clear()
         inFlightAddonMeta.clear()
         inFlightPrimaryMeta.clear()
-        knownMissingUntilMs.clear()
     }
 
     private fun serverMeta(ref: ServerItemRef): Flow<NetworkResult<Meta>> = flow {

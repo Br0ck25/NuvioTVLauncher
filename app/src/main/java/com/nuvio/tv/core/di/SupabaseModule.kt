@@ -36,6 +36,8 @@ import io.ktor.client.plugins.websocket.WebSockets
 import io.ktor.client.statement.request
 import io.ktor.http.HttpHeaders
 import io.ktor.serialization.kotlinx.KotlinxWebsocketSerializationConverter
+import kotlinx.coroutines.Dispatchers
+import kotlinx.coroutines.runBlocking
 import javax.inject.Singleton
 import kotlin.time.Duration.Companion.seconds
 
@@ -54,7 +56,7 @@ object SupabaseModule {
     @OptIn(SupabaseInternal::class)
     fun provideSupabaseClient(
         serverConfiguration: ServerConfiguration
-    ): SupabaseClient {
+    ): SupabaseClient = runBlocking(Dispatchers.IO) {
         val userAgent = "NuvioTV/${BuildConfig.VERSION_NAME.ifBlank { "dev" }}"
         val rateLimitCoordinator = BackendRateLimitCoordinator()
         lateinit var client: SupabaseClient
@@ -124,7 +126,7 @@ object SupabaseModule {
                 }
             }
         }
-        return client
+        client
     }
 
 

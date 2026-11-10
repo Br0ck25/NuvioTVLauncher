@@ -1,7 +1,10 @@
+@file:OptIn(ExperimentalTvMaterial3Api::class)
+
 package com.nuvio.tv.ui.screens.settings
 
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Column
+import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.heightIn
 import androidx.compose.foundation.layout.padding
@@ -10,7 +13,6 @@ import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.foundation.verticalScroll
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.DisposableEffect
-import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
@@ -22,19 +24,26 @@ import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.text.input.ImeAction
 import androidx.compose.ui.text.input.KeyboardType
 import androidx.compose.ui.unit.dp
+import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import androidx.tv.material3.Button
 import androidx.tv.material3.ButtonDefaults
+import androidx.tv.material3.ExperimentalTvMaterial3Api
 import androidx.tv.material3.MaterialTheme
 import androidx.tv.material3.Text
 import com.nuvio.tv.R
-import com.nuvio.tv.core.launcher.LauncherSelfSetup
-import com.nuvio.tv.core.launcher.LocalAdbSetup
-import com.nuvio.tv.core.launcher.PhonePairingSession
 import com.nuvio.tv.core.player.ExternalPlaybackKeepAliveService
+import com.nuvio.tv.core.setup.LocalAdbSetup
+import com.nuvio.tv.core.setup.PhoneSetupSession
+import com.nuvio.tv.core.setup.SetupMode
 import com.nuvio.tv.ui.components.NuvioDialog
 import com.nuvio.tv.ui.screens.account.InputField
 import com.nuvio.tv.ui.theme.NuvioTheme
 
+/**
+ * The TV side of the on-device setup. Everything here can also be driven from a phone on the same
+ * network, which is the path most people need: the TV's "Pair device with pairing code" popup closes
+ * as soon as Settings is left, so its code cannot be typed into Nuvio on the TV.
+ */
 @Composable
 internal fun LocalAdbSetupDialog(
     setup: LocalAdbSetup,
@@ -42,9 +51,9 @@ internal fun LocalAdbSetupDialog(
     onFinished: () -> Unit
 ) {
     val context = LocalContext.current
-    // Shared by the TV fields and the phone page so only one setup run can be active.
-    // The server starts before first composition so the phone address is available immediately.
-    val session = remember { PhonePairingSession(context, setup).also { it.startPhoneServer() } }
+    // Shared by the TV fields and the phone page, so only one setup run can be active. The server
+    // starts before first composition so the phone address is available immediately.
+    val session = remember { PhoneSetupSession(context, setup).also { it.startPhoneServer() } }
     DisposableEffect(session) {
         // While the user is in Settings reading the pairing code, Nuvio is in the background and the
         // TV can freeze it, which leaves the phone's request hanging. A foreground service prevents that.
@@ -55,12 +64,14 @@ internal fun LocalAdbSetupDialog(
         }
     }
     val sessionState by session.state.collectAsStateWithLifecycle()
+    var mode by remember { mutableStateOf(SetupMode.HOME_APP) }
+    var disableStockLauncher by remember { mutableStateOf(false) }
     var pairingPort by remember { mutableStateOf("") }
     var pairingCode by remember { mutableStateOf("") }
     var connectPort by remember { mutableStateOf("") }
-    val running = sessionState is PhonePairingSession.State.Working
-    val finished = sessionState is PhonePairingSession.State.Done
-    val error = (sessionState as? PhonePairingSession.State.Failed)?.message
+    val running = sessionState is PhoneSetupSession.State.Working
+    val outcome = (sessionState as? PhoneSetupSession.State.Done)?.outcome
+    val error = (sessionState as? PhoneSetupSession.State.Failed)?.message
 
     val yes = stringResource(R.string.self_setup_yes)
     val no = stringResource(R.string.self_setup_no)
@@ -76,7 +87,7 @@ internal fun LocalAdbSetupDialog(
         contentSpacing = 12.dp
     ) {
         Column(
-            modifier = Modifier.heightIn(max = 420.dp).verticalScroll(rememberScrollState()),
+            modifier = Modifier.heightIn(max = 460.dp).verticalScroll(rememberScrollState()),
             verticalArrangement = Arrangement.spacedBy(10.dp)
         ) {
             Text(
@@ -89,6 +100,20 @@ internal fun LocalAdbSetupDialog(
                     text = stringResource(R.string.self_setup_phone_hint, url),
                     style = MaterialTheme.typography.bodyMedium,
                     color = NuvioTheme.colors.TextPrimary
+                )
+            }
+            Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
+                SettingsChoiceChip(
+                    label = stringResource(R.string.self_setup_mode_home),
+                    selected = mode == SetupMode.HOME_APP,
+                    onClick = { mode = SetupMode.HOME_APP },
+                    modifier = Modifier.weight(1f)
+                )
+                SettingsChoiceChip(
+                    label = stringResource(R.string.self_setup_mode_grants),
+                    selected = mode == SetupMode.GRANTS_ONLY,
+                    onClick = { mode = SetupMode.GRANTS_ONLY },
+                    modifier = Modifier.weight(1f)
                 )
             }
             InputField(
@@ -115,6 +140,20 @@ internal fun LocalAdbSetupDialog(
                 imeAction = ImeAction.Done,
                 modifier = Modifier.fillMaxWidth()
             )
+            if (mode == SetupMode.HOME_APP) {
+                SettingsChoiceChip(
+                    label = stringResource(R.string.self_setup_disable_stock),
+                    selected = disableStockLauncher,
+                    onClick = { disableStockLauncher = !disableStockLauncher },
+                    multiSelect = true,
+                    modifier = Modifier.fillMaxWidth()
+                )
+                Text(
+                    text = stringResource(R.string.self_setup_disable_stock_hint),
+                    style = MaterialTheme.typography.bodySmall,
+                    color = NuvioTheme.colors.TextTertiary
+                )
+            }
             error?.let {
                 Text(
                     text = stringResource(R.string.self_setup_failed, it),
@@ -122,31 +161,65 @@ internal fun LocalAdbSetupDialog(
                     color = Color(0xFFF44336)
                 )
             }
-            if (finished) {
-                val status = LauncherSelfSetup.status(context)
+            outcome?.let { result ->
+                val summary = stringResource(
+                    R.string.self_setup_result,
+                    if (result.homeIsNuvio) yes else no,
+                    if (result.grantsApplied) yes else no
+                )
                 Text(
-                    text = stringResource(
-                        R.string.self_setup_result,
-                        if (status.isDefaultHome) yes else no,
-                        if (status.accessibilityEnabled) yes else no
-                    ),
+                    text = summary,
                     style = MaterialTheme.typography.bodySmall,
                     color = NuvioTheme.colors.TextPrimary
                 )
+                result.homeComponent?.takeIf { !result.homeIsNuvio }?.let { home ->
+                    Text(
+                        text = stringResource(R.string.self_setup_result_home_value, home),
+                        style = MaterialTheme.typography.bodySmall,
+                        color = NuvioTheme.colors.TextTertiary
+                    )
+                }
+                if (result.disabledPackages.isNotEmpty()) {
+                    Text(
+                        text = stringResource(
+                            R.string.self_setup_result_disabled,
+                            result.disabledPackages.joinToString(", ")
+                        ),
+                        style = MaterialTheme.typography.bodySmall,
+                        color = NuvioTheme.colors.TextTertiary
+                    )
+                }
+                if (result.recoveryCommands.isNotEmpty()) {
+                    Text(
+                        text = stringResource(R.string.self_setup_recovery_title),
+                        style = MaterialTheme.typography.bodySmall,
+                        color = NuvioTheme.colors.TextSecondary,
+                        modifier = Modifier.padding(top = 4.dp)
+                    )
+                    result.recoveryCommands.forEach { command ->
+                        Text(
+                            text = command,
+                            style = MaterialTheme.typography.bodySmall,
+                            color = NuvioTheme.colors.TextTertiary
+                        )
+                    }
+                }
             }
             Button(
                 onClick = {
-                    if (finished) {
+                    if (outcome != null) {
                         onFinished()
                         return@Button
                     }
                     session.submit(
                         pairingPort = pairingPort.toIntOrNull(),
                         pairingCode = pairingCode.ifEmpty { null },
-                        connectPort = connectPort.toIntOrNull()
+                        connectPort = connectPort.toIntOrNull(),
+                        mode = mode,
+                        disableStockLauncher = disableStockLauncher && mode == SetupMode.HOME_APP
                     )
                 },
-                enabled = finished || canStart,
+                enabled = outcome != null || canStart,
                 colors = ButtonDefaults.colors(
                     containerColor = NuvioTheme.colors.Secondary,
                     focusedContainerColor = NuvioTheme.colors.SecondaryVariant,
@@ -159,7 +232,7 @@ internal fun LocalAdbSetupDialog(
                 Text(
                     text = stringResource(
                         when {
-                            finished -> R.string.self_setup_close
+                            outcome != null -> R.string.self_setup_close
                             running -> R.string.self_setup_working
                             else -> R.string.self_setup_start
                         }

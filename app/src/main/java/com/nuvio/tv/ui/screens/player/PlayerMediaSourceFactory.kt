@@ -174,8 +174,6 @@ internal class PlayerMediaSourceFactory(private val context: Context) {
         mediaMetadata: androidx.media3.common.MediaMetadata? = null,
         cacheKey: String? = null
     ): MediaSource {
-        val loadErrorHandlingPolicy = com.nuvio.tv.reshaped.livetv.LiveTvLoadErrors.policyFor(url, this.loadErrorHandlingPolicy) // Live TV retries refusals
-        val isLiveTv = com.nuvio.tv.reshaped.livetv.LiveTvPlaybackRegistry.isLiveTv(url)
         val sanitizedHeaders = sanitizeHeaders(headers)
         val resolvedMimeType = mimeTypeOverride ?: inferMimeType(
             url = url,
@@ -223,7 +221,7 @@ internal class PlayerMediaSourceFactory(private val context: Context) {
                 "safeNativeMb=${NuvioExoPlayerPerformanceHelper.getSafeNativeMemoryLimitMb(context)} " +
                 "parallel=${if (useParallelConnections) parallelConnectionCount else 0} chunkKb=$parallelChunkSizeKb"
         )
-        val useChunkSessionSource = useParallelConnections && !isHls && !isDash && !isLiveTv // a live stream has no ranges to split
+        val useChunkSessionSource = useParallelConnections && !isHls && !isDash
         parallelStartupPrefetchUnlocked.set(!useChunkSessionSource)
         val networkProgressiveFactory: DataSource.Factory = if (useChunkSessionSource) {
             val sessionConnections = parallelConnectionCount
@@ -261,8 +259,7 @@ internal class PlayerMediaSourceFactory(private val context: Context) {
             }
 
         // 2. VOD disk cache (opt-in).
-        val useVodCache = ENABLE_VOD_CACHE && vodCacheEnabled && !isHls && !isDash && shouldUseVodCache(url) &&
-            !isLiveTv // Live TV is never cached
+        val useVodCache = ENABLE_VOD_CACHE && vodCacheEnabled && !isHls && !isDash && shouldUseVodCache(url)
         // A playback started inside the delay window would have its own data swept out from under it.
         pendingEvictionJob?.cancel()
         pendingEvictionJob = null

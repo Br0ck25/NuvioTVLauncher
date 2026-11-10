@@ -26,8 +26,6 @@ import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
-import androidx.compose.material.icons.filled.Notifications
-import androidx.compose.material.icons.filled.NotificationsNone
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
@@ -286,27 +284,6 @@ fun HeroContentSection(
                             onFocused = onHeroActionFocused
                         )
 
-                        com.nuvio.tv.calendar.rememberCalendarBell(meta)?.let { bell ->
-                            ActionIconButton(
-                                icon = if (bell.on) {
-                                    Icons.Filled.Notifications
-                                } else {
-                                    Icons.Filled.NotificationsNone
-                                },
-                                contentDescription = if (bell.on) {
-                                    "Following in Calendar (turn off)"
-                                } else {
-                                    "Follow in Calendar"
-                                },
-                                onClick = bell.toggle,
-                                selected = bell.on,
-                                toggleable = true,
-                                selectedContainerColor = Color.White,
-                                selectedContentColor = Color.Black,
-                                onFocused = onHeroActionFocused
-                            )
-                        }
-
                         if (meta.apiType == "movie") {
                             ActionIconButton(
                                 icon = if (isMovieWatched) {
@@ -352,8 +329,6 @@ fun HeroContentSection(
                     }
 
                     Spacer(modifier = Modifier.height(NuvioTheme.spacing.lg))
-
-                    com.nuvio.tv.calendar.CalendarNextLine(meta = meta, onFocused = onHeroActionFocused)
 
                     // Director/Writer line above description
                     if (!creditLine.isNullOrBlank()) {

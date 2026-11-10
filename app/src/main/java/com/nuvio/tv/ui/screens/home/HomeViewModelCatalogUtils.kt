@@ -1,7 +1,5 @@
 package com.nuvio.tv.ui.screens.home
 
-import com.nuvio.tv.core.apps.INSTALLED_APPS_CATALOG_KEY
-import com.nuvio.tv.core.apps.mergeHomeCatalogOrder
 import com.nuvio.tv.domain.model.catalogTypeKey
 import com.nuvio.tv.domain.model.catalogRowLegacyKey
 import com.nuvio.tv.domain.model.Addon
@@ -226,38 +224,96 @@ internal fun HomeViewModel.removeTruncatedRowCacheEntry(key: String) {
 
 internal fun HomeViewModel.rebuildCatalogOrder(addons: List<Addon>) {
     val defaultOrder = buildDefaultCatalogOrder(addons)
-    val independentKeys = collectionsCache.map { "collection_${it.id}" } + INSTALLED_APPS_CATALOG_KEY
-    val ownerByCatalogKey = buildAddonKeyOwnerMap(addons)
-    val collectionCatalogKeys = com.nuvio.tv.core.mylists.MyListsDefaultSeed.extractCollectionCatalogKeys(collectionsCache)
-    val filteredSavedOrder = homeCatalogOrderKeys.filterNot {
-        it in collectionCatalogKeys ||
-        it.startsWith("${com.nuvio.tv.core.mylists.MyListsDefaultSeed.MY_LISTS_COLLECTIONS_ADDON_ID}_")
-    }
-    val order = mergeHomeCatalogOrder(
-        addonKeys = defaultOrder,
-        independentKeys = independentKeys,
-        savedOrderKeys = filteredSavedOrder,
-        followAddonsOrder = followAddonsOrderEnabled,
-        addonOwner = ownerByCatalogKey::get
-    )
-    synchronized(catalogStateLock) {
-        catalogOrder.clear()
-        catalogOrder.addAll(order)
+    val collectionKeys = collectionsCache.map { "collection_${it.id}" }
+    val allAvailable = (defaultOrder + collectionKeys).toSet()
+
+    if (followAddonsOrderEnabled) {
+        // In follow addons order mode, addon catalogs always stay in manifest order.
+        // Collections are positioned based on their relative position in saved order.
+        val savedValid = homeCatalogOrderKeys
+            .asSequence()
+            .filter { it in allAvailable }
+            .distinct()
+            .toList()
+
+        val collectionKeysSet = collectionKeys.toSet()
+
+        if (savedValid.isNotEmpty()) {
+            val result = mutableListOf<String>()
+            var addonPointer = 0
+
+            for (savedKey in savedValid) {
+                if (savedKey in collectionKeysSet) {
+                    result.add(savedKey)
+                } else {
+                    // Addon catalog - advance manifest pointer to include all up to this one
+                    val targetIdx = defaultOrder.indexOf(savedKey)
+                    if (targetIdx >= 0) {
+                        while (addonPointer <= targetIdx) {
+                            val ak = defaultOrder[addonPointer]
+                            if (ak !in result) {
+                                result.add(ak)
+                            }
+                            addonPointer++
+                        }
+                    }
+                }
+            }
+            // Append remaining addon keys
+            while (addonPointer < defaultOrder.size) {
+                val ak = defaultOrder[addonPointer]
+                if (ak !in result) {
+                    result.add(ak)
+                }
+                addonPointer++
+            }
+            // Append any collections not in saved order
+            for (ck in collectionKeys) {
+                if (ck !in result) {
+                    result.add(ck)
+                }
+            }
+
+            // Normalize: push collections that ended up mid-addon-block to the block boundary
+            val addonKeyToOwner = buildAddonKeyOwnerMap(addons)
+            val normalized = normalizeCollectionBoundaries(result, addonKeyToOwner)
+
+            synchronized(catalogStateLock) {
+                catalogOrder.clear()
+                catalogOrder.addAll(normalized)
+            }
+        } else {
+            // No saved order - manifest order + collections at end
+            synchronized(catalogStateLock) {
+                catalogOrder.clear()
+                catalogOrder.addAll(defaultOrder + collectionKeys)
+            }
+        }
+    } else {
+        val savedValid = homeCatalogOrderKeys
+            .asSequence()
+            .filter { it in allAvailable }
+            .distinct()
+            .toList()
+
+        val savedSet = savedValid.toSet()
+        val unsavedCatalogs = defaultOrder.filterNot { it in savedSet }
+        val unsavedCollections = collectionKeys.filterNot { it in savedSet }
+        val mergedOrder = savedValid + unsavedCatalogs + unsavedCollections
+
+        synchronized(catalogStateLock) {
+            catalogOrder.clear()
+            catalogOrder.addAll(mergedOrder)
+        }
     }
 }
 
 private fun HomeViewModel.buildDefaultCatalogOrder(addons: List<Addon>): List<String> {
     val orderedKeys = mutableListOf<String>()
     addons.forEach { addon ->
-        if (addon.id.equals(com.nuvio.tv.core.mylists.MyListsDefaultSeed.MY_LISTS_COLLECTIONS_ADDON_ID, ignoreCase = true)) {
-            return@forEach
-        }
         addon.catalogs
             .filterNot {
-                com.nuvio.tv.core.mylists.MyListsDefaultSeed.isRemovedCatalog(it.id, it.apiType) ||
-                !it.shouldShowOnHome() ||
-                com.nuvio.tv.core.mylists.MyListsDefaultSeed.isCollectionCatalogSource(collectionsCache, addon.id, it.apiType, it.id) ||
-                isCatalogDisabled(
+                !it.shouldShowOnHome() || isCatalogDisabled(
                     addonBaseUrl = addon.baseUrl,
                     addonId = addon.id,
                     type = it.apiType,
@@ -304,12 +360,6 @@ internal fun HomeViewModel.disableCatalogKey(
 
 internal fun CatalogDescriptor.shouldShowOnHome(): Boolean {
     if (isSearchOnlyCatalog()) return false
-    if (extraRequired.isNotEmpty()) {
-        val hasUnsatisfied = extraRequired.any { req ->
-            extra.none { it.name.equals(req, ignoreCase = true) && !it.defaultValue.isNullOrBlank() }
-        }
-        if (hasUnsatisfied) return false
-    }
     return !hasExplicitShowInHome || showInHome
 }
 
@@ -331,4 +381,56 @@ private fun buildAddonKeyOwnerMap(addons: List<Addon>): Map<String, String> {
         }
     }
     return map
+}
+
+private fun normalizeCollectionBoundaries(
+    order: List<String>,
+    addonKeyToOwner: Map<String, String>
+): List<String> {
+    val result = order.toMutableList()
+    var changed = true
+    while (changed) {
+        changed = false
+        var i = 0
+        while (i < result.size) {
+            val key = result[i]
+            if (!key.startsWith("collection_")) {
+                i++
+                continue
+            }
+            val prevOwner = findOwnerBefore(result, i, addonKeyToOwner)
+            val nextOwner = findOwnerAfter(result, i, addonKeyToOwner)
+            if (prevOwner != null && nextOwner != null && prevOwner == nextOwner) {
+                // Collection is mid-block, push to end of this addon block
+                result.removeAt(i)
+                var insertPos = i
+                while (insertPos < result.size &&
+                    !result[insertPos].startsWith("collection_") &&
+                    addonKeyToOwner[result[insertPos]] == prevOwner
+                ) {
+                    insertPos++
+                }
+                result.add(insertPos, key)
+                if (insertPos != i) changed = true
+                i++
+            } else {
+                i++
+            }
+        }
+    }
+    return result
+}
+
+private fun findOwnerBefore(order: List<String>, index: Int, owners: Map<String, String>): String? {
+    for (j in index - 1 downTo 0) {
+        if (!order[j].startsWith("collection_")) return owners[order[j]]
+    }
+    return null
+}
+
+private fun findOwnerAfter(order: List<String>, index: Int, owners: Map<String, String>): String? {
+    for (j in index + 1 until order.size) {
+        if (!order[j].startsWith("collection_")) return owners[order[j]]
+    }
+    return null
 }

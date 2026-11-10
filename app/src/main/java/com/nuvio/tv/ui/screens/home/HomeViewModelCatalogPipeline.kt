@@ -3,8 +3,6 @@ package com.nuvio.tv.ui.screens.home
 import android.util.Log
 import androidx.lifecycle.viewModelScope
 import com.nuvio.tv.R
-import com.nuvio.tv.core.apps.INSTALLED_APPS_CATALOG_KEY
-import com.nuvio.tv.core.apps.orderInstalledApps
 import com.nuvio.tv.core.network.NetworkResult
 import com.nuvio.tv.domain.model.Addon
 import com.nuvio.tv.domain.model.CatalogDescriptor
@@ -85,10 +83,9 @@ internal fun HomeViewModel.loadDisabledHomeCatalogPreferencePipeline() {
         layoutPreferenceDataStore.disabledHomeCatalogKeys.collectLatest { keys ->
             val newKeys = keys.toSet()
             if (newKeys == disabledHomeCatalogKeys) return@collectLatest
-            val previousKeys = disabledHomeCatalogKeys
             disabledHomeCatalogKeys = newKeys
             rebuildCatalogOrder(addonsCache)
-            if (addonsCache.isNotEmpty() && (previousKeys - newKeys) + (newKeys - previousKeys) != setOf(INSTALLED_APPS_CATALOG_KEY)) {
+            if (addonsCache.isNotEmpty()) {
                 loadAllCatalogsPipeline(addonsCache)
             } else {
                 scheduleUpdateCatalogRows()
@@ -101,26 +98,6 @@ internal fun HomeViewModel.loadCustomCatalogTitlesPipeline() {
     viewModelScope.launch {
         layoutPreferenceDataStore.customCatalogTitles.collectLatest { titles ->
             customCatalogTitles = titles
-            scheduleUpdateCatalogRows()
-        }
-    }
-}
-
-internal fun HomeViewModel.observeInstalledAppsRowPipeline() {
-    viewModelScope.launch {
-        kotlinx.coroutines.flow.combine(
-            installedAppsRepository.state,
-            installedAppsPreferences.preferences
-        ) { state, preferences ->
-            val byPackage = state.apps.associateBy { it.packageName }
-            orderInstalledApps(
-                availablePackages = state.apps.map { it.packageName },
-                savedOrder = preferences.order,
-                removedPackages = preferences.removedPackages
-            ).mapNotNull(byPackage::get)
-        }.distinctUntilChanged().collectLatest { apps ->
-            installedAppsCache = apps
-            rebuildCatalogOrder(addonsCache)
             scheduleUpdateCatalogRows()
         }
     }
@@ -158,7 +135,7 @@ internal fun HomeViewModel.observeInstalledAddonsPipeline() {
             .distinctUntilChanged()
             .collectLatest { addons ->
                 addonsCache = addons
-                loadAllCatalogsPipeline(addons, forceReload = true)
+                loadAllCatalogsPipeline(addons)
             }
     }
 }
@@ -186,7 +163,7 @@ internal suspend fun HomeViewModel.loadAllCatalogsPipeline(
 
     // On reload (not first load), keep existing UI data visible while new
     // catalogs load in the background to avoid a flash of empty content.
-    val isReload = !forceReload && (_uiState.value.catalogRows.isNotEmpty() || _uiState.value.homeRows.isNotEmpty())
+    val isReload = _uiState.value.catalogRows.isNotEmpty() || _uiState.value.homeRows.isNotEmpty()
     if (!isReload) {
         _uiState.update { it.copy(isLoading = true, error = null, installedAddonsCount = addons.size) }
         synchronized(catalogStateLock) {
@@ -222,7 +199,6 @@ internal suspend fun HomeViewModel.loadAllCatalogsPipeline(
         if (addons.isEmpty()) {
             catalogsLoadInProgress = false
             _uiState.update { it.copy(isLoading = false, error = appContext.getString(R.string.home_empty_no_sources_title)) }
-            scheduleUpdateCatalogRows()
             return
         }
 
@@ -243,24 +219,19 @@ internal suspend fun HomeViewModel.loadAllCatalogsPipeline(
             return
         }
 
-        val catalogsToLoad = addons
-            .filterNot { it.id.equals(com.nuvio.tv.core.mylists.MyListsDefaultSeed.MY_LISTS_COLLECTIONS_ADDON_ID, ignoreCase = true) }
-            .flatMap { addon ->
-                addon.catalogs
-                    .filterNot {
-                        com.nuvio.tv.core.mylists.MyListsDefaultSeed.isRemovedCatalog(it.id, it.apiType) ||
-                        !it.shouldShowOnHome() ||
-                        com.nuvio.tv.core.mylists.MyListsDefaultSeed.isCollectionCatalogSource(collectionsCache, addon.id, it.apiType, it.id) ||
-                        isCatalogDisabled(
-                            addonBaseUrl = addon.baseUrl,
-                            addonId = addon.id,
-                            type = it.apiType,
-                            catalogId = it.id,
-                            catalogName = it.name
-                        )
-                    }
-                    .map { catalog -> addon to catalog }
-            }
+        val catalogsToLoad = addons.flatMap { addon ->
+            addon.catalogs
+                .filterNot {
+                    !it.shouldShowOnHome() || isCatalogDisabled(
+                        addonBaseUrl = addon.baseUrl,
+                        addonId = addon.id,
+                        type = it.apiType,
+                        catalogId = it.id,
+                        catalogName = it.name
+                    )
+                }
+                .map { catalog -> addon to catalog }
+        }
 
         // Load hero-selected catalogs even if disabled from home rows —
         // the hero has its own catalog source independent of home rows.
@@ -760,11 +731,7 @@ internal suspend fun HomeViewModel.updateCatalogRowsPipeline() {
             }
         }
         for (key in orderedKeys) {
-            if (key in disabledHomeCatalogKeys || com.nuvio.tv.core.mylists.MyListsDefaultSeed.isRemovedCatalogKey(key)) continue
-            if (key == INSTALLED_APPS_CATALOG_KEY) {
-                installedAppsCache.takeIf { it.isNotEmpty() }?.let { add(HomeRow.InstalledApps(it)) }
-                continue
-            }
+            if (key in disabledHomeCatalogKeys) continue
             val collectionEntry = collectionsSnapshot[key]
             if (collectionEntry != null) {
                 if (!collectionEntry.pinToTop && addedCollectionIds.add(collectionEntry.id)) {
@@ -895,7 +862,6 @@ internal suspend fun HomeViewModel.updateCatalogRowsPipeline() {
                             ))
                         }
                     }
-                    is HomeRow.InstalledApps -> add(GridItem.InstalledAppsRow(homeRow.apps))
                     is HomeRow.PlaceholderCatalog -> {
                         // Grid layout: skip placeholders (grid loads all at once)
                     }
@@ -1207,18 +1173,11 @@ internal fun HomeViewModel.mergeRefreshedCatalogRow(
 }
 
 
-internal fun HomeViewModel.refreshVisibleCatalogsPipeline(
-    requestedByUser: Boolean = false,
-    forceReplace: Boolean = false,
-    /** When set, only catalogs of these addons are re-requested (e.g. after a My Lists sync). */
-    onlyAddonIds: Set<String>? = null
-) {
+internal fun HomeViewModel.refreshVisibleCatalogsPipeline(requestedByUser: Boolean = false, forceReplace: Boolean = false) {
     val loadedKeys = synchronized(catalogStateLock) { catalogsMap.keys.toSet() }
     if (loadedKeys.isEmpty()) return
 
-    val toRefresh = addonsCache
-        .filter { addon -> onlyAddonIds == null || onlyAddonIds.any { it.equals(addon.id, ignoreCase = true) } }
-        .flatMap { addon ->
+    val toRefresh = addonsCache.flatMap { addon ->
         addon.catalogs
             .filter { catalog ->
                 !catalog.isSearchOnlyCatalog() && catalogKey(

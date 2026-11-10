@@ -5,8 +5,8 @@
     <!-- Lets the in-app updater install its own updates without a confirmation screen on Android 12+. -->
     <uses-permission android:name="android.permission.UPDATE_PACKAGES_WITHOUT_USER_ACTION" />
 
-    <!-- Granted once via the on-device Wireless debugging setup so the app can keep its own
-         accessibility service enabled. Never available to a normal install without that grant. -->
+    <!-- Granted once by the on-device Wireless debugging setup ("Set up without a computer"), so the
+         grants it applies survive a reboot or an app update. Never granted to a normal install. -->
     <uses-permission
         android:name="android.permission.WRITE_SECURE_SETTINGS"
         tools:ignore="ProtectedPermissions" />

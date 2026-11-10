@@ -11,27 +11,30 @@ import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
 import androidx.compose.runtime.setValue
-import androidx.compose.ui.platform.LocalContext
-import com.nuvio.tv.core.launcher.AccessibilityWatchdog
-import com.nuvio.tv.core.launcher.LocalAdbSetupFactory
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.focus.FocusRequester
 import androidx.compose.ui.focus.focusRequester
+import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.res.stringResource
 import com.nuvio.tv.R
-import com.nuvio.tv.ui.components.rememberLauncherSetupState
+import com.nuvio.tv.core.setup.LocalAdbSetupFactory
+import com.nuvio.tv.ui.components.rememberHomeSetupState
 import com.nuvio.tv.ui.theme.NuvioTheme
 
+/**
+ * Three ways to make Nuvio the Home app, in the order they should be tried: Android's own Home-app
+ * dialog, the system Home settings, and the on-device Wireless debugging setup for firmware where
+ * neither of the first two is offered.
+ */
 @Composable
 internal fun DefaultLauncherSettingsContent(initialFocusRequester: FocusRequester? = null) {
-    val setup = rememberLauncherSetupState()
+    val setup = rememberHomeSetupState()
     val context = LocalContext.current
-    // Null on flavors/Android versions without the on-device ADB setup.
+    // Null on flavors and Android versions without the on-device ADB setup.
     val selfSetup = remember { LocalAdbSetupFactory.create(context) }
     var showSelfSetup by remember { mutableStateOf(false) }
     var setupRevision by remember { mutableStateOf(0) }
-    val secureGranted = remember(setupRevision) { AccessibilityWatchdog.canWriteSecureSettings(context) }
-    var keepOverride by remember(setupRevision) { mutableStateOf(AccessibilityWatchdog.isOptedIn(context)) }
+
     Column(
         modifier = Modifier.fillMaxSize().verticalScroll(rememberScrollState()),
         verticalArrangement = Arrangement.spacedBy(NuvioTheme.spacing.md)
@@ -47,10 +50,11 @@ internal fun DefaultLauncherSettingsContent(initialFocusRequester: FocusRequeste
                     else R.string.settings_make_home_app
                 ),
                 subtitle = stringResource(
-                    if (setup.showFallback) R.string.settings_home_role_not_selected
+                    if (setup.roleRequestDenied) R.string.settings_home_role_not_selected
                     else R.string.settings_make_home_app_subtitle
                 ),
                 onClick = setup.requestDefaultHome,
+                enabled = !setup.isDefaultHome,
                 modifier = if (initialFocusRequester != null) {
                     Modifier.focusRequester(initialFocusRequester)
                 } else {
@@ -60,39 +64,26 @@ internal fun DefaultLauncherSettingsContent(initialFocusRequester: FocusRequeste
             SettingsActionRow(
                 title = stringResource(R.string.settings_open_home_settings),
                 subtitle = stringResource(
-                    if (setup.settingsUnavailable) R.string.settings_home_settings_unavailable
+                    if (setup.homeSettingsUnavailable) R.string.settings_home_settings_unavailable
                     else R.string.settings_open_home_settings_subtitle
                 ),
                 onClick = setup.openHomeSettings
             )
-            SettingsActionRow(
-                title = stringResource(
-                    if (setup.isAccessibilityActive) R.string.apps_home_override_active
-                    else if (setup.isAccessibilityEnabled) R.string.apps_home_override_pending
-                    else R.string.apps_home_override
-                ),
-                subtitle = stringResource(R.string.settings_home_override_subtitle),
-                onClick = setup.openAccessibilitySettings
-            )
-            if (selfSetup != null) {
+            // Hidden on the Play Store flavor, which ships no on-device setup. On an older Android
+            // it stays visible but explains why it cannot run, rather than disappearing silently.
+            if (selfSetup != null || LocalAdbSetupFactory.available(context)) {
                 SettingsActionRow(
                     title = stringResource(R.string.settings_self_setup_title),
                     subtitle = stringResource(
-                        if (secureGranted) R.string.settings_self_setup_done_subtitle
-                        else R.string.settings_self_setup_subtitle
+                        when {
+                            selfSetup == null -> R.string.settings_self_setup_unavailable_subtitle
+                            setup.isDefaultHome -> R.string.settings_self_setup_done_subtitle
+                            setupRevision > 0 -> R.string.settings_self_setup_retry_subtitle
+                            else -> R.string.settings_self_setup_subtitle
+                        }
                     ),
-                    onClick = { showSelfSetup = true }
-                )
-            }
-            if (secureGranted) {
-                SettingsToggleRow(
-                    title = stringResource(R.string.settings_keep_override_title),
-                    subtitle = stringResource(R.string.settings_keep_override_subtitle),
-                    checked = keepOverride,
-                    onToggle = {
-                        keepOverride = !keepOverride
-                        AccessibilityWatchdog.setOptIn(context, keepOverride)
-                    }
+                    onClick = { showSelfSetup = true },
+                    enabled = selfSetup != null
                 )
             }
         }
@@ -102,10 +93,12 @@ internal fun DefaultLauncherSettingsContent(initialFocusRequester: FocusRequeste
                 onDismiss = {
                     showSelfSetup = false
                     setupRevision++
+                    setup.refresh()
                 },
                 onFinished = {
                     showSelfSetup = false
                     setupRevision++
+                    setup.refresh()
                 }
             )
         }

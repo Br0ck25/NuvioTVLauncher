@@ -16,9 +16,7 @@ import androidx.compose.animation.fadeOut
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.CompositionLocalProvider
 import androidx.compose.runtime.getValue
-import androidx.compose.runtime.mutableStateOf
-import androidx.compose.runtime.saveable.rememberSaveable
-import androidx.compose.runtime.setValue
+import androidx.compose.runtime.collectAsState
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import androidx.lifecycle.viewmodel.compose.LocalViewModelStoreOwner
 import androidx.navigation.NavHostController
@@ -37,8 +35,6 @@ import com.nuvio.tv.ui.screens.detail.MetaDetailsScreen
 import com.nuvio.tv.ui.screens.home.HomeScreen
 import com.nuvio.tv.ui.screens.addon.AddonManagerScreen
 import com.nuvio.tv.ui.screens.addon.CatalogOrderScreen
-import com.nuvio.tv.ui.screens.apps.AppsScreen
-import com.nuvio.tv.ui.screens.apps.LocalNavigateToManageHomeApps
 import com.nuvio.tv.ui.screens.library.LibraryScreen
 import com.nuvio.tv.ui.screens.player.PlayerExitReason
 import com.nuvio.tv.ui.screens.player.PlayerScreen
@@ -77,10 +73,7 @@ fun NuvioNavHost(
         // composed under, so use the session store when MainActivity provides one.
         val navViewModelStoreOwner = LocalNavViewModelStoreOwner.current
             ?: checkNotNull(LocalViewModelStoreOwner.current)
-        CompositionLocalProvider(
-            LocalViewModelStoreOwner provides navViewModelStoreOwner,
-            LocalNavigateToManageHomeApps provides { navController.navigate(Screen.InstalledAppsOrder.route) }
-        ) {
+        CompositionLocalProvider(LocalViewModelStoreOwner provides navViewModelStoreOwner) {
             PlaybackNavHost(navController, startDestination, hideBuiltInHeaders)
         }
     }
@@ -94,7 +87,6 @@ private fun PlaybackNavHost(
 ) {
     val playbackAvailability = LocalPlaybackAvailability.current
     val context = LocalContext.current
-    var settingsOpenedFromDrawer by rememberSaveable { mutableStateOf(false) }
     fun isStreamToPlayer(from: String, to: String): Boolean {
         return from.startsWith("stream/") && to.startsWith("player/")
     }
@@ -294,10 +286,6 @@ private fun PlaybackNavHost(
                 },
                 onNavigateToFolderDetail = { collectionId, folderId ->
                     navController.navigate(Screen.FolderDetail.createRoute(collectionId, folderId))
-                },
-                onNavigateToSettings = {
-                    settingsOpenedFromDrawer = true
-                    navController.navigate(Screen.Settings.route)
                 }
             )
         }
@@ -355,13 +343,13 @@ private fun PlaybackNavHost(
                 ?.toBooleanStrictOrNull() == true
             val returnFocusSeason by savedState.getStateFlow(
                 "returnFocusSeason", detailArgs?.getString("returnFocusSeason")?.toIntOrNull()
-            ).collectAsStateWithLifecycle()
+            ).collectAsState()
             val returnFocusEpisode by savedState.getStateFlow(
                 "returnFocusEpisode", detailArgs?.getString("returnFocusEpisode")?.toIntOrNull()
-            ).collectAsStateWithLifecycle()
+            ).collectAsState()
             val heroRestoreToken by savedState.getStateFlow(
                 "heroRestoreToken", 0
-            ).collectAsStateWithLifecycle()
+            ).collectAsState()
             val heroBackdropUrl = detailArgs?.getString("heroBackdropUrl")?.takeIf { it.isNotBlank() }
             val playOnLoad = detailArgs?.getString("playOnLoad")?.toBooleanStrictOrNull() == true
             val manualSelection = detailArgs?.getString("manualSelection")?.toBooleanStrictOrNull() == true
@@ -577,7 +565,7 @@ private fun PlaybackNavHost(
             val streamSavedState = backStackEntry.savedStateHandle
             val restoreSourceSelection by streamSavedState.getStateFlow(
                 SOURCE_SELECTION_RESTORE_STATE_KEY, false
-            ).collectAsStateWithLifecycle()
+            ).collectAsState()
             val returnToDetailOnBack = streamArgs
                 ?.getString("returnToDetailOnBack")
                 ?.toBooleanStrictOrNull() == true
@@ -1243,10 +1231,6 @@ private fun PlaybackNavHost(
             )
         }
 
-        composable(com.nuvio.tv.reshaped.livetv.LIVE_TV_ROUTE) { // Live TV
-            com.nuvio.tv.ui.reshaped.livetv.LiveTvScreen(onPlay = { navController.navigate(it) }, showBuiltInHeader = !hideBuiltInHeaders)
-        }
-
         composable(Screen.Library.route) {
             LibraryScreen(
                 showBuiltInHeader = !hideBuiltInHeaders,
@@ -1280,46 +1264,9 @@ private fun PlaybackNavHost(
             )
         }
 
-        composable(Screen.Calendar.route) {
-            com.nuvio.tv.calendar.CalendarScreen(
-                onOpenDetail = { id, type, addonBaseUrl, season, episode ->
-                    navController.navigate(Screen.Detail.createRoute(id, type, addonBaseUrl, returnFocusSeason = season, returnFocusEpisode = episode))
-                },
-                onFindSources = { e ->
-                    val videoId = e.videoId ?: return@CalendarScreen
-                    navController.navigate(
-                        Screen.Stream.createRoute(
-                            videoId = videoId,
-                            contentType = "series",
-                            title = e.title,
-                            poster = e.poster,
-                            backdrop = e.background,
-                            contentId = e.contentId,
-                            contentName = e.title,
-                            season = e.season,
-                            episode = e.episode,
-                            episodeName = e.episodeTitle
-                        )
-                    )
-                }
-            )
-        }
-
-        composable(Screen.Apps.route) {
-            AppsScreen(
-                onManageHomeApps = { navController.navigate(Screen.InstalledAppsOrder.route) }
-            )
-        }
-
         composable(Screen.Settings.route) {
             SettingsScreen(
                 showBuiltInHeader = !hideBuiltInHeaders,
-                onBackPress = if (settingsOpenedFromDrawer) {
-                    {
-                        settingsOpenedFromDrawer = false
-                        navController.popBackStack()
-                    }
-                } else null,
                 onNavigateToAddons = { navController.navigate(Screen.AddonManager.route) },
                 onNavigateToPlugins = { navController.navigate(Screen.Plugins.route) },
                 onNavigateToAuthQrSignIn = { navController.navigate(Screen.AuthQrSignIn.route) },
@@ -1419,13 +1366,6 @@ private fun PlaybackNavHost(
 
         composable(Screen.CatalogOrder.route) {
             CatalogOrderScreen(
-                onBackPress = { navController.popBackStack() },
-                onManageInstalledApps = { navController.navigate(Screen.InstalledAppsOrder.route) }
-            )
-        }
-
-        composable(Screen.InstalledAppsOrder.route) {
-            com.nuvio.tv.ui.screens.apps.InstalledAppsOrderScreen(
                 onBackPress = { navController.popBackStack() }
             )
         }

@@ -25,10 +25,6 @@ import kotlinx.coroutines.flow.update
 import kotlinx.coroutines.launch
 import javax.inject.Inject
 
-import com.nuvio.tv.core.apps.IconPackInfo
-import com.nuvio.tv.core.apps.IconPackManager
-import com.nuvio.tv.data.local.InstalledAppsPreferencesDataStore
-
 data class ThemeSettingsUiState(
     val themesLoaded: Boolean = false,
     val selectedTheme: AppTheme = AppTheme.WHITE,
@@ -40,10 +36,7 @@ data class ThemeSettingsUiState(
     val amoledMode: Boolean = false,
     val amoledSurfacesMode: Boolean = false,
     val settingsUiStyle: SettingsUiStyle = SettingsUiStyle.CLASSIC,
-    val availableSettingsUiStyles: List<SettingsUiStyle> = SettingsUiStyle.entries.toList(),
-    val installedIconPacks: List<IconPackInfo> = emptyList(),
-    val selectedIconPackPackage: String? = null,
-    val isLoadingIconPacks: Boolean = false
+    val availableSettingsUiStyles: List<SettingsUiStyle> = SettingsUiStyle.entries.toList()
 )
 
 sealed class ThemeSettingsEvent {
@@ -54,17 +47,13 @@ sealed class ThemeSettingsEvent {
     data class ToggleAmoledSurfacesMode(val enabled: Boolean) : ThemeSettingsEvent()
     data class SelectSettingsUiStyle(val style: SettingsUiStyle) : ThemeSettingsEvent()
     data object DismissAppIconFailure : ThemeSettingsEvent()
-    data class SelectIconPack(val packageName: String?) : ThemeSettingsEvent()
-    data object RefreshIconPacks : ThemeSettingsEvent()
 }
 
 @HiltViewModel
 class ThemeSettingsViewModel @Inject constructor(
     private val themeDataStore: ThemeDataStore,
     private val memberAccessRepository: MemberAccessRepository,
-    private val appIconManager: AppIconManager,
-    private val iconPackManager: IconPackManager,
-    private val installedAppsPreferencesDataStore: InstalledAppsPreferencesDataStore
+    private val appIconManager: AppIconManager
 ) : ViewModel() {
 
     private val _uiState = MutableStateFlow(ThemeSettingsUiState())
@@ -144,14 +133,6 @@ class ThemeSettingsViewModel @Inject constructor(
                     }
                 }
         }
-        viewModelScope.launch {
-            installedAppsPreferencesDataStore.preferences.collectLatest { prefs ->
-                _uiState.update { state ->
-                    state.copy(selectedIconPackPackage = prefs.selectedIconPackPackage)
-                }
-            }
-        }
-        loadIconPacks()
     }
 
     private fun currentTheme(): AppTheme {
@@ -167,22 +148,6 @@ class ThemeSettingsViewModel @Inject constructor(
             is ThemeSettingsEvent.ToggleAmoledSurfacesMode -> setAmoledSurfacesMode(event.enabled)
             is ThemeSettingsEvent.SelectSettingsUiStyle -> selectSettingsUiStyle(event.style)
             ThemeSettingsEvent.DismissAppIconFailure -> appIconManager.clearFailure()
-            is ThemeSettingsEvent.SelectIconPack -> selectIconPack(event.packageName)
-            ThemeSettingsEvent.RefreshIconPacks -> loadIconPacks()
-        }
-    }
-
-    fun loadIconPacks() {
-        viewModelScope.launch {
-            _uiState.update { it.copy(isLoadingIconPacks = true) }
-            val packs = iconPackManager.getInstalledIconPacks()
-            _uiState.update { it.copy(installedIconPacks = packs, isLoadingIconPacks = false) }
-        }
-    }
-
-    fun selectIconPack(packageName: String?) {
-        viewModelScope.launch {
-            installedAppsPreferencesDataStore.setSelectedIconPack(packageName)
         }
     }
 

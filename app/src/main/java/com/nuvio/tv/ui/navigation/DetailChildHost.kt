@@ -12,7 +12,7 @@ import androidx.compose.runtime.Composable
 import androidx.compose.runtime.CompositionLocalProvider
 import androidx.compose.runtime.DisposableEffect
 import androidx.compose.runtime.LaunchedEffect
-import androidx.lifecycle.compose.collectAsStateWithLifecycle
+import androidx.compose.runtime.collectAsState
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableIntStateOf
 import androidx.compose.runtime.mutableStateOf
@@ -62,7 +62,7 @@ internal fun DetailChildHost(
     content: @Composable (childNav: NavHostController) -> Unit
 ) {
     val childNav = rememberNavController()
-    val childBackStack by childNav.currentBackStack.collectAsStateWithLifecycle()
+    val childBackStack by childNav.currentBackStack.collectAsState()
     val showingChild = childBackStack.any { it.toSavedChildRoute() != null }
     var savedChildRoutes by rememberSaveable { mutableStateOf(listOf<String>()) }
     var childRoutesRestored by remember { mutableStateOf(false) }

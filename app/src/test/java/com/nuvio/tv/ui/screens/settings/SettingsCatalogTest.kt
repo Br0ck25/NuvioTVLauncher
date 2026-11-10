@@ -22,14 +22,11 @@ class SettingsCatalogTest {
                 SettingsCategory.APPEARANCE,
                 SettingsCategory.LAYOUT,
                 SettingsCategory.CONTENT_DISCOVERY,
-                SettingsCategory.CALENDAR,
-                SettingsCategory.LIVE_TV,
                 SettingsCategory.PLAYBACK,
                 SettingsCategory.INTEGRATION,
                 SettingsCategory.TRACKING,
                 SettingsCategory.ADVANCED,
                 SettingsCategory.DEFAULT_LAUNCHER,
-                SettingsCategory.REMOTE_BUTTONS,
                 SettingsCategory.ABOUT,
                 SettingsCategory.DEBUG
             ),
@@ -54,6 +51,14 @@ class SettingsCatalogTest {
     fun `debug is hidden in release builds and in essential mode`() {
         assertFalse(SettingsCategory.DEBUG in visibleSettingsCategories(true, isEssentialMode = false, isDebugBuild = false))
         assertFalse(SettingsCategory.DEBUG in visibleSettingsCategories(true, isEssentialMode = true, isDebugBuild = true))
+    }
+
+    @Test
+    fun `default launcher setup is available in every profile and experience mode under system`() {
+        assertEquals(SettingsRailGroup.SYSTEM, SettingsCategory.DEFAULT_LAUNCHER.group)
+        allCombinations().forEach { categories ->
+            assertTrue(SettingsCategory.DEFAULT_LAUNCHER in categories)
+        }
     }
 
     @Test
@@ -126,21 +131,6 @@ class SettingsCatalogTest {
             listOf(SettingsCategory.ACCOUNT, SettingsCategory.PROFILES, SettingsCategory.WATCH_PARTY),
             visibleSettingsCategories(true, isEssentialMode = false, isDebugBuild = false, isWatchPartyAvailable = true).take(3)
         )
-    }
-
-    @Test
-    fun `default launcher setup is available in every profile and experience mode`() {
-        allCombinations().forEach { categories ->
-            assertTrue(SettingsCategory.DEFAULT_LAUNCHER in categories)
-        }
-    }
-
-    @Test
-    fun `remote buttons mapper is available in every profile and experience mode under system`() {
-        assertEquals(SettingsRailGroup.SYSTEM, SettingsCategory.REMOTE_BUTTONS.group)
-        allCombinations().forEach { categories ->
-            assertTrue(SettingsCategory.REMOTE_BUTTONS in categories)
-        }
     }
 
     private fun allCombinations(): List<List<SettingsCategory>> =

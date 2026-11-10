@@ -398,10 +398,6 @@ internal fun ModernHomeRowsList(
                             focusedItemByRowMap[rowKey] = index
                         }
 
-                        if (rowKey == com.nuvio.tv.core.apps.INSTALLED_APPS_CATALOG_KEY) {
-                            onFocusedCatalogSelectionChange(null)
-                            onExpandedCatalogFocusKeyChange(null)
-                        }
                         if (isContinueWatchingRow) {
                             if (lastFocusedContinueWatchingIndex.value != index) {
                                 onLastFocusedContinueWatchingIndexChange(index)
