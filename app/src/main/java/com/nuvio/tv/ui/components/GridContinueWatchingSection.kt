@@ -1,8 +1,6 @@
 package com.nuvio.tv.ui.components
 
-import androidx.compose.ui.Alignment
-import androidx.compose.foundation.layout.Row
-import com.nuvio.tv.ui.screens.home.shuffleFocusKey
+import com.nuvio.tv.ui.screens.home.continueWatchingItemKey
 
 import com.nuvio.tv.ui.theme.NuvioTheme
 
@@ -69,7 +67,8 @@ fun GridContinueWatchingSection(
     cardStyle: ContinueWatchingCardStyle = ContinueWatchingCardStyle.CARD,
     cornerRadius: Dp = NuvioTheme.radii.md,
     posterCardWidth: Dp? = null,
-    posterCardHeight: Dp? = null
+    posterCardHeight: Dp? = null,
+    isUpcomingSection: Boolean = false
 ) {
     if (items.isEmpty()) return
 
@@ -102,15 +101,11 @@ fun GridContinueWatchingSection(
                 .padding(top = NuvioTheme.spacing.xl, bottom = NuvioTheme.spacing.md)
         ) {
             Column {
-                Row(verticalAlignment = Alignment.CenterVertically) {
-                    Text(
-                        text = title ?: stringResource(R.string.continue_watching),
-                        style = MaterialTheme.typography.headlineMedium,
-                        color = NuvioTheme.colors.TextPrimary
-                    )
-                    // Live TV fork: "Live TV ▲" hint when this is the top row.
-                    com.nuvio.tv.livetv.home.LiveTvHomeHint()
-                }
+                Text(
+                    text = title ?: stringResource(R.string.continue_watching),
+                    style = MaterialTheme.typography.headlineMedium,
+                    color = NuvioTheme.colors.TextPrimary
+                )
             }
         }
 
@@ -144,14 +139,7 @@ fun GridContinueWatchingSection(
         ) {
             itemsIndexed(
                 items = items,
-                key = { _, item ->
-                    item.shuffleFocusKey ?: when (item) {
-                        is ContinueWatchingItem.InProgress ->
-                            "cw_${item.progress.contentId}_${item.progress.videoId}_${item.progress.season ?: -1}_${item.progress.episode ?: -1}"
-                        is ContinueWatchingItem.NextUp ->
-                            "nextup_${item.info.contentId}_${item.info.videoId}_${item.info.season}_${item.info.episode}"
-                    }
-                }
+                key = { _, item -> continueWatchingItemKey(item) }
             ) { index, progress ->
                 val requester = focusRequesters.getOrPut(index) { FocusRequester() }
                 val focusModifier = Modifier.focusRequester(requester)
@@ -168,6 +156,7 @@ fun GridContinueWatchingSection(
                     cardStyle = cardStyle,
                     cornerRadius = cornerRadius,
                     isFocused = isCardFocused,
+                    isUpcomingCard = isUpcomingSection,
                     modifier = focusModifier
                         .onFocusChanged { focusState ->
                             isCardFocused = focusState.isFocused
@@ -178,15 +167,17 @@ fun GridContinueWatchingSection(
                                 onItemFocused(index)
                             }
                         },
-                    cardWidth = when (cardStyle) {
-                        ContinueWatchingCardStyle.POSTER -> posterCardWidth ?: posterCardHeight?.let { it * (2f / 3f) } ?: 120.dp
-                        ContinueWatchingCardStyle.WIDE -> 320.dp
-                        ContinueWatchingCardStyle.CARD -> 220.dp
+                    cardWidth = when {
+                        isUpcomingSection -> UPCOMING_SCHEDULE_CARD_WIDTH
+                        cardStyle == ContinueWatchingCardStyle.POSTER -> posterCardWidth ?: posterCardHeight?.let { it * (2f / 3f) } ?: 120.dp
+                        cardStyle == ContinueWatchingCardStyle.WIDE -> 320.dp
+                        else -> 220.dp
                     },
-                    imageHeight = when (cardStyle) {
-                        ContinueWatchingCardStyle.POSTER -> posterCardHeight ?: posterCardWidth?.let { it * 1.5f } ?: 180.dp
-                        ContinueWatchingCardStyle.WIDE -> 128.dp
-                        ContinueWatchingCardStyle.CARD -> 124.dp
+                    imageHeight = when {
+                        isUpcomingSection -> 124.dp
+                        cardStyle == ContinueWatchingCardStyle.POSTER -> posterCardHeight ?: posterCardWidth?.let { it * 1.5f } ?: 180.dp
+                        cardStyle == ContinueWatchingCardStyle.WIDE -> 128.dp
+                        else -> 124.dp
                     }
                 )
             }
