@@ -63,6 +63,7 @@ import androidx.compose.ui.Alignment
 import com.nuvio.tv.ui.components.CatalogRowSection
 import com.nuvio.tv.ui.components.CollectionRowSection
 import com.nuvio.tv.ui.components.ContinueWatchingSection
+import com.nuvio.tv.ui.components.UPCOMING_SCHEDULE_CARD_WIDTH
 import com.nuvio.tv.ui.components.LocalLandscapePosterMode
 import com.nuvio.tv.core.poster.withCustomPosterUrls
 import com.nuvio.tv.domain.model.ContinueWatchingCardStyle
@@ -745,8 +746,13 @@ fun ClassicHomeContent(
                         )
                     },
                     title = stringResource(R.string.upcoming_section_title),
+                    // An upcoming episode isn't out yet, so selecting it shows its details instead of playing.
                     onItemClick = { item ->
-                        onContinueWatchingClick(item)
+                        val (id, type) = when (item) {
+                            is ContinueWatchingItem.InProgress -> item.progress.contentId to item.progress.contentType
+                            is ContinueWatchingItem.NextUp -> item.info.contentId to item.info.contentType
+                        }
+                        onNavigateToDetail(id, type, "")
                     },
                     onStartFromBeginning = onContinueWatchingStartFromBeginning,
                     showManualPlayOption = showContinueWatchingManualPlayOption,
@@ -798,12 +804,13 @@ fun ClassicHomeContent(
                                 ?.toClassicFocusArtwork(uiState.focusedPosterBackdropExpandEnabled)
                         }
                     },
-                    cardWidth = classicContinueWatchingCardWidth,
+                    cardWidth = UPCOMING_SCHEDULE_CARD_WIDTH,
                     imageHeight = classicContinueWatchingImageHeight,
                     cardStyle = uiState.continueWatchingCardStyle,
                     cornerRadius = posterCardStyle.cornerRadius,
                     posterTitleOverride = classicPosterTitleStyle,
-                    listState = upcomingListState
+                    listState = upcomingListState,
+                    isUpcomingSection = true
                 )
             }
         }
