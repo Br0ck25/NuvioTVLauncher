@@ -14,6 +14,9 @@ enum class DeviceAction(val id: String) {
     /** FLauncher's way: turn off the Google TV launcher (and its fallback) so only this launcher is left. */
     DISABLE_STOCK("disable-stock"),
 
+    /** Let this launcher read notifications, for the bell at the top right of Home. */
+    ENABLE_NOTIFICATIONS("enable-notifications"),
+
     /** Undo [DISABLE_STOCK]. */
     ENABLE_STOCK("enable-stock"),
 
@@ -35,6 +38,8 @@ object DeviceCommands {
     const val HOME_QUERY = "-c android.intent.category.HOME -a android.intent.action.MAIN"
 
     fun setHome(component: String) = "cmd package set-home-activity $component"
+    /** Grants the notification-listener access that normally needs a trip through Settings. */
+    fun allowNotificationListener(component: String) = "cmd notification allow_listener $component"
     val resolveHome = "cmd package resolve-activity $HOME_QUERY"
     val listHomes = "cmd package query-activities $HOME_QUERY"
     val disableStock = listOf(

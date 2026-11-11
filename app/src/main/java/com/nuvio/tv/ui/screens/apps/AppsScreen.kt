@@ -12,7 +12,9 @@ import androidx.compose.foundation.lazy.grid.items
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
+import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
+import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.focus.FocusRequester
@@ -33,6 +35,7 @@ import com.nuvio.tv.ui.theme.NuvioTheme
 fun AppsScreen(viewModel: InstalledAppsViewModel = hiltViewModel()) {
     val apps by viewModel.apps.collectAsStateWithLifecycle()
     val first = remember { FocusRequester() }
+    var actionsFor by remember { mutableStateOf<com.nuvio.tv.core.apps.InstalledApp?>(null) }
     LaunchedEffect(apps.isNotEmpty()) {
         if (apps.isNotEmpty()) runCatching { first.requestFocus() }
     }
@@ -67,12 +70,25 @@ fun AppsScreen(viewModel: InstalledAppsViewModel = hiltViewModel()) {
                         app = app,
                         loadImage = viewModel::image,
                         onClick = { viewModel.launch(app) },
-                        onLongClick = { viewModel.openAppInfo(app) },
+                        onLongClick = { actionsFor = app },
                         modifier = if (app == apps.first()) Modifier.focusRequester(first) else Modifier,
                         width = 176.dp
                     )
                 }
             }
         }
+    }
+    actionsFor?.let { app ->
+        val index = apps.indexOfFirst { it.packageName == app.packageName }
+        if (index < 0) actionsFor = null else com.nuvio.tv.ui.components.InstalledAppActionsDialog(
+            app = app,
+            canMoveEarlier = index > 0,
+            canMoveLater = index < apps.lastIndex,
+            onOpen = { viewModel.launch(app) },
+            onMoveEarlier = { viewModel.move(app, -1) },
+            onMoveLater = { viewModel.move(app, 1) },
+            onAppInfo = { viewModel.openAppInfo(app) },
+            onDismiss = { actionsFor = null }
+        )
     }
 }

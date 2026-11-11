@@ -14,7 +14,11 @@ import dagger.hilt.android.qualifiers.ApplicationContext
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.channels.awaitClose
 import kotlinx.coroutines.flow.Flow
+import kotlinx.coroutines.flow.MutableStateFlow
+import kotlinx.coroutines.flow.StateFlow
+import kotlinx.coroutines.flow.asStateFlow
 import kotlinx.coroutines.flow.callbackFlow
+import kotlinx.coroutines.flow.combine
 import kotlinx.coroutines.flow.conflate
 import kotlinx.coroutines.flow.flowOn
 import kotlinx.coroutines.flow.map
@@ -44,8 +48,23 @@ class InstalledAppsRepository @Inject constructor(
     // Banners are 320x180, icons much smaller; 48 entries covers a home row + the Apps grid.
     private val images = LruCache<String, Bitmap>(48)
 
-    /** Emits the current list at once, then again whenever the set of apps changes. */
-    val apps: Flow<List<InstalledApp>> = callbackFlow {
+    // The order the user arranged (package names). Apps not in it follow, A to Z. Shared by the Apps
+    // page and the Home row.
+    private val prefs = context.getSharedPreferences("launcher_apps", Context.MODE_PRIVATE)
+    private val savedOrder = MutableStateFlow(AppOrder.decode(prefs.getString(KEY_ORDER, null)))
+    val order: StateFlow<List<String>> = savedOrder.asStateFlow()
+
+    /** Emits the current list at once, then again whenever the set of apps or their order changes. */
+    val apps: Flow<List<InstalledApp>> = combine(installed(), savedOrder) { list, order -> AppOrder.apply(list, order) }
+
+    /** Moves [app] one place earlier (-1) or later (+1) in the list as it is shown now. */
+    fun move(shown: List<InstalledApp>, app: InstalledApp, delta: Int) {
+        val updated = AppOrder.move(shown.map { it.packageName }, app.packageName, delta) ?: return
+        prefs.edit().putString(KEY_ORDER, AppOrder.encode(updated)).apply()
+        savedOrder.value = updated
+    }
+
+    private fun installed(): Flow<List<InstalledApp>> = callbackFlow {
         val receiver = object : BroadcastReceiver() {
             override fun onReceive(c: Context?, i: Intent?) { trySend(Unit) }
         }
@@ -60,6 +79,10 @@ class InstalledAppsRepository @Inject constructor(
         trySend(Unit)
         awaitClose { runCatching { context.unregisterReceiver(receiver) } }
     }.conflate().map { query() }.flowOn(Dispatchers.IO)
+
+    private companion object {
+        const val KEY_ORDER = "order"
+    }
 
     private fun query(): List<InstalledApp> {
         fun list(category: String) = pm.queryIntentActivities(
@@ -113,4 +136,25 @@ class InstalledAppsRepository @Inject constructor(
                 .addFlags(Intent.FLAG_ACTIVITY_NEW_TASK)
         )
     }.isSuccess
+}
+
+/** The saved arrangement of apps, kept apart from Android so it can be tested. */
+object AppOrder {
+    fun encode(order: List<String>): String = order.joinToString("\n")
+    fun decode(saved: String?): List<String> = saved?.lines()?.map { it.trim() }?.filter { it.isNotEmpty() }?.distinct().orEmpty()
+
+    /** [apps] (A to Z) rearranged: saved packages first in their saved order, anything new after, A to Z. */
+    fun apply(apps: List<InstalledApp>, order: List<String>): List<InstalledApp> {
+        if (order.isEmpty()) return apps
+        val rank = order.withIndex().associate { it.value to it.index }
+        return apps.sortedWith(compareBy<InstalledApp> { rank[it.packageName] ?: Int.MAX_VALUE }.thenBy { it.label.lowercase() })
+    }
+
+    /** The whole shown order with [pkg] moved by [delta] places; null when it can't move that way. */
+    fun move(shown: List<String>, pkg: String, delta: Int): List<String>? {
+        val from = shown.indexOf(pkg)
+        val to = from + delta
+        if (from < 0 || to !in shown.indices) return null
+        return shown.toMutableList().apply { add(to, removeAt(from)) }
+    }
 }

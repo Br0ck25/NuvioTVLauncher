@@ -84,8 +84,18 @@ internal class LoopbackAdbSetup(private val context: Context) : LocalAdbSetup {
     private fun perform(manager: AbsAdbConnectionManager, action: DeviceAction): String = when (action) {
         DeviceAction.MAKE_HOME -> {
             makeHome(manager)
-            if (LauncherSetup.isDefaultHome(context)) "Done. The Home button now opens this launcher."
-            else "The command ran, but Android still reports another launcher as Home. This TV may block a different Home app; try the Home button override."
+            // The Home setting can take a moment to show up, so look again before saying it didn't take.
+            val took = (0 until 8).any { attempt ->
+                if (attempt > 0) Thread.sleep(500)
+                LauncherSetup.isDefaultHome(context)
+            }
+            if (took) "Done. The Home button now opens this launcher."
+            else "The command ran, but this TV's own launcher is still the Home app (Google TV does that). Press \"Turn on Home button override\" so Home still opens this launcher, or \"Turn off the stock launcher\" to remove the other one."
+        }
+        DeviceAction.ENABLE_NOTIFICATIONS -> {
+            allowNotifications(manager)
+            if (com.nuvio.tv.core.notification.LauncherNotificationListenerService.isAccessGranted(context)) "Notifications are on."
+            else "The command ran, but Android didn't turn notifications on. Open Settings → Apps → Special access → Notification access and switch this launcher on."
         }
         DeviceAction.ENABLE_OVERRIDE -> {
             enableOverride(manager)
@@ -121,6 +131,13 @@ internal class LoopbackAdbSetup(private val context: Context) : LocalAdbSetup {
     private fun applyGrants(manager: AbsAdbConnectionManager) {
         enableOverride(manager)
         makeHome(manager)
+        allowNotifications(manager)
+    }
+
+    /** Notification access normally needs a trip through Settings; the shell can grant it directly. */
+    private fun allowNotifications(manager: AbsAdbConnectionManager) {
+        val listener = ComponentName(context, com.nuvio.tv.core.notification.LauncherNotificationListenerService::class.java).flattenToString()
+        runCatching { shell(manager, DeviceCommands.allowNotificationListener(listener)) }
     }
 
     private fun makeHome(manager: AbsAdbConnectionManager) {

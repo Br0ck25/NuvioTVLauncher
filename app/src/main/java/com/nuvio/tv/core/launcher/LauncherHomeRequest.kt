@@ -16,6 +16,13 @@ object LauncherHomeRequest {
     /** Marks an intent as an explicit "land on Home, scrolled to the top" request. */
     const val EXTRA_GO_HOME = "com.nuvio.tv.extra.GO_HOME"
 
+    /** The remote's Apps button: taken by the accessibility service while another app is in front. */
+    const val EXTRA_OPEN_APPS = "com.nuvio.tv.extra.OPEN_APPS"
+
+    /** True when [intent] asks for the Apps page (the service's extra, or Android's own ALL_APPS intent). */
+    fun isAppsRequest(intent: android.content.Intent?): Boolean =
+        intent != null && (intent.getBooleanExtra(EXTRA_OPEN_APPS, false) || intent.action == android.content.Intent.ACTION_ALL_APPS)
+
     /** Uptime of the physical HOME release, so delivery latency cannot split a double tap. */
     const val EXTRA_HOME_PRESS_UPTIME_MS = "com.nuvio.tv.extra.HOME_PRESS_UPTIME_MS"
 

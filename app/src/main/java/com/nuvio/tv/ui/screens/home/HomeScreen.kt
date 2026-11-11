@@ -95,8 +95,14 @@ fun HomeScreen(
     onContinueWatchingStartFromBeginning: (ContinueWatchingItem) -> Unit = onContinueWatchingClick,
     onContinueWatchingPlayManually: (ContinueWatchingItem) -> Unit = onContinueWatchingClick,
     onNavigateToCatalogSeeAll: (String, String, String) -> Unit = { _, _, _ -> },
-    onNavigateToFolderDetail: (String, String) -> Unit = { _, _ -> }
+    onNavigateToFolderDetail: (String, String) -> Unit = { _, _ -> },
+    onNavigateToSettings: () -> Unit = {},
+    onNavigateToApps: () -> Unit = {}
 ) {
+    // Launcher: the gear and bell at the top right open these panels.
+    var showSettingsDrawer by rememberSaveable { mutableStateOf(false) }
+    var showNotificationsDrawer by rememberSaveable { mutableStateOf(false) }
+
     val uiState by viewModel.uiState.collectAsStateWithLifecycle()
 
     // Home was the only major screen without a lifecycle observer, so nothing ever told it to
@@ -443,6 +449,25 @@ fun HomeScreen(
                     color = NuvioTheme.colors.TextPrimary
                 )
             }
+        }
+
+        // Launcher: settings, notifications and TV inputs at the top right of Home.
+        if (!showHomeLoader) {
+            HomeTopBarHeader(
+                onNotificationsClick = { showNotificationsDrawer = true },
+                onSettingsClick = { showSettingsDrawer = true },
+                modifier = Modifier.align(Alignment.TopEnd)
+            )
+        }
+        if (showSettingsDrawer) {
+            HomeSettingsDrawer(
+                onDismiss = { showSettingsDrawer = false },
+                onOpenNuvioSettings = onNavigateToSettings,
+                onOpenApps = onNavigateToApps
+            )
+        }
+        if (showNotificationsDrawer) {
+            NotificationsDrawer(onDismiss = { showNotificationsDrawer = false })
         }
     }
 

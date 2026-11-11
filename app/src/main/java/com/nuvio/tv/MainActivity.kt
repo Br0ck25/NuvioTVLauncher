@@ -403,6 +403,9 @@ open class MainActivity : ComponentActivity() {
     /** Set when Home is double-tapped; consumed once the profile switcher is shown. */
     private val pendingProfileSwitchRequest = MutableStateFlow(false)
 
+    /** Bumped when the remote's Apps button (or an ALL_APPS intent) asks for the Apps page. */
+    private val pendingOpenAppsNonce = MutableStateFlow(0)
+
     /** Single vs. double tap detection for Home pressed while the launcher is in front. */
     private val homeKeyGesture = HomeKeyGesture()
 
@@ -509,6 +512,7 @@ open class MainActivity : ComponentActivity() {
 
         if (savedInstanceState == null) {
             captureHomeRequestIntent(intent, fromNewIntent = false)
+            captureAppsRequest(intent)
         }
         refreshHomeRole()
 
@@ -1020,6 +1024,16 @@ open class MainActivity : ComponentActivity() {
                                 launchSingleTop = true
                                 restoreState = true
                             }
+                        }
+                    }
+                    val openAppsNonce by pendingOpenAppsNonce.collectAsStateWithLifecycle()
+                    LaunchedEffect(openAppsNonce, layoutChosen) {
+                        if (openAppsNonce == 0 || layoutChosen != true) return@LaunchedEffect
+                        if (navController.currentDestination?.route == Screen.Apps.route) return@LaunchedEffect
+                        navController.navigate(Screen.Apps.route) {
+                            popUpTo(navController.graph.startDestinationId) { saveState = true }
+                            launchSingleTop = true
+                            restoreState = true
                         }
                     }
                     LaunchedEffect(pendingHomeScrollReset, actualRoute) {
@@ -1614,6 +1628,7 @@ open class MainActivity : ComponentActivity() {
         captureDeepLinkIntent(intent)
         captureLaunchIntent(intent)
         captureHomeRequestIntent(intent)
+        captureAppsRequest(intent)
     }
 
     /** Home pressed while the launcher is already in front: a single tap goes to the top of Home, two open the profile switcher. */
@@ -1627,6 +1642,13 @@ open class MainActivity : ComponentActivity() {
         pendingHomeRequestNonce.value += 1
         if (press == HomeKeyPress.DOUBLE || openProfileSelection) {
             pendingProfileSwitchRequest.value = true
+        }
+    }
+
+    private fun captureAppsRequest(intent: Intent?) {
+        if (LauncherHomeRequest.isAppsRequest(intent)) {
+            ambientIdleController.dismiss()
+            pendingOpenAppsNonce.value += 1
         }
     }
 
@@ -1689,6 +1711,14 @@ open class MainActivity : ComponentActivity() {
         // HOME is checked before the ambient handler: while the slideshow is up a Home press should end it
         // and go home. Some firmware delivers raw HOME keys; most send a HOME intent or let the
         // accessibility service filter the key, so this is a fallback, not the only path.
+        // The remote's Apps button opens the launcher's own Apps page instead of the TV's app list.
+        if (event.keyCode == KeyEvent.KEYCODE_ALL_APPS) {
+            if (event.action == KeyEvent.ACTION_UP && !event.isCanceled) {
+                ambientIdleController.dismiss()
+                pendingOpenAppsNonce.value += 1
+            }
+            return true
+        }
         if (event.keyCode == KeyEvent.KEYCODE_HOME) refreshHomeRole()
         if (event.keyCode == KeyEvent.KEYCODE_HOME && nuvioHandlesHomeKey) {
             ambientIdleController.onInteraction()

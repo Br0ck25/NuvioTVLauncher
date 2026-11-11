@@ -52,7 +52,10 @@ internal class PhonePairingSession(
         val component = ComponentName(appContext, MainActivity::class.java).flattenToString()
         pageHtml = LauncherSetupPage.html(
             appName = appContext.getString(R.string.app_name),
-            sections = LauncherSetupCommands.sections(component, ip)
+            sections = LauncherSetupCommands.sections(
+                component, ip,
+                ComponentName(appContext, com.nuvio.tv.core.notification.LauncherNotificationListenerService::class.java).flattenToString()
+            )
         )
         for (port in START_PORT until START_PORT + MAX_ATTEMPTS) {
             val candidate = Server(port)

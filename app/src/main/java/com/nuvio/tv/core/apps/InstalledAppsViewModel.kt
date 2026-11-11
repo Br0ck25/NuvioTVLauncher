@@ -19,5 +19,6 @@ class InstalledAppsViewModel @Inject constructor(
 
     suspend fun image(app: InstalledApp): Bitmap? = repository.image(app)
     fun launch(app: InstalledApp) = repository.launch(app)
+    fun move(app: InstalledApp, delta: Int) = repository.move(apps.value, app, delta)
     fun openAppInfo(app: InstalledApp) = repository.openAppInfo(app)
 }

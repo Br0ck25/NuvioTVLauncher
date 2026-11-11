@@ -12,7 +12,7 @@ data class SetupSection(val title: String, val intro: String, val commands: List
  * goes to the right one. [tvIp] is this TV's address on the home network.
  */
 object LauncherSetupCommands {
-    fun sections(component: String, tvIp: String?): List<SetupSection> {
+    fun sections(component: String, tvIp: String?, listenerComponent: String? = null): List<SetupSection> {
         val ip = tvIp ?: "TV_IP"
         val target = "$ip:PORT"
         fun adb(shell: String) = "adb -s $target shell $shell"
@@ -33,6 +33,9 @@ object LauncherSetupCommands {
                     SetupCommand("Set this app as the Home app", "", adb(DeviceCommands.setHome(component))),
                     SetupCommand("Check which launcher is Home right now", "", adb(DeviceCommands.resolveHome)),
                     SetupCommand("List the launchers on the TV", "Copy the original launcher's package/activity from this list to go back.", adb(DeviceCommands.listHomes)),
+                    *(listenerComponent?.let {
+                        arrayOf(SetupCommand("Turn on notifications", "For the bell at the top right of Home.", adb(DeviceCommands.allowNotificationListener(it))))
+                    } ?: emptyArray()),
                     SetupCommand("Go back to the original launcher", "Replace the placeholder with the entry you copied.", adb("cmd package set-home-activity <package>/<activity>"))
                 )
             ),

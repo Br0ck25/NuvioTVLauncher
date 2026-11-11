@@ -78,6 +78,7 @@ class LauncherAccessibilityService : AccessibilityService() {
      * lands on the launcher's home page and a quick second press reaches the profile switcher.
      */
     override fun onKeyEvent(event: KeyEvent): Boolean {
+        if (event.keyCode == KeyEvent.KEYCODE_ALL_APPS) return onAppsKey(event)
         if (event.keyCode != KeyEvent.KEYCODE_HOME) return super.onKeyEvent(event)
         // isDefaultHome is a PackageManager binder call: only pay for it for the Home key.
         val nativeHome = LauncherSetup.isDefaultHome(this)
@@ -91,6 +92,26 @@ class LauncherAccessibilityService : AccessibilityService() {
             launchHome(event.eventTime)
             // Not tied to a stock-launcher window event: re-fronting its existing task may not emit one.
             scheduleHomeRecheck()
+        }
+        return true
+    }
+
+    /**
+     * The remote's Apps button. In front of the launcher it is handled by the app; with another app
+     * on screen it would open the TV's own app list, so it is taken here and opens the Apps page.
+     */
+    private fun onAppsKey(event: KeyEvent): Boolean {
+        if (HomeForegroundDelivery.isResumed) return super.onKeyEvent(event)
+        if (!LauncherSetup.isDefaultHome(this) && !LauncherSetup.accessibilityFallbackAllowed(this)) return super.onKeyEvent(event)
+        if (event.action == KeyEvent.ACTION_UP && !event.isCanceled) {
+            runCatching {
+                startActivity(
+                    Intent(this, MainActivity::class.java).apply {
+                        putExtra(LauncherHomeRequest.EXTRA_OPEN_APPS, true)
+                        addFlags(Intent.FLAG_ACTIVITY_NEW_TASK or Intent.FLAG_ACTIVITY_CLEAR_TOP or Intent.FLAG_ACTIVITY_SINGLE_TOP)
+                    }
+                )
+            }.onFailure { Log.e(TAG, "Failed to open Apps", it) }
         }
         return true
     }
