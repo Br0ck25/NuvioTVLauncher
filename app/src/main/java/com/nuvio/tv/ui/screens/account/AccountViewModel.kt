@@ -632,7 +632,13 @@ class AccountViewModel @Inject constructor(
             // Fallback
             else -> R.string.account_error_unexpected
         }
-        return context.getString(resId)
+        // For a failure we have no friendly wording for, show what actually went wrong (kept short),
+        // so a build or server problem can be told apart from a bug.
+        return if (resId == R.string.account_error_unexpected && compactRaw.isNotBlank()) {
+            context.getString(resId) + " (" + compactRaw.take(140) + ")"
+        } else {
+            context.getString(resId)
+        }
     }
 
     private fun startQrLoginPolling() {

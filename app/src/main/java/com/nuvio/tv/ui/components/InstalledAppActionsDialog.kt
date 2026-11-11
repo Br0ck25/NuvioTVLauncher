@@ -11,7 +11,12 @@ import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.foundation.background
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
+import androidx.compose.runtime.getValue
+import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
+import androidx.compose.runtime.setValue
+import androidx.compose.ui.input.key.onPreviewKeyEvent
+import android.view.KeyEvent as AndroidKeyEvent
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.focus.FocusRequester
@@ -41,13 +46,34 @@ fun InstalledAppActionsDialog(
     onMoveEarlier: () -> Unit,
     onMoveLater: () -> Unit,
     onAppInfo: () -> Unit,
-    onDismiss: () -> Unit
+    onDismiss: () -> Unit,
+    /** Home was pressed: close this and whatever opened it. */
+    onHome: () -> Unit = onDismiss
 ) {
     val first = remember { FocusRequester() }
+    // The menu opens while the select key is still held down (that is the long-press). Ignore that key,
+    // including its release, until a fresh press arrives, so letting go doesn't pick the first option.
+    var ready by remember { mutableStateOf(false) }
     LaunchedEffect(Unit) { runCatching { first.requestFocus() } }
     Dialog(onDismissRequest = onDismiss) {
         Column(
             modifier = Modifier
+                .onPreviewKeyEvent { event ->
+                    val native = event.nativeKeyEvent
+                    if (native.keyCode == AndroidKeyEvent.KEYCODE_HOME) {
+                        if (native.action == AndroidKeyEvent.ACTION_UP) onHome()
+                        return@onPreviewKeyEvent true
+                    }
+                    if (native.keyCode == AndroidKeyEvent.KEYCODE_DPAD_CENTER ||
+                        native.keyCode == AndroidKeyEvent.KEYCODE_ENTER ||
+                        native.keyCode == AndroidKeyEvent.KEYCODE_NUMPAD_ENTER ||
+                        native.keyCode == AndroidKeyEvent.KEYCODE_BUTTON_A
+                    ) {
+                        if (native.action == AndroidKeyEvent.ACTION_DOWN && native.repeatCount == 0) ready = true
+                        if (!ready) return@onPreviewKeyEvent true
+                    }
+                    false
+                }
                 .width(380.dp)
                 .clip(RoundedCornerShape(16.dp))
                 .background(NuvioTheme.colors.BackgroundCard)

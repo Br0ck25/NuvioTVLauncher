@@ -96,8 +96,7 @@ fun HomeScreen(
     onContinueWatchingPlayManually: (ContinueWatchingItem) -> Unit = onContinueWatchingClick,
     onNavigateToCatalogSeeAll: (String, String, String) -> Unit = { _, _, _ -> },
     onNavigateToFolderDetail: (String, String) -> Unit = { _, _ -> },
-    onNavigateToSettings: () -> Unit = {},
-    onNavigateToApps: () -> Unit = {}
+    onNavigateToSettings: () -> Unit = {}
 ) {
     // Launcher: the gear and bell at the top right open these panels.
     var showSettingsDrawer by rememberSaveable { mutableStateOf(false) }
@@ -121,6 +120,15 @@ fun HomeScreen(
     val modernPresentation by viewModel.modernHomePresentation.collectAsStateWithLifecycle()
     val initialCwResolved by viewModel.initialCwResolved.collectAsStateWithLifecycle()
     val scrollToTopTrigger by viewModel.scrollToTopTrigger.collectAsStateWithLifecycle()
+    // Launcher: Home closes the top-right panels.
+    var handledPanelCloseTrigger by rememberSaveable { mutableStateOf(scrollToTopTrigger) }
+    LaunchedEffect(scrollToTopTrigger) {
+        if (scrollToTopTrigger != handledPanelCloseTrigger) {
+            handledPanelCloseTrigger = scrollToTopTrigger
+            showSettingsDrawer = false
+            showNotificationsDrawer = false
+        }
+    }
     val effectiveAutoplayEnabled by viewModel.effectiveAutoplayEnabled.collectAsStateWithLifecycle(
         initialValue = false
     )
@@ -462,8 +470,7 @@ fun HomeScreen(
         if (showSettingsDrawer) {
             HomeSettingsDrawer(
                 onDismiss = { showSettingsDrawer = false },
-                onOpenNuvioSettings = onNavigateToSettings,
-                onOpenApps = onNavigateToApps
+                onOpenNuvioSettings = onNavigateToSettings
             )
         }
         if (showNotificationsDrawer) {
