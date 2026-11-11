@@ -132,7 +132,7 @@ class LauncherAccessibilityService : AccessibilityService() {
         if (nativeHome || !LauncherSetup.accessibilityFallbackAllowed(this) || HomeForegroundDelivery.isResumed) return
         val capabilities = LauncherCapabilities.detect(this)
         val component = ComponentName(pkg, className)
-        if (component in capabilities.selectedHomeActivities) {
+        if (component in capabilities.selectedHomeActivities || pkg in KNOWN_STOCK_LAUNCHERS && isLauncherEntry(pkg, className)) {
             // A launcher activity transition is only a last resort when firmware withholds HOME
             // keys. Dialogs, SystemUI and arbitrary windows in the launcher package are not HOME.
             val now = SystemClock.uptimeMillis()
@@ -146,6 +146,13 @@ class LauncherAccessibilityService : AccessibilityService() {
             delivery.onOtherApplicationWindow()
         }
     }
+
+    /** A stock launcher's own home activity (not a dialog or settings screen in the same package). */
+    private fun isLauncherEntry(pkg: String, className: String): Boolean = runCatching {
+        val home = Intent(Intent.ACTION_MAIN).addCategory(Intent.CATEGORY_HOME).setPackage(pkg)
+        @Suppress("DEPRECATION")
+        packageManager.queryIntentActivities(home, 0).any { it.activityInfo.name == className }
+    }.getOrDefault(false)
 
     private fun isApplicationActivity(pkg: String, className: String): Boolean = runCatching {
         @Suppress("DEPRECATION")
@@ -197,6 +204,12 @@ class LauncherAccessibilityService : AccessibilityService() {
 
     companion object {
         private const val TAG = "LauncherAccessibility"
+        /** Firmware launchers seen on Google TV / Android TV; the Home-resolver scan covers any others. */
+        private val KNOWN_STOCK_LAUNCHERS = setOf(
+            "com.google.android.apps.tv.launcherx",
+            "com.google.android.tvlauncher",
+            "com.google.android.leanbacklauncher"
+        )
         private const val BOOT_WINDOW_MS = 5 * 60 * 1000L
         private const val BOOT_OPEN_DELAY_MS = 4_000L
         private val operational = MutableStateFlow(false)

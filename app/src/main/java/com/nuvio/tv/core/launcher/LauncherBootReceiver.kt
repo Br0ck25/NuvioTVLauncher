@@ -35,7 +35,9 @@ class LauncherBootReceiver : BroadcastReceiver() {
                 if (intent.action == Intent.ACTION_MY_PACKAGE_REPLACED) {
                     LauncherSetup.markRoleOfferAfterUpdate(context)
                 }
-                if (fallbackAllowed || defaultHome) {
+                // The service takes over by itself when it is bound; this is only the backup.
+                val serviceBound = LauncherAccessibilityService.isOperational.value
+                if (!serviceBound && (fallbackAllowed || defaultHome)) {
                     val appContext = context.applicationContext
                     relaunch(appContext, attempt = 0)
                     // Other launchers (e.g. the stock one) can start their own screens right after an

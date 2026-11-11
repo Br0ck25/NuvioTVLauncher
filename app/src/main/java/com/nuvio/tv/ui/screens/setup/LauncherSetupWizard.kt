@@ -136,6 +136,9 @@ private fun SetupStep(onDone: () -> Unit, onBack: () -> Unit) {
     OutlinedButton(onClick = setup.openAccessibilitySettings, modifier = Modifier.fillMaxWidth()) {
         Text(stringResource(R.string.wizard_turn_on_override))
     }
+    if (!overrideOn) {
+        Text(stringResource(R.string.wizard_restricted_settings_hint), style = MaterialTheme.typography.bodySmall, color = NuvioTheme.colors.TextSecondary)
+    }
     OutlinedButton(onClick = { LauncherNotificationListenerService.openAccessSettings(context) }, modifier = Modifier.fillMaxWidth()) {
         Text(stringResource(R.string.wizard_turn_on_notifications))
     }
