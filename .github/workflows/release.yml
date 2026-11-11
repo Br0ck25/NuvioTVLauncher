@@ -1,0 +1,162 @@
+name: Release
+
+# Builds the signed release APKs and publishes them as a GitHub release. The app's built-in updater
+# (Settings -> About) reads this repo's releases, so everyone who has the app is offered the new version.
+#
+# Run it from the Actions tab: pick the branch to release, type the version (it must be higher than the
+# last release, e.g. 1.0.1), and say what changed. See README -> "Releasing" for the secrets it needs.
+on:
+  workflow_dispatch:
+    inputs:
+      version:
+        description: "Version, e.g. 1.0.0 (higher than the last release)"
+        required: true
+        type: string
+      notes:
+        description: "What changed (shown in the update prompt)"
+        required: false
+        type: string
+      prerelease:
+        description: "Mark as a pre-release (only the Beta update channel offers it)"
+        required: false
+        type: boolean
+        default: false
+
+permissions:
+  contents: write
+
+jobs:
+  release:
+    runs-on: ubuntu-latest
+    timeout-minutes: 90
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+
+      - name: Check the version and the signing key
+        env:
+          VERSION: ${{ inputs.version }}
+          KEYSTORE: ${{ secrets.LAUNCHER_KEYSTORE_BASE64 }}
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          if ! [[ "$VERSION" =~ ^[0-9]+\.[0-9]+\.[0-9]+(-[0-9A-Za-z.]+)?$ ]]; then
+            echo "Version must look like 1.0.0 (or 1.0.0-beta.1), not '$VERSION'." >&2; exit 1
+          fi
+          if gh release view "$VERSION" >/dev/null 2>&1; then
+            echo "A release named $VERSION already exists. Use a higher version." >&2; exit 1
+          fi
+          if [ -z "$KEYSTORE" ]; then
+            echo "The LAUNCHER_KEYSTORE_BASE64 secret is missing: a release must be signed with your own key." >&2
+            echo "Add it (and LAUNCHER_KEY_ALIAS, LAUNCHER_KEY_PASSWORD, LAUNCHER_STORE_PASSWORD) under Settings -> Secrets and variables -> Actions." >&2
+            exit 1
+          fi
+
+      - uses: actions/setup-java@v4
+        with:
+          distribution: temurin
+          java-version: "17"
+          cache: gradle
+
+      # Optional keys for the features that need an account with another service. Whatever is not set is
+      # simply left out of the build, and that feature stays off.
+      - name: Write app keys
+        env:
+          NUVIO_BACKEND_URL: ${{ secrets.NUVIO_BACKEND_URL }}
+          NUVIO_BACKEND_KEY: ${{ secrets.NUVIO_BACKEND_KEY }}
+          TMDB_API_KEY: ${{ secrets.TMDB_API_KEY }}
+          TRAKT_CLIENT_ID: ${{ secrets.TRAKT_CLIENT_ID }}
+          TRAKT_CLIENT_SECRET: ${{ secrets.TRAKT_CLIENT_SECRET }}
+          SIMKL_CLIENT_ID: ${{ secrets.SIMKL_CLIENT_ID }}
+          SIMKL_APP_NAME: ${{ secrets.SIMKL_APP_NAME }}
+          MDBLIST_CLIENT_ID: ${{ secrets.MDBLIST_CLIENT_ID }}
+          GOOGLE_DRIVE_CLIENT_ID: ${{ secrets.GOOGLE_DRIVE_CLIENT_ID }}
+          GOOGLE_DRIVE_CLIENT_SECRET: ${{ secrets.GOOGLE_DRIVE_CLIENT_SECRET }}
+          PREMIUMIZE_CLIENT_ID: ${{ secrets.PREMIUMIZE_CLIENT_ID }}
+          IMDB_RATINGS_API_BASE_URL: ${{ secrets.IMDB_RATINGS_API_BASE_URL }}
+          IMDB_TAPFRAME_API_BASE_URL: ${{ secrets.IMDB_TAPFRAME_API_BASE_URL }}
+          INTRODB_API_URL: ${{ secrets.INTRODB_API_URL }}
+        run: |
+          : > keys.properties
+          add() { if [ -n "$2" ]; then echo "$1=$2" >> keys.properties; fi; }
+          if [ -n "$NUVIO_BACKEND_URL" ]; then
+            BACKEND="${NUVIO_BACKEND_URL%/}"
+            add NUVIO_SUPABASE_URL "$BACKEND"
+            add NUVIO_SUPABASE_ANON_KEY "$NUVIO_BACKEND_KEY"
+            case "$BACKEND" in
+              *api.nuvio.tv*) ;;
+              *)
+                add TV_LOGIN_WEB_BASE_URL "$BACKEND/tv-login"
+                add DEVICE_LOGIN_WEB_BASE_URL "$BACKEND/link"
+                add AVATAR_PUBLIC_BASE_URL "$BACKEND/storage/v1/object/public/avatars"
+                ;;
+            esac
+          fi
+          add TMDB_API_KEY "$TMDB_API_KEY"
+          add TRAKT_CLIENT_ID "$TRAKT_CLIENT_ID"
+          add TRAKT_CLIENT_SECRET "$TRAKT_CLIENT_SECRET"
+          add SIMKL_CLIENT_ID "$SIMKL_CLIENT_ID"
+          add SIMKL_APP_NAME "$SIMKL_APP_NAME"
+          add MDBLIST_CLIENT_ID "$MDBLIST_CLIENT_ID"
+          add GOOGLE_DRIVE_CLIENT_ID "$GOOGLE_DRIVE_CLIENT_ID"
+          add GOOGLE_DRIVE_CLIENT_SECRET "$GOOGLE_DRIVE_CLIENT_SECRET"
+          add PREMIUMIZE_CLIENT_ID "$PREMIUMIZE_CLIENT_ID"
+          add IMDB_RATINGS_API_BASE_URL "$IMDB_RATINGS_API_BASE_URL"
+          add IMDB_TAPFRAME_API_BASE_URL "$IMDB_TAPFRAME_API_BASE_URL"
+          add INTRODB_API_URL "${INTRODB_API_URL:-https://api.introdb.app/}"
+          cp keys.properties local.properties
+          cp keys.properties local.dev.properties
+          rm keys.properties
+          echo "Keys set:"; cut -d= -f1 local.properties
+
+      - name: Signing
+        env:
+          KEYSTORE: ${{ secrets.LAUNCHER_KEYSTORE_BASE64 }}
+          KEY_ALIAS: ${{ secrets.LAUNCHER_KEY_ALIAS }}
+          KEY_PASSWORD: ${{ secrets.LAUNCHER_KEY_PASSWORD }}
+          STORE_PASSWORD: ${{ secrets.LAUNCHER_STORE_PASSWORD }}
+        run: |
+          printf '%s' "$KEYSTORE" | base64 --decode > "$RUNNER_TEMP/release.jks"
+          {
+            echo "NUVIO_RELEASE_STORE_FILE=$RUNNER_TEMP/release.jks"
+            echo "NUVIO_RELEASE_KEY_ALIAS=$KEY_ALIAS"
+            echo "NUVIO_RELEASE_KEY_PASSWORD=$KEY_PASSWORD"
+            echo "NUVIO_RELEASE_STORE_PASSWORD=$STORE_PASSWORD"
+          } >> "$GITHUB_ENV"
+
+      - name: Build the release APKs
+        run: |
+          chmod +x gradlew
+          ./gradlew --console=plain :app:assembleFullRelease --stacktrace \
+            -PlivetvBuildNumber=${{ github.run_number }} \
+            -PlivetvVersionName=${{ inputs.version }}
+
+      # The built-in VPN includes OpenVPN 2 (GPL): its corresponding source is published with each release.
+      - name: Package OpenVPN 2 corresponding source
+        run: python3 vpn-android/ci/package-openvpn2-sources.py --output out/openvpn2-corresponding-source.tar.gz
+
+      - name: Collect the APKs
+        env:
+          VERSION: ${{ inputs.version }}
+        run: |
+          mkdir -p out
+          for f in $(find app/build/outputs/apk/full/release -name "*.apk"); do
+            name=$(basename "$f" .apk)
+            cp "$f" "out/NuvioLauncher-$VERSION-${name#app-full-}.apk"
+          done
+          ls -la out
+
+      - name: Publish the release
+        uses: softprops/action-gh-release@v2
+        with:
+          tag_name: ${{ inputs.version }}
+          target_commitish: ${{ github.sha }}
+          name: Nuvio Launcher ${{ inputs.version }}
+          prerelease: ${{ inputs.prerelease }}
+          files: |
+            out/*.apk
+            out/openvpn2-corresponding-source.tar.gz
+          body: |
+            Nuvio Launcher ${{ inputs.version }}.
+
+            ${{ inputs.notes }}

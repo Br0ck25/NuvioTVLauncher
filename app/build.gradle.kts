@@ -177,8 +177,8 @@ android {
         buildConfigField("String", "SENTRY_DSN", buildConfigString(sentryDsn))
 
         // In-app updater (GitHub Releases)
-        buildConfigField("String", "GITHUB_OWNER", "\"homelessbrian\"")
-        buildConfigField("String", "GITHUB_REPO", "\"NuvioPlusIPTV\"")
+        buildConfigField("String", "GITHUB_OWNER", "\"Br0ck25\"")
+        buildConfigField("String", "GITHUB_REPO", "\"NuvioTVLauncher\"")
     }
 
     flavorDimensions += "distribution"

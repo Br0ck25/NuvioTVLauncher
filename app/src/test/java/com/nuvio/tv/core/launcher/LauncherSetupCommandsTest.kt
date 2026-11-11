@@ -119,3 +119,41 @@ class LauncherSetupCommandsTest {
         assertFalse("%%" in html)
     }
 }
+
+class AppOrderTest {
+    private fun app(pkg: String, label: String = pkg) = com.nuvio.tv.core.apps.InstalledApp(pkg, label, true)
+    private val a = app("a", "Alpha")
+    private val b = app("b", "Bravo")
+    private val c = app("c", "Charlie")
+
+    @Test
+    fun noSavedOrderKeepsAToZ() {
+        assertEquals(listOf(a, b, c), com.nuvio.tv.core.apps.AppOrder.apply(listOf(a, b, c), emptyList()))
+    }
+
+    @Test
+    fun savedOrderWinsAndNewAppsFollowAToZ() {
+        val shown = com.nuvio.tv.core.apps.AppOrder.apply(listOf(a, b, c), listOf("c", "a"))
+        assertEquals(listOf(c, a, b), shown)
+        // An app that has been uninstalled since is simply skipped.
+        assertEquals(listOf(c, b), com.nuvio.tv.core.apps.AppOrder.apply(listOf(b, c), listOf("a", "c")))
+    }
+
+    @Test
+    fun movingStopsAtTheEnds() {
+        val ao = com.nuvio.tv.core.apps.AppOrder
+        assertEquals(listOf("b", "a", "c"), ao.move(listOf("a", "b", "c"), "a", 1))
+        assertEquals(listOf("a", "c", "b"), ao.move(listOf("a", "b", "c"), "c", -1))
+        assertNull(ao.move(listOf("a", "b", "c"), "a", -1))
+        assertNull(ao.move(listOf("a", "b", "c"), "c", 1))
+        assertNull(ao.move(listOf("a", "b", "c"), "zzz", 1))
+    }
+
+    @Test
+    fun savedOrderRoundTrips() {
+        val ao = com.nuvio.tv.core.apps.AppOrder
+        assertEquals(listOf("x", "y"), ao.decode(ao.encode(listOf("x", "y"))))
+        assertEquals(emptyList<String>(), ao.decode(null))
+        assertEquals(listOf("x"), ao.decode("x\n\nx\n"))
+    }
+}
