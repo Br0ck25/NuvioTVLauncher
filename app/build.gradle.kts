@@ -425,7 +425,7 @@ if (livetvIsTestBuild) {
 androidComponents {
     onVariants(selector().withBuildType("debug")) { variant ->
         val isPlaystore = variant.productFlavors.any { it.second == "playstore" }
-        variant.applicationId.set(if (isPlaystore) "com.nuvio.appdebug" else "com.nuvio.livetv")
+        variant.applicationId.set(if (isPlaystore) "com.nuvio.appdebug" else "com.nuvio.launcher")
     }
     // Live TV fork: release builds get their own app ID too, so they install next to official
     // Nuvio and update the fork's earlier builds in place.
@@ -434,7 +434,7 @@ androidComponents {
         // Test builds (-PlivetvTestBuild=true) get their own ID, so they install next to the
         // real app instead of replacing it.
         val testBuild = (findProperty("livetvTestBuild") as String?)?.toBoolean() == true
-        if (!isPlaystore) variant.applicationId.set(if (testBuild) "com.nuvio.livetv.test" else "com.nuvio.livetv")
+        if (!isPlaystore) variant.applicationId.set(if (testBuild) "com.nuvio.launcher.test" else "com.nuvio.launcher")
     }
     // Only the full flavor ships the in-app updater.
     onVariants(selector().withFlavor("distribution" to "full")) { variant ->
