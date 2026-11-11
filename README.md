@@ -1,22 +1,17 @@
 <div align="center">
 
-# Nuvio + IPTV
+  <img src="assets/brand/app_logo_wordmark_readme.png" alt="Nuvio Launcher" width="340" />
 
-**Everything in Nuvio, plus everything IPTV: a TiviMate-style Live TV guide, a Sports hub that finds every game on your own channels, a Calendar of your shows, movies and games, catch-up, recordings, your provider's movies and series, and a built-in VPN for your playback, all in one app for Google TV, Android TV and Fire TV. Your setup follows your Nuvio account, and there's a [phone app](https://github.com/homelessbrian/NuvioPlusIPTV-Mobile) too.**
+# Nuvio Launcher
 
-[![Latest release](https://img.shields.io/github/v/release/homelessbrian/NuvioPlusIPTV?include_prereleases&label=latest&style=for-the-badge)](https://github.com/homelessbrian/NuvioPlusIPTV/releases)
-[![Downloads](https://img.shields.io/github/downloads/homelessbrian/NuvioPlusIPTV/total?style=for-the-badge)](https://github.com/homelessbrian/NuvioPlusIPTV/releases)
+**A real Android TV home screen built on Nuvio: your apps, your Live TV guide, Sports, Calendar, recordings and a built-in VPN, all in one launcher for Google TV, Android TV and Fire TV. Sign in with your Nuvio account and your setup follows you.**
+
+[![Latest release](https://img.shields.io/github/v/release/Br0ck25/NuvioTVLauncher?include_prereleases&label=latest&style=for-the-badge)](https://github.com/Br0ck25/NuvioTVLauncher/releases)
+[![Downloads](https://img.shields.io/github/downloads/Br0ck25/NuvioTVLauncher/total?style=for-the-badge)](https://github.com/Br0ck25/NuvioTVLauncher/releases)
 [![License](https://img.shields.io/badge/license-GPL--3.0-blue?style=for-the-badge)](LICENSE)
 [![Based on Nuvio](https://img.shields.io/badge/based%20on-NuvioMedia%2FNuvioTV-8A2BE2?style=for-the-badge)](https://github.com/NuvioMedia/NuvioTV)
-[![Discord](https://img.shields.io/badge/chat-Discord-5865F2?style=for-the-badge&logo=discord&logoColor=white)](https://discord.gg/NvK5JVvvm)
-[![Support on Ko-fi](https://img.shields.io/badge/support-Ko--fi-FF5E5B?style=for-the-badge&logo=ko-fi&logoColor=white)](https://ko-fi.com/homelessbrian)
 
-**Downloader code: 6532491**
-
-[Sports hub](#-sports-hub) · [Calendar](#-calendar) · [VPN](#-built-in-vpn) · [Sync](#-your-setup-everywhere) · [Phone app](#-on-your-phone-too) · [Download](#-installation) · [Features](#-features) · [Setup](#-getting-started) · [Remote controls](CONTROLS.md) · [Report a bug](#-reporting-bugs-and-requesting-features) · [Discord](https://discord.gg/NvK5JVvvm) · [Support](#-support-the-project)
-
-> ### 🙌 Big thanks to [ghbarker](https://github.com/ghbarker)
-> The **built-in VPN** is his work. He wrote the WireGuard and OpenVPN support and contributed it to this project, so your playback can be protected without a separate VPN app. Thank you!
+[Home screen](#-use-it-as-your-home-screen) · [Sports hub](#-sports-hub) · [Calendar](#-calendar) · [VPN](#-built-in-vpn) · [Sync](#-your-setup-everywhere) · [Download](#-installation) · [Features](#-features) · [Setup](#-getting-started) · [Remote controls](CONTROLS.md) · [Report a bug](#-reporting-bugs-and-requesting-features)
 
 </div>
 
@@ -146,7 +141,6 @@ Protect what you watch without installing a separate VPN app. **Settings → VPN
 - **Import your provider's file:** WireGuard configs and self-contained OpenVPN profiles (UDP or TCP). If the profile needs a username and password, the app asks for them.
 - **One choice for every profile,** or a separate one for just the Nuvio profile you're using.
 - **Comes with your setup:** your VPN profiles are carried to your other devices by Setup Sync and encrypted on each one.
-- The same VPN is in the [phone app](https://github.com/homelessbrian/NuvioPlusIPTV-Mobile).
 
 ---
 
@@ -157,12 +151,6 @@ Protect what you watch without installing a separate VPN app. **Settings → VPN
 - **Encrypted:** your saved setup, including your IPTV logins, is encrypted before it's stored. Nothing is written to Nuvio's own servers.
 - **In your control:** **Settings → Live TV → Setup Sync** has Sync Now, Restore Earlier Copy, Turn Off and Delete Saved Setup.
 - **Coming from Google Drive sync?** **Import from Google Drive** moves your Drive backup over in one step. Drive sync keeps working too.
-
----
-
-## 📱 On your phone too
-
-**[Nuvio + IPTV Mobile](https://github.com/homelessbrian/NuvioPlusIPTV-Mobile)** brings Live TV, the guide, Sports, catch-up, recordings and On Demand to Android phones and tablets. Sign in to the same Nuvio account and it uses the same setup as your TV.
 
 ---
 
@@ -260,17 +248,7 @@ Protect what you watch without installing a separate VPN app. **Settings → VPN
 
 ## 📥 Installation
 
-### The quick way: Downloader code **6532491**
-
-1. Install **Downloader** (by AFTVnews) from your TV's app store.
-2. Open it, type **6532491** in the search or address box, and press **Go**.
-3. It downloads the latest **universal** version (works on every device). Press **Install**, allowing installs from unknown sources when asked.
-
-### Or pick the APK for your device
-
-The universal version works everywhere. The device-specific ones are smaller downloads.
-
-1. Open the **[latest release](https://github.com/homelessbrian/NuvioPlusIPTV/releases)**.
+1. Open the **[latest release](https://github.com/Br0ck25/NuvioTVLauncher/releases)**.
 2. Download the APK for your device:
 
    | Device | APK |
@@ -279,57 +257,62 @@ The universal version works everywhere. The device-specific ones are smaller dow
    | Fire TV (all models), older or budget boxes | `armeabi-v7a` |
    | Not sure (works everywhere) | `universal` |
 
-3. Install it with a file manager or **Downloader**, allowing installs from unknown sources when asked.
+3. Install it with a file manager or **Downloader** (by AFTVnews), allowing installs from unknown sources when asked.
+4. Open **Nuvio Launcher**. A short setup walks you through making it your Home screen (see [below](#-use-it-as-your-home-screen)).
 
-Requires **Android 7.0 or newer** (Fire OS 6 or later). It installs **alongside** the official Nuvio app.
+Requires **Android 7.0 or newer** (Fire OS 6 or later). It installs **alongside** the official Nuvio app. It uses the same app ID as *Nuvio + IPTV*, so install one or the other, not both.
 
-**On a phone or tablet?** Get **[Nuvio + IPTV Mobile](https://github.com/homelessbrian/NuvioPlusIPTV-Mobile/releases)** instead.
-
-**Updating:** updates appear **inside the app**. Each new Nuvio release is followed by a matching Nuvio + IPTV version (currently based on Nuvio 1.1.0-beta.11).
+**Updating:** updates appear **inside the app** (Settings → About) from this repository's releases.
 
 ---
 
 ## 🚀 Getting started
 
-1. Open **Settings → Live TV**.
+1. On first run, follow the short **launcher setup** (Home app, Home button, notifications), then sign in with your Nuvio account. You can redo it later in **Settings → Default launcher**.
+2. Open **Settings → Live TV**.
 2. Choose **Add M3U Playlist** or **Add Xtream Codes Login**. For Xtream, pick **Include TV channels** and/or **Include movies & series**.
-3. Optionally **Add EPG Source** for an extra TV guide.
-4. Open **Live TV**, **On Demand** or **Sports** from the side menu. The first load can take a minute on big providers; a small progress bubble shows what's happening.
-5. Optional, all in **Settings → Live TV**:
+4. Optionally **Add EPG Source** for an extra TV guide.
+5. Open **Live TV**, **On Demand** or **Sports** from the side menu. The first load can take a minute on big providers; a small progress bubble shows what's happening.
+6. Optional, all in **Settings → Live TV**:
    - choose the page the app opens on (**Settings → Menu & Features → Open the App On**)
    - turn on the **home screen row**
    - choose where recordings are saved under **Recordings**
    - set a parental **PIN**
    - turn on **Setup Sync** (signed in to Nuvio)
    - import a WireGuard or OpenVPN profile under **Settings → VPN** if you want your playback protected
-6. In **Sports**, press **✎ Follow Teams & Leagues** to pick your teams. Set your region and reminders under **Settings → Sports**.
-7. Open **Calendar** and ring the bell on the shows you watch.
+7. In **Sports**, press **✎ Follow Teams & Leagues** to pick your teams. Set your region and reminders under **Settings → Sports**.
+8. Open **Calendar** and ring the bell on the shows you watch.
 
 ---
 
 ## 🏠 Use it as your Home screen
 
-The app is a real Android Home app (the same way FLauncher and ArcLauncher are): `MainActivity` declares `MAIN` + `HOME` + `DEFAULT` and is `singleTask`, so Home returns to the one running copy. It is not set as Home automatically. What you get once it is:
+Nuvio Launcher is a real Android Home app (the same way FLauncher and ArcLauncher are): `MainActivity` declares `MAIN` + `HOME` + `DEFAULT` and is `singleTask`, so Home returns to the one running copy. It is not set as Home automatically; the first-run setup (and **Settings → Default launcher**) does it. Once it is your Home app:
 
-- **Home** goes to the launcher's home page, scrolled to the top, from anywhere (another app, a detail page, the player).
+- **Home** goes to the launcher's home page, scrolled to the top, from anywhere (another app, a detail page, the player). Any open panel closes.
 - **Double-tap Home** opens the profile switcher.
 - **Back** never leaves the launcher: on the home screen it only opens and closes the side menu. (When the app is not your Home app, Back still exits as usual.)
-- **Apps** is a page in the side menu (every installed app, TV apps with their banner; OK opens one, long-press opens its system page) and an *Apps* row on Home under Continue Watching. Turn both off in **Settings → Menu & Features → Apps**.
+- **Apps** is a page in the side menu and a row on Home under Continue Watching: every installed app, TV apps with their banner. OK opens one. **Press and hold** for Open, Move earlier, Move later and App info (uninstall); the order is shared by the page and the row. Turn both off in **Settings → Menu & Features → Apps**.
+- **Remote Apps button** opens the Apps page instead of the TV's own app list.
+- **Top right of Home:** TV inputs, notifications (the bell) and a settings panel with **Apps**, **Launcher settings** and **Android settings**.
 
 ### Simple setup: from the TV and your phone, no computer
 
-Open **Settings → Default launcher → Set up without a computer**. The TV shows a phone address; open it on a phone on the same Wi-Fi. On the TV turn on **Developer options → Wireless debugging** and open **Pair device with pairing code**, then type the port and code into the phone page and tap **Pair and set up**. The TV runs the commands itself (a phone can't run ADB), so there is nothing to copy:
+The first-run setup shows the steps, and everything is also in **Settings → Default launcher → Set up without a computer**. The TV shows a phone address; open it on a phone on the same Wi-Fi. On the TV turn on **Developer options → Wireless debugging** and open **Pair device with pairing code**, then type the port and code into the phone page and tap **Pair and set up**. The TV runs the commands itself (a phone can't run ADB), so there is nothing to copy:
 
 | Button on the phone page | What it does on the TV |
 |---|---|
-| Pair and set up | Pairs once, lets the app keep its accessibility setting on, makes it the Home app |
+| Pair and set up | Pairs once, lets the app keep its accessibility setting on, makes it the Home app, turns on notifications |
 | Make this the Home app | `cmd package set-home-activity` |
 | Turn on Home button override | Turns on the app's accessibility setting (it stays on after a restart) so Home still opens the launcher on TVs that won't switch Home apps |
+| Turn on notifications | `cmd notification allow_listener` for the bell at the top right of Home |
 | Which launcher is Home now? | `cmd package resolve-activity` (read-only) |
 | Switch back to the original launcher | Finds the stock launcher and points Home back at it |
 | Turn off / back on the stock launcher | FLauncher's `pm disable-user` / `pm enable` for Google TV's launcher and its fallback (optional; the remote's YouTube button stops working while it is off, Button Mapper can remap it) |
 
-Already paired? Leave the port and code empty. The page also lists every command, with this TV's address filled in (`adb -s IP:PORT shell ...`), for anyone who would rather run them from a computer. Needs Android 11+ Wireless debugging and the `full` build; some TV firmware (many Fire TVs) refuses a different Home app however it is set.
+On **Google TV**, Android usually keeps Google's own launcher as Home even after "Make this the Home app"; the Home button override (or turning the stock launcher off) is what makes Home open Nuvio Launcher there. Already paired? Leave the port and code empty. The page also lists every command, with this TV's address filled in (`adb -s IP:PORT shell ...`), for anyone who would rather run them from a computer. Needs Android 11+ Wireless debugging and the `full` build; some TV firmware (many Fire TVs) refuses a different Home app however it is set.
+
+---
 
 ## 🎮 Remote controls
 
@@ -339,13 +322,13 @@ Every button for the guide, full screen, Sports, the Calendar, On Demand and Rec
 
 ## 🐞 Reporting bugs and requesting features
 
-Please search [existing issues](https://github.com/homelessbrian/NuvioPlusIPTV/issues) first. Questions and chat are welcome on **[Discord](https://discord.gg/NvK5JVvvm)**.
+Please search [existing issues](https://github.com/Br0ck25/NuvioTVLauncher/issues) first.
 
 | | |
 |---|---|
-| 🐛 **Something isn't working** | [Report a bug](https://github.com/homelessbrian/NuvioPlusIPTV/issues/new?template=live_tv_bug.yml) |
-| 📺 **An idea for a new feature** | [Request a feature](https://github.com/homelessbrian/NuvioPlusIPTV/issues/new?template=live_tv_feature.yml) |
-| 🎨 **The look or layout could be better** | [Suggest a UI / UX improvement](https://github.com/homelessbrian/NuvioPlusIPTV/issues/new?template=live_tv_ui.yml) |
+| 🐛 **Something isn't working** | [Report a bug](https://github.com/Br0ck25/NuvioTVLauncher/issues/new?template=live_tv_bug.yml) |
+| 📺 **An idea for a new feature** | [Request a feature](https://github.com/Br0ck25/NuvioTVLauncher/issues/new?template=live_tv_feature.yml) |
+| 🎨 **The look or layout could be better** | [Suggest a UI / UX improvement](https://github.com/Br0ck25/NuvioTVLauncher/issues/new?template=live_tv_ui.yml) |
 
 **If the app crashes,** scan the QR code on the crash screen with your phone and paste the text into your report.
 
@@ -470,7 +453,7 @@ WireGuard configs and OpenVPN profiles that contain everything in one file (the 
 <details>
 <summary><b>What does Nuvio Account Sync store, and where?</b></summary>
 
-Your Live TV setup (playlists, guides, logins, favorites and settings), encrypted, linked to your Nuvio account and kept only to copy it between your devices. It's stored on the app's own sync service, not on Nuvio's servers. **Delete Saved Setup** removes it at any time. It works only with the official Nuvio server. See the [privacy policy](https://homelessbrian.github.io/privacy.html).
+Your Live TV setup (playlists, guides, logins, favorites and settings), encrypted, linked to your Nuvio account and kept only to copy it between your devices. It is stored on the sync service of Nuvio + IPTV (run by homelessbrian), not on Nuvio's servers, so that service has to stay online for Setup Sync to work. **Delete Saved Setup** removes it at any time. It works only with the official Nuvio server. See the [privacy policy](https://homelessbrian.github.io/privacy.html).
 </details>
 
 <details>
@@ -487,24 +470,18 @@ Your Live TV setup, in a private app folder in your own Google Drive that only t
 
 ---
 
-## ☕ Support the project
-
-Nuvio + IPTV is free. If it's made your TV better and you'd like to say thanks, you can buy me a coffee on **[Ko-fi](https://ko-fi.com/homelessbrian)**. It's completely optional, and every bit helps keep updates coming.
-
-[![Support me on Ko-fi](https://img.shields.io/badge/Buy%20me%20a%20coffee-Ko--fi-FF5E5B?style=for-the-badge&logo=ko-fi&logoColor=white)](https://ko-fi.com/homelessbrian)
-
----
-
 ## 🙏 Credits
 
 - **🙌 [ghbarker](https://github.com/ghbarker): a huge thank you.** He built the **built-in VPN** (WireGuard and OpenVPN playback protection) and contributed it to this project. He also made the original [phone port](https://github.com/ghbarker/NuvioMobile-IPTV) that the phone app is built on.
-- **[Nuvio](https://github.com/NuvioMedia/NuvioTV)** by the NuvioMedia team: Nuvio + IPTV is built on their work and follows their releases.
+- **[Nuvio](https://github.com/NuvioMedia/NuvioTV)** by the NuvioMedia team: Nuvio Launcher is built on their work.
+- **[Nuvio + IPTV](https://github.com/homelessbrian/NuvioPlusIPTV)** by [homelessbrian](https://github.com/homelessbrian): the Live TV guide, Sports hub, Calendar, recordings, On Demand and sync that this launcher is built on.
+- The launcher itself (Home screen, Apps, the phone-driven setup) takes its approach from [FLauncher](https://gitlab.com/flauncher/flauncher) and [ArcLauncher](https://github.com/meddouribadis/arclauncher).
 - Guide and overlay design inspired by **TiviMate**.
 - Channel logo libraries from **[iptv-org](https://github.com/iptv-org)** and **[tv-logos](https://github.com/tv-logo/tv-logos)**.
-- Sports data from **ESPN**'s public feed, **[TheSportsDB](https://www.thesportsdb.com)**, **HockeyTech**, **MLB**'s stats service and **sporting-events.org**. Show schedules from **[TVmaze](https://www.tvmaze.com)**, and pictures and logos from **[TMDB](https://www.themoviedb.org)**. Nuvio + IPTV isn't affiliated with any of them, and team and league names and logos belong to their owners.
+- Sports data (collected by [homelessbrian's nuvio-data](https://github.com/homelessbrian/nuvio-data)) from **ESPN**'s public feed, **[TheSportsDB](https://www.thesportsdb.com)**, **HockeyTech**, **MLB**'s stats service and **sporting-events.org**. Show schedules from **[TVmaze](https://www.tvmaze.com)**, and pictures and logos from **[TMDB](https://www.themoviedb.org)**. Nuvio Launcher isn't affiliated with any of them, and team and league names and logos belong to their owners.
 - Built with Kotlin, Jetpack Compose, TV Material 3 and Media3 / ExoPlayer.
 
-Nuvio + IPTV is an unofficial fork and is **not affiliated with or endorsed by NuvioMedia or TiviMate**. Please report issues here, not to the Nuvio team.
+Nuvio Launcher is an unofficial fork and is **not affiliated with or endorsed by NuvioMedia, homelessbrian or TiviMate**. Please report issues here, not to the Nuvio team.
 
 ## ⚖️ Legal
 
