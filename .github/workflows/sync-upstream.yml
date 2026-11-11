@@ -1,0 +1,61 @@
+name: Sync upstream
+
+# Every 6 hours: try merging homelessbrian/NuvioPlusIPTV into the launcher branch.
+# Clean merge  -> pushed to the branch `sync/upstream` (review it, build it, merge it).
+# Conflicts    -> nothing is pushed; an issue lists the conflicting files.
+# NOTE: GitHub only runs scheduled workflows from the repository's default branch,
+# so this file must also exist there.
+on:
+  schedule:
+    - cron: "17 */6 * * *"
+  workflow_dispatch:
+
+permissions:
+  contents: write
+  issues: write
+
+env:
+  BASE_BRANCH: claude/list-channels
+  UPSTREAM_URL: https://github.com/homelessbrian/NuvioPlusIPTV.git
+  UPSTREAM_BRANCH: dev
+
+jobs:
+  sync:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          ref: ${{ env.BASE_BRANCH }}
+          fetch-depth: 0
+
+      - name: Merge upstream
+        id: merge
+        run: |
+          git config user.name "upstream-sync"
+          git config user.email "upstream-sync@users.noreply.github.com"
+          git remote add upstream "$UPSTREAM_URL"
+          git fetch -q upstream "$UPSTREAM_BRANCH"
+          if git merge-base --is-ancestor "upstream/$UPSTREAM_BRANCH" HEAD; then
+            echo "state=uptodate" >> "$GITHUB_OUTPUT"; exit 0
+          fi
+          if git merge --no-edit "upstream/$UPSTREAM_BRANCH" -m "Merge upstream $UPSTREAM_BRANCH"; then
+            echo "state=clean" >> "$GITHUB_OUTPUT"
+          else
+            git diff --name-only --diff-filter=U > "$RUNNER_TEMP/conflicts.txt"
+            git merge --abort
+            echo "state=conflict" >> "$GITHUB_OUTPUT"
+          fi
+
+      - name: Push clean merge
+        if: steps.merge.outputs.state == 'clean'
+        run: git push --force origin HEAD:refs/heads/sync/upstream
+
+      - name: Report conflicts
+        if: steps.merge.outputs.state == 'conflict'
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          title="Upstream sync has conflicts"
+          body="Merging upstream/$UPSTREAM_BRANCH into $BASE_BRANCH conflicts in:"$'\n\n'"$(sed 's/^/- /' "$RUNNER_TEMP/conflicts.txt")"
+          n=$(gh issue list --state open --search "$title in:title" --json number --jq '.[0].number')
+          if [ -n "$n" ]; then gh issue comment "$n" --body "$body"; else gh issue create --title "$title" --body "$body"; fi
