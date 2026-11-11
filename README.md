@@ -15,6 +15,8 @@
 
 </div>
 
+**Nuvio Launcher uses Trakt but is not endorsed or certified by Trakt.** See the [privacy page](PRIVACY.md).
+
 ---
 
 ## 🏆 Sports hub
