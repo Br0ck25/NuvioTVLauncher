@@ -203,6 +203,8 @@ import com.nuvio.tv.ui.screens.account.AuthQrSignInScreen
 import com.nuvio.tv.ui.screens.addon.EssentialAddonSetupScreen
 import com.nuvio.tv.ui.screens.profile.ProfileSelectionScreen
 import com.nuvio.tv.core.launcher.HomeForegroundDelivery
+import com.nuvio.tv.ui.screens.setup.LauncherSetupWizard
+import com.nuvio.tv.ui.screens.setup.LauncherSetupWizardPrefs
 import com.nuvio.tv.core.launcher.HomeKeyGesture
 import com.nuvio.tv.core.launcher.HomeKeyPress
 import com.nuvio.tv.core.launcher.LauncherHomeRequest
@@ -861,7 +863,17 @@ open class MainActivity : ComponentActivity() {
                     val surfaceContentReady = hasSeenAuthQrOnFirstLaunch != null &&
                         authState !is AuthState.Loading
 
-                    if (!surfaceContentReady) {
+                    // Launcher: the first-run setup (Home app, Home button, notifications) comes before sign-in.
+                    var showLauncherSetup by remember { mutableStateOf(!LauncherSetupWizardPrefs.isDone(this@MainActivity)) }
+                    if (showLauncherSetup) {
+                        startupDestination = StartupDestination.Setup
+                        LauncherSetupWizard(
+                            onFinished = {
+                                LauncherSetupWizardPrefs.markDone(this@MainActivity)
+                                showLauncherSetup = false
+                            }
+                        )
+                    } else if (!surfaceContentReady) {
                         // Still loading auth state; nothing to show yet.
                     } else if (
                         hasSeenAuthQrOnFirstLaunch == false &&
