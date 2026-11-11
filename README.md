@@ -156,6 +156,9 @@ Protect what you watch without installing a separate VPN app. **Settings → VPN
 
 ## ✨ Features
 
+### 🗂️ List channels (Home rows as TV channels)
+Turn any Home row, collection folder or library list into a scheduled Live TV channel. Open **Settings → Live TV → List Channels**, pick the rows you want, and each becomes a channel in the Live TV guide with its own schedule. Press OK on one to play it through your debrid service or addons, and the next title starts when one ends. These channels count as a source, so the guide shows them even with no playlist added. They play like live TV (no seek bar), and torrent-only streams aren't played.
+
 ### 📺 A proper TV guide
 - **TiviMate-style guide:** channels down the side, a timeline across, and a line marking "now" (which you can hide). It fits **8 or more channels** on screen.
 - **Guide Size:** Compact, Standard, Large or Extra Large. It sets the size of overlay mode too.
@@ -260,7 +263,7 @@ Protect what you watch without installing a separate VPN app. **Settings → VPN
 3. Install it with a file manager or **Downloader** (by AFTVnews), allowing installs from unknown sources when asked.
 4. Open **Nuvio Launcher**. A short setup walks you through making it your Home screen (see [below](#-use-it-as-your-home-screen)).
 
-Requires **Android 7.0 or newer** (Fire OS 6 or later). It installs **alongside** the official Nuvio app. It uses the same app ID as *Nuvio + IPTV*, so install one or the other, not both.
+Requires **Android 7.0 or newer** (Fire OS 6 or later). It has its own app ID (`com.nuvio.launcher`), so it installs **alongside** the official Nuvio app and *Nuvio + IPTV*. Settings and sign-in are separate from those apps: sign in again the first time.
 
 **Updating:** updates appear **inside the app** (Settings → About) from this repository's releases.
 
