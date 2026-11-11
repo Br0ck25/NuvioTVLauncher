@@ -430,8 +430,7 @@ class LayoutPreferenceDataStore @Inject constructor(
     }
 
     val followAddonsOrder: Flow<Boolean> = profileFlow { prefs ->
-        // Launcher: rows are always freely orderable; the old follow-addons lock is retired.
-        false
+        prefs[followAddonsOrderKey] ?: false
     }
 
     val composeHighlighterEnabled: Flow<Boolean> = profileFlow { prefs ->

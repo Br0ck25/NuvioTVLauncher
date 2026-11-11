@@ -87,6 +87,34 @@ fun CatalogOrderScreen(
                     color = NuvioTheme.colors.TextSecondary
                 )
                 Spacer(modifier = Modifier.height(NuvioTheme.spacing.lg))
+                val followAddonsLabel = stringResource(R.string.catalog_order_follow_addons)
+                Row(
+                    modifier = Modifier.fillMaxWidth(),
+                    horizontalArrangement = Arrangement.SpaceBetween,
+                    verticalAlignment = Alignment.CenterVertically
+                ) {
+                    Column(modifier = Modifier.weight(1f)) {
+                        Text(
+                            text = followAddonsLabel,
+                            style = MaterialTheme.typography.titleMedium,
+                            color = NuvioTheme.colors.TextPrimary
+                        )
+                        Text(
+                            text = stringResource(R.string.catalog_order_follow_addons_desc),
+                            style = MaterialTheme.typography.bodySmall,
+                            color = NuvioTheme.colors.TextSecondary
+                        )
+                    }
+                    Switch(
+                        checked = uiState.followAddonsOrder,
+                        onCheckedChange = { viewModel.toggleFollowAddonsOrder(it) },
+                        modifier = Modifier.semantics { contentDescription = followAddonsLabel },
+                        colors = SwitchDefaults.colors(
+                            checkedThumbColor = NuvioTheme.colors.Primary,
+                            checkedTrackColor = NuvioTheme.colors.Primary.copy(alpha = 0.5f)
+                        )
+                    )
+                }
             }
 
             when {
