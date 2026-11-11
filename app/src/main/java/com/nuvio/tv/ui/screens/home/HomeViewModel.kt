@@ -89,6 +89,7 @@ class HomeViewModel @Inject constructor(
     internal val profileManager: com.nuvio.tv.core.profile.ProfileManager,
     internal val tvRecommendationManager: TvRecommendationManager,
     internal val serverCatalog: ServerCatalog,
+    internal val installedAppsRepository: com.nuvio.tv.core.apps.InstalledAppsRepository? = null,
     internal val metaPreviewEnricher: MetaPreviewEnricher = MetaPreviewEnricher(
         tmdbService,
         tmdbMetadataService,
@@ -231,6 +232,7 @@ class HomeViewModel @Inject constructor(
     internal val catalogOrder = mutableListOf<String>()
     internal var addonsCache: List<Addon> = emptyList()
     internal var collectionsCache: List<Collection> = emptyList()
+    @Volatile internal var installedAppsCache: List<com.nuvio.tv.core.apps.InstalledApp> = emptyList()
     internal var homeCatalogOrderKeys: List<String> = emptyList()
     internal var disabledHomeCatalogKeys: Set<String> = emptySet()
     internal var followAddonsOrderEnabled: Boolean = false
@@ -386,6 +388,7 @@ class HomeViewModel @Inject constructor(
             loadFollowAddonsOrder()
             loadDisabledHomeCatalogPreference()
             loadCustomCatalogTitles()
+            observeInstalledAppsRowPipeline()
             observeLibraryState()
             observeTmdbSettings()
             observeMdbListSettings()

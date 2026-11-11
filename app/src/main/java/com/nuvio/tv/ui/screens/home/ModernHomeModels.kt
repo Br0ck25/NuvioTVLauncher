@@ -71,6 +71,8 @@ data class HeroPreview(
 @Immutable
 sealed class ModernPayload {
     data class ContinueWatching(val item: ContinueWatchingItem) : ModernPayload()
+    /** Launcher: one app in the Apps row. */
+    data class InstalledApp(val app: com.nuvio.tv.core.apps.InstalledApp) : ModernPayload()
     data class Catalog(
         val focusKey: String,
         val itemId: String,
@@ -236,7 +238,7 @@ internal fun ModernCarouselItem.catalogCardMetrics(
     val posterShape = when (payload) {
         is ModernPayload.Catalog -> metaPreview?.posterShape ?: PosterShape.POSTER
         is ModernPayload.CollectionFolder -> payload.posterShape
-        is ModernPayload.ContinueWatching -> PosterShape.POSTER
+        is ModernPayload.ContinueWatching, is ModernPayload.InstalledApp -> PosterShape.POSTER
     }
 
     return when (posterShape) {

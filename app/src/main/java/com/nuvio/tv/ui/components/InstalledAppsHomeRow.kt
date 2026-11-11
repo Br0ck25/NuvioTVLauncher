@@ -13,7 +13,6 @@ import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Modifier
-import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.text.TextStyle
 import androidx.compose.ui.unit.Dp
@@ -24,12 +23,11 @@ import androidx.tv.material3.MaterialTheme
 import androidx.tv.material3.Text
 import com.nuvio.tv.R
 import com.nuvio.tv.core.apps.InstalledAppsViewModel
-import com.nuvio.tv.livetv.calendar.SideMenuPages
 import com.nuvio.tv.ui.theme.NuvioTheme
 
 /**
- * "Apps" row at the bottom of Home: the installed apps, like a TV launcher's app row.
- * Follows the Apps page: when Apps is turned off in Settings → Menu & Features, the row goes too.
+ * The Apps row on Home (Classic and Grid layouts; the Modern layout draws its own tiles): the installed apps,
+ * like a TV launcher's app row. Where it sits, and whether it shows, is set in Reorder Home Catalogs.
  */
 @Composable
 fun InstalledAppsHomeRow(
@@ -39,15 +37,6 @@ fun InstalledAppsHomeRow(
 ) {
     // Folder pages and other screens reuse the home rows' layout; the Apps row is only for Home itself.
     if (!com.nuvio.tv.livetv.home.LocalLiveTvHomeActions.current.onHome) return
-    val context = LocalContext.current
-    val prefs = remember {
-        dagger.hilt.android.EntryPointAccessors.fromApplication(
-            context.applicationContext, com.nuvio.tv.livetv.startup.LiveTvStartupEntryPoint::class.java
-        ).liveTvPreferences()
-    }
-    val settings by prefs.settings.collectAsStateWithLifecycle(initialValue = null)
-    val hidden = settings?.let { SideMenuPages.hidden(it.sideMenuHidden) } ?: return
-    if (SideMenuPages.APPS in hidden) return
     val apps by viewModel.apps.collectAsStateWithLifecycle()
     var actionsFor by remember { mutableStateOf<com.nuvio.tv.core.apps.InstalledApp?>(null) }
     if (apps.isEmpty()) return

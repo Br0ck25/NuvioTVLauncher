@@ -13,8 +13,6 @@ import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.PaddingValues
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.lazy.LazyColumn
-import com.nuvio.tv.core.apps.AppsRowPosition
-import com.nuvio.tv.core.apps.AppsRowSettings
 import androidx.compose.foundation.lazy.LazyListPrefetchStrategy
 import androidx.compose.foundation.lazy.LazyListState
 import androidx.compose.foundation.lazy.itemsIndexed
@@ -117,7 +115,6 @@ fun ClassicHomeContent(
 ) {
     // Live TV fork: where the Live TV row goes (null = hidden).
     val liveTvRowAbove = com.nuvio.tv.livetv.home.rememberLiveTvHomeRowPosition()
-    val appsRowPosition by AppsRowSettings.position(androidx.compose.ui.platform.LocalContext.current).collectAsState()
     val defaultBringIntoViewSpec = LocalBringIntoViewSpec.current
     val density = LocalDensity.current
     val classicCatalogPosterCardStyle = remember(posterCardStyle) {
@@ -290,6 +287,7 @@ fun ClassicHomeContent(
             when (row) {
                 is HomeRow.Catalog -> row.row.stableKey()
                 is HomeRow.CollectionRow -> "collection_${row.collection.id}"
+                is HomeRow.InstalledApps -> com.nuvio.tv.core.apps.INSTALLED_APPS_CATALOG_KEY
                 is HomeRow.PlaceholderCatalog -> row.stableCatalogKey
             }
         }
@@ -630,10 +628,6 @@ fun ClassicHomeContent(
             }
         }
 
-        // Launcher: the installed apps, at the top (when set so), under the hero.
-        if (appsRowPosition == AppsRowPosition.TOP) item(key = "installed_apps_home_top", contentType = "installed_apps_home") {
-            com.nuvio.tv.ui.components.InstalledAppsHomeRow(startPadding = NuvioTheme.spacing.xxxl, titleStyle = MaterialTheme.typography.headlineMedium)
-        }
         // Live TV fork: the Live TV row, above Continue watching (when set so).
         if (liveTvRowAbove == true) item(key = "live_tv_home_above", contentType = "live_tv_home") {
             com.nuvio.tv.livetv.home.LiveTvHomeRow(above = true, startPadding = NuvioTheme.spacing.xxxl, titleStyle = MaterialTheme.typography.headlineMedium)
@@ -731,10 +725,6 @@ fun ClassicHomeContent(
         if (liveTvRowAbove == false) item(key = "live_tv_home_below", contentType = "live_tv_home") {
             com.nuvio.tv.livetv.home.LiveTvHomeRow(above = false, startPadding = NuvioTheme.spacing.xxxl, titleStyle = MaterialTheme.typography.headlineMedium)
         }
-        // Launcher: the installed apps, under Continue watching (when set so).
-        if (appsRowPosition == AppsRowPosition.UNDER_CONTINUE_WATCHING) item(key = "installed_apps_home", contentType = "installed_apps_home") {
-            com.nuvio.tv.ui.components.InstalledAppsHomeRow(startPadding = NuvioTheme.spacing.xxxl, titleStyle = MaterialTheme.typography.headlineMedium)
-        }
         if (uiState.continueWatchingEnabled && uiState.upcomingItems.isNotEmpty()) {
             item(key = "upcoming_section", contentType = "upcoming_section") {
                 LaunchedEffect(upcomingPendingScrollToStart.intValue) {
@@ -827,6 +817,7 @@ fun ClassicHomeContent(
                         "${r.stableKey()}_$index"
                     }
                     is HomeRow.CollectionRow -> "collection_${item.collection.id}"
+                    is HomeRow.InstalledApps -> com.nuvio.tv.core.apps.INSTALLED_APPS_CATALOG_KEY
                     is HomeRow.PlaceholderCatalog -> "${item.stableCatalogKey}_$index"
                 }
             },
@@ -834,6 +825,7 @@ fun ClassicHomeContent(
                 when (item) {
                     is HomeRow.Catalog -> "catalog_row"
                     is HomeRow.CollectionRow -> "collection_row"
+                    is HomeRow.InstalledApps -> "installed_apps_row"
                     is HomeRow.PlaceholderCatalog -> "catalog_row"
                 }
             }
@@ -960,14 +952,15 @@ fun ClassicHomeContent(
                     )
                 }
 
+                is HomeRow.InstalledApps -> {
+                    // Launcher: the installed apps, placed like any other row.
+                    com.nuvio.tv.ui.components.InstalledAppsHomeRow(startPadding = NuvioTheme.spacing.xxxl, titleStyle = MaterialTheme.typography.headlineMedium)
+                }
+
                 is HomeRow.PlaceholderCatalog -> { }
             }
         }
     
-        // Launcher: the installed apps, at the bottom (when set so).
-        if (appsRowPosition == AppsRowPosition.BOTTOM) item(key = "installed_apps_home_bottom", contentType = "installed_apps_home") {
-            com.nuvio.tv.ui.components.InstalledAppsHomeRow(startPadding = NuvioTheme.spacing.xxxl, titleStyle = MaterialTheme.typography.headlineMedium)
-        }
     }
     }
     } // CompositionLocalProvider

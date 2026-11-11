@@ -224,7 +224,7 @@ internal fun HomeViewModel.removeTruncatedRowCacheEntry(key: String) {
 
 internal fun HomeViewModel.rebuildCatalogOrder(addons: List<Addon>) {
     val defaultOrder = buildDefaultCatalogOrder(addons)
-    val collectionKeys = collectionsCache.map { "collection_${it.id}" }
+    val collectionKeys = collectionsCache.map { "collection_${it.id}" } + com.nuvio.tv.core.apps.INSTALLED_APPS_CATALOG_KEY
     val allAvailable = (defaultOrder + collectionKeys).toSet()
 
     if (followAddonsOrderEnabled) {
@@ -305,6 +305,12 @@ internal fun HomeViewModel.rebuildCatalogOrder(addons: List<Addon>) {
             catalogOrder.clear()
             catalogOrder.addAll(mergedOrder)
         }
+    }
+
+    // Launcher: until the user has put the Apps row somewhere, it goes first, right under Continue Watching.
+    synchronized(catalogStateLock) {
+        val appsKey = com.nuvio.tv.core.apps.INSTALLED_APPS_CATALOG_KEY
+        if (appsKey !in homeCatalogOrderKeys && catalogOrder.remove(appsKey)) catalogOrder.add(0, appsKey)
     }
 }
 

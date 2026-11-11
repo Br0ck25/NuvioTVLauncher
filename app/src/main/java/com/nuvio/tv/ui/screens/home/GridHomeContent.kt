@@ -27,8 +27,6 @@ import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.foundation.lazy.grid.GridCells
 import androidx.compose.foundation.lazy.grid.GridItemSpan
 import androidx.compose.foundation.lazy.grid.LazyVerticalGrid
-import com.nuvio.tv.core.apps.AppsRowPosition
-import com.nuvio.tv.core.apps.AppsRowSettings
 import androidx.compose.foundation.lazy.grid.rememberLazyGridState
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.DisposableEffect
@@ -129,7 +127,6 @@ fun GridHomeContent(
 ) {
     // Live TV fork: where the Live TV row goes (null = hidden).
     val liveTvRowAbove = com.nuvio.tv.livetv.home.rememberLiveTvHomeRowPosition()
-    val appsRowPosition by AppsRowSettings.position(androidx.compose.ui.platform.LocalContext.current).collectAsState()
     val gridState = rememberLazyGridState(
         initialFirstVisibleItemIndex = gridFocusState.verticalScrollIndex,
         initialFirstVisibleItemScrollOffset = gridFocusState.verticalScrollOffset
@@ -344,6 +341,7 @@ fun GridHomeContent(
                 is GridItem.SeeAll -> "see_all_${item.addonBaseUrl.hashCode()}_${item.catalogId}_${item.addonId}_${item.type}"
                 is GridItem.CollectionHeader -> "col_header_${item.collectionId}"
                 is GridItem.CollectionFolder -> "col_folder_${item.collectionId}_${item.folder.id}"
+                is GridItem.InstalledAppsRow -> "installed_apps_row"
             }
             item to key
         }
@@ -484,7 +482,7 @@ fun GridHomeContent(
                     key = { it.second },
                     span = { pair ->
                         val spanCount = when (pair.first) {
-                            is GridItem.Hero, is GridItem.SectionDivider, is GridItem.CollectionHeader -> maxLineSpan
+                            is GridItem.Hero, is GridItem.SectionDivider, is GridItem.CollectionHeader, is GridItem.InstalledAppsRow -> maxLineSpan
                             else -> 1
                         }
                         GridItemSpan(spanCount)
@@ -497,6 +495,7 @@ fun GridHomeContent(
                             is GridItem.SeeAll -> "see_all"
                             is GridItem.CollectionHeader -> "collection_header"
                             is GridItem.CollectionFolder -> "collection_folder"
+                            is GridItem.InstalledAppsRow -> "installed_apps"
                         }
                     }
                 ) { (gridItem, itemKey) ->
@@ -538,10 +537,6 @@ fun GridHomeContent(
 
             // Emit Continue Watching as a dedicated item
             // Live TV fork: the Live TV row, above Continue watching (when set so).
-            // Launcher: the installed apps, at the top (when set so), under the hero.
-            if (appsRowPosition == AppsRowPosition.TOP) item(key = "installed_apps_home_top", span = { GridItemSpan(maxLineSpan) }, contentType = "installed_apps_home") {
-                com.nuvio.tv.ui.components.InstalledAppsHomeRow(startPadding = 0.dp, titleStyle = MaterialTheme.typography.headlineMedium)
-            }
             if (liveTvRowAbove == true) item(key = "live_tv_home_above", span = { GridItemSpan(maxLineSpan) }, contentType = "live_tv_home") {
                 com.nuvio.tv.livetv.home.LiveTvHomeRow(above = true, startPadding = 0.dp, titleStyle = MaterialTheme.typography.headlineMedium)
             }
@@ -618,10 +613,6 @@ fun GridHomeContent(
             // Live TV fork: the Live TV row, below Continue watching (the default).
             if (liveTvRowAbove == false) item(key = "live_tv_home_below", span = { GridItemSpan(maxLineSpan) }, contentType = "live_tv_home") {
                 com.nuvio.tv.livetv.home.LiveTvHomeRow(above = false, startPadding = 0.dp, titleStyle = MaterialTheme.typography.headlineMedium)
-            }
-            // Launcher: the installed apps, under Continue watching (when set so).
-            if (appsRowPosition == AppsRowPosition.UNDER_CONTINUE_WATCHING) item(key = "installed_apps_home", span = { GridItemSpan(maxLineSpan) }, contentType = "installed_apps_home") {
-                com.nuvio.tv.ui.components.InstalledAppsHomeRow(startPadding = 0.dp, titleStyle = MaterialTheme.typography.headlineMedium)
             }
             if (uiState.continueWatchingEnabled && uiState.upcomingItems.isNotEmpty()) {
                 item(
@@ -705,7 +696,7 @@ fun GridHomeContent(
                     key = { it.second },
                     span = { pair ->
                         val spanCount = when (pair.first) {
-                            is GridItem.Hero, is GridItem.SectionDivider, is GridItem.CollectionHeader -> maxLineSpan
+                            is GridItem.Hero, is GridItem.SectionDivider, is GridItem.CollectionHeader, is GridItem.InstalledAppsRow -> maxLineSpan
                             else -> 1
                         }
                         GridItemSpan(spanCount)
@@ -718,6 +709,7 @@ fun GridHomeContent(
                             is GridItem.SeeAll -> "see_all"
                             is GridItem.CollectionHeader -> "collection_header"
                             is GridItem.CollectionFolder -> "collection_folder"
+                            is GridItem.InstalledAppsRow -> "installed_apps"
                         }
                     }
                 ) { (gridItem, itemKey) ->
@@ -858,6 +850,10 @@ fun GridHomeContent(
                         SectionDivider(catalogName = gridItem.title)
                     }
 
+                    is GridItem.InstalledAppsRow -> {
+                        // Launcher: the installed apps, placed like any other row.
+                        com.nuvio.tv.ui.components.InstalledAppsHomeRow(startPadding = 0.dp, titleStyle = MaterialTheme.typography.headlineMedium)
+                    }
                     is GridItem.CollectionFolder -> {
                         GridCollectionFolderCard(
                             folder = gridItem.folder,
@@ -877,10 +873,6 @@ fun GridHomeContent(
             }
             }
 
-            // Launcher: the installed apps, at the bottom (when set so).
-            if (appsRowPosition == AppsRowPosition.BOTTOM) item(key = "installed_apps_home_bottom", span = { GridItemSpan(maxLineSpan) }, contentType = "installed_apps_home") {
-                com.nuvio.tv.ui.components.InstalledAppsHomeRow(startPadding = 0.dp, titleStyle = MaterialTheme.typography.headlineMedium)
-            }
         } // end LazyVerticalGrid
         } // end BoxWithConstraints
 

@@ -212,6 +212,14 @@ class CatalogOrderViewModel @Inject constructor(
         followAddonsOrder: Boolean = false
     ): List<CatalogOrderItem> {
         val defaultEntries = buildDefaultCatalogEntries(addons)
+        // Launcher: the Apps row is listed (and moved, hidden) like any other row.
+        val appsEntry = CatalogOrderEntry(
+            key = com.nuvio.tv.core.apps.INSTALLED_APPS_CATALOG_KEY,
+            disableKey = com.nuvio.tv.core.apps.INSTALLED_APPS_CATALOG_KEY,
+            catalogName = "Apps",
+            addonName = "Installed apps on this device",
+            typeLabel = "apps"
+        )
         val collectionEntries = collections.map { collection ->
             CatalogOrderEntry(
                 key = "collection_${collection.id}",
@@ -220,7 +228,7 @@ class CatalogOrderViewModel @Inject constructor(
                 addonName = "${collection.folders.size} folder${if (collection.folders.size != 1) "s" else ""}",
                 typeLabel = "collection"
             )
-        }
+        } + appsEntry
         val allEntries = defaultEntries + collectionEntries
         val availableMap = allEntries.associateBy { it.key }
         val defaultOrderKeys = allEntries.map { it.key }
@@ -294,7 +302,13 @@ class CatalogOrderViewModel @Inject constructor(
             effectiveOrder = savedValid + missing
         }
 
-        return effectiveOrder.mapIndexedNotNull { index, key ->
+        // Until the user has placed the Apps row, it is listed (and shown on Home) first.
+        val appsKey = com.nuvio.tv.core.apps.INSTALLED_APPS_CATALOG_KEY
+        val finalOrder = if (appsKey !in savedOrderKeys && appsKey in effectiveOrder) {
+            listOf(appsKey) + effectiveOrder.filterNot { it == appsKey }
+        } else effectiveOrder
+
+        return finalOrder.mapIndexedNotNull { index, key ->
             val entry = availableMap[key] ?: return@mapIndexedNotNull null
             val displayName = customTitles[key]?.takeIf { it.isNotBlank() } ?: entry.catalogName
             val isCollection = key.startsWith("collection_")
@@ -304,14 +318,14 @@ class CatalogOrderViewModel @Inject constructor(
             if (followAddonsOrder) {
                 if (isCollection) {
                     canMoveUp = index > 0
-                    canMoveDown = index < effectiveOrder.lastIndex
+                    canMoveDown = index < finalOrder.lastIndex
                 } else {
                     canMoveUp = false
                     canMoveDown = false
                 }
             } else {
                 canMoveUp = index > 0
-                canMoveDown = index < effectiveOrder.lastIndex
+                canMoveDown = index < finalOrder.lastIndex
             }
 
             CatalogOrderItem(

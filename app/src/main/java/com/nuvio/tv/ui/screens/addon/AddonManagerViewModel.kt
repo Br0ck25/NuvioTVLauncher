@@ -495,7 +495,7 @@ class AddonManagerViewModel @Inject constructor(
         )
         val availableCatalogKeys = currentCatalogEntries.map { it.key }.toSet()
         val collectionKeysSet = currentCollections.map { "collection_${it.id}" }.toSet()
-        val allValidOrderKeys = availableCatalogKeys + collectionKeysSet
+        val allValidOrderKeys = availableCatalogKeys + collectionKeysSet + com.nuvio.tv.core.apps.INSTALLED_APPS_CATALOG_KEY
         val availableDisableKeyToName = currentCatalogEntries.associate { entry ->
             entry.disableKey to "${entry.catalogName} • ${entry.addonName}"
         }
@@ -655,16 +655,23 @@ class AddonManagerViewModel @Inject constructor(
         val availableDisableKeys = availableCatalogEntries.map { it.disableKey }.toSet()
         // Collection keys are also valid in the ordering
         val collectionKeys = currentCollections.map { "collection_${it.id}" }.toSet()
-        val allValidOrderKeys = availableCatalogKeys + collectionKeys
+        val allValidOrderKeys = availableCatalogKeys + collectionKeys + com.nuvio.tv.core.apps.INSTALLED_APPS_CATALOG_KEY
 
-        val validCatalogOrder = pending.proposedCatalogOrderKeys
+        val appsKey = com.nuvio.tv.core.apps.INSTALLED_APPS_CATALOG_KEY
+        val proposedOrder = pending.proposedCatalogOrderKeys
             .asSequence()
             .filter { it in allValidOrderKeys }
             .distinct()
-            .toList()
+            .toMutableList()
+        // The phone page doesn't know about the Apps row: keep where it was on this device.
+        if (appsKey !in proposedOrder && appsKey in homeCatalogOrderKeys) {
+            proposedOrder.add(homeCatalogOrderKeys.indexOf(appsKey).coerceAtMost(proposedOrder.size), appsKey)
+        }
+        val validCatalogOrder: List<String> = proposedOrder
         val validDisabledCatalogs = pending.proposedDisabledCatalogKeys
             .asSequence()
             .filter { it in availableDisableKeys }
+            .plus(disabledHomeCatalogKeys.filter { it == appsKey })
             .distinct()
             .toList()
 

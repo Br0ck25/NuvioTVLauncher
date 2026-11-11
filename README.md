@@ -292,7 +292,7 @@ Nuvio Launcher is a real Android Home app (the same way FLauncher and ArcLaunche
 - **Home** goes to the launcher's home page, scrolled to the top, from anywhere (another app, a detail page, the player). Any open panel closes.
 - **Double-tap Home** opens the profile switcher.
 - **Back** never leaves the launcher: on the home screen it only opens and closes the side menu. (When the app is not your Home app, Back still exits as usual.)
-- **Apps** is a page in the side menu and a row on Home under Continue Watching: every installed app, TV apps with their banner. OK opens one. **Press and hold** for Open, Move earlier, Move later and App info (uninstall); the order is shared by the page and the row. Turn both off in **Settings → Menu & Features → Apps**.
+- **Apps** is a page in the side menu and a row on Home: every installed app, TV apps with their banner. OK opens one. **Press and hold** for Open, Rename, Move earlier, Move later and App info (uninstall); the order and names are shared by the page, the row and the top-right panel. The row is placed like any other Home row: open **Reorder Home Catalogs** (Settings) and move **Apps** up or down, or switch it off there. Until you move it, it sits first, right under Continue Watching.
 - **Remote Apps button** opens the Apps page instead of the TV's own app list.
 - **Top right of Home:** TV inputs, notifications (the bell) and a settings panel with **Apps**, **Launcher settings** and **Android settings**.
 

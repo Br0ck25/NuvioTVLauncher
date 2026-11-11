@@ -611,11 +611,7 @@
     <string name="apps_key_capture_body">Press the remote button that should open Apps. Back cancels.</string>
     <string name="apps_key_capture_rejected">That button can\'t be used (it is needed for moving around, Home or volume). Try another.</string>
     <string name="apps_key_capture_reset">Use the standard Apps button</string>
-    <string name="settings_apps_row_title">Apps row on Home</string>
-    <string name="settings_apps_row_subtitle">Where the Apps row sits among your Home rows. Select to change.</string>
-    <string name="apps_row_top">At the top</string>
-    <string name="apps_row_under_cw">Under Continue Watching</string>
-    <string name="apps_row_bottom">At the bottom</string>
+    <string name="apps_row_subtitle">Installed apps on this device</string>
     <string name="apps_title">Apps</string>
     <string name="apps_empty">No other apps found on this device.</string>
     <string name="settings_advanced">Advanced</string>

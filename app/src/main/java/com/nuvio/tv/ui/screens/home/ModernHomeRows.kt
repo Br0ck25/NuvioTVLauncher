@@ -264,7 +264,7 @@ private fun ModernCatalogRowItem(
     val focusKey = when (payload) {
         is ModernPayload.Catalog -> payload.focusKey
         is ModernPayload.CollectionFolder -> payload.focusKey
-        is ModernPayload.ContinueWatching -> error("Unsupported payload for ModernCatalogRowItem")
+        is ModernPayload.ContinueWatching, is ModernPayload.InstalledApp -> error("Unsupported payload for ModernCatalogRowItem")
     }
 
     val metaPreview = item.metaPreview
@@ -326,7 +326,7 @@ private fun ModernCatalogRowItem(
                     )
                 )
             }
-            is ModernPayload.ContinueWatching -> Unit
+            is ModernPayload.ContinueWatching, is ModernPayload.InstalledApp -> Unit
         }
     }
 
@@ -424,7 +424,7 @@ private fun ModernCatalogRowItem(
                         payload.folderId
                     )
                 }
-                is ModernPayload.ContinueWatching -> Unit
+                is ModernPayload.ContinueWatching, is ModernPayload.InstalledApp -> Unit
             }
         },
         onLongPress = onLongPress,
@@ -504,6 +504,26 @@ internal fun ModernRowSection(
 
     // Blocks vertical focus exit during placeholder→data transition.
     val blockingFocusExit = remember { mutableStateOf(false) }
+
+    // Launcher: the Apps row. Long-press on an app opens its menu (open, rename, move, app info).
+    val appsViewModel: com.nuvio.tv.core.apps.InstalledAppsViewModel? =
+        if (row.key == com.nuvio.tv.core.apps.INSTALLED_APPS_CATALOG_KEY) androidx.hilt.navigation.compose.hiltViewModel() else null
+    var contextMenuApp by remember { mutableStateOf<com.nuvio.tv.core.apps.InstalledApp?>(null) }
+    contextMenuApp?.let { app ->
+        val shown = row.items.list.mapNotNull { (it.payload as? ModernPayload.InstalledApp)?.app }
+        val index = shown.indexOfFirst { it.packageName == app.packageName }
+        if (appsViewModel == null || index < 0) contextMenuApp = null else com.nuvio.tv.ui.components.InstalledAppActionsDialog(
+            app = app,
+            canMoveEarlier = index > 0,
+            canMoveLater = index < shown.lastIndex,
+            onOpen = { appsViewModel.launch(app) },
+            onMoveEarlier = { appsViewModel.move(app, -1) },
+            onMoveLater = { appsViewModel.move(app, 1) },
+            onAppInfo = { appsViewModel.openAppInfo(app) },
+            onRename = { appsViewModel.rename(app, it) },
+            onDismiss = { contextMenuApp = null }
+        )
+    }
 
     // Item keys carry item identity, which the placeholder the ring sits on loses when real data
     // arrives: its key changes and Compose tears the focused node down. Lend that one card a
@@ -683,6 +703,7 @@ internal fun ModernRowSection(
             val cwHeightPx = with(density) { continueWatchingCardHeight.roundToPx() }
             fun imageUrlAndKey(item: ModernCarouselItem): Pair<String, String>? {
                 return when (val payload = item.payload) {
+                    is ModernPayload.InstalledApp -> null
                     is ModernPayload.Catalog -> {
                         val url = item.imageUrl ?: return null
                         val metrics = item.catalogCardMetrics(
@@ -750,6 +771,7 @@ internal fun ModernRowSection(
                 for (i in 0 until minOf(POSTER_PREFETCH_DISTANCE, items.size)) {
                     val item = items.getOrNull(i) ?: continue
                     val (wPx, hPx) = when (item.payload) {
+                        is ModernPayload.InstalledApp -> 0 to 0
                         is ModernPayload.Catalog -> {
                             val metrics = item.catalogCardMetrics(
                                 useLandscapePosters = useLandscapePosters,
@@ -786,6 +808,7 @@ internal fun ModernRowSection(
                         for (i in (lastVisibleIndex + 1)..(lastVisibleIndex + POSTER_PREFETCH_DISTANCE)) {
                             val item = currentItems.getOrNull(i) ?: continue
                             val (wPx, hPx) = when (item.payload) {
+                                is ModernPayload.InstalledApp -> 0 to 0
                                 is ModernPayload.Catalog -> {
                                     val metrics = item.catalogCardMetrics(
                                         useLandscapePosters = useLandscapePosters,
@@ -939,6 +962,7 @@ internal fun ModernRowSection(
                             is ModernPayload.ContinueWatching -> "modern_cw_card"
                             is ModernPayload.Catalog -> if (payload.itemId.startsWith("__placeholder_")) "placeholder" else payload.itemType
                             is ModernPayload.CollectionFolder -> "modern_collection_folder_card"
+                            is ModernPayload.InstalledApp -> "installed_app"
                         }
                     }
                 ) { index, item ->
@@ -966,6 +990,28 @@ internal fun ModernRowSection(
                     }
 
                     when (val payload = item.payload) {
+                        is ModernPayload.InstalledApp -> {
+                            // Launcher: one app in the Apps row.
+                            LaunchedEffect(isTargetItem) {
+                                if (isTargetItem) runCatching { requester.requestFocus() }
+                            }
+                            val appsVm = appsViewModel
+                            if (appsVm != null) {
+                                com.nuvio.tv.ui.components.InstalledAppCard(
+                                    app = payload.app,
+                                    loadImage = appsVm::image,
+                                    onClick = {
+                                        onFocused()
+                                        appsVm.launch(payload.app)
+                                    },
+                                    onLongClick = { contextMenuApp = payload.app },
+                                    modifier = Modifier
+                                        .focusRequester(requester)
+                                        .onFocusChanged { if (it.isFocused) onFocused() },
+                                    width = 160.dp
+                                )
+                            }
+                        }
                         is ModernPayload.ContinueWatching -> {
                             ModernContinueWatchingRowItem(
                                 payload = payload,

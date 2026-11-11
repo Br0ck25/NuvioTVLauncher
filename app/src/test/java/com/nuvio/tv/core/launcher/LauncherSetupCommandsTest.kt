@@ -1,6 +1,5 @@
 package com.nuvio.tv.core.launcher
 
-import com.nuvio.tv.core.apps.AppsRowPosition
 import org.junit.Assert.assertEquals
 import org.junit.Assert.assertFalse
 import org.junit.Assert.assertNull
@@ -179,16 +178,6 @@ class AppCustomisationTest {
         assertEquals("Tab and line", back["c.d"])
         assertEquals(emptyMap<String, String>(), l.decode(null))
         assertEquals(emptyMap<String, String>(), l.decode("garbage without a tab"))
-    }
-
-    @Test
-    fun appsRowPositionCyclesThroughAllThreeAndUnknownFallsBack() {
-        assertEquals(AppsRowPosition.UNDER_CONTINUE_WATCHING, AppsRowPosition.TOP.next())
-        assertEquals(AppsRowPosition.BOTTOM, AppsRowPosition.UNDER_CONTINUE_WATCHING.next())
-        assertEquals(AppsRowPosition.TOP, AppsRowPosition.BOTTOM.next())
-        assertEquals(AppsRowPosition.UNDER_CONTINUE_WATCHING, AppsRowPosition.fromId(null))
-        assertEquals(AppsRowPosition.UNDER_CONTINUE_WATCHING, AppsRowPosition.fromId("nonsense"))
-        assertEquals(AppsRowPosition.BOTTOM, AppsRowPosition.fromId("bottom"))
     }
 
     @Test

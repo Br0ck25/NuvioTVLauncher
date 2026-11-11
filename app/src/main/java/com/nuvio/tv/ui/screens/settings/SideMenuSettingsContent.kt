@@ -102,7 +102,7 @@ fun SideMenuSettingsContent(initialFocusRequester: FocusRequester? = null) {
             }
         }
         SideMenuPages.SEARCH -> PageRow("Search", "Search movies, shows, channels and On Demand", id !in hidden) { setHidden(id, id !in hidden) }
-        SideMenuPages.APPS -> PageRow("Apps", "Every app on this device, and the Apps row at the bottom of Home", id !in hidden) { setHidden(id, id !in hidden) }
+        SideMenuPages.APPS -> PageRow("Apps", "Every app on this device. The Apps row on Home is placed in Reorder Home Catalogs", id !in hidden) { setHidden(id, id !in hidden) }
         SideMenuPages.LIBRARY -> PageRow("Library", "Your saved movies and shows", id !in hidden) { setHidden(id, id !in hidden) }
         SideMenuPages.DISCOVER -> PageRow(
             "Discover", "Browse by genre, network and more", discover != DiscoverLocation.OFF,
