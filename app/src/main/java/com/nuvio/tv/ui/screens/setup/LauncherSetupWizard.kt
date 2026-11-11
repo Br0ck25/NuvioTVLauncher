@@ -129,22 +129,32 @@ private fun SetupStep(onDone: () -> Unit, onBack: () -> Unit) {
         StatusLine(stringResource(R.string.wizard_status_notifications), notificationsOn)
     }
 
-    if (phoneSetup != null) {
-        Button(onClick = { showPhoneSetup = true }, modifier = Modifier.fillMaxWidth().focusRequester(first)) {
-            Text(stringResource(R.string.wizard_phone_setup))
-        }
-        Text(stringResource(R.string.wizard_phone_setup_hint), style = MaterialTheme.typography.bodySmall, color = NuvioTheme.colors.TextSecondary)
-    }
     Text(stringResource(R.string.wizard_manual_title), style = MaterialTheme.typography.titleMedium, color = NuvioTheme.colors.TextPrimary, modifier = Modifier.padding(top = 4.dp))
-    OutlinedButton(
-        onClick = setup.requestDefaultHome,
-        modifier = Modifier.fillMaxWidth().then(if (phoneSetup == null) Modifier.focusRequester(first) else Modifier)
-    ) { Text(stringResource(R.string.wizard_make_home)) }
+    Button(onClick = setup.requestDefaultHome, modifier = Modifier.fillMaxWidth().focusRequester(first)) {
+        Text(stringResource(R.string.wizard_make_home))
+    }
     OutlinedButton(onClick = setup.openAccessibilitySettings, modifier = Modifier.fillMaxWidth()) {
         Text(stringResource(R.string.wizard_turn_on_override))
     }
     OutlinedButton(onClick = { LauncherNotificationListenerService.openAccessSettings(context) }, modifier = Modifier.fillMaxWidth()) {
         Text(stringResource(R.string.wizard_turn_on_notifications))
+    }
+    if (phoneSetup != null) {
+        OutlinedButton(onClick = { showPhoneSetup = true }, modifier = Modifier.fillMaxWidth()) {
+            Text(stringResource(R.string.wizard_phone_setup))
+        }
+        Text(stringResource(R.string.wizard_phone_setup_hint), style = MaterialTheme.typography.bodySmall, color = NuvioTheme.colors.TextSecondary)
+    } else {
+        val support = com.nuvio.tv.core.launcher.PhoneSetupSupport.current()
+        Text(
+            text = if (support == com.nuvio.tv.core.launcher.PhoneSetupSupport.ANDROID_TOO_OLD) {
+                stringResource(R.string.self_setup_unavailable_old, android.os.Build.VERSION.RELEASE)
+            } else {
+                stringResource(R.string.self_setup_unavailable_build)
+            },
+            style = MaterialTheme.typography.bodySmall,
+            color = NuvioTheme.colors.TextSecondary
+        )
     }
     Row(horizontalArrangement = Arrangement.spacedBy(12.dp), modifier = Modifier.padding(top = 8.dp)) {
         Button(onClick = onDone) { Text(stringResource(R.string.wizard_continue)) }

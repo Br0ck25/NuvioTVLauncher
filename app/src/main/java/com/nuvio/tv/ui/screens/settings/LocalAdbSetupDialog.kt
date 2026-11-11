@@ -1,6 +1,12 @@
 package com.nuvio.tv.ui.screens.settings
 
 import androidx.compose.foundation.layout.Arrangement
+import androidx.compose.ui.graphics.asImageBitmap
+import androidx.compose.ui.Alignment
+import androidx.compose.foundation.layout.size
+import androidx.compose.foundation.layout.Row
+import androidx.compose.foundation.background
+import androidx.compose.foundation.Image
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.heightIn
@@ -85,12 +91,34 @@ internal fun LocalAdbSetupDialog(
                 color = NuvioTheme.colors.TextSecondary
             )
             session.phoneUrl?.let { url ->
-                Text(
-                    text = stringResource(R.string.self_setup_phone_hint, url),
-                    style = MaterialTheme.typography.bodyMedium,
-                    color = NuvioTheme.colors.TextPrimary
-                )
+                val qr = remember(url) { runCatching { com.nuvio.tv.core.qr.QrCodeGenerator.generate(url, 360) }.getOrNull() }
+                Row(horizontalArrangement = Arrangement.spacedBy(16.dp), verticalAlignment = Alignment.CenterVertically) {
+                    qr?.let {
+                        Image(
+                            bitmap = it.asImageBitmap(),
+                            contentDescription = stringResource(R.string.self_setup_scan_phone),
+                            modifier = Modifier.size(150.dp).background(Color.White).padding(6.dp)
+                        )
+                    }
+                    Column(verticalArrangement = Arrangement.spacedBy(4.dp)) {
+                        Text(
+                            text = stringResource(R.string.self_setup_scan_phone),
+                            style = MaterialTheme.typography.titleSmall,
+                            color = NuvioTheme.colors.TextPrimary
+                        )
+                        Text(
+                            text = stringResource(R.string.self_setup_phone_hint, url),
+                            style = MaterialTheme.typography.bodyMedium,
+                            color = NuvioTheme.colors.TextPrimary
+                        )
+                    }
+                }
             }
+            Text(
+                text = stringResource(R.string.self_setup_not_found_hint),
+                style = MaterialTheme.typography.bodySmall,
+                color = NuvioTheme.colors.TextSecondary
+            )
             InputField(
                 value = pairingPort,
                 onValueChange = { pairingPort = it.filter(Char::isDigit).take(5) },

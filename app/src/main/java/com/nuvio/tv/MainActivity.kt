@@ -1724,7 +1724,7 @@ open class MainActivity : ComponentActivity() {
         // and go home. Some firmware delivers raw HOME keys; most send a HOME intent or let the
         // accessibility service filter the key, so this is a fallback, not the only path.
         // The remote's Apps button opens the launcher's own Apps page instead of the TV's app list.
-        if (event.keyCode == KeyEvent.KEYCODE_ALL_APPS) {
+        if (com.nuvio.tv.core.launcher.AppsKeyStore.matches(this, event.keyCode)) {
             if (event.action == KeyEvent.ACTION_UP && !event.isCanceled) {
                 ambientIdleController.dismiss()
                 pendingOpenAppsNonce.value += 1

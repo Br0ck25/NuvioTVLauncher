@@ -6,7 +6,6 @@ import android.content.ActivityNotFoundException
 import android.content.Intent
 import android.provider.Settings
 import android.view.KeyEvent as AndroidKeyEvent
-import androidx.activity.compose.BackHandler
 import androidx.compose.foundation.BorderStroke
 import androidx.compose.foundation.background
 import androidx.compose.foundation.clickable
@@ -90,7 +89,6 @@ fun HomeSettingsDrawer(
         onDismissRequest = handleBack,
         properties = DialogProperties(usePlatformDefaultWidth = false, dismissOnBackPress = true, dismissOnClickOutside = true)
     ) {
-        BackHandler(onBack = handleBack)
         LaunchedEffect(mode) {
             repeat(2) { withFrameNanos { } }
             runCatching { first.requestFocus() }
@@ -102,6 +100,12 @@ fun HomeSettingsDrawer(
                 // Home always means "go to the launcher's home page": close the panel, let the press through.
                 .onPreviewKeyEvent { event ->
                     val native = event.nativeKeyEvent
+                    // Back steps back one level (the app list goes back to the menu, the menu closes).
+                    // Handled here, on release, rather than leaving it to the dialog.
+                    if (native.keyCode == AndroidKeyEvent.KEYCODE_BACK || native.keyCode == AndroidKeyEvent.KEYCODE_ESCAPE) {
+                        if (native.action == AndroidKeyEvent.ACTION_UP && !native.isCanceled) handleBack()
+                        return@onPreviewKeyEvent true
+                    }
                     if (native.keyCode == AndroidKeyEvent.KEYCODE_HOME && native.action == AndroidKeyEvent.ACTION_UP) onDismiss()
                     false
                 }
@@ -183,6 +187,7 @@ fun HomeSettingsDrawer(
                 onMoveEarlier = { appsViewModel.move(app, -1) },
                 onMoveLater = { appsViewModel.move(app, 1) },
                 onAppInfo = { appsViewModel.openAppInfo(app) },
+            onRename = { appsViewModel.rename(app, it) },
                 onDismiss = { actionsFor = null },
                 onHome = onDismiss
             )

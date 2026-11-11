@@ -29,9 +29,12 @@ import javax.inject.Singleton
 /** One app that can be opened from the launcher. */
 data class InstalledApp(
     val packageName: String,
+    /** The name shown: the user's own name for the app if they gave one, else the app's. */
     val label: String,
     /** True when the app has a TV (leanback) entry; those show their banner. */
-    val isTvApp: Boolean
+    val isTvApp: Boolean,
+    /** The name the app itself uses. */
+    val originalLabel: String = label
 )
 
 /**
@@ -52,10 +55,20 @@ class InstalledAppsRepository @Inject constructor(
     // page and the Home row.
     private val prefs = context.getSharedPreferences("launcher_apps", Context.MODE_PRIVATE)
     private val savedOrder = MutableStateFlow(AppOrder.decode(prefs.getString(KEY_ORDER, null)))
+    private val savedLabels = MutableStateFlow(AppLabels.decode(prefs.getString(KEY_LABELS, null)))
     val order: StateFlow<List<String>> = savedOrder.asStateFlow()
 
     /** Emits the current list at once, then again whenever the set of apps or their order changes. */
-    val apps: Flow<List<InstalledApp>> = combine(installed(), savedOrder) { list, order -> AppOrder.apply(list, order) }
+    val apps: Flow<List<InstalledApp>> = combine(installed(), savedOrder, savedLabels) { list, order, labels ->
+        AppOrder.apply(list.map { app -> labels[app.packageName]?.let { app.copy(label = it) } ?: app }, order)
+    }
+
+    /** Gives [app] the name [name] on the Apps page and the Home row; blank puts the app's own name back. */
+    fun rename(app: InstalledApp, name: String?) {
+        val updated = AppLabels.set(savedLabels.value, app.packageName, name)
+        prefs.edit().putString(KEY_LABELS, AppLabels.encode(updated)).apply()
+        savedLabels.value = updated
+    }
 
     /** Moves [app] one place earlier (-1) or later (+1) in the list as it is shown now. */
     fun move(shown: List<InstalledApp>, app: InstalledApp, delta: Int) {
@@ -82,6 +95,7 @@ class InstalledAppsRepository @Inject constructor(
 
     private companion object {
         const val KEY_ORDER = "order"
+        const val KEY_LABELS = "labels"
     }
 
     private fun query(): List<InstalledApp> {
@@ -156,5 +170,21 @@ object AppOrder {
         val to = from + delta
         if (from < 0 || to !in shown.indices) return null
         return shown.toMutableList().apply { add(to, removeAt(from)) }
+    }
+}
+
+/** The names the user gave apps, kept apart from Android so it can be tested. One line per app: package, tab, name. */
+object AppLabels {
+    fun encode(labels: Map<String, String>): String = labels.entries.joinToString("\n") { "${it.key}\t${it.value.replace('\n', ' ').replace('\t', ' ')}" }
+
+    fun decode(saved: String?): Map<String, String> = saved?.lines().orEmpty().mapNotNull { line ->
+        val i = line.indexOf('\t')
+        if (i <= 0) null else line.substring(0, i).trim() to line.substring(i + 1).trim()
+    }.filter { it.first.isNotEmpty() && it.second.isNotEmpty() }.toMap()
+
+    /** [labels] with [pkg] named [name] (trimmed, at most 40 characters), or with the custom name removed when blank. */
+    fun set(labels: Map<String, String>, pkg: String, name: String?): Map<String, String> {
+        val clean = name?.replace('\n', ' ')?.replace('\t', ' ')?.trim()?.take(40).orEmpty()
+        return if (clean.isEmpty()) labels - pkg else labels + (pkg to clean)
     }
 }

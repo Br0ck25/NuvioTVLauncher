@@ -37,6 +37,8 @@ fun InstalledAppsHomeRow(
     titleStyle: TextStyle? = null,
     viewModel: InstalledAppsViewModel = hiltViewModel()
 ) {
+    // Folder pages and other screens reuse the home rows' layout; the Apps row is only for Home itself.
+    if (!com.nuvio.tv.livetv.home.LocalLiveTvHomeActions.current.onHome) return
     val context = LocalContext.current
     val prefs = remember {
         dagger.hilt.android.EntryPointAccessors.fromApplication(
@@ -82,6 +84,7 @@ fun InstalledAppsHomeRow(
             onMoveEarlier = { viewModel.move(app, -1) },
             onMoveLater = { viewModel.move(app, 1) },
             onAppInfo = { viewModel.openAppInfo(app) },
+            onRename = { viewModel.rename(app, it) },
             onDismiss = { actionsFor = null }
         )
     }

@@ -1,5 +1,6 @@
 package com.nuvio.tv.core.launcher
 
+import com.nuvio.tv.core.apps.AppsRowPosition
 import org.junit.Assert.assertEquals
 import org.junit.Assert.assertFalse
 import org.junit.Assert.assertNull
@@ -155,5 +156,49 @@ class AppOrderTest {
         assertEquals(listOf("x", "y"), ao.decode(ao.encode(listOf("x", "y"))))
         assertEquals(emptyList<String>(), ao.decode(null))
         assertEquals(listOf("x"), ao.decode("x\n\nx\n"))
+    }
+}
+
+class AppCustomisationTest {
+    @Test
+    fun renamingKeepsTrimsAndResets() {
+        val l = com.nuvio.tv.core.apps.AppLabels
+        val one = l.set(emptyMap(), "pkg.a", "  My TV app \n")
+        assertEquals(mapOf("pkg.a" to "My TV app"), one)
+        assertEquals(emptyMap<String, String>(), l.set(one, "pkg.a", "   "))
+        assertEquals(emptyMap<String, String>(), l.set(one, "pkg.a", null))
+        assertEquals(40, l.set(emptyMap(), "p", "x".repeat(80))["p"]!!.length)
+    }
+
+    @Test
+    fun renamesRoundTripThroughTheSavedText() {
+        val l = com.nuvio.tv.core.apps.AppLabels
+        val labels = mapOf("a.b" to "Alpha", "c.d" to "Tab\tand\nline")
+        val back = l.decode(l.encode(labels))
+        assertEquals("Alpha", back["a.b"])
+        assertEquals("Tab and line", back["c.d"])
+        assertEquals(emptyMap<String, String>(), l.decode(null))
+        assertEquals(emptyMap<String, String>(), l.decode("garbage without a tab"))
+    }
+
+    @Test
+    fun appsRowPositionCyclesThroughAllThreeAndUnknownFallsBack() {
+        assertEquals(AppsRowPosition.UNDER_CONTINUE_WATCHING, AppsRowPosition.TOP.next())
+        assertEquals(AppsRowPosition.BOTTOM, AppsRowPosition.UNDER_CONTINUE_WATCHING.next())
+        assertEquals(AppsRowPosition.TOP, AppsRowPosition.BOTTOM.next())
+        assertEquals(AppsRowPosition.UNDER_CONTINUE_WATCHING, AppsRowPosition.fromId(null))
+        assertEquals(AppsRowPosition.UNDER_CONTINUE_WATCHING, AppsRowPosition.fromId("nonsense"))
+        assertEquals(AppsRowPosition.BOTTOM, AppsRowPosition.fromId("bottom"))
+    }
+
+    @Test
+    fun theRemoteButtonCannotBeAKeyNeededForNavigation() {
+        val k = AppsKeyStore
+        listOf(
+            android.view.KeyEvent.KEYCODE_DPAD_UP, android.view.KeyEvent.KEYCODE_DPAD_CENTER, android.view.KeyEvent.KEYCODE_BACK,
+            android.view.KeyEvent.KEYCODE_HOME, android.view.KeyEvent.KEYCODE_VOLUME_UP, android.view.KeyEvent.KEYCODE_POWER, 0, -1
+        ).forEach { assertFalse("$it", k.isAllowed(it)) }
+        listOf(android.view.KeyEvent.KEYCODE_ALL_APPS, android.view.KeyEvent.KEYCODE_PROG_RED, android.view.KeyEvent.KEYCODE_GUIDE)
+            .forEach { assertTrue("$it", k.isAllowed(it)) }
     }
 }

@@ -46,6 +46,7 @@ fun InstalledAppActionsDialog(
     onMoveEarlier: () -> Unit,
     onMoveLater: () -> Unit,
     onAppInfo: () -> Unit,
+    onRename: (String?) -> Unit,
     onDismiss: () -> Unit,
     /** Home was pressed: close this and whatever opened it. */
     onHome: () -> Unit = onDismiss
@@ -54,7 +55,9 @@ fun InstalledAppActionsDialog(
     // The menu opens while the select key is still held down (that is the long-press). Ignore that key,
     // including its release, until a fresh press arrives, so letting go doesn't pick the first option.
     var ready by remember { mutableStateOf(false) }
+    var renaming by remember { mutableStateOf(false) }
     LaunchedEffect(Unit) { runCatching { first.requestFocus() } }
+    if (renaming) RenameDialog(app = app, onSave = onRename, onDismiss = { renaming = false })
     Dialog(onDismissRequest = onDismiss) {
         Column(
             modifier = Modifier
@@ -90,12 +93,53 @@ fun InstalledAppActionsDialog(
             Button(onClick = onMoveLater, enabled = canMoveLater, modifier = Modifier.fillMaxWidth()) {
                 Text(stringResource(R.string.app_action_move_later))
             }
+            Button(onClick = { renaming = true }, modifier = Modifier.fillMaxWidth()) {
+                Text(stringResource(R.string.app_action_rename))
+            }
             Button(onClick = { onDismiss(); onAppInfo() }, modifier = Modifier.fillMaxWidth()) {
                 Text(stringResource(R.string.app_action_info))
             }
             Button(onClick = onDismiss, modifier = Modifier.fillMaxWidth().padding(top = 4.dp)) {
                 Text(stringResource(R.string.self_setup_close))
             }
+        }
+    }
+}
+
+/** Rename: a text box prefilled with the current name; Save keeps it, Reset goes back to the app's own name. */
+@Composable
+private fun RenameDialog(app: InstalledApp, onSave: (String?) -> Unit, onDismiss: () -> Unit) {
+    var text by remember { mutableStateOf(app.label) }
+    val field = remember { FocusRequester() }
+    LaunchedEffect(Unit) { runCatching { field.requestFocus() } }
+    Dialog(onDismissRequest = onDismiss) {
+        Column(
+            modifier = Modifier
+                .width(420.dp)
+                .clip(RoundedCornerShape(16.dp))
+                .background(NuvioTheme.colors.BackgroundCard)
+                .padding(20.dp),
+            verticalArrangement = Arrangement.spacedBy(10.dp)
+        ) {
+            Text(stringResource(R.string.app_rename_title), style = MaterialTheme.typography.titleLarge, color = NuvioTheme.colors.TextPrimary)
+            androidx.compose.foundation.text.BasicTextField(
+                value = text,
+                onValueChange = { text = it.take(40) },
+                singleLine = true,
+                textStyle = MaterialTheme.typography.bodyLarge.copy(color = NuvioTheme.colors.TextPrimary),
+                cursorBrush = androidx.compose.ui.graphics.SolidColor(NuvioTheme.colors.TextPrimary),
+                keyboardOptions = androidx.compose.foundation.text.KeyboardOptions(imeAction = androidx.compose.ui.text.input.ImeAction.Done),
+                keyboardActions = androidx.compose.foundation.text.KeyboardActions(onDone = { onSave(text); onDismiss() }),
+                modifier = Modifier
+                    .fillMaxWidth()
+                    .focusRequester(field)
+                    .clip(RoundedCornerShape(10.dp))
+                    .background(androidx.compose.ui.graphics.Color.White.copy(alpha = 0.08f))
+                    .padding(14.dp)
+            )
+            Button(onClick = { onSave(text); onDismiss() }, modifier = Modifier.fillMaxWidth()) { Text(stringResource(R.string.app_rename_save)) }
+            Button(onClick = { onSave(null); onDismiss() }, modifier = Modifier.fillMaxWidth()) { Text(stringResource(R.string.app_rename_reset)) }
+            Button(onClick = onDismiss, modifier = Modifier.fillMaxWidth()) { Text(stringResource(R.string.self_setup_close)) }
         }
     }
 }

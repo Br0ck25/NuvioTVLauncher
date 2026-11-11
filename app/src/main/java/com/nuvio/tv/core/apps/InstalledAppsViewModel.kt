@@ -21,4 +21,5 @@ class InstalledAppsViewModel @Inject constructor(
     fun launch(app: InstalledApp) = repository.launch(app)
     fun move(app: InstalledApp, delta: Int) = repository.move(apps.value, app, delta)
     fun openAppInfo(app: InstalledApp) = repository.openAppInfo(app)
+    fun rename(app: InstalledApp, name: String?) = repository.rename(app, name)
 }

@@ -12,6 +12,8 @@ import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.lazy.LazyColumn
+import com.nuvio.tv.core.apps.AppsRowPosition
+import com.nuvio.tv.core.apps.AppsRowSettings
 import androidx.compose.foundation.lazy.LazyListItemInfo
 import androidx.compose.foundation.lazy.LazyListState
 import androidx.compose.foundation.lazy.itemsIndexed
@@ -20,6 +22,7 @@ import androidx.compose.runtime.CompositionLocalProvider
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.State
 import androidx.compose.runtime.derivedStateOf
+import androidx.compose.runtime.collectAsState
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.remember
 import androidx.compose.runtime.rememberUpdatedState
@@ -150,6 +153,7 @@ internal fun ModernHomeRowsList(
 ) {
     // Live TV fork: where the Live TV row goes (null = hidden).
     val liveTvRowAbove = com.nuvio.tv.livetv.home.rememberLiveTvHomeRowPosition()
+    val appsRowPosition by AppsRowSettings.position(androidx.compose.ui.platform.LocalContext.current).collectAsState()
     // Unwrap StableRef wrappers for internal use (not passed to child composables)
     val focusedItemByRowMap = focusedItemByRow.value
     val rowListStatesMap = rowListStates.value
@@ -435,6 +439,10 @@ internal fun ModernHomeRowsList(
                     }
                 }
                 androidx.compose.foundation.layout.Column {
+                // Launcher: the installed apps, above the first row or after the last (when set so).
+                if (appsRowPosition == AppsRowPosition.TOP && rowIndex == 0) {
+                    com.nuvio.tv.ui.components.InstalledAppsHomeRow(startPadding = 52.dp, titleStyle = androidx.tv.material3.MaterialTheme.typography.titleMedium.copy(fontWeight = androidx.compose.ui.text.font.FontWeight.SemiBold))
+                }
                 if (liveTvHere && (liveTvRowAbove == true || !hasContinueWatching)) {
                     com.nuvio.tv.livetv.home.LiveTvHomeRow(hideUnlessFocused = true, above = liveTvRowAbove == true, startPadding = 52.dp, titleStyle = androidx.tv.material3.MaterialTheme.typography.titleMedium.copy(fontWeight = androidx.compose.ui.text.font.FontWeight.SemiBold))
                 }
@@ -500,7 +508,12 @@ internal fun ModernHomeRowsList(
                     com.nuvio.tv.livetv.home.LiveTvHomeRow(hideUnlessFocused = true, above = false, startPadding = 52.dp, titleStyle = androidx.tv.material3.MaterialTheme.typography.titleMedium.copy(fontWeight = androidx.compose.ui.text.font.FontWeight.SemiBold))
                 }
                 // Launcher: the installed apps, under Continue watching (or under the first row without it).
-                if (if (hasContinueWatching) row.key == MODERN_CONTINUE_WATCHING_ROW_KEY else rowIndex == 0) {
+                if (appsRowPosition == AppsRowPosition.UNDER_CONTINUE_WATCHING &&
+                    (if (hasContinueWatching) row.key == MODERN_CONTINUE_WATCHING_ROW_KEY else rowIndex == 0)
+                ) {
+                    com.nuvio.tv.ui.components.InstalledAppsHomeRow(startPadding = 52.dp, titleStyle = androidx.tv.material3.MaterialTheme.typography.titleMedium.copy(fontWeight = androidx.compose.ui.text.font.FontWeight.SemiBold))
+                }
+                if (appsRowPosition == AppsRowPosition.BOTTOM && rowIndex == carouselRows.list.lastIndex) {
                     com.nuvio.tv.ui.components.InstalledAppsHomeRow(startPadding = 52.dp, titleStyle = androidx.tv.material3.MaterialTheme.typography.titleMedium.copy(fontWeight = androidx.compose.ui.text.font.FontWeight.SemiBold))
                 }
                 }

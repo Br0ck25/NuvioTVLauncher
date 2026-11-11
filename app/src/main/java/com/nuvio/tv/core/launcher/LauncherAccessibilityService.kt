@@ -78,7 +78,7 @@ class LauncherAccessibilityService : AccessibilityService() {
      * lands on the launcher's home page and a quick second press reaches the profile switcher.
      */
     override fun onKeyEvent(event: KeyEvent): Boolean {
-        if (event.keyCode == KeyEvent.KEYCODE_ALL_APPS) return onAppsKey(event)
+        if (AppsKeyStore.matches(this, event.keyCode)) return onAppsKey(event)
         if (event.keyCode != KeyEvent.KEYCODE_HOME) return super.onKeyEvent(event)
         // isDefaultHome is a PackageManager binder call: only pay for it for the Home key.
         val nativeHome = LauncherSetup.isDefaultHome(this)

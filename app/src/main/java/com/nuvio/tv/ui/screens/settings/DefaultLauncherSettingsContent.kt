@@ -7,6 +7,7 @@ import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.verticalScroll
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.collectAsState
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
@@ -30,6 +31,9 @@ internal fun DefaultLauncherSettingsContent(initialFocusRequester: FocusRequeste
     val selfSetup = remember { LocalAdbSetupFactory.create(context) }
     var showSelfSetup by remember { mutableStateOf(false) }
     var setupRevision by remember { mutableStateOf(0) }
+    var capturingAppsKey by remember { mutableStateOf(false) }
+    val appsRowPosition by com.nuvio.tv.core.apps.AppsRowSettings.position(context).collectAsState()
+    val appsKeyChosen = remember(capturingAppsKey) { com.nuvio.tv.core.launcher.AppsKeyStore.chosen(context) }
     val secureGranted = remember(setupRevision) { AccessibilityWatchdog.canWriteSecureSettings(context) }
     var keepOverride by remember(setupRevision) { mutableStateOf(AccessibilityWatchdog.isOptedIn(context)) }
     Column(
@@ -74,6 +78,35 @@ internal fun DefaultLauncherSettingsContent(initialFocusRequester: FocusRequeste
                 subtitle = stringResource(R.string.settings_home_override_subtitle),
                 onClick = setup.openAccessibilitySettings
             )
+            SettingsActionRow(
+                title = stringResource(R.string.settings_apps_button_title),
+                subtitle = stringResource(R.string.settings_apps_button_subtitle),
+                value = if (appsKeyChosen > 0) com.nuvio.tv.core.launcher.AppsKeyStore.describe(appsKeyChosen) else stringResource(R.string.settings_apps_button_default),
+                onClick = { capturingAppsKey = true }
+            )
+            SettingsActionRow(
+                title = stringResource(R.string.settings_apps_row_title),
+                subtitle = stringResource(R.string.settings_apps_row_subtitle),
+                value = stringResource(
+                    when (appsRowPosition) {
+                        com.nuvio.tv.core.apps.AppsRowPosition.TOP -> R.string.apps_row_top
+                        com.nuvio.tv.core.apps.AppsRowPosition.UNDER_CONTINUE_WATCHING -> R.string.apps_row_under_cw
+                        com.nuvio.tv.core.apps.AppsRowPosition.BOTTOM -> R.string.apps_row_bottom
+                    }
+                ),
+                onClick = { com.nuvio.tv.core.apps.AppsRowSettings.set(context, appsRowPosition.next()) }
+            )
+            if (selfSetup == null) {
+                val support = com.nuvio.tv.core.launcher.PhoneSetupSupport.current()
+                SettingsNote(
+                    text = if (support == com.nuvio.tv.core.launcher.PhoneSetupSupport.ANDROID_TOO_OLD) {
+                        stringResource(R.string.self_setup_unavailable_old, android.os.Build.VERSION.RELEASE)
+                    } else {
+                        stringResource(R.string.self_setup_unavailable_build)
+                    },
+                    tone = SettingsNoteTone.Warning
+                )
+            }
             if (selfSetup != null) {
                 SettingsActionRow(
                     title = stringResource(R.string.settings_self_setup_title),
@@ -96,6 +129,7 @@ internal fun DefaultLauncherSettingsContent(initialFocusRequester: FocusRequeste
                 )
             }
         }
+        if (capturingAppsKey) AppsKeyCaptureDialog(onDone = { capturingAppsKey = false })
         if (showSelfSetup && selfSetup != null) {
             LocalAdbSetupDialog(
                 setup = selfSetup,
