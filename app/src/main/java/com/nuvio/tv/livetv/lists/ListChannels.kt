@@ -166,9 +166,28 @@ internal object ListChannels {
     @Volatile private var watchingChannelId: String? = null
 
     /** Set by Live TV: the list of channels changed. */
-    @Volatile var onChannelsChanged: () -> Unit = {}
+    @Volatile var channelsListener: () -> Unit = {}
     /** Set by Live TV: what is on now moved on. */
-    @Volatile var onProgrammesChanged: () -> Unit = {}
+    @Volatile var programmesListener: () -> Unit = {}
+
+    /** The list channels as Live TV channels, for the guide. */
+    private val _liveChannels = MutableStateFlow<List<LiveChannel>>(emptyList())
+    val liveChannelsFlow: StateFlow<List<LiveChannel>> = _liveChannels.asStateFlow()
+
+    /** Every list channel's scheduled programmes, by channel key, for the guide. */
+    private val _programmes = MutableStateFlow<Map<String, List<EpgProgram>>>(emptyMap())
+    val programmesFlow: StateFlow<Map<String, List<EpgProgram>>> = _programmes.asStateFlow()
+
+    private fun onChannelsChanged() {
+        _liveChannels.value = liveChannels()
+        channelsListener()
+    }
+
+    private fun onProgrammesChanged() {
+        _programmes.value = slotsById.entries.associate { (id, slots) -> listChannelGuideKey(id) to slots.map { it.toProgramme() } }
+        programmesListener()
+    }
+
 
     private fun deps(): ListChannelsEntryPoint =
         EntryPointAccessors.fromApplication(appContext!!, ListChannelsEntryPoint::class.java)
@@ -187,6 +206,8 @@ internal object ListChannels {
         slotsById = initialSlots
         store = saved
         _channels.value = list
+        onChannelsChanged()
+        onProgrammesChanged()
         tickJob = scope.launch {
             while (isActive) {
                 keepSchedulesCurrent()
@@ -209,6 +230,8 @@ internal object ListChannels {
         watchingChannelId = null
         synchronized(poolCache) { poolCache.clear() }
         _channels.value = emptyList()
+        _liveChannels.value = emptyList()
+        _programmes.value = emptyMap()
     }
 
     // region Channels

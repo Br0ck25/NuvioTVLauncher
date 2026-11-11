@@ -466,6 +466,17 @@ open class MainActivity : ComponentActivity() {
         // Live TV fork: start reading the saved channel list and guide as the app opens (before
         // any screen, even the profile picker), so Live TV is ready when you get to it.
         lifecycleScope.launch { runCatching { com.nuvio.tv.livetv.startup.LiveTvPreload.start(this@MainActivity) } }
+        // Live TV fork: the viewer's list channels (made from Home rows, folders and library lists), kept
+        // per profile; switching profile switches the channels.
+        lifecycleScope.launch {
+            profileManager.activeProfileId.collect { id ->
+                runCatching {
+                    kotlinx.coroutines.withContext(kotlinx.coroutines.Dispatchers.IO) {
+                        com.nuvio.tv.livetv.lists.ListChannels.attach(applicationContext, id)
+                    }
+                }
+            }
+        }
         // Live TV fork: Home drawn (see AppSettled): Sports' first scores round and the Calendar's
         // first look-ups wait for it, so they don't land while Home is still loading.
         runCatching { fullyDrawnReporter.addOnReportDrawnListener { com.nuvio.tv.livetv.startup.AppSettled.markDrawn() } }

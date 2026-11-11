@@ -657,6 +657,66 @@ class LiveTvPlaybackController @Inject constructor(
     /** The catch-up now playing has actually started (pictures moving), at least once. */
     @Volatile private var archiveStarted = false
 
+    // ---------------------------------------------------------------- list channels
+
+    private var listJob: kotlinx.coroutines.Job? = null
+    /** The link of the list channel being played, or null when something else is. */
+    @Volatile private var listChannelUrl: String? = null
+
+    /**
+     * Plays what is on now on a list channel (made from the viewer's lists): its link is resolved to a
+     * stream through their addons and debrid service, joined part-way through the programme, and when
+     * the programme ends the channel carries on with the next one ([listChannelEnded]).
+     */
+    private fun playListChannel(channel: LiveChannel) {
+        listJob?.cancel()
+        listChannelUrl = channel.url
+        listJob = scope.launch {
+            // Moving over channels in the guide plays each one for a moment: wait until one is settled on.
+            delay(400)
+            val playable = try {
+                com.nuvio.tv.livetv.lists.ListChannels.resolve(channel)
+            } catch (cancel: kotlinx.coroutines.CancellationException) {
+                throw cancel
+            } catch (error: Exception) {
+                com.nuvio.tv.livetv.record.LiveTvNotice.show(
+                    context.getString(com.nuvio.tv.R.string.live_tv_list_unavailable_reason, com.nuvio.tv.livetv.lists.ListChannels.lastFailure.orEmpty())
+                )
+                return@launch
+            }
+            if (listChannelUrl != channel.url) return@launch
+            if (playable.url.startsWith("torrent://")) {
+                com.nuvio.tv.livetv.record.LiveTvNotice.show("This title is only available as a peer-to-peer torrent, which list channels can't play yet")
+                return@launch
+            }
+            play(channel.copy(headers = playable.headers), overrideUrl = playable.url)
+            com.nuvio.tv.livetv.lists.ListChannels.setWatching(channel.url)
+            val p = _player ?: return@launch
+            // Join the programme where the schedule has got to, once the file is ready.
+            var waited = 0
+            while (waited < 20_000 && p.playbackState != Player.STATE_READY && listChannelUrl == channel.url) { delay(150); waited += 150 }
+            if (listChannelUrl != channel.url) return@launch
+            val duration = p.duration.takeIf { it != C.TIME_UNSET && it > 0 }
+            if (duration != null) com.nuvio.tv.livetv.lists.ListChannels.reconcileDuration(channel.url, duration)
+            val offset = com.nuvio.tv.livetv.lists.ListChannels.startOffsetMs(channel.url)
+            if (offset > 0) p.seekTo(offset)
+        }
+    }
+
+    /** The list channel's programme ended: on to the next one. */
+    private fun listChannelEnded() {
+        val url = listChannelUrl ?: return
+        val channel = currentChannel ?: return
+        com.nuvio.tv.livetv.lists.ListChannels.finishOpenedNow(url)
+        playListChannel(channel)
+    }
+
+    private fun stopListChannel() {
+        listJob?.cancel()
+        listChannelUrl?.let { com.nuvio.tv.livetv.lists.ListChannels.stopWatching(it) }
+        listChannelUrl = null
+    }
+
     fun play(
         channel: LiveChannel,
         overrideUrl: String? = null,
@@ -672,6 +732,10 @@ class LiveTvPlaybackController @Inject constructor(
         /** Catch-up: the real time the link asks for, to check against the stream's own clock (null: don't check). */
         catchupExpectWallMs: Long? = null
     ) {
+        // A list channel's link is not a stream: find what is on now, then play that (see playListChannel).
+        val isListChannel = channel.url.startsWith(com.nuvio.tv.livetv.lists.LIST_CHANNEL_SCHEME)
+        if (isListChannel && overrideUrl == null) { playListChannel(channel); return }
+        if (!isListChannel) stopListChannel()
         // Something chosen to play (back from the background through a launcher row, say):
         // that wins over picking up what was on before.
         resumeAfterBackground = null
@@ -1751,6 +1815,10 @@ class LiveTvPlaybackController @Inject constructor(
             if (playbackState == Player.STATE_ENDED && _recordingPlayback.value != null) {
                 // The recording you were watching from finished: on with the channel live.
                 recordingPlaybackEnded()
+                return
+            }
+            if (playbackState == Player.STATE_ENDED && listChannelUrl != null && currentChannel?.url == listChannelUrl) {
+                listChannelEnded()
                 return
             }
             if (playbackState == Player.STATE_ENDED && _state.value.catchupTitle == null) {

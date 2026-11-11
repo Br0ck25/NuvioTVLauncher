@@ -205,6 +205,7 @@ private sealed interface LiveDialog {
     data object SortChoice : LiveDialog
     data object HighlightChoice : LiveDialog
     data object CustomGroups : LiveDialog
+    data object ListChannels : LiveDialog
     data object ChannelRow : LiveDialog
     data object ConfirmRestore : LiveDialog
     data object PinCheck : LiveDialog
@@ -573,6 +574,7 @@ internal fun LiveTvSettingsContent(
                     SettingsActionRow("Hidden Channels", "Channels you hid. Select one to show it again.", "${user.hiddenChannels.size}", leadingIcon = Icons.Default.VisibilityOff, onClick = { dialog = LiveDialog.HiddenChannels })
                     SettingsActionRow("Hidden Groups", "Groups you hid. Select one to show it again.", "${user.hiddenGroups.size}", leadingIcon = Icons.Default.VisibilityOff, onClick = { dialog = LiveDialog.HiddenGroups })
                     SettingsActionRow("My Groups", "Groups you created. Select one to delete it.", "${user.customGroups.size}", onClick = { dialog = LiveDialog.CustomGroups })
+                    SettingsActionRow("List Channels", "Channels made from your Home rows, collection folders and library lists: they play one title after another, like live TV", "${com.nuvio.tv.livetv.lists.ListChannels.channels.value.size}", onClick = { dialog = LiveDialog.ListChannels })
                     SubHeading("Clear & Reset")
                     SettingsActionRow("Clear Favorites", "Removes every channel from Favorites", "${user.favorites.size}", onClick = {
                         confirm("Clear favorites?", "Every channel is taken out of Favorites.", "Clear") { viewModel.clearFavorites() }
@@ -2117,6 +2119,7 @@ internal fun LiveTvSettingsContent(
             onOptionSelected = { v -> update { it.copy(solidHighlight = v) }; close() },
             onDismiss = close
         )
+        LiveDialog.ListChannels -> ListChannelsDialog(onDismiss = close)
         LiveDialog.CustomGroups -> UnhideDialog(
             title = "My groups",
             entries = user.customGroups.map { it.id to "${it.name} (${it.channelKeys.size})" },
