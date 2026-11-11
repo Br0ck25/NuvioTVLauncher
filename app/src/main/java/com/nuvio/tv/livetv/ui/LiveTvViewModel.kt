@@ -186,7 +186,9 @@ class LiveTvViewModel @Inject constructor(
         }
     }.flowOn(Dispatchers.Default).stateIn(viewModelScope, SharingStarted.Eagerly, emptyMap())
 
-    private val hasSources: StateFlow<Boolean> = prefs.playlists.map { it.isNotEmpty() }
+    private val hasSources: StateFlow<Boolean> = combine(
+        prefs.playlists, com.nuvio.tv.livetv.lists.ListChannels.liveChannelsFlow
+    ) { playlists, lists -> playlists.isNotEmpty() || lists.isNotEmpty() }
         .stateIn(viewModelScope, SharingStarted.Eagerly, true)
 
     /**
