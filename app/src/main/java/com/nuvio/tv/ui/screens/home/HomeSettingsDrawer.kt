@@ -188,6 +188,7 @@ fun HomeSettingsDrawer(
                 onMoveLater = { appsViewModel.move(app, 1) },
                 onAppInfo = { appsViewModel.openAppInfo(app) },
             onRename = { appsViewModel.rename(app, it) },
+                iconChooser = appsViewModel.iconChooser(app),
                 onDismiss = { actionsFor = null },
                 onHome = onDismiss
             )

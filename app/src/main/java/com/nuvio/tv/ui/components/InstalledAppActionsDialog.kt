@@ -47,6 +47,8 @@ fun InstalledAppActionsDialog(
     onMoveLater: () -> Unit,
     onAppInfo: () -> Unit,
     onRename: (String?) -> Unit,
+    /** When given, a "Change icon" button opens the icon picker for this app. */
+    iconChooser: com.nuvio.tv.core.apps.AppIconChooser? = null,
     onDismiss: () -> Unit,
     /** Home was pressed: close this and whatever opened it. */
     onHome: () -> Unit = onDismiss
@@ -56,8 +58,12 @@ fun InstalledAppActionsDialog(
     // including its release, until a fresh press arrives, so letting go doesn't pick the first option.
     var ready by remember { mutableStateOf(false) }
     var renaming by remember { mutableStateOf(false) }
+    var choosingIcon by remember { mutableStateOf(false) }
     LaunchedEffect(Unit) { runCatching { first.requestFocus() } }
     if (renaming) RenameDialog(app = app, onSave = onRename, onDismiss = { renaming = false })
+    if (choosingIcon && iconChooser != null) {
+        AppIconChoiceDialog(app = app, chooser = iconChooser, onDismiss = { choosingIcon = false })
+    }
     Dialog(onDismissRequest = onDismiss) {
         Column(
             modifier = Modifier
@@ -95,6 +101,11 @@ fun InstalledAppActionsDialog(
             }
             Button(onClick = { renaming = true }, modifier = Modifier.fillMaxWidth()) {
                 Text(stringResource(R.string.app_action_rename))
+            }
+            if (iconChooser != null) {
+                Button(onClick = { choosingIcon = true }, modifier = Modifier.fillMaxWidth()) {
+                    Text(stringResource(R.string.app_action_change_icon))
+                }
             }
             Button(onClick = { onDismiss(); onAppInfo() }, modifier = Modifier.fillMaxWidth()) {
                 Text(stringResource(R.string.app_action_info))

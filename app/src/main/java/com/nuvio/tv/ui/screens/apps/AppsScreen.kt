@@ -89,6 +89,7 @@ fun AppsScreen(viewModel: InstalledAppsViewModel = hiltViewModel()) {
             onMoveLater = { viewModel.move(app, 1) },
             onAppInfo = { viewModel.openAppInfo(app) },
             onRename = { viewModel.rename(app, it) },
+            iconChooser = viewModel.iconChooser(app),
             onDismiss = { actionsFor = null }
         )
     }
