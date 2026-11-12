@@ -44,7 +44,7 @@ fun InstalledAppCard(
     modifier: Modifier = Modifier,
     width: Dp = 168.dp
 ) {
-    val image by produceState<Bitmap?>(initialValue = null, app.packageName) { value = loadImage(app) }
+    val image by produceState<Bitmap?>(initialValue = null, app.packageName, app.iconKey) { value = loadImage(app) }
     Column(modifier = Modifier.width(width)) {
         Card(
             onClick = onClick,

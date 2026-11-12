@@ -1,6 +1,7 @@
 package com.nuvio.tv.core.apps
 
 import android.content.BroadcastReceiver
+import android.content.ComponentName
 import android.content.Context
 import android.content.Intent
 import android.content.IntentFilter
@@ -9,6 +10,7 @@ import android.graphics.Bitmap
 import android.net.Uri
 import android.provider.Settings
 import android.util.LruCache
+import androidx.compose.ui.graphics.asAndroidBitmap
 import androidx.core.graphics.drawable.toBitmap
 import dagger.hilt.android.qualifiers.ApplicationContext
 import kotlinx.coroutines.Dispatchers
@@ -34,7 +36,11 @@ data class InstalledApp(
     /** True when the app has a TV (leanback) entry; those show their banner. */
     val isTvApp: Boolean,
     /** The name the app itself uses. */
-    val originalLabel: String = label
+    val originalLabel: String = label,
+    /** The activity the app opens from the launcher; icon packs are matched on it. */
+    val componentName: ComponentName? = null,
+    /** Changes whenever the icon pack or this app's chosen icon changes, so cards load the new image. */
+    val iconKey: String = ""
 )
 
 /**
@@ -44,7 +50,8 @@ data class InstalledApp(
  */
 @Singleton
 class InstalledAppsRepository @Inject constructor(
-    @ApplicationContext private val context: Context
+    @ApplicationContext private val context: Context,
+    private val iconPackManager: IconPackManager
 ) {
     private val pm: PackageManager get() = context.packageManager
 
@@ -56,12 +63,44 @@ class InstalledAppsRepository @Inject constructor(
     private val prefs = context.getSharedPreferences("launcher_apps", Context.MODE_PRIVATE)
     private val savedOrder = MutableStateFlow(AppOrder.decode(prefs.getString(KEY_ORDER, null)))
     private val savedLabels = MutableStateFlow(AppLabels.decode(prefs.getString(KEY_LABELS, null)))
+    // The icon pack used for every app (a package name), and icons picked for single apps.
+    private val savedPack = MutableStateFlow(prefs.getString(KEY_ICON_PACK, null)?.takeIf { it.isNotBlank() })
+    private val savedIcons = MutableStateFlow(AppLabels.decode(prefs.getString(KEY_ICONS, null)))
     val order: StateFlow<List<String>> = savedOrder.asStateFlow()
+    val selectedIconPack: StateFlow<String?> = savedPack.asStateFlow()
 
     /** Emits the current list at once, then again whenever the set of apps or their order changes. */
-    val apps: Flow<List<InstalledApp>> = combine(installed(), savedOrder, savedLabels) { list, order, labels ->
-        AppOrder.apply(list.map { app -> labels[app.packageName]?.let { app.copy(label = it) } ?: app }, order)
+    val apps: Flow<List<InstalledApp>> = combine(installed(), savedOrder, savedLabels, savedPack, savedIcons) { list, order, labels, pack, icons ->
+        AppOrder.apply(
+            list.map { app ->
+                val named = labels[app.packageName]?.let { app.copy(label = it) } ?: app
+                named.copy(iconKey = IconChoice.key(pack, icons[app.packageName]))
+            },
+            order
+        )
     }
+
+    /** Uses the icon pack [packageName] for every app; null goes back to each app's own icon. Per-app picks are kept. */
+    fun setIconPack(packageName: String?) {
+        val clean = packageName?.takeIf { it.isNotBlank() }
+        prefs.edit().apply { if (clean == null) remove(KEY_ICON_PACK) else putString(KEY_ICON_PACK, clean) }.apply()
+        images.evictAll()
+        savedPack.value = clean
+    }
+
+    /**
+     * Picks the icon for one app: [choice] is an icon from a pack ([IconChoice.fromPack]), [IconChoice.SYSTEM]
+     * (the app's own, whatever the pack says) or null (follow the icon pack again).
+     */
+    fun setAppIcon(app: InstalledApp, choice: String?) {
+        val updated = if (choice.isNullOrBlank()) savedIcons.value - app.packageName else savedIcons.value + (app.packageName to choice)
+        prefs.edit().putString(KEY_ICONS, AppLabels.encode(updated)).apply()
+        images.evictAll()
+        savedIcons.value = updated
+    }
+
+    /** The icon pack chosen for this app alone, or null when it follows the global pack. */
+    fun appIconChoice(app: InstalledApp): String? = savedIcons.value[app.packageName]
 
     /** Gives [app] the name [name] on the Apps page and the Home row; blank puts the app's own name back. */
     fun rename(app: InstalledApp, name: String?) {
@@ -79,7 +118,12 @@ class InstalledAppsRepository @Inject constructor(
 
     private fun installed(): Flow<List<InstalledApp>> = callbackFlow {
         val receiver = object : BroadcastReceiver() {
-            override fun onReceive(c: Context?, i: Intent?) { trySend(Unit) }
+            override fun onReceive(c: Context?, i: Intent?) {
+                // An icon pack that was updated or removed must be read again.
+                iconPackManager.invalidateCache(i?.data?.schemeSpecificPart)
+                images.evictAll()
+                trySend(Unit)
+            }
         }
         val filter = IntentFilter().apply {
             addAction(Intent.ACTION_PACKAGE_ADDED)
@@ -96,6 +140,8 @@ class InstalledAppsRepository @Inject constructor(
     private companion object {
         const val KEY_ORDER = "order"
         const val KEY_LABELS = "labels"
+        const val KEY_ICON_PACK = "icon_pack"
+        const val KEY_ICONS = "icons"
     }
 
     private fun query(): List<InstalledApp> {
@@ -112,16 +158,34 @@ class InstalledAppsRepository @Inject constructor(
                 InstalledApp(
                     packageName = ri.activityInfo.packageName,
                     label = ri.loadLabel(pm).toString(),
-                    isTvApp = isTv
+                    isTvApp = isTv,
+                    componentName = ComponentName(ri.activityInfo.packageName, ri.activityInfo.name)
                 )
             }
             .sortedBy { it.label.lowercase() }
     }
 
-    /** The app's banner (TV apps) or icon, loaded off the main thread and remembered. */
+    /** The app's banner (TV apps) or icon, from the icon pack if one applies, loaded off the main thread and remembered. */
     suspend fun image(app: InstalledApp): Bitmap? {
-        images.get(app.packageName)?.let { return it }
+        val cacheKey = app.packageName + "|" + app.iconKey
+        images.get(cacheKey)?.let { return it }
         return withContext(Dispatchers.IO) {
+            val choice = savedIcons.value[app.packageName]
+            val pack = savedPack.value
+            val fromPack = runCatching {
+                when {
+                    choice == IconChoice.SYSTEM -> null
+                    choice != null -> IconChoice.parse(choice)?.let { (packPackage, drawable) ->
+                        iconPackManager.loadSpecificIcon(packPackage, drawable)
+                    }
+                    pack != null -> iconPackManager.loadIconForApp(app.packageName, app.componentName, pack)
+                    else -> null
+                }?.asAndroidBitmap()
+            }.getOrNull()
+            if (fromPack != null) {
+                images.put(cacheKey, fromPack)
+                return@withContext fromPack
+            }
             runCatching {
                 val info = pm.getApplicationInfo(app.packageName, 0)
                 val drawable = (if (app.isTvApp) info.loadBanner(pm) else null) ?: info.loadIcon(pm)
@@ -129,7 +193,7 @@ class InstalledAppsRepository @Inject constructor(
                 val w = if (app.isTvApp) 320 else 144
                 val h = if (app.isTvApp) 180 else 144
                 drawable.toBitmap(w, h)
-            }.getOrNull()?.also { images.put(app.packageName, it) }
+            }.getOrNull()?.also { images.put(cacheKey, it) }
         }
     }
 
@@ -150,6 +214,25 @@ class InstalledAppsRepository @Inject constructor(
                 .addFlags(Intent.FLAG_ACTIVITY_NEW_TASK)
         )
     }.isSuccess
+}
+
+/** How an app's icon is chosen, kept apart from Android so it can be tested. */
+object IconChoice {
+    /** This app shows its own icon, whatever icon pack is selected. */
+    const val SYSTEM = "system"
+    private const val PREFIX = "iconpack:"
+
+    fun fromPack(packPackage: String, drawable: String) = "$PREFIX$packPackage:$drawable"
+
+    /** The icon pack and drawable of a pack choice; null for anything else. */
+    fun parse(choice: String?): Pair<String, String>? {
+        if (choice == null || !choice.startsWith(PREFIX)) return null
+        val parts = choice.removePrefix(PREFIX).split(':', limit = 2)
+        return if (parts.size == 2 && parts[0].isNotBlank() && parts[1].isNotBlank()) parts[0] to parts[1] else null
+    }
+
+    /** Changes whenever the pack or this app's own choice does. */
+    fun key(pack: String?, choice: String?) = "${pack.orEmpty()}|${choice.orEmpty()}"
 }
 
 /** The saved arrangement of apps, kept apart from Android so it can be tested. */

@@ -3608,4 +3608,21 @@
     <string name="stock_launcher_off_body">Nuvio Launcher takes over Home while the TV\'s own launcher stays on. With it off, Google TV can get stuck on a black screen when you press Home. Turn it back on.</string>
     <string name="stock_launcher_off_action">Turn the stock launcher back on</string>
     <string name="stock_launcher_off_open_settings">Press Enable on the next screen to turn it back on.</string>
+    <string name="appearance_icon_pack_title">Icon pack</string>
+    <string name="appearance_icon_pack_subtitle">Choose an icon pack for the apps on your Home screen and Apps page</string>
+    <string name="appearance_icon_pack_row_title">Icon pack</string>
+    <string name="appearance_icon_pack_row_subtitle">Use an Android TV or Projectivy icon pack for your apps</string>
+    <string name="appearance_icon_pack_system_default">System default</string>
+    <string name="appearance_icon_pack_system_default_subtitle">Use each app\'s own TV banner or icon</string>
+    <string name="appearance_icon_pack_dialog_title">Select icon pack</string>
+    <string name="appearance_icon_pack_dialog_subtitle">Choose an installed Android TV or Projectivy icon pack</string>
+    <string name="appearance_icon_pack_empty">No icon packs found on this device. Install an Android TV or Projectivy compatible icon pack to use it here.</string>
+    <string name="app_action_change_icon">Change icon</string>
+    <string name="app_menu_icon_default">Default (follows the icon pack)</string>
+    <string name="app_menu_icon_system">System icon (ignore the icon pack)</string>
+    <string name="app_menu_icon_packs">Icon packs</string>
+    <string name="app_menu_no_icon_packs">No icon packs installed on this device.</string>
+    <string name="app_menu_apply_pack_to_all">Use this pack for all apps</string>
+    <string name="app_menu_back">Back</string>
+    <string name="app_menu_cancel">Cancel</string>
 </resources>
