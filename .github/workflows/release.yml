@@ -157,9 +157,10 @@ jobs:
           VERSION: ${{ inputs.version }}
         run: |
           mkdir -p out
+          # Keep the plain names (app-full-universal-release.apk, ...): the Downloader link
+          # (releases/latest/download/app-full-universal-release.apk) and the in-app updater rely on them.
           for f in $(find app/build/outputs/apk/full/release -name "*.apk"); do
-            name=$(basename "$f" .apk)
-            cp "$f" "out/NuvioLauncher-$VERSION-${name#app-full-}.apk"
+            cp "$f" "out/$(basename "$f")"
           done
           ls -la out
 
