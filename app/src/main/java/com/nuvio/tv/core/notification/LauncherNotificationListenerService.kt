@@ -55,12 +55,19 @@ class LauncherNotificationListenerService : NotificationListenerService() {
             }.getOrDefault(false)
         }
 
+        /** Straight to this app's own toggle (Android 11+), otherwise the Notification access list. */
         fun openAccessSettings(context: Context) {
-            runCatching {
-                val intent = Intent(Settings.ACTION_NOTIFICATION_LISTENER_SETTINGS).apply {
-                    addFlags(Intent.FLAG_ACTIVITY_NEW_TASK)
-                }
-                context.startActivity(intent)
+            com.nuvio.tv.core.launcher.LauncherSetup.markAwaitingSettings(context)
+            val listener = android.content.ComponentName(context, LauncherNotificationListenerService::class.java)
+            val opened = android.os.Build.VERSION.SDK_INT >= 30 && runCatching {
+                context.startActivity(
+                    Intent(Settings.ACTION_NOTIFICATION_LISTENER_DETAIL_SETTINGS)
+                        .putExtra(Settings.EXTRA_NOTIFICATION_LISTENER_COMPONENT_NAME, listener.flattenToString())
+                        .addFlags(Intent.FLAG_ACTIVITY_NEW_TASK)
+                )
+            }.isSuccess
+            if (!opened) runCatching {
+                context.startActivity(Intent(Settings.ACTION_NOTIFICATION_LISTENER_SETTINGS).addFlags(Intent.FLAG_ACTIVITY_NEW_TASK))
             }
         }
     }
@@ -89,6 +96,10 @@ class LauncherNotificationListenerService : NotificationListenerService() {
         loadDismissedSignatures()
         Log.d(TAG, "Notification listener connected")
         refreshActiveNotifications()
+        // The user was sent to Settings to turn this on: bring the setup back in front of them.
+        if (com.nuvio.tv.core.launcher.LauncherSetup.consumeAwaitingSettings(this)) {
+            com.nuvio.tv.core.launcher.LauncherSetup.bringToFront(this)
+        }
     }
 
     override fun onListenerDisconnected() {

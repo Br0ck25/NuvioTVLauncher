@@ -11,6 +11,7 @@ import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
+import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.widthIn
 import androidx.compose.foundation.rememberScrollState
@@ -39,6 +40,8 @@ import androidx.tv.material3.MaterialTheme
 import androidx.tv.material3.OutlinedButton
 import androidx.tv.material3.Text
 import com.nuvio.tv.R
+import com.nuvio.tv.core.launcher.LauncherAccessibilityService
+import com.nuvio.tv.core.launcher.LauncherSetup
 import com.nuvio.tv.core.launcher.LocalAdbSetupFactory
 import com.nuvio.tv.core.notification.LauncherNotificationListenerService
 import com.nuvio.tv.ui.components.rememberLauncherSetupState
@@ -53,6 +56,16 @@ object LauncherSetupWizardPrefs {
     fun isDone(context: Context): Boolean =
         runCatching { context.getSharedPreferences(FILE, Context.MODE_PRIVATE).getBoolean(KEY_DONE, false) }.getOrDefault(false)
 
+    private const val KEY_STARTED = "wizard_started"
+
+    /** The first screen was passed once. Progress itself is read from the real system state, never saved. */
+    fun isStarted(context: Context): Boolean =
+        runCatching { context.getSharedPreferences(FILE, Context.MODE_PRIVATE).getBoolean(KEY_STARTED, false) }.getOrDefault(false)
+
+    fun markStarted(context: Context) {
+        runCatching { context.getSharedPreferences(FILE, Context.MODE_PRIVATE).edit().putBoolean(KEY_STARTED, true).apply() }
+    }
+
     fun markDone(context: Context) {
         runCatching { context.getSharedPreferences(FILE, Context.MODE_PRIVATE).edit().putBoolean(KEY_DONE, true).apply() }
     }
@@ -64,7 +77,20 @@ object LauncherSetupWizardPrefs {
  */
 @Composable
 fun LauncherSetupWizard(onFinished: () -> Unit) {
-    var step by remember { mutableIntStateOf(0) }
+    val context = LocalContext.current
+    // After a restart (or coming back from Settings) skip the welcome screen when setup is already under way:
+    // either it was started before, or some of the system state is already in place.
+    var step by remember {
+        mutableIntStateOf(
+            if (LauncherSetupWizardPrefs.isStarted(context) || LauncherSetup.homeAppSet(context) ||
+                LauncherAccessibilityService.isServiceEnabled(context) ||
+                com.nuvio.tv.core.notification.LauncherNotificationListenerService.isAccessGranted(context)
+            ) 1 else 0
+        )
+    }
+    val scroll = rememberScrollState()
+    // Always start at the top: a focused button below the fold used to scroll the title out of view.
+    LaunchedEffect(step) { scroll.scrollTo(0) }
     BackHandler { if (step > 0) step-- }
     Box(
         modifier = Modifier
@@ -76,11 +102,16 @@ fun LauncherSetupWizard(onFinished: () -> Unit) {
             modifier = Modifier
                 .widthIn(max = 760.dp)
                 .padding(horizontal = 48.dp, vertical = 32.dp)
-                .verticalScroll(rememberScrollState()),
+                .verticalScroll(scroll),
             verticalArrangement = Arrangement.spacedBy(16.dp)
         ) {
-            if (step == 0) WelcomeStep(onStart = { step = 1 }, onSkip = onFinished)
+            if (step == 0) WelcomeStep(
+                onStart = { LauncherSetupWizardPrefs.markStarted(context); step = 1 },
+                onSkip = onFinished
+            )
             else SetupStep(onDone = onFinished, onBack = { step = 0 })
+            // Room under the last button so its focus ring is not clipped by the screen edge.
+            androidx.compose.foundation.layout.Spacer(Modifier.height(32.dp))
         }
     }
 }
@@ -114,6 +145,8 @@ private fun SetupStep(onDone: () -> Unit, onBack: () -> Unit) {
         lifecycleOwner.lifecycle.addObserver(observer)
         onDispose { lifecycleOwner.lifecycle.removeObserver(observer) }
     }
+    // Notification access can change while a system screen is open: check again every second.
+    LaunchedEffect(Unit) { while (true) { kotlinx.coroutines.delay(1_000); revision++ } }
     val notificationsOn = remember(revision) { LauncherNotificationListenerService.isAccessGranted(context) }
     val homeOn = setup.isDefaultHome
     val overrideOn = setup.isAccessibilityActive
@@ -127,15 +160,41 @@ private fun SetupStep(onDone: () -> Unit, onBack: () -> Unit) {
         StatusLine(stringResource(R.string.wizard_status_home), homeOn)
         StatusLine(stringResource(R.string.wizard_status_override), overrideOn)
         StatusLine(stringResource(R.string.wizard_status_notifications), notificationsOn)
+        val mechanism = when {
+            setup.isDefaultHome && !overrideOn && com.nuvio.tv.core.launcher.LauncherSetup.isDefaultHome(context) -> R.string.wizard_works_native
+            overrideOn -> R.string.wizard_works_override
+            else -> null
+        }
+        mechanism?.let {
+            Text(stringResource(it), style = MaterialTheme.typography.bodyMedium, color = NuvioTheme.colors.TextPrimary)
+        }
     }
 
     Text(stringResource(R.string.wizard_manual_title), style = MaterialTheme.typography.titleMedium, color = NuvioTheme.colors.TextPrimary, modifier = Modifier.padding(top = 4.dp))
-    Button(onClick = setup.requestDefaultHome, modifier = Modifier.fillMaxWidth().focusRequester(first)) {
+    Button(
+        onClick = {
+            android.widget.Toast.makeText(context, R.string.wizard_role_hint, android.widget.Toast.LENGTH_LONG).show()
+            setup.requestDefaultHome()
+        },
+        modifier = Modifier.fillMaxWidth().focusRequester(first)
+    ) {
         Text(stringResource(R.string.wizard_make_home))
     }
-    OutlinedButton(onClick = setup.openAccessibilitySettings, modifier = Modifier.fillMaxWidth()) {
+    Text(stringResource(R.string.wizard_role_hint), style = MaterialTheme.typography.bodySmall, color = NuvioTheme.colors.TextSecondary)
+    OutlinedButton(
+        onClick = {
+            android.widget.Toast.makeText(context, R.string.wizard_accessibility_steps, android.widget.Toast.LENGTH_LONG).show()
+            setup.openAccessibilitySettings()
+        },
+        modifier = Modifier.fillMaxWidth()
+    ) {
         Text(stringResource(R.string.wizard_turn_on_override))
     }
+    Text(
+        stringResource(if (overrideOn) R.string.wizard_override_done else R.string.wizard_accessibility_explain),
+        style = MaterialTheme.typography.bodySmall,
+        color = NuvioTheme.colors.TextSecondary
+    )
     if (!overrideOn) {
         Text(stringResource(R.string.wizard_restricted_settings_hint), style = MaterialTheme.typography.bodySmall, color = NuvioTheme.colors.TextSecondary)
     }

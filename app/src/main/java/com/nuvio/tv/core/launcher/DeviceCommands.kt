@@ -11,13 +11,10 @@ enum class DeviceAction(val id: String) {
     /** Report which launcher the Home button opens right now. */
     CHECK_HOME("check-home"),
 
-    /** FLauncher's way: turn off the Google TV launcher (and its fallback) so only this launcher is left. */
-    DISABLE_STOCK("disable-stock"),
-
     /** Let this launcher read notifications, for the bell at the top right of Home. */
     ENABLE_NOTIFICATIONS("enable-notifications"),
 
-    /** Undo [DISABLE_STOCK]. */
+    /** Turn the stock launcher (and Google TV's setup service) back on, if something turned them off. */
     ENABLE_STOCK("enable-stock"),
 
     /** Point the Home button back at the launcher the TV came with. */
@@ -42,15 +39,18 @@ object DeviceCommands {
     fun allowNotificationListener(component: String) = "cmd notification allow_listener $component"
     val resolveHome = "cmd package resolve-activity $HOME_QUERY"
     val listHomes = "cmd package query-activities $HOME_QUERY"
-    // Only the launcher itself. Google TV's setup service (GOOGLE_TV_SETUP_FALLBACK) is left alone:
-    // turning it off took a TV's Wi-Fi connection down. Turning the launcher back on still re-enables both.
-    val disableStock = listOf(
-        "pm disable-user --user 0 $GOOGLE_TV_LAUNCHER"
-    )
-    val enableStock = listOf(
-        "pm enable $GOOGLE_TV_LAUNCHER",
-        "pm enable $GOOGLE_TV_SETUP_FALLBACK"
-    )
+    /** Stock launchers seen on Google TV / Android TV. Nuvio's takeover needs the stock one to stay enabled. */
+    val STOCK_LAUNCHERS = listOf(GOOGLE_TV_LAUNCHER, "com.google.android.tvlauncher", "com.google.android.leanbacklauncher")
+    val roleHolders = "cmd role get-role-holders --user 0 android.app.role.HOME"
+
+    /** The package `cmd role get-role-holders` names, or null for empty or error output. */
+    fun roleHolder(output: String): String? =
+        output.lineSequence().map { it.trim() }
+            .firstOrNull { it.isNotEmpty() && !it.startsWith("Error", true) && !it.startsWith("Exception", true) }
+            ?.substringBefore(':')?.trim()?.takeIf { ' ' !in it }
+
+    /** Turns the stock launchers (and Google TV's setup service) back on. Harmless if they already are. */
+    val enableStock = STOCK_LAUNCHERS.map { "pm enable $it" } + "pm enable $GOOGLE_TV_SETUP_FALLBACK"
 
     /**
      * `enabled_accessibility_services` with [service] added (kept if the list already has it), as one

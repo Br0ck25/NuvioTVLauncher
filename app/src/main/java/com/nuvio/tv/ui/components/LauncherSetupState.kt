@@ -38,7 +38,8 @@ internal fun rememberLauncherSetupState(): LauncherSetupState {
     val lifecycleOwner = LocalLifecycleOwner.current
     var capabilities by remember { mutableStateOf(LauncherCapabilities.detect(context)) }
     val serviceOperational by LauncherAccessibilityService.isOperational.collectAsStateWithLifecycle()
-    val isDefaultHome = capabilities.isDefaultHome
+    // "Home app" as the user sees it: this app holds the Home role, or the resolver already points here.
+    val isDefaultHome = capabilities.isDefaultHome || capabilities.homeRoleHeld
     val isAccessibilityEnabled = capabilities.accessibilityEnabled
     var showFallback by rememberSaveable { mutableStateOf(false) }
     var settingsUnavailable by rememberSaveable { mutableStateOf(false) }
@@ -56,9 +57,21 @@ internal fun rememberLauncherSetupState(): LauncherSetupState {
         LauncherSetup.recordRoleRequestResult(context)
         refresh()
         showFallback = capabilities.mechanism == HomeMechanism.UNAVAILABLE
+        // Google TV starts its own home screen when the role changes: put this setup back in front.
+        LauncherSetup.bringToFront(context)
     }
 
     LaunchedEffect(serviceOperational) { refresh() }
+
+    // Role, accessibility and notification-access changes have no callback we can listen to from an
+    // app, so look again every second while this screen is showing. The checklist follows within 1 s.
+    LaunchedEffect(Unit) {
+        while (true) {
+            kotlinx.coroutines.delay(1_000)
+            val latest = LauncherCapabilities.detect(context)
+            if (latest != capabilities) capabilities = latest
+        }
+    }
 
     DisposableEffect(lifecycleOwner, context) {
         refresh()

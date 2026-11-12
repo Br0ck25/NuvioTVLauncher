@@ -85,7 +85,7 @@ internal class PhonePairingSession(
         scope.launch {
             val result = guarded { setup.setUp(pairingPort, pairingCode, connectPort) }
             mutableState.value = result.fold(
-                onSuccess = { State.Done() },
+                onSuccess = { State.Done(completionMessage()) },
                 onFailure = { State.Failed(it.message ?: it.javaClass.simpleName) }
             )
         }
@@ -103,6 +103,23 @@ internal class PhonePairingSession(
             )
         }
         return true
+    }
+
+    /** What the phone page says after pairing and setup: what worked, and what is still left to do. */
+    private fun completionMessage(): String {
+        val home = LauncherSetup.homeAppSet(appContext)
+        val works = LauncherSetup.homeWorks(appContext)
+        val override = LauncherAccessibilityService.isServiceEnabled(appContext)
+        val notifications = com.nuvio.tv.core.notification.LauncherNotificationListenerService.isAccessGranted(appContext)
+        fun yn(b: Boolean) = if (b) "yes" else "no"
+        val left = buildList {
+            if (!home) add("press \"Make this the Home app\"")
+            if (!override) add("press \"Turn on Home button override\"")
+            if (!notifications) add("press \"Turn on notifications\"")
+        }
+        val next = if (left.isEmpty()) "Everything is set up. Press Home on the TV to try it." else "Next: " + left.joinToString(", ") + "."
+        return "Paired. Home app: ${yn(home)}. Home button override: ${yn(override)}. Notifications: ${yn(notifications)}. " +
+            (if (works) "The Home button opens this launcher. " else "") + next
     }
 
     /** Marks the session busy. A run that has been "working" for over a minute is treated as lost. */

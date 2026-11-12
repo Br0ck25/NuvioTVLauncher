@@ -16,6 +16,7 @@ import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.foundation.verticalScroll
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.DisposableEffect
+import androidx.compose.runtime.LaunchedEffect
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
@@ -64,6 +65,13 @@ internal fun LocalAdbSetupDialog(
     var pairingPort by remember { mutableStateOf("") }
     var pairingCode by remember { mutableStateOf("") }
     var connectPort by remember { mutableStateOf("") }
+    // When the phone has finished, show the result for a moment, then close and let the checklist refresh.
+    LaunchedEffect(sessionState) {
+        if (sessionState is PhonePairingSession.State.Done) {
+            kotlinx.coroutines.delay(2_500)
+            onFinished()
+        }
+    }
     val running = sessionState is PhonePairingSession.State.Working
     val finished = sessionState is PhonePairingSession.State.Done
     val error = (sessionState as? PhonePairingSession.State.Failed)?.message

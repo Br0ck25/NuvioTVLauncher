@@ -23,20 +23,19 @@ class LauncherSetupCommandsTest {
     }
 
     @Test
-    fun includesFLauncherDisableAndReenableCommands() {
-        assertTrue(all.any { c -> "pm disable-user --user 0 com.google.android.apps.tv.launcherx" in c })
-        // Turning it back on also re-enables Google TV's setup service, in case an older version turned it off.
-        listOf("com.google.android.apps.tv.launcherx", "com.google.android.tungsten.setupwraith").forEach {
-            assertTrue(all.any { c -> "pm enable $it" in c })
-        }
-        // Only the launcher is disabled: turning the setup service off took a TV's Wi-Fi down.
-        assertEquals(listOf("pm disable-user --user 0 com.google.android.apps.tv.launcherx"), DeviceCommands.disableStock)
+    fun neverOffersToDisableTheStockLauncher() {
+        // Disabling it made Android loop on Google TV's recovery screen.
+        assertTrue(all.none { "pm disable" in it })
+        assertTrue(all.any { "pm enable com.google.android.apps.tv.launcherx" in it })
+        assertTrue(all.any { "pm enable com.google.android.tungsten.setupwraith" in it })
     }
 
     @Test
-    fun stockLauncherSectionWarnsAboutTheYouTubeButton() {
-        val warning = LauncherSetupCommands.sections(component, null).mapNotNull { it.warning }.single()
-        assertTrue("YouTube" in warning)
+    fun parsesTheHomeRoleHolder() {
+        assertEquals("com.nuvio.tv.launcher", DeviceCommands.roleHolder("com.nuvio.tv.launcher\n"))
+        assertEquals("com.google.android.apps.tv.launcherx", DeviceCommands.roleHolder("com.google.android.apps.tv.launcherx"))
+        assertNull(DeviceCommands.roleHolder(""))
+        assertNull(DeviceCommands.roleHolder("Error: unknown"))
     }
 
     @Test
@@ -110,8 +109,8 @@ class LauncherSetupCommandsTest {
         assertTrue("T &lt;x&gt;" in html)
         assertTrue("echo &quot;&lt;b&gt;&quot; &amp; ok" in html)
         assertFalse("<b>\"" in html)
-        // The destructive-looking button asks first.
-        assertTrue(Regex("data-action=\"disable-stock\" data-confirm=").containsMatchIn(html))
+        // There is no button that turns the stock launcher off.
+        assertFalse("disable-stock" in html)
         assertFalse("%%" in html)
     }
 }

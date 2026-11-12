@@ -18,6 +18,7 @@ import kotlinx.coroutines.flow.asStateFlow
 
 class LauncherAccessibilityService : AccessibilityService() {
     private var delivery = HomeFallbackPolicy()
+    private var boundAtElapsed = 0L
     private val mainHandler = Handler(Looper.getMainLooper())
     private var recheckPending = false
     private val recheckHome = Runnable {
@@ -44,6 +45,7 @@ class LauncherAccessibilityService : AccessibilityService() {
     override fun onServiceConnected() {
         super.onServiceConnected()
         activeServiceRef = java.lang.ref.WeakReference(this)
+        boundAtElapsed = SystemClock.elapsedRealtime()
         delivery = HomeFallbackPolicy()
         try {
             val info = serviceInfo ?: AccessibilityServiceInfo()
@@ -54,6 +56,8 @@ class LauncherAccessibilityService : AccessibilityService() {
             LauncherSetup.observeNativeHome(this, LauncherSetup.isDefaultHome(this))
             operational.value = true
             openAfterBoot()
+            // The user was sent to Settings to turn this on: bring the setup back in front of them.
+            if (LauncherSetup.consumeAwaitingSettings(this)) LauncherSetup.bringToFront(this)
         } catch (e: Exception) {
             operational.value = false
             Log.e(TAG, "Error configuring AccessibilityServiceInfo", e)
@@ -127,12 +131,24 @@ class LauncherAccessibilityService : AccessibilityService() {
         // Runs for every window change in every app, on the main thread. When Nuvio is the native
         // HOME (the normal case) nothing below applies, so do one cheap resolver check and stop
         // before the full capability scan (several PackageManager/RoleManager binder calls).
+        if (HomeForegroundDelivery.isResumed) return
         val nativeHome = LauncherSetup.isDefaultHome(this)
         LauncherSetup.observeNativeHome(this, nativeHome)
-        if (nativeHome || !LauncherSetup.accessibilityFallbackAllowed(this) || HomeForegroundDelivery.isResumed) return
+        if (nativeHome || !LauncherSetup.accessibilityFallbackAllowed(this)) return
+        // Fast path: a known stock launcher's window. Start Nuvio straight away, with no further
+        // package-manager scans, so the takeover is not delayed by anything else.
+        if (pkg in KNOWN_STOCK_LAUNCHERS) {
+            val now = SystemClock.uptimeMillis()
+            if (delivery.acceptLauncherWindow(now)) {
+                launchHome(now)
+            } else if (delivery.shouldScheduleRecheck(now) && !recheckPending) {
+                scheduleHomeRecheck()
+            }
+            return
+        }
         val capabilities = LauncherCapabilities.detect(this)
         val component = ComponentName(pkg, className)
-        if (component in capabilities.selectedHomeActivities || pkg in KNOWN_STOCK_LAUNCHERS && isLauncherEntry(pkg, className)) {
+        if (component in capabilities.selectedHomeActivities) {
             // A launcher activity transition is only a last resort when firmware withholds HOME
             // keys. Dialogs, SystemUI and arbitrary windows in the launcher package are not HOME.
             val now = SystemClock.uptimeMillis()
@@ -197,6 +213,7 @@ class LauncherAccessibilityService : AccessibilityService() {
                 startActivity(intent)
             }
             delivery.onLaunch(SystemClock.uptimeMillis())
+            Log.i(TAG, "Takeover: started the launcher ${SystemClock.elapsedRealtime() - boundAtElapsed} ms after the service bound")
         } catch (e: Exception) {
             Log.e(TAG, "Failed to launch home activity", e)
         }
@@ -211,7 +228,7 @@ class LauncherAccessibilityService : AccessibilityService() {
             "com.google.android.leanbacklauncher"
         )
         private const val BOOT_WINDOW_MS = 5 * 60 * 1000L
-        private const val BOOT_OPEN_DELAY_MS = 4_000L
+        private const val BOOT_OPEN_DELAY_MS = 1_500L
         private val operational = MutableStateFlow(false)
         @Volatile
         private var activeServiceRef: java.lang.ref.WeakReference<LauncherAccessibilityService>? = null
@@ -234,10 +251,20 @@ class LauncherAccessibilityService : AccessibilityService() {
                 )
         }.getOrDefault(false)
 
+        /** Straight to this service's own page (Android 14+), otherwise the general Accessibility screen. */
         fun openAccessibilitySettings(context: Context) {
             // User-initiated opt-in only; this does not grant or enable Accessibility authorization.
             LauncherSetup.allowAccessibilityFallback(context)
-            runCatching {
+            LauncherSetup.markAwaitingSettings(context)
+            val service = ComponentName(context, LauncherAccessibilityService::class.java)
+            val opened = android.os.Build.VERSION.SDK_INT >= 34 && runCatching {
+                context.startActivity(
+                    Intent("android.settings.ACCESSIBILITY_DETAILS_SETTINGS")
+                        .putExtra(Intent.EXTRA_COMPONENT_NAME, service.flattenToString())
+                        .addFlags(Intent.FLAG_ACTIVITY_NEW_TASK)
+                )
+            }.isSuccess
+            if (!opened) runCatching {
                 context.startActivity(Intent(Settings.ACTION_ACCESSIBILITY_SETTINGS).addFlags(Intent.FLAG_ACTIVITY_NEW_TASK))
             }
         }

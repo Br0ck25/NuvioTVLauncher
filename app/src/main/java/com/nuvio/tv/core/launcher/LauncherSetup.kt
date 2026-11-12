@@ -17,6 +17,66 @@ internal object LauncherSetup {
             ?.activityInfo?.packageName == context.packageName
     }.getOrDefault(false)
 
+    /** The system's HOME role is held by this app (what `cmd role get-role-holders` reports). */
+    fun isHomeRoleHeld(context: Context): Boolean = Build.VERSION.SDK_INT >= Build.VERSION_CODES.Q && runCatching {
+        context.getSystemService(RoleManager::class.java)?.isRoleHeld(RoleManager.ROLE_HOME) == true
+    }.getOrDefault(false)
+
+    /**
+     * "Home app" as the user sees it: this app holds the Home role, or the resolver already points at
+     * it. Google TV can keep opening its own launcher even while we hold the role, so this alone does
+     * not mean the Home button works; see [homeWorks].
+     */
+    fun homeAppSet(context: Context): Boolean = isHomeRoleHeld(context) || isDefaultHome(context)
+
+    /** Home opens this launcher: dispatched to us natively, or taken over by the running accessibility override. */
+    fun homeWorks(context: Context): Boolean = isDefaultHome(context) ||
+        (LauncherAccessibilityService.isServiceEnabled(context) && LauncherAccessibilityService.isOperational.value)
+
+    // After a trip to a system settings screen (accessibility, notification access) the user has to find
+    // their way back. We note that we sent them, and bring the launcher to the front as soon as the
+    // thing they went to turn on is on.
+    private const val AWAITING_SETTINGS_AT = "awaiting_settings_at"
+
+    fun markAwaitingSettings(context: Context) {
+        preferences(context).edit().putLong(AWAITING_SETTINGS_AT, System.currentTimeMillis()).apply()
+    }
+
+    /** True once (and clears the note) if the user was recently sent to a settings screen. */
+    fun consumeAwaitingSettings(context: Context): Boolean {
+        val prefs = preferences(context)
+        val at = prefs.getLong(AWAITING_SETTINGS_AT, 0L)
+        if (at == 0L) return false
+        prefs.edit().remove(AWAITING_SETTINGS_AT).apply()
+        return System.currentTimeMillis() - at < 10 * 60 * 1000L
+    }
+
+    /** Brings the launcher's window back in front of whatever (Settings, the stock launcher) is showing. */
+    fun bringToFront(context: Context) {
+        runCatching {
+            context.startActivity(
+                Intent(context, com.nuvio.tv.MainActivity::class.java).addFlags(
+                    Intent.FLAG_ACTIVITY_NEW_TASK or Intent.FLAG_ACTIVITY_SINGLE_TOP or Intent.FLAG_ACTIVITY_REORDER_TO_FRONT
+                )
+            )
+        }
+    }
+
+    /** Stock launchers that are installed but turned off. Nuvio's takeover needs the stock launcher enabled. */
+    fun disabledStockLaunchers(context: Context): List<String> {
+        val pm = context.packageManager
+        return DeviceCommands.STOCK_LAUNCHERS.filter { pkg ->
+            runCatching {
+                @Suppress("DEPRECATION")
+                val info = pm.getApplicationInfo(pkg, PackageManager.MATCH_DISABLED_COMPONENTS)
+                !info.enabled || pm.getApplicationEnabledSetting(pkg).let {
+                    it == PackageManager.COMPONENT_ENABLED_STATE_DISABLED ||
+                        it == PackageManager.COMPONENT_ENABLED_STATE_DISABLED_USER
+                }
+            }.getOrDefault(false)
+        }
+    }
+
     fun handlesHome(context: Context): Boolean {
         val nativeHome = isDefaultHome(context)
         observeNativeHome(context, nativeHome)

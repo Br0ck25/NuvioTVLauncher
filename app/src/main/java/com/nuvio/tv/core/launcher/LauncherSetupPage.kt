@@ -20,10 +20,8 @@ internal object LauncherSetupPage {
         "Go back" to listOf(
             Button(DeviceAction.RESTORE_ORIGINAL, "Switch back to the original launcher", "Points the Home button at the launcher the TV came with.")
         ),
-        "Optional: turn off the stock launcher (Chromecast with Google TV)" to listOf(
-            Button(DeviceAction.DISABLE_STOCK, "Turn off the stock launcher", "FLauncher's method for TVs that keep returning to Google TV. The remote's YouTube button stops working until you turn it back on (or remap it with Button Mapper).",
-                confirm = "Turn off the Google TV launcher? You can turn it back on from this page."),
-            Button(DeviceAction.ENABLE_STOCK, "Turn the stock launcher back on", "Undoes the button above.")
+        "If the Home screen looks broken" to listOf(
+            Button(DeviceAction.ENABLE_STOCK, "Turn the stock launcher on", "Makes sure the TV's own launcher is enabled. This launcher's Home takeover needs it, and turning it off can leave the TV stuck on a black screen.")
         )
     )
 

@@ -85,12 +85,16 @@ internal class LoopbackAdbSetup(private val context: Context) : LocalAdbSetup {
         DeviceAction.MAKE_HOME -> {
             makeHome(manager)
             // The Home setting can take a moment to show up, so look again before saying it didn't take.
-            val took = (0 until 8).any { attempt ->
+            val held = (0 until 8).any { attempt ->
                 if (attempt > 0) Thread.sleep(500)
-                LauncherSetup.isDefaultHome(context)
+                LauncherSetup.homeAppSet(context)
             }
-            if (took) "Done. The Home button now opens this launcher."
-            else "The command ran, but this TV's own launcher is still the Home app (Google TV does that). Press \"Turn on Home button override\" so Home still opens this launcher, or \"Turn off the stock launcher\" to remove the other one."
+            when {
+                !held -> "The command ran, but Android did not make this launcher the Home app. Try \"Turn on Home button override\"."
+                LauncherSetup.isDefaultHome(context) -> "Done. This launcher is the Home app and the Home button opens it."
+                LauncherSetup.homeWorks(context) -> "Done. This launcher holds the Home role, and the Home button override takes over from the TV's own launcher."
+                else -> "This launcher now holds the Home role, but this TV still opens its own launcher first (Google TV does that). Press \"Turn on Home button override\" so the Home button opens this launcher."
+            }
         }
         DeviceAction.ENABLE_NOTIFICATIONS -> {
             allowNotifications(manager)
@@ -102,20 +106,21 @@ internal class LoopbackAdbSetup(private val context: Context) : LocalAdbSetup {
             "Home button override is on. It stays on after a restart."
         }
         DeviceAction.CHECK_HOME -> {
-            val pkg = DeviceCommands.resolvedHomePackage(shell(manager, DeviceCommands.resolveHome))
+            val holder = DeviceCommands.roleHolder(runCatching { shell(manager, DeviceCommands.roleHolders) }.getOrDefault(""))
+            val resolved = DeviceCommands.resolvedHomePackage(shell(manager, DeviceCommands.resolveHome))
+            val override = LauncherAccessibilityService.isServiceEnabled(context) && LauncherAccessibilityService.isOperational.value
+            val me = context.packageName
             when {
-                pkg == null -> "Could not tell which launcher is Home."
-                pkg == context.packageName -> "This launcher is the Home app."
-                else -> "The Home button opens $pkg, not this launcher."
+                holder == me && resolved == me -> "This launcher is the Home app: the system opens it when you press Home."
+                holder == me && override -> "This launcher holds the Home role and the Home button override is on, so Home opens this launcher (the TV starts its own launcher first, and this launcher takes over from it)."
+                holder == me -> "This launcher holds the Home role, but the TV still opens ${resolved ?: "its own launcher"} first. Turn on the Home button override."
+                override -> "The Home button override is on, so Home opens this launcher. The Home role belongs to ${holder ?: "another launcher"}."
+                else -> "The Home button opens ${resolved ?: holder ?: "another launcher"}, not this launcher."
             }
-        }
-        DeviceAction.DISABLE_STOCK -> {
-            DeviceCommands.disableStock.forEach { shell(manager, it) }
-            "Stock launcher turned off. Turn it back on from here if anything misbehaves."
         }
         DeviceAction.ENABLE_STOCK -> {
             DeviceCommands.enableStock.forEach { shell(manager, it) }
-            "Stock launcher turned back on."
+            "The TV's own launcher is on."
         }
         DeviceAction.RESTORE_ORIGINAL -> {
             val other = DeviceCommands.otherHomeComponent(shell(manager, DeviceCommands.listHomes), context.packageName)

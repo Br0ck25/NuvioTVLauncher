@@ -40,12 +40,11 @@ object LauncherSetupCommands {
                 )
             ),
             SetupSection(
-                title = "Optional: turn off the stock launcher (Chromecast with Google TV)",
-                intro = "Only if the TV keeps going back to its own launcher. This is FLauncher's method, and it is reversible.",
-                warning = "On Chromecast with Google TV (and maybe other models) the remote's YouTube button stops working while the stock launcher is disabled. A button-remapping app such as Button Mapper (flar2.homebutton) can map it again. Only use this if the Home button override does not work: one TV lost its Wi-Fi connection after it, and the re-enable command below fixes that.",
+                title = "If the Home screen looks broken",
+                intro = "This app's Home takeover needs the TV's own launcher to stay enabled. Do not turn the stock launcher off: on a Chromecast with Google TV that made Android loop on a recovery screen.",
                 commands = listOf(
-                    SetupCommand("Disable the stock launcher", "${DeviceCommands.GOOGLE_TV_LAUNCHER} is the default launcher.", adbAll(DeviceCommands.disableStock)),
-                    SetupCommand("Re-enable them", "Undoes the step above.", adbAll(DeviceCommands.enableStock))
+                    SetupCommand("Make sure the stock launcher is on", "Harmless if it already is.", adbAll(DeviceCommands.enableStock)),
+                    SetupCommand("Check who holds the Home role", "", adb(DeviceCommands.roleHolders))
                 )
             )
         )

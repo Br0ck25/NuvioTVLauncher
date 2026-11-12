@@ -530,7 +530,9 @@
     <string name="apps_home_override_pending">Home override authorized — inactive</string>
     <string name="self_setup_close">Close</string>
     <string name="self_setup_connect_port">Connection port (optional)</string>
-    <string name="self_setup_dialog_steps">1. Open Settings → System → About and press Build 7 times.\n2. In Developer options, turn on Wireless debugging.\n3. Choose "Pair device with pairing code". Its port and code only last while that popup is open, so don\'t close it.\n4. On a phone on the same Wi-Fi, open the address below and enter the port and code there. Nuvio keeps running in the background. If this TV was already paired once, leave the port and code empty.</string>
+    <string name="self_setup_dialog_steps">1. Settings → System → About: press OS Build 7 times.
+2. Settings → System → Developer options → Wireless debugging: switch it on, open it, then choose "Pair device with pairing code" and leave that popup open (its port and code only last while it is showing).
+3. On a phone on the same Wi-Fi, scan the code below or open its address, and enter the port and 6-digit code there. Already paired once? Leave them empty.</string>
     <string name="self_setup_dialog_title">Set up Home button</string>
     <string name="self_setup_failed">Setup failed: %1$s</string>
     <string name="self_setup_no">No</string>
@@ -3573,4 +3575,14 @@
     <string name="stream_resume_from_time">Resume from %1$s</string>
     <string name="stream_resume_from_percent">Resume from %1$d%%</string>
     <string name="wizard_restricted_settings_hint">If the switch is greyed out and says the setting is restricted: Android TV has no menu for that, so use "Set up from your phone" below (it allows it for you), or run the ADB command listed in the README.</string>
+    <string name="wizard_role_hint">Android will ask "Set Nuvio Launcher as your default home app?". It may have the current Google TV home preselected: choose Nuvio Launcher, then Set as default.</string>
+    <string name="wizard_accessibility_steps">On the next screen choose Nuvio Launcher, switch it on and press Allow. Then press Back.</string>
+    <string name="wizard_accessibility_explain">Android shows a warning here ("can collect all of the text you type"). That is Android\'s standard text for any app that listens for the Home and Apps buttons. Nuvio Launcher uses it only to open itself when you press Home; it does not read or store anything you type.</string>
+    <string name="wizard_override_done">Home button override is on. Press Back to continue.</string>
+    <string name="wizard_works_native">Home works: Android opens Nuvio Launcher when you press Home.</string>
+    <string name="wizard_works_override">Home works: Nuvio Launcher opens over the TV\'s own launcher when you press Home.</string>
+    <string name="stock_launcher_off_title">The TV\'s own launcher is turned off</string>
+    <string name="stock_launcher_off_body">Nuvio Launcher takes over Home while the TV\'s own launcher stays on. With it off, Google TV can get stuck on a black screen when you press Home. Turn it back on.</string>
+    <string name="stock_launcher_off_action">Turn the stock launcher back on</string>
+    <string name="stock_launcher_off_open_settings">Press Enable on the next screen to turn it back on.</string>
 </resources>

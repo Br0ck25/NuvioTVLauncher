@@ -81,6 +81,7 @@ import androidx.compose.runtime.setValue
 import androidx.compose.runtime.withFrameNanos
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import androidx.compose.ui.Alignment
+import androidx.compose.ui.zIndex
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.draw.drawWithCache
@@ -875,6 +876,10 @@ open class MainActivity : ComponentActivity() {
                     val surfaceContentReady = hasSeenAuthQrOnFirstLaunch != null &&
                         authState !is AuthState.Loading
 
+                    // Launcher: shown (on top, with a one-press fix) if the TV's own launcher has been turned off.
+                    com.nuvio.tv.ui.screens.setup.StockLauncherWarning(
+                        modifier = Modifier.align(Alignment.TopCenter).zIndex(100f)
+                    )
                     // Launcher: the first-run setup (Home app, Home button, notifications) comes before sign-in.
                     var showLauncherSetup by remember { mutableStateOf(!LauncherSetupWizardPrefs.isDone(this@MainActivity)) }
                     if (showLauncherSetup) {
