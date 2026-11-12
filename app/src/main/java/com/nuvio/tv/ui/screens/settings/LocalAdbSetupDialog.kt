@@ -77,10 +77,15 @@ internal fun LocalAdbSetupDialog(
     NuvioDialog(
         onDismiss = { if (!running) onDismiss() },
         title = stringResource(R.string.self_setup_dialog_title),
-        width = 640.dp,
+        width = 720.dp,
         contentPadding = 20.dp,
         contentSpacing = 12.dp
     ) {
+        Text(
+            text = stringResource(R.string.self_setup_dialog_steps),
+            style = MaterialTheme.typography.bodySmall,
+            color = NuvioTheme.colors.TextSecondary
+        )
         session.phoneUrl?.let { url ->
                 val qr = remember(url) { runCatching { com.nuvio.tv.core.qr.QrCodeGenerator.generate(url, 360) }.getOrNull() }
                 Row(horizontalArrangement = Arrangement.spacedBy(16.dp), verticalAlignment = Alignment.CenterVertically) {
@@ -88,7 +93,7 @@ internal fun LocalAdbSetupDialog(
                         Image(
                             bitmap = it.asImageBitmap(),
                             contentDescription = stringResource(R.string.self_setup_scan_phone),
-                            modifier = Modifier.size(150.dp).background(Color.White).padding(6.dp)
+                            modifier = Modifier.size(112.dp).background(Color.White).padding(4.dp)
                         )
                     }
                     Column(verticalArrangement = Arrangement.spacedBy(4.dp)) {
@@ -106,14 +111,9 @@ internal fun LocalAdbSetupDialog(
                 }
             }
         Column(
-            modifier = Modifier.heightIn(max = 300.dp).verticalScroll(rememberScrollState()),
+            modifier = Modifier.heightIn(max = 240.dp).verticalScroll(rememberScrollState()),
             verticalArrangement = Arrangement.spacedBy(10.dp)
         ) {
-            Text(
-                text = stringResource(R.string.self_setup_dialog_steps),
-                style = MaterialTheme.typography.bodySmall,
-                color = NuvioTheme.colors.TextSecondary
-            )
             Text(
                 text = stringResource(R.string.self_setup_not_found_hint),
                 style = MaterialTheme.typography.bodySmall,
