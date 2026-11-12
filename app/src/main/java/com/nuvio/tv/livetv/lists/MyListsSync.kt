@@ -16,7 +16,6 @@ import okhttp3.Request
 import org.json.JSONObject
 import java.net.URI
 import java.net.URLEncoder
-import java.util.concurrent.ConcurrentHashMap
 
 /** A channel as mylistsaddon.com lists it for a viewer. */
 internal data class SyncedChannelInfo(
@@ -30,7 +29,7 @@ internal data class SyncedChannelInfo(
 /** An exact episode named by its id: the show (an IMDb or TMDB id), the season and the episode. */
 internal data class ExactEpisode(val showId: String, val season: Int, val episode: Int)
 
-/** What changing the synced channels from [SyncPlan.current] to the ones the server lists comes to. */
+/** What changing the synced channels from the ones saved to the ones the server lists comes to. */
 internal data class SyncPlan(
     val add: List<ListChannel>,
     val update: List<ListChannel>,
@@ -41,20 +40,23 @@ internal data class SyncPlan(
     val isEmpty: Boolean get() = add.isEmpty() && update.isEmpty() && sourceChanged.isEmpty() && remove.isEmpty()
 }
 
+/** What asking for something with a stored tag gave: the answer, or that it has not changed, or nothing usable. */
+internal class Conditional(val body: String?, val etag: String?, val notModified: Boolean)
+
 /**
  * Channels made on mylistsaddon.com, shown in Live TV for a viewer who has the My Lists addon installed.
  *
- * The addon's own address says whose it is (`mylistsaddon.com/<target>/tv/manifest.json`), and the server hands the
- * channels of that target out without a login, so nothing has to be linked here. Only a personal target counts: the
- * shared default one (what everybody who installs the generic addon gets) is never synced.
+ * The addon's own address says whose it is (`mylistsaddon.com/<target>/manifest.json`, or the `/tv` variant), and the
+ * server hands that target's channels and their schedules out without a login, so nothing has to be linked here. Only a
+ * personal target counts: the shared default one (what everybody who installs the generic addon gets) is never synced.
  *
  * What is pure (reading addresses and answers, planning the change) is kept apart from the loop that does the
  * asking, so it can be tested.
  */
 internal object MyListsSync {
     const val ORIGIN = "https://mylistsaddon.com"
-    /** Most items of one lineup that are used. */
-    const val MAX_LINEUP_ITEMS = 300
+    /** Most items of one lineup that are read (only used when the server sent no schedule for the channel). */
+    const val MAX_LINEUP_ITEMS = 2_000
 
     /** Targets that belong to everybody, or are not viewers at all. */
     private val SHARED_TARGETS = setOf("nuvio-default", "default", "bp", "api")
@@ -62,7 +64,8 @@ internal object MyListsSync {
 
     /**
      * The viewer's own target in an installed addon's address, or null when it is another host, the shared default
-     * target, or not the TV addon (the address does not end in `/tv`).
+     * target, or not one of the viewer's own addons. Both `/<target>/manifest.json` and `/<target>/tv/manifest.json`
+     * (and the `/u/<id>` and `/i/<id>` forms) are the viewer's.
      */
     fun personalTarget(addonUrl: String): String? {
         val uri = runCatching { URI(addonUrl.trim()) }.getOrNull() ?: return null
@@ -70,8 +73,7 @@ internal object MyListsSync {
         if (host != "mylistsaddon.com" && host != "www.mylistsaddon.com") return null
         val segments = uri.path.orEmpty().split('/').filter { it.isNotBlank() }.toMutableList()
         if (segments.lastOrNull().equals("manifest.json", ignoreCase = true)) segments.removeAt(segments.lastIndex)
-        if (!segments.lastOrNull().equals("tv", ignoreCase = true)) return null
-        segments.removeAt(segments.lastIndex)
+        if (segments.lastOrNull().equals("tv", ignoreCase = true)) segments.removeAt(segments.lastIndex)
         val target = when {
             segments.size == 2 && (segments[0] == "u" || segments[0] == "i") -> segments[1]
             segments.size == 1 -> segments[0]
@@ -93,13 +95,24 @@ internal object MyListsSync {
             val id = o.optString("id").trim().ifBlank { return@mapNotNull null }
             val name = o.optString("name").trim().ifBlank { return@mapNotNull null }
             val catalog = o.optString("catalogId").trim().ifBlank { return@mapNotNull null }
-            val logo = o.optString("logoUrl").ifBlank { o.optString("posterUrl") }.ifBlank { o.optString("poster") }
+            // A channel has a logo only sometimes; its poster stands in.
+            val logo = o.optString("logoUrl").takeUnless { o.isNull("logoUrl") }.orEmpty()
+                .ifBlank { o.optString("posterUrl") }.ifBlank { o.optString("poster") }
             SyncedChannelInfo(id, name, catalog, absolute(logo), o.optInt("playOrder", i + 1))
         }.distinctBy { it.id }
     }.getOrDefault(emptyList())
 
+    /** What the server says it offers in a sync answer; null when it does not say (an older server). */
+    fun parseFeatures(json: String): Set<String>? = runCatching {
+        val array = JSONObject(json).optJSONArray("features") ?: return@runCatching null
+        (0 until array.length()).map { array.getString(it) }.toSet()
+    }.getOrNull()
+
+    /** Whether a server that listed [features] has the batch schedule route. Unknown (an older server) is tried. */
+    fun serverSupportsSchedules(features: Set<String>?): Boolean = features == null || "schedules" in features
+
     private fun absolute(url: String): String? = when {
-        url.isBlank() -> null
+        url.isBlank() || url == "null" -> null
         url.startsWith("http://") || url.startsWith("https://") -> url
         url.startsWith("/") -> ORIGIN + url
         else -> "$ORIGIN/$url"
@@ -152,46 +165,99 @@ internal object MyListsSync {
         return SyncPlan(add = add, update = changed, sourceChanged = moved, remove = have.keys.filter { it !in want })
     }
 
-    /** Asks for a channel's lineup. Null when the server could not be reached or had nothing for either catalog type. */
-    suspend fun fetchLineup(client: OkHttpClient, source: SyncedSource): Pair<List<ListItem>, Int>? = withContext(Dispatchers.IO) {
+    /** The address of the batch schedule for [channelIds] (the server's own ids, not the prefixed ones). */
+    fun schedulesUrl(origin: String, target: String, channelIds: List<String>): String {
+        val encodedTarget = URLEncoder.encode(target, "UTF-8").replace("+", "%20")
+        val ids = channelIds.joinToString(",") { URLEncoder.encode(it, "UTF-8").replace(",", "%2C") }
+        return "$origin/api/nuvio-tv/schedules/$encodedTarget?channels=$ids"
+    }
+
+    /** The programmes in one channel's slot array. An entry without a video id or a positive length is skipped. */
+    fun parseServerSlots(array: org.json.JSONArray): List<ListSlot> =
+        (0 until array.length()).mapNotNull { index ->
+            val item = array.optJSONObject(index) ?: return@mapNotNull null
+            val videoId = item.optString("videoId").takeIf(String::isNotBlank) ?: return@mapNotNull null
+            val start = item.optLong("startMs", -1L)
+            val end = item.optLong("endMs", -1L)
+            if (start < 0L || end <= start) return@mapNotNull null
+            ListSlot(
+                itemId = item.optString("itemId").ifBlank { videoId.substringBefore(':') },
+                itemType = item.optString("type").ifBlank { "series" },
+                videoId = videoId,
+                season = item.optInt("season", -1).takeIf { it >= 0 && !item.isNull("season") },
+                episode = item.optInt("episode", -1).takeIf { it >= 0 && !item.isNull("episode") },
+                title = item.optString("title"),
+                description = item.optString("description").takeIf { it.isNotBlank() && !item.isNull("description") },
+                image = item.optString("image").takeIf { it.isNotBlank() && !item.isNull("image") },
+                startMs = start,
+                endMs = end,
+            )
+        }
+
+    /** The batch answer as server channel id to programmes; a channel the server listed as missing, or with none usable, is left out. */
+    fun parseServerSchedules(json: String, channelIds: List<String>): Map<String, List<ListSlot>> = runCatching {
+        val root = JSONObject(json)
+        if (!root.optBoolean("ok")) return@runCatching emptyMap()
+        val schedules = root.optJSONObject("schedules") ?: return@runCatching emptyMap()
+        val result = LinkedHashMap<String, List<ListSlot>>()
+        channelIds.forEach { id ->
+            val slots = schedules.optJSONArray(id)?.let(::parseServerSlots).orEmpty()
+            if (slots.isNotEmpty()) result[id] = slots
+        }
+        result
+    }.getOrDefault(emptyMap())
+
+    /** Asks for a channel's lineup (only needed when the server sent no schedule). Null when nothing usable came back. */
+    suspend fun fetchLineup(client: OkHttpClient, source: SyncedSource): List<ListItem>? = withContext(Dispatchers.IO) {
         for (type in listOf("series", "tv")) {
-            val body = get(client, "${source.baseUrl}/catalog/$type/${source.catalogId}.json") ?: continue
+            val body = get(client, "${source.baseUrl}/catalog/$type/${source.catalogId}.json").body ?: continue
             val items = parseLineup(body)
-            if (items.isNotEmpty()) return@withContext items to body.hashCode()
+            if (items.isNotEmpty()) return@withContext items
         }
         null
     }
 
-    internal fun get(client: OkHttpClient, url: String, etag: String? = null): String? = try {
+    /** One request. [etag] (from an earlier answer) lets the server say "not modified" instead of sending it all again. */
+    fun get(client: OkHttpClient, url: String, etag: String? = null): Conditional = try {
         val request = Request.Builder().url(url)
+            .header("Accept", "application/json")
             .header("Origin", ORIGIN).header("Referer", "$ORIGIN/")
             .cacheControl(CacheControl.FORCE_NETWORK)
             .apply { if (!etag.isNullOrBlank()) header("If-None-Match", etag) }
             .get().build()
         client.newCall(request).execute().use { response ->
-            if (response.isSuccessful) response.body?.string()?.takeIf { it.isNotBlank() } else null
+            when {
+                response.code == 304 -> Conditional(null, etag, notModified = true)
+                response.isSuccessful ->
+                    Conditional(response.body?.string()?.takeIf { it.isNotBlank() }, response.header("ETag"), notModified = false)
+                else -> Conditional(null, null, notModified = false)
+            }
         }
     } catch (error: java.io.IOException) {
         Log.d(TAG, "Could not reach $url: ${error.message}")
-        null
+        Conditional(null, null, notModified = false)
     }
 
     internal const val TAG = "MyListsSync"
 }
 
 /**
- * Keeps the synced channels up to date while the app runs: asks the server every few minutes (and once when Live TV
- * starts), adds, renames and removes channels to match, and starts a channel's schedule again when its lineup was
- * edited. A change made on mylistsaddon.com shows up within one round.
+ * Keeps the synced channels up to date while the app runs: asks the server every few minutes, adds, renames and
+ * removes channels to match, and takes the server's schedules for them. A change made on mylistsaddon.com (a channel
+ * added, renamed or removed, or its lineup edited, which changes its schedule) shows up within one round; a round where
+ * nothing changed costs two small requests that the server answers "not modified".
  */
 internal object MyListsChannelSync {
     private const val INTERVAL_MS = 5L * 60 * 1000
-    private const val MAX_LINEUP_CHECKS = 20
     private const val PREFS = "mylists_channel_sync"
     private const val KEY_LIVE_TV_SHOWN = "live_tv_shown"
 
     private var job: Job? = null
-    private val lineupPrints = ConcurrentHashMap<String, Int>()
+    /** The tag of the last sync and schedule answers, per target. In memory: a restart downloads each once. */
+    private val syncTags = java.util.concurrent.ConcurrentHashMap<String, String>()
+    private val scheduleTags = java.util.concurrent.ConcurrentHashMap<String, String>()
+    private val lastChannels = java.util.concurrent.ConcurrentHashMap<String, List<SyncedChannelInfo>>()
+    private val lastFeatures = java.util.concurrent.ConcurrentHashMap<String, Set<String>>()
 
     fun start(scope: CoroutineScope) {
         if (job?.isActive == true) return
@@ -209,7 +275,6 @@ internal object MyListsChannelSync {
     fun stop() {
         job?.cancel()
         job = null
-        lineupPrints.clear()
     }
 
     private suspend fun syncOnce() {
@@ -224,24 +289,40 @@ internal object MyListsChannelSync {
         }
         val (addon, target) = mine
         val client = entry.okHttpClient()
-        val url = "${MyListsSync.ORIGIN}/api/nuvio-tv/sync/" + URLEncoder.encode(target, "UTF-8").replace("+", "%20")
-        val body = withContext(Dispatchers.IO) { MyListsSync.get(client, url) } ?: return
-        val infos = MyListsSync.parseChannels(body)
+
+        val encodedTarget = URLEncoder.encode(target, "UTF-8").replace("+", "%20")
+        val answer = withContext(Dispatchers.IO) {
+            MyListsSync.get(client, "${MyListsSync.ORIGIN}/api/nuvio-tv/sync/$encodedTarget", syncTags[target])
+        }
+        val infos = when {
+            answer.notModified -> lastChannels[target].orEmpty()
+            answer.body != null -> {
+                answer.etag?.let { syncTags[target] = it } ?: syncTags.remove(target)
+                MyListsSync.parseFeatures(answer.body)?.let { lastFeatures[target] = it } ?: lastFeatures.remove(target)
+                MyListsSync.parseChannels(answer.body).also { lastChannels[target] = it }
+            }
+            else -> return // not reachable: keep what is there
+        }
         if (infos.isEmpty()) {
             ListChannels.applySynced(emptyList())
             return
         }
         showLiveTvOnce(entry, context)
         val channels = MyListsSync.toChannels(infos, MyListsSync.addonBase(addon.baseUrl))
-        ListChannels.applySynced(channels)
 
-        // A lineup edited on the server: that channel's schedule is built again from the new one.
-        for (channel in channels.take(MAX_LINEUP_CHECKS)) {
-            val source = channel.synced ?: continue
-            val (_, print) = MyListsSync.fetchLineup(client, source) ?: continue
-            val before = lineupPrints.put(channel.id, print)
-            if (before != null && before != print) ListChannels.rebuildSchedule(channel.id)
+        // The server's own schedules, so every device shows the same programme with the real running times. Asked
+        // before the channels are applied, so a new channel never gets a plan built here first. Null: nothing new.
+        var schedules: Map<String, List<ListSlot>>? = null
+        if (MyListsSync.serverSupportsSchedules(lastFeatures[target])) {
+            val url = MyListsSync.schedulesUrl(MyListsSync.ORIGIN, target, infos.map { it.id })
+            val asked = withContext(Dispatchers.IO) { MyListsSync.get(client, url, scheduleTags[target]) }
+            if (!asked.notModified && asked.body != null) {
+                asked.etag?.let { scheduleTags[target] = it } ?: scheduleTags.remove(target)
+                schedules = MyListsSync.parseServerSchedules(asked.body, infos.map { it.id })
+                    .mapKeys { MY_LISTS_CHANNEL_ID_PREFIX + it.key }
+            }
         }
+        ListChannels.applySynced(channels, schedules)
     }
 
     /**

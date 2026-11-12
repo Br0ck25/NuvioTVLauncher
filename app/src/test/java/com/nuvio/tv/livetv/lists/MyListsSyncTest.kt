@@ -12,6 +12,9 @@ class MyListsSyncTest {
     fun `a personal target is read from the installed addon's address`() {
         assertEquals("abc123", MyListsSync.personalTarget("https://mylistsaddon.com/abc123/tv/manifest.json"))
         assertEquals("abc123", MyListsSync.personalTarget("https://mylistsaddon.com/abc123/tv"))
+        // The plain addon (what a viewer installs from the site) has no /tv, and is just as much theirs.
+        assertEquals("abc123", MyListsSync.personalTarget("https://mylistsaddon.com/abc123/manifest.json"))
+        assertEquals("xyz", MyListsSync.personalTarget("https://mylistsaddon.com/u/xyz/manifest.json"))
         assertEquals("xyz", MyListsSync.personalTarget("https://mylistsaddon.com/u/xyz/tv/manifest.json"))
         assertEquals("xyz", MyListsSync.personalTarget("https://www.mylistsaddon.com/i/xyz/tv/"))
     }
@@ -22,7 +25,8 @@ class MyListsSyncTest {
         assertNull(MyListsSync.personalTarget("https://mylistsaddon.com/default/tv"))
         assertNull(MyListsSync.personalTarget("https://example.com/abc123/tv/manifest.json"))
         assertNull(MyListsSync.personalTarget("https://mylistsaddon.com/abc123/collections/manifest.json"))
-        assertNull(MyListsSync.personalTarget("https://mylistsaddon.com/abc123/manifest.json"))
+        assertNull(MyListsSync.personalTarget("https://mylistsaddon.com/nuvio-default/manifest.json"))
+        assertNull(MyListsSync.personalTarget("https://mylistsaddon.com/manifest.json"))
         assertNull(MyListsSync.personalTarget("https://mylistsaddon.com/tv/manifest.json"))
         assertNull(MyListsSync.personalTarget("not a url"))
     }
@@ -42,14 +46,16 @@ class MyListsSyncTest {
               {"id":"","name":"No id","catalogId":"x"},
               {"id":"ch_3","name":"","catalogId":"x"},
               {"id":"ch_4","name":"No catalog"},
+              {"id":"ch_5","name":"Null logo","logoUrl":null,"posterUrl":"https://img.example/q.png","catalogId":"channel_5","playOrder":3},
               {"id":"ch_1","name":"Duplicate","catalogId":"channel_1"}
             ]}
         """.trimIndent()
         val channels = MyListsSync.parseChannels(json)
-        assertEquals(listOf("ch_1", "ch_2"), channels.map { it.id })
+        assertEquals(listOf("ch_1", "ch_2", "ch_5"), channels.map { it.id })
+        assertEquals("https://img.example/q.png", channels[2].logoUrl)
         assertEquals("https://mylistsaddon.com/api/channel-logo?netId=2&v=7", channels[0].logoUrl)
         assertEquals("https://img.example/p.png", channels[1].logoUrl)
-        assertEquals(listOf(2, 1), channels.map { it.order })
+        assertEquals(listOf(2, 1, 3), channels.map { it.order })
     }
 
     @Test
@@ -73,6 +79,54 @@ class MyListsSyncTest {
         assertEquals("t1", items[0].poster)
         assertNull(items[0].description)
         assertEquals("Walt cooks.", items[1].description)
+    }
+
+    @Test
+    fun `what the server offers is read, and an older server that says nothing is still asked for schedules`() {
+        assertEquals(setOf("etag", "schedule", "schedules"), MyListsSync.parseFeatures("""{"ok":true,"features":["etag","schedule","schedules"]}"""))
+        assertNull(MyListsSync.parseFeatures("""{"ok":true}"""))
+        assertTrue(MyListsSync.serverSupportsSchedules(null))
+        assertTrue(MyListsSync.serverSupportsSchedules(setOf("etag", "schedules")))
+        assertFalse(MyListsSync.serverSupportsSchedules(setOf("etag")))
+    }
+
+    @Test
+    fun `the schedule address carries the target and every channel id`() {
+        assertEquals(
+            "https://mylistsaddon.com/api/nuvio-tv/schedules/abc123?channels=ch_a,ch_b",
+            MyListsSync.schedulesUrl(MyListsSync.ORIGIN, "abc123", listOf("ch_a", "ch_b"))
+        )
+        assertEquals("https://x/api/nuvio-tv/schedules/a%20b?channels=c%2Cd", MyListsSync.schedulesUrl("https://x", "a b", listOf("c,d")))
+    }
+
+    @Test
+    fun `the server schedules are read as the programmes they name, and a channel with none is left out`() {
+        val json = """
+            {"ok":true,"versionHash":"h","missing":["ch_c"],"schedules":{
+              "ch_a":[
+                {"videoId":"tt0000001:1:10","itemId":"tt0000001","type":"series","season":1,"episode":10,"title":"Show - S1E10 Title","description":null,"image":"https://img/1.jpg","runtimeMin":45,"startMs":1000,"endMs":2701000},
+                {"videoId":"tt0000002:2:9","itemId":"tt0000002","type":"series","season":2,"episode":9,"title":"Other - S2E9","description":"About it","image":null,"runtimeMin":25,"startMs":2701000,"endMs":4201000},
+                {"videoId":"","title":"no video id","startMs":1,"endMs":2},
+                {"videoId":"tt3:1:1","title":"zero length","startMs":5,"endMs":5}
+              ],
+              "ch_b":[]
+            }}
+        """.trimIndent()
+        val result = MyListsSync.parseServerSchedules(json, listOf("ch_a", "ch_b", "ch_c"))
+        assertEquals(listOf("ch_a"), result.keys.toList())
+        val slots = result.getValue("ch_a")
+        assertEquals(2, slots.size)
+        assertEquals("tt0000001:1:10", slots[0].videoId)
+        assertEquals("tt0000001", slots[0].itemId)
+        assertEquals(1, slots[0].season)
+        assertEquals(10, slots[0].episode)
+        assertNull(slots[0].description)
+        assertEquals("https://img/1.jpg", slots[0].image)
+        assertEquals(1000L to 2701000L, slots[0].startMs to slots[0].endMs)
+        assertEquals("About it", slots[1].description)
+        assertNull(slots[1].image)
+        assertTrue(MyListsSync.parseServerSchedules("""{"ok":false,"error":"Channel not found."}""", listOf("ch_a")).isEmpty())
+        assertTrue(MyListsSync.parseServerSchedules("nope", listOf("ch_a")).isEmpty())
     }
 
     @Test

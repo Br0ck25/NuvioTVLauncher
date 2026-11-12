@@ -143,6 +143,8 @@ internal object ListChannels {
     )
     private val mutex = Mutex()
     private val channelLocks = ConcurrentHashMap<String, Mutex>()
+    /** Synced channels whose schedule is the My Lists server's, which every device shows alike: this device never reshapes it. */
+    private val serverScheduled: MutableSet<String> = ConcurrentHashMap.newKeySet()
     private val _channels = MutableStateFlow<List<ListChannel>>(emptyList())
     val channels: StateFlow<List<ListChannel>> = _channels.asStateFlow()
 
@@ -221,6 +223,7 @@ internal object ListChannels {
 
     fun detach() {
         MyListsChannelSync.stop()
+        serverScheduled.clear()
         tickJob?.cancel()
         tickJob = null
         store = null
@@ -276,38 +279,56 @@ internal object ListChannels {
     /**
      * Makes the synced channels the ones in [incoming] (every one the server lists now): new ones are added, renamed or
      * re-logoed ones updated, ones the server no longer lists removed. The viewer's own channels are not touched.
-     * Returns whether anything changed.
+     * [schedules] (the server's, by synced channel id) are taken at the same time, before any channel is planned
+     * here; null leaves the schedules as they are. Returns whether the channels changed.
      */
-    internal fun applySynced(incoming: List<ListChannel>): Boolean {
+    internal fun applySynced(incoming: List<ListChannel>, schedules: Map<String, List<ListSlot>>? = null): Boolean {
         val saved = store ?: return false
         val current = _channels.value
         val plan = MyListsSync.plan(current, incoming)
-        if (plan.isEmpty) return false
+        if (plan.isEmpty) {
+            schedules?.let(::adoptServerSchedules)
+            return false
+        }
         (plan.remove + plan.sourceChanged).forEach { resetSchedule(it, saved) }
         val list = current.filterNot { it.isSynced } + incoming.filter { it.isSynced }.sortedBy { it.synced?.order ?: 0 }
         saved.saveChannels(list)
         _channels.value = list
         onChannelsChanged()
+        schedules?.let(::adoptServerSchedules)
         scope.launch {
             val now = System.currentTimeMillis()
-            (plan.add + plan.update).forEach { runCatching { extend(it, now) } }
+            (plan.add + plan.update).filter { it.id !in serverScheduled }.forEach { runCatching { extend(it, now) } }
             onProgrammesChanged()
         }
         return true
     }
 
-    /** Throws [id]'s schedule away and builds it again (its lineup was edited). */
-    internal fun rebuildSchedule(id: String) {
+    /**
+     * Takes the My Lists server's schedules ([schedules]: synced channel id to its programmes) as the synced channels'
+     * schedules. A synced channel the server sent none for goes back to being planned on this device.
+     */
+    internal fun adoptServerSchedules(schedules: Map<String, List<ListSlot>>) {
         val saved = store ?: return
-        val channel = _channels.value.firstOrNull { it.id == id } ?: return
-        resetSchedule(id, saved)
-        scope.launch {
-            runCatching { extend(channel, System.currentTimeMillis()) }
+        val synced = _channels.value.filter { it.isSynced }.map { it.id }.toSet()
+        synced.forEach { id ->
+            val slots = schedules[id]
+            if (slots != null) {
+                serverScheduled += id
+                saved.saveSchedule(id, slots, saved.state(id))
+            } else {
+                serverScheduled -= id
+            }
+        }
+        val adopted = schedules.filterKeys { it in synced }
+        if (adopted.isNotEmpty()) {
+            slotsById = slotsById + adopted
             onProgrammesChanged()
         }
     }
 
     private fun resetSchedule(id: String, saved: ListChannelStore) {
+        serverScheduled -= id
         saved.delete(id)
         slotsById = slotsById - id
         opened.remove(id)
@@ -369,6 +390,7 @@ internal object ListChannels {
      */
     fun reconcileDuration(channelUrl: String, actualMs: Long) {
         val id = listChannelIdOf(channelUrl)
+        if (id in serverScheduled) return
         val opened0 = opened[id] ?: return
         if (actualMs < 5 * 60_000L) return
         val now = System.currentTimeMillis()
@@ -396,6 +418,7 @@ internal object ListChannels {
      */
     fun finishOpenedNow(channelUrl: String) {
         val id = listChannelIdOf(channelUrl)
+        if (id in serverScheduled) return
         val opened0 = opened[id] ?: return
         val now = System.currentTimeMillis()
         val delta = now - opened0.endMs
@@ -473,6 +496,9 @@ internal object ListChannels {
         val saved = store ?: return@withLock emptyList()
         var slots = (slotsById[channel.id] ?: saved.slots(channel.id)).filter { it.endMs > now - KEEP_PAST_MS }
         if (slots.isNotEmpty() && slots.last().endMs < now) slots = emptyList()
+        // The server's schedule, while it still runs: not carried on here. When it has run out (the server could not be
+        // reached) the channel is planned on this device from its lineup until the server answers again.
+        if (channel.id in serverScheduled && (slots.lastOrNull()?.endMs ?: 0L) > now) return@withLock slots
         if ((slots.lastOrNull()?.endMs ?: 0L) >= now + HORIZON_MS) return@withLock slots
 
         val items = pool(channel)
@@ -597,7 +623,7 @@ internal object ListChannels {
         if (cached != null && System.currentTimeMillis() - cached.first < POOL_TTL_MS) return cached.second
         // A channel made on mylistsaddon.com plays its lineup in the order the server gives, not shuffled.
         channel.synced?.let { source ->
-            val lineup = MyListsSync.fetchLineup(deps().okHttpClient(), source)?.first.orEmpty()
+            val lineup = MyListsSync.fetchLineup(deps().okHttpClient(), source).orEmpty()
             if (lineup.isNotEmpty()) synchronized(poolCache) { poolCache[channel.id] = System.currentTimeMillis() to lineup }
             return lineup
         }

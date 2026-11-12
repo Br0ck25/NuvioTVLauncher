@@ -31,7 +31,7 @@ class MyListsLineupFetchTest {
     @Test
     fun `a lineup is read in the server's order from the series catalog`() = runBlocking {
         server.enqueue(MockResponse().setBody(lineup))
-        val (items, _) = MyListsSync.fetchLineup(client, source())!!
+        val items = MyListsSync.fetchLineup(client, source())!!
         assertEquals(listOf("tt0903747:1:2", "tmdb:36768:2:9"), items.map { it.id })
         val request = server.takeRequest()
         assertEquals("/abc/tv/catalog/series/channel_1.json", request.path)
@@ -42,24 +42,44 @@ class MyListsLineupFetchTest {
     fun `the tv catalog is tried when the series one has nothing`() = runBlocking {
         server.enqueue(MockResponse().setResponseCode(404))
         server.enqueue(MockResponse().setBody(lineup))
-        val (items, _) = MyListsSync.fetchLineup(client, source())!!
+        val items = MyListsSync.fetchLineup(client, source())!!
         assertEquals(2, items.size)
         assertEquals("/abc/tv/catalog/series/channel_1.json", server.takeRequest().path)
         assertEquals("/abc/tv/catalog/tv/channel_1.json", server.takeRequest().path)
     }
 
     @Test
-    fun `a lineup the server cannot give is null, and a changed lineup has another fingerprint`() = runBlocking {
+    fun `a lineup the server cannot give is null`() = runBlocking {
         server.enqueue(MockResponse().setResponseCode(500))
         server.enqueue(MockResponse().setResponseCode(500))
         assertNull(MyListsSync.fetchLineup(client, source()))
+    }
 
-        server.enqueue(MockResponse().setBody(lineup))
-        val first = MyListsSync.fetchLineup(client, source())!!.second
-        server.enqueue(MockResponse().setBody(lineup.replace("S1E2", "S1E3")))
-        val second = MyListsSync.fetchLineup(client, source())!!.second
-        assertNotNull(first)
-        assert(first != second)
+    @Test
+    fun `a request with a stored tag gets not modified, and one without it gets the answer and its new tag`() {
+        val url = server.url("/api/nuvio-tv/sync/abc").toString()
+        server.enqueue(MockResponse().setBody("""{"ok":true}""").setHeader("ETag", "\"v1\""))
+        val first = MyListsSync.get(client, url)
+        assertEquals("""{"ok":true}""", first.body)
+        assertEquals("\"v1\"", first.etag)
+        assertEquals(false, first.notModified)
+        assertNull(server.takeRequest().getHeader("If-None-Match"))
+
+        server.enqueue(MockResponse().setResponseCode(304))
+        val second = MyListsSync.get(client, url, first.etag)
+        assertEquals(true, second.notModified)
+        assertNull(second.body)
+        assertEquals("\"v1\"", server.takeRequest().getHeader("If-None-Match"))
+    }
+
+    @Test
+    fun `a server that is down gives nothing usable, not an error`() {
+        server.enqueue(MockResponse().setResponseCode(404).setBody("""{"ok":false}"""))
+        val answer = MyListsSync.get(client, server.url("/x").toString())
+        assertNull(answer.body)
+        assertEquals(false, answer.notModified)
+        val unreachable = MyListsSync.get(client, "http://127.0.0.1:1/x")
+        assertNull(unreachable.body)
     }
 
     @Test
