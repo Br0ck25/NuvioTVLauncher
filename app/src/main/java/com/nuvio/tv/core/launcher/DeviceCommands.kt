@@ -42,9 +42,10 @@ object DeviceCommands {
     fun allowNotificationListener(component: String) = "cmd notification allow_listener $component"
     val resolveHome = "cmd package resolve-activity $HOME_QUERY"
     val listHomes = "cmd package query-activities $HOME_QUERY"
+    // Only the launcher itself. Google TV's setup service (GOOGLE_TV_SETUP_FALLBACK) is left alone:
+    // turning it off took a TV's Wi-Fi connection down. Turning the launcher back on still re-enables both.
     val disableStock = listOf(
-        "pm disable-user --user 0 $GOOGLE_TV_LAUNCHER",
-        "pm disable-user --user 0 $GOOGLE_TV_SETUP_FALLBACK"
+        "pm disable-user --user 0 $GOOGLE_TV_LAUNCHER"
     )
     val enableStock = listOf(
         "pm enable $GOOGLE_TV_LAUNCHER",

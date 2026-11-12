@@ -3572,5 +3572,5 @@
     <string name="autosync_label_synced">Auto synced</string>
     <string name="stream_resume_from_time">Resume from %1$s</string>
     <string name="stream_resume_from_percent">Resume from %1$d%%</string>
-    <string name="wizard_restricted_settings_hint">If the switch is greyed out or Android says the setting is restricted (Android 13 and newer, apps installed outside the Play Store): open Settings, Apps, Nuvio Launcher, tap the three dots, then Allow restricted settings, and try again.</string>
+    <string name="wizard_restricted_settings_hint">If the switch is greyed out and says the setting is restricted: Android TV has no menu for that, so use "Set up from your phone" below (it allows it for you), or run the ADB command listed in the README.</string>
 </resources>

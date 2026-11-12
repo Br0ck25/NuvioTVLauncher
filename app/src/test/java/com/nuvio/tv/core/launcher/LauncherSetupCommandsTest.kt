@@ -24,17 +24,13 @@ class LauncherSetupCommandsTest {
 
     @Test
     fun includesFLauncherDisableAndReenableCommands() {
+        assertTrue(all.any { c -> "pm disable-user --user 0 com.google.android.apps.tv.launcherx" in c })
+        // Turning it back on also re-enables Google TV's setup service, in case an older version turned it off.
         listOf("com.google.android.apps.tv.launcherx", "com.google.android.tungsten.setupwraith").forEach {
-            assertTrue(all.any { c -> "pm disable-user --user 0 $it" in c })
             assertTrue(all.any { c -> "pm enable $it" in c })
         }
-        assertEquals(
-            listOf(
-                "pm disable-user --user 0 com.google.android.apps.tv.launcherx",
-                "pm disable-user --user 0 com.google.android.tungsten.setupwraith"
-            ),
-            DeviceCommands.disableStock
-        )
+        // Only the launcher is disabled: turning the setup service off took a TV's Wi-Fi down.
+        assertEquals(listOf("pm disable-user --user 0 com.google.android.apps.tv.launcherx"), DeviceCommands.disableStock)
     }
 
     @Test

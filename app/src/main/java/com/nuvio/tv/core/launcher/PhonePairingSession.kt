@@ -11,6 +11,8 @@ import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.SupervisorJob
 import kotlinx.coroutines.cancel
+import kotlinx.coroutines.isActive
+import kotlinx.coroutines.withTimeout
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.asStateFlow
@@ -33,7 +35,8 @@ internal class PhonePairingSession(
     }
 
     private val appContext = context.applicationContext
-    private val scope = CoroutineScope(SupervisorJob() + Dispatchers.Default)
+    @Volatile private var scope = CoroutineScope(SupervisorJob() + Dispatchers.Default)
+    @Volatile private var workingSince = 0L
     private val gson = Gson()
     private val mutableState = MutableStateFlow<State>(State.Idle)
     private var server: Server? = null
@@ -48,6 +51,10 @@ internal class PhonePairingSession(
 
     fun startPhoneServer() {
         if (server != null) return
+        // A session that was stopped has a cancelled scope; without a new one nothing would ever run
+        // and the state would stay "Working" for good.
+        if (!scope.isActive) scope = CoroutineScope(SupervisorJob() + Dispatchers.Default)
+        mutableState.value = State.Idle
         val ip = DeviceIpAddress.get(appContext) ?: return
         val component = ComponentName(appContext, MainActivity::class.java).flattenToString()
         pageHtml = LauncherSetupPage.html(
@@ -74,12 +81,9 @@ internal class PhonePairingSession(
         if (pairing && (pairingPort == null || pairingPort !in 1..65535 || pairingCode == null || !CODE.matches(pairingCode))) {
             return false
         }
-        synchronized(this) {
-            if (mutableState.value is State.Working) return false
-            mutableState.value = State.Working
-        }
+        if (!begin()) return false
         scope.launch {
-            val result = setup.setUp(pairingPort, pairingCode, connectPort)
+            val result = guarded { setup.setUp(pairingPort, pairingCode, connectPort) }
             mutableState.value = result.fold(
                 onSuccess = { State.Done() },
                 onFailure = { State.Failed(it.message ?: it.javaClass.simpleName) }
@@ -90,12 +94,9 @@ internal class PhonePairingSession(
 
     /** Runs one button of the page on this TV. False when something is already running. */
     fun runAction(action: DeviceAction, connectPort: Int?): Boolean {
-        synchronized(this) {
-            if (mutableState.value is State.Working) return false
-            mutableState.value = State.Working
-        }
+        if (!begin()) return false
         scope.launch {
-            val result = setup.run(action, connectPort)
+            val result = guarded { setup.run(action, connectPort) }
             mutableState.value = result.fold(
                 onSuccess = { State.Done(it) },
                 onFailure = { State.Failed(it.message ?: it.javaClass.simpleName) }
@@ -103,6 +104,27 @@ internal class PhonePairingSession(
         }
         return true
     }
+
+    /** Marks the session busy. A run that has been "working" for over a minute is treated as lost. */
+    private fun begin(): Boolean = synchronized(this) {
+        val now = System.currentTimeMillis()
+        if (mutableState.value is State.Working && now - workingSince < STALE_MS) return false
+        workingSince = now
+        mutableState.value = State.Working
+        true
+    }
+
+    /** Never leaves the session stuck: a hung connection becomes a failure after a timeout. */
+    private suspend fun <T> guarded(block: suspend () -> Result<T>): Result<T> =
+        try {
+            withTimeout(RUN_TIMEOUT_MS) { block() }
+        } catch (e: kotlinx.coroutines.TimeoutCancellationException) {
+            Result.failure(IllegalStateException("The TV did not answer in time. Check that Wireless debugging is still on, then try again.", e))
+        } catch (e: kotlinx.coroutines.CancellationException) {
+            throw e
+        } catch (e: Throwable) {
+            Result.failure(e)
+        }
 
     fun stop() {
         runCatching { server?.stop() }
@@ -164,6 +186,8 @@ internal class PhonePairingSession(
     private companion object {
         const val START_PORT = 8091
         const val MAX_ATTEMPTS = 10
+        const val RUN_TIMEOUT_MS = 45_000L
+        const val STALE_MS = 60_000L
         val CODE = Regex("\\d{6}")
     }
 }

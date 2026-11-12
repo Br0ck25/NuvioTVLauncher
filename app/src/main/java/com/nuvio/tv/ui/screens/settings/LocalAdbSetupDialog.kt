@@ -81,16 +81,7 @@ internal fun LocalAdbSetupDialog(
         contentPadding = 20.dp,
         contentSpacing = 12.dp
     ) {
-        Column(
-            modifier = Modifier.heightIn(max = 420.dp).verticalScroll(rememberScrollState()),
-            verticalArrangement = Arrangement.spacedBy(10.dp)
-        ) {
-            Text(
-                text = stringResource(R.string.self_setup_dialog_steps),
-                style = MaterialTheme.typography.bodySmall,
-                color = NuvioTheme.colors.TextSecondary
-            )
-            session.phoneUrl?.let { url ->
+        session.phoneUrl?.let { url ->
                 val qr = remember(url) { runCatching { com.nuvio.tv.core.qr.QrCodeGenerator.generate(url, 360) }.getOrNull() }
                 Row(horizontalArrangement = Arrangement.spacedBy(16.dp), verticalAlignment = Alignment.CenterVertically) {
                     qr?.let {
@@ -114,6 +105,15 @@ internal fun LocalAdbSetupDialog(
                     }
                 }
             }
+        Column(
+            modifier = Modifier.heightIn(max = 300.dp).verticalScroll(rememberScrollState()),
+            verticalArrangement = Arrangement.spacedBy(10.dp)
+        ) {
+            Text(
+                text = stringResource(R.string.self_setup_dialog_steps),
+                style = MaterialTheme.typography.bodySmall,
+                color = NuvioTheme.colors.TextSecondary
+            )
             Text(
                 text = stringResource(R.string.self_setup_not_found_hint),
                 style = MaterialTheme.typography.bodySmall,
