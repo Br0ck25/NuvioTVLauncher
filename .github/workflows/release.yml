@@ -16,6 +16,11 @@ on:
         description: "What changed (shown in the update prompt)"
         required: false
         type: string
+      allow_different_key:
+        description: "Allow a signing key that is not the one 1.1.x used (users could not update in place; they would have to reinstall)"
+        required: false
+        type: boolean
+        default: false
       prerelease:
         description: "Mark as a pre-release (only the Beta update channel offers it)"
         required: false
@@ -37,7 +42,7 @@ jobs:
       - name: Check the version and the signing key
         env:
           VERSION: ${{ inputs.version }}
-          KEYSTORE: ${{ secrets.LAUNCHER_KEYSTORE_BASE64 }}
+          KEYSTORE: ${{ secrets.NUVIO_RELEASE_KEYSTORE_BASE64 || secrets.LAUNCHER_KEYSTORE_BASE64 }}
           GH_TOKEN: ${{ github.token }}
         run: |
           if ! [[ "$VERSION" =~ ^[0-9]+\.[0-9]+\.[0-9]+(-[0-9A-Za-z.]+)?$ ]]; then
@@ -127,11 +132,13 @@ jobs:
           echo "Keys set:"; sed -E 's/[[:space:]]*=.*//' local.properties | grep -v '^[[:space:]]*$' | sort -u
 
       - name: Signing
+        # Uses the NUVIO_RELEASE_* key (the one the 1.1.x releases were signed with) when it is set,
+        # otherwise the LAUNCHER_* key. The build is checked against 1.1.x's certificate below.
         env:
-          KEYSTORE: ${{ secrets.LAUNCHER_KEYSTORE_BASE64 }}
-          KEY_ALIAS: ${{ secrets.LAUNCHER_KEY_ALIAS }}
-          KEY_PASSWORD: ${{ secrets.LAUNCHER_KEY_PASSWORD }}
-          STORE_PASSWORD: ${{ secrets.LAUNCHER_STORE_PASSWORD }}
+          KEYSTORE: ${{ secrets.NUVIO_RELEASE_KEYSTORE_BASE64 || secrets.LAUNCHER_KEYSTORE_BASE64 }}
+          KEY_ALIAS: ${{ secrets.NUVIO_RELEASE_KEYSTORE_BASE64 && secrets.NUVIO_RELEASE_KEY_ALIAS || secrets.LAUNCHER_KEY_ALIAS }}
+          KEY_PASSWORD: ${{ secrets.NUVIO_RELEASE_KEYSTORE_BASE64 && secrets.NUVIO_RELEASE_KEY_PASSWORD || secrets.LAUNCHER_KEY_PASSWORD }}
+          STORE_PASSWORD: ${{ secrets.NUVIO_RELEASE_KEYSTORE_BASE64 && secrets.NUVIO_RELEASE_STORE_PASSWORD || secrets.LAUNCHER_STORE_PASSWORD }}
         run: |
           printf '%s' "$KEYSTORE" | base64 --decode > "$RUNNER_TEMP/release.jks"
           {
@@ -147,6 +154,26 @@ jobs:
           ./gradlew --console=plain :app:assembleFullRelease --stacktrace \
             -PlivetvBuildNumber=${{ github.run_number }} \
             -PlivetvVersionName=${{ inputs.version }}
+
+      # Users on 1.1.x can only update in place if this APK is signed with the same key.
+      - name: Check the signing certificate matches 1.1.x
+        env:
+          EXPECTED: 9a9d096552dcb8ee8a7e27d0632ef4888fbd6b6ec34774f9ec0cb5ccbd2138b5
+          ALLOW: ${{ inputs.allow_different_key }}
+        run: |
+          APKSIGNER=$(ls "$ANDROID_HOME"/build-tools/*/apksigner | sort -V | tail -1)
+          apk=$(find app/build/outputs/apk/full/release -name "*universal*.apk" | head -1)
+          got=$("$APKSIGNER" verify --print-certs "$apk" | sed -n 's/.*certificate SHA-256 digest: //p' | head -1)
+          echo "Signing certificate SHA-256: $got"
+          if [ "$got" != "$EXPECTED" ]; then
+            if [ "$ALLOW" = "true" ]; then
+              echo "::warning::Signed with a different key than 1.1.x: users cannot update in place."
+            else
+              echo "This APK is not signed with the key 1.1.x used, so those users could not update in place." >&2
+              echo "Add the original key as the NUVIO_RELEASE_* secrets, or re-run with 'allow_different_key' ticked." >&2
+              exit 1
+            fi
+          fi
 
       # The built-in VPN includes OpenVPN 2 (GPL): its corresponding source is published with each release.
       - name: Package OpenVPN 2 corresponding source

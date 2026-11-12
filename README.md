@@ -265,7 +265,7 @@ Turn any Home row, collection folder or library list into a scheduled Live TV ch
 3. Install it with a file manager or **Downloader** (by AFTVnews), allowing installs from unknown sources when asked.
 4. Open **Nuvio Launcher**. A short setup walks you through making it your Home screen (see [below](#-use-it-as-your-home-screen)).
 
-Requires **Android 7.0 or newer** (Fire OS 6 or later). It has its own app ID (`com.nuvio.launcher`), so it installs **alongside** the official Nuvio app and *Nuvio + IPTV*. Settings and sign-in are separate from those apps: sign in again the first time.
+Requires **Android 7.0 or newer** (Fire OS 6 or later). It has its own app ID (`com.nuvio.tv.launcher`), so it installs **alongside** the official Nuvio app and *Nuvio + IPTV*. If you already have Nuvio Launcher 1.1.x, this updates it in place (Settings → About, or install over it) and keeps your sign-in.
 
 **Updating:** updates appear **inside the app** (Settings → About) from this repository's releases.
 

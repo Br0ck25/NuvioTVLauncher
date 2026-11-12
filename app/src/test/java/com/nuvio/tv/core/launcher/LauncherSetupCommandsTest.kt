@@ -7,7 +7,7 @@ import org.junit.Assert.assertTrue
 import org.junit.Test
 
 class LauncherSetupCommandsTest {
-    private val component = "com.nuvio.launcher/com.nuvio.tv.MainActivity"
+    private val component = "com.nuvio.tv.launcher/com.nuvio.tv.MainActivity"
     private val all get() = LauncherSetupCommands.sections(component, "192.168.1.50").flatMap { it.commands }.map { it.command }
 
     @Test
@@ -60,7 +60,7 @@ class LauncherSetupCommandsTest {
 
     @Test
     fun accessibilityServiceIsAddedWithoutDroppingOthersOrDuplicating() {
-        val svc = "com.nuvio.launcher/com.nuvio.tv.core.launcher.LauncherAccessibilityService"
+        val svc = "com.nuvio.tv.launcher/com.nuvio.tv.core.launcher.LauncherAccessibilityService"
         assertEquals(svc, DeviceCommands.withAccessibilityService(null, svc))
         assertEquals(svc, DeviceCommands.withAccessibilityService("null", svc))
         assertEquals(svc, DeviceCommands.withAccessibilityService("  ", svc))
@@ -74,7 +74,7 @@ class LauncherSetupCommandsTest {
             priority=0 preferredOrder=0 match=0x108000 specificIndex=-1 isDefault=true
             ActivityInfo:
               name=com.nuvio.tv.MainActivity
-              packageName=com.nuvio.launcher
+              packageName=com.nuvio.tv.launcher
               enabled=true exported=true directBootAware=false
           Activity #1:
             priority=0 preferredOrder=0 match=0x108000 specificIndex=-1 isDefault=true
@@ -88,21 +88,21 @@ class LauncherSetupCommandsTest {
     fun findsTheOriginalLauncherToGoBackTo() {
         assertEquals(
             "com.google.android.apps.tv.launcherx/com.google.android.apps.tv.launcherx.home.HomeActivity",
-            DeviceCommands.otherHomeComponent(queryOutput, "com.nuvio.launcher")
+            DeviceCommands.otherHomeComponent(queryOutput, "com.nuvio.tv.launcher")
         )
     }
 
     @Test
     fun noOtherLauncherMeansNothingToRestore() {
         val only = queryOutput.lines().take(8).joinToString("\n")
-        assertNull(DeviceCommands.otherHomeComponent(only, "com.nuvio.launcher"))
-        assertNull(DeviceCommands.otherHomeComponent("", "com.nuvio.launcher"))
+        assertNull(DeviceCommands.otherHomeComponent(only, "com.nuvio.tv.launcher"))
+        assertNull(DeviceCommands.otherHomeComponent("", "com.nuvio.tv.launcher"))
     }
 
     @Test
     fun readsTheResolvedHomePackage() {
-        val out = "priority=0 preferredOrder=0\n  ActivityInfo:\n    name=com.nuvio.tv.MainActivity\n    packageName=com.nuvio.launcher\n"
-        assertEquals("com.nuvio.launcher", DeviceCommands.resolvedHomePackage(out))
+        val out = "priority=0 preferredOrder=0\n  ActivityInfo:\n    name=com.nuvio.tv.MainActivity\n    packageName=com.nuvio.tv.launcher\n"
+        assertEquals("com.nuvio.tv.launcher", DeviceCommands.resolvedHomePackage(out))
         assertNull(DeviceCommands.resolvedHomePackage("No activity found"))
     }
 
