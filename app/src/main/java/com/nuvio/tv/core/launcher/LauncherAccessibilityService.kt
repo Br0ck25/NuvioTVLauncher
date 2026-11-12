@@ -44,6 +44,7 @@ class LauncherAccessibilityService : AccessibilityService() {
 
     override fun onServiceConnected() {
         super.onServiceConnected()
+        StartupTiming.mark(this, "accessibility service connected")
         activeServiceRef = java.lang.ref.WeakReference(this)
         boundAtElapsed = SystemClock.elapsedRealtime()
         delivery = HomeFallbackPolicy()
@@ -55,6 +56,7 @@ class LauncherAccessibilityService : AccessibilityService() {
             serviceInfo = info
             LauncherSetup.observeNativeHome(this, LauncherSetup.isDefaultHome(this))
             operational.value = true
+            LauncherSetup.noteOverrideWasOn(this)
             openAfterBoot()
             // The user was sent to Settings to turn this on: bring the setup back in front of them.
             if (LauncherSetup.consumeAwaitingSettings(this)) LauncherSetup.bringToFront(this)
@@ -143,6 +145,9 @@ class LauncherAccessibilityService : AccessibilityService() {
                 launchHome(now)
             } else if (delivery.shouldScheduleRecheck(now) && !recheckPending) {
                 scheduleHomeRecheck()
+            } else if (!recheckPending && delivery.grantReassert(now)) {
+                // The stock launcher came up after our start and we are not in front: look again shortly.
+                scheduleHomeRecheck()
             }
             return
         }
@@ -213,6 +218,7 @@ class LauncherAccessibilityService : AccessibilityService() {
                 startActivity(intent)
             }
             delivery.onLaunch(SystemClock.uptimeMillis())
+            StartupTiming.mark(this, "takeover: startActivity done")
             Log.i(TAG, "Takeover: started the launcher ${SystemClock.elapsedRealtime() - boundAtElapsed} ms after the service bound")
         } catch (e: Exception) {
             Log.e(TAG, "Failed to launch home activity", e)
@@ -228,7 +234,7 @@ class LauncherAccessibilityService : AccessibilityService() {
             "com.google.android.leanbacklauncher"
         )
         private const val BOOT_WINDOW_MS = 5 * 60 * 1000L
-        private const val BOOT_OPEN_DELAY_MS = 1_500L
+        private const val BOOT_OPEN_DELAY_MS = 200L
         private val operational = MutableStateFlow(false)
         @Volatile
         private var activeServiceRef: java.lang.ref.WeakReference<LauncherAccessibilityService>? = null
@@ -256,16 +262,24 @@ class LauncherAccessibilityService : AccessibilityService() {
             // User-initiated opt-in only; this does not grant or enable Accessibility authorization.
             LauncherSetup.allowAccessibilityFallback(context)
             LauncherSetup.markAwaitingSettings(context)
+            LauncherSetup.markOverrideAttempt(context)
             val service = ComponentName(context, LauncherAccessibilityService::class.java)
             val opened = android.os.Build.VERSION.SDK_INT >= 34 && runCatching {
                 context.startActivity(
                     Intent("android.settings.ACCESSIBILITY_DETAILS_SETTINGS")
                         .putExtra(Intent.EXTRA_COMPONENT_NAME, service.flattenToString())
-                        .addFlags(Intent.FLAG_ACTIVITY_NEW_TASK)
+                        .addFlags(Intent.FLAG_ACTIVITY_NEW_TASK or Intent.FLAG_ACTIVITY_CLEAR_TASK)
                 )
             }.isSuccess
+            // A fresh Settings task (what Projectivy does). Reusing one the user left open earlier (e.g. Developer
+            // options) sent Back to that page, and MULTIPLE_TASK fixed Back but left the remote dead on the
+            // Notification access page (no focus, Down/OK do nothing). Tested on Chromecast with Google TV:
+            // with CLEAR_TASK the remote works there and one Back returns to this app.
             if (!opened) runCatching {
-                context.startActivity(Intent(Settings.ACTION_ACCESSIBILITY_SETTINGS).addFlags(Intent.FLAG_ACTIVITY_NEW_TASK))
+                context.startActivity(
+                    Intent(Settings.ACTION_ACCESSIBILITY_SETTINGS)
+                        .addFlags(Intent.FLAG_ACTIVITY_NEW_TASK or Intent.FLAG_ACTIVITY_CLEAR_TASK)
+                )
             }
         }
     }

@@ -420,7 +420,7 @@
     <string name="about_update_channel_title">Update channel</string>
     <string name="about_update_channel_subtitle">Choose the type of app updates to receive</string>
     <string name="about_check_updates">Check for updates</string>
-    <string name="about_check_updates_subtitle">Download latest release</string>
+    <string name="about_check_updates_subtitle">Look for a newer version and get it ready to install. Progress and the Install button show in the banner at the top.</string>
     <string name="update_channel_stable">Stable</string>
     <string name="update_channel_beta">Beta</string>
     <string name="update_channel_dialog_subtitle">Choose the type of updates you want to receive</string>
@@ -530,9 +530,7 @@
     <string name="apps_home_override_pending">Home override authorized — inactive</string>
     <string name="self_setup_close">Close</string>
     <string name="self_setup_connect_port">Connection port (optional)</string>
-    <string name="self_setup_dialog_steps">1. Settings → System → About: press OS Build 7 times.
-2. Settings → System → Developer options → Wireless debugging: switch it on, open it, then choose "Pair device with pairing code" and leave that popup open (its port and code only last while it is showing).
-3. On a phone on the same Wi-Fi, scan the code below or open its address, and enter the port and 6-digit code there. Already paired once? Leave them empty.</string>
+    <string name="self_setup_dialog_steps">1. Settings → System → About: press OS Build 7 times.\n2. Settings → System → Developer options → Wireless debugging: switch it on, open it, then choose \"Pair device with pairing code\" and leave that popup open (its port and code only last while it is showing).\n3. On a phone on the same Wi-Fi, scan the code below or open its address, and enter the port and 6-digit code there. Already paired once? Leave them empty.</string>
     <string name="self_setup_dialog_title">Set up Home button</string>
     <string name="self_setup_failed">Setup failed: %1$s</string>
     <string name="self_setup_no">No</string>
@@ -3574,8 +3572,33 @@
     <string name="autosync_label_synced">Auto synced</string>
     <string name="stream_resume_from_time">Resume from %1$s</string>
     <string name="stream_resume_from_percent">Resume from %1$d%%</string>
-    <string name="wizard_restricted_settings_hint">If the switch is greyed out and says the setting is restricted: Android TV has no menu for that, so use "Set up from your phone" below (it allows it for you), or run the ADB command listed in the README.</string>
-    <string name="wizard_role_hint">Android will ask "Set Nuvio Launcher as your default home app?". It may have the current Google TV home preselected: choose Nuvio Launcher, then Set as default.</string>
+    <string name="wizard_restricted_settings_hint">If the switch turns itself back off, or Android says the setting is restricted: Android TV has no menu to allow it, so use \"Set up from your phone\" below (it allows it for you), or run the ADB command listed in the README.</string>
+    <string name="wizard_override_blocked">The Home button override is still off. If the switch turned itself back off, Android is blocking it for apps that were not installed from the Play Store, and Android TV has no menu to allow it. Use \"Set up from your phone\" below: it allows it for you.</string>
+    <string name="wizard_override_lost">An update turned off the Home button override, so Home may open the TV\'s own launcher again. Turn it back on below.</string>
+    <string name="setup_flow_title">Make Nuvio your Home screen</string>
+    <string name="setup_flow_welcome_heading">Let\'s set it up</string>
+    <string name="setup_flow_welcome_body">A few quick steps make the Home button open Nuvio and show your TV\'s notifications. Each one takes a moment, and you can do any of it later in Settings → Default launcher.</string>
+    <string name="setup_flow_step_of">Step %1$d of %2$d</string>
+    <string name="setup_home_title">Make Nuvio your Home app</string>
+    <string name="setup_home_body">Android will ask you to choose a Home app. Pick Nuvio Launcher, then Set as default.</string>
+    <string name="setup_override_title">Make the Home button open Nuvio</string>
+    <string name="setup_override_body">Google TV opens its own home screen first. The Home button override lets Nuvio take over from it.</string>
+    <string name="setup_override_note">Android will warn that Nuvio can see what you type. Nuvio only uses this to open itself when you press Home.</string>
+    <string name="setup_override_blocked">Android blocks this switch for apps that were not installed from the Play Store, and Android TV has no menu to allow it. Setting up from your phone allows it for you.</string>
+    <string name="setup_override_phone_hint">Works even if Android blocks the switch on this TV.</string>
+    <string name="setup_try_on_tv">Try on this TV anyway</string>
+    <string name="setup_notifications_title">Show your TV\'s notifications</string>
+    <string name="setup_notifications_body">Lets Nuvio show your TV\'s notifications under the bell on the Home screen.</string>
+    <string name="setup_notifications_hint">In the list that opens, switch on Nuvio Launcher, then press Back.</string>
+    <string name="setup_notifications_phone_hint">Some TVs do not let the remote use the Android notification page. Setting up from your phone works on every TV.</string>
+    <string name="setup_open_notifications">Open notification settings</string>
+    <string name="setup_skip">Skip this step</string>
+    <string name="setup_done_title">You\'re all set</string>
+    <string name="setup_done_body">Press Home any time to open Nuvio.</string>
+    <string name="setup_partial_title">Almost there</string>
+    <string name="setup_partial_body">You can finish the skipped steps later in Settings → Default launcher. Home may still open the TV\'s own launcher until then.</string>
+    <string name="wizard_notifications_hint">If the list on the next screen does not respond to your remote, use \"Set up from your phone\" below, which turns this on for you.</string>
+    <string name="wizard_role_hint">Android will ask: Set Nuvio Launcher as your default home app? It may have the current Google TV home preselected: choose Nuvio Launcher, then Set as default.</string>
     <string name="wizard_accessibility_steps">On the next screen choose Nuvio Launcher, switch it on and press Allow. Then press Back.</string>
     <string name="wizard_accessibility_explain">Android shows a warning here ("can collect all of the text you type"). That is Android\'s standard text for any app that listens for the Home and Apps buttons. Nuvio Launcher uses it only to open itself when you press Home; it does not read or store anything you type.</string>
     <string name="wizard_override_done">Home button override is on. Press Back to continue.</string>

@@ -33,6 +33,106 @@ internal object LauncherSetup {
     fun homeWorks(context: Context): Boolean = isDefaultHome(context) ||
         (LauncherAccessibilityService.isServiceEnabled(context) && LauncherAccessibilityService.isOperational.value)
 
+    /**
+     * Android 13+ "restricted settings": for an app that was not installed from a store, the system
+     * refuses to enable its accessibility service. The switch can look normal, show the confirm
+     * dialog, and then silently stay off, and Android TV has no "Allow restricted settings" menu.
+     * True = blocked, false = allowed, null = can't tell. The phone/ADB setup grants it for the user.
+     */
+    fun restrictedSettingsBlocked(context: Context): Boolean? {
+        if (Build.VERSION.SDK_INT < 33) return false
+        return runCatching {
+            val ops = context.getSystemService(android.app.AppOpsManager::class.java) ?: return@runCatching null
+            val mode = ops.unsafeCheckOpNoThrow(
+                "android:access_restricted_settings", android.os.Process.myUid(), context.packageName
+            )
+            // On a Chromecast with Google TV (Android 14) `appops get` said "deny" while this check did not
+            // report it as blocked, so the reading is logged to tell the two apart. See overrideAttemptFailed.
+            android.util.Log.i("LauncherSetup", "restricted-settings op mode=$mode")
+            mode == android.app.AppOpsManager.MODE_ERRORED || mode == android.app.AppOpsManager.MODE_IGNORED
+        }.getOrNull()
+    }
+
+    // The app-op reading above is not reliable on every firmware, so also go by what happened: the user was
+    // sent to Android's accessibility screen to turn the override on, came back, and it is still off.
+    private const val OVERRIDE_ATTEMPT_AT = "override_attempt_at"
+
+    fun markOverrideAttempt(context: Context) {
+        preferences(context).edit().putLong(OVERRIDE_ATTEMPT_AT, System.currentTimeMillis()).apply()
+    }
+
+    fun overrideAttemptFailed(context: Context): Boolean {
+        val prefs = preferences(context)
+        val at = prefs.getLong(OVERRIDE_ATTEMPT_AT, 0L)
+        if (at == 0L) return false
+        // "On" means switched on AND bound: the watchdog can write the setting back while Android still refuses
+        // to start the service (seen after an update), and that is not a working override.
+        if (LauncherAccessibilityService.isServiceEnabled(context) && LauncherAccessibilityService.isOperational.value) {
+            prefs.edit().putLong(OVERRIDE_ATTEMPT_AT, 0L).apply()
+            return false
+        }
+        return System.currentTimeMillis() - at > 5_000L
+    }
+
+    // An update can silently switch the Home button override off (Android re-applies the restricted-settings
+    // block to the new install). Remember that it was on, so after an update we can tell the user and
+    // not leave Home quietly landing on the TV's own launcher.
+    private const val OVERRIDE_WAS_ON = "override_was_on"
+    private const val OVERRIDE_LOST_NOTICE = "override_lost_notice"
+
+    fun noteOverrideWasOn(context: Context) {
+        preferences(context).edit().putBoolean(OVERRIDE_WAS_ON, true).apply()
+    }
+
+    /**
+     * Call at app start and after an update. If the override was on before and is off now, raise a notice
+     * (once) and reopen the setup so the user sees it.
+     */
+    fun checkOverrideLost(context: Context, requireOperational: Boolean = false) {
+        if (!isOverrideLostAfterUpdate(context, requireOperational)) return
+        preferences(context).edit().putBoolean(OVERRIDE_WAS_ON, false).putBoolean(OVERRIDE_LOST_NOTICE, true)
+            .putLong(UPDATE_PENDING_AT, 0L).apply()
+        com.nuvio.tv.ui.screens.setup.LauncherSetupWizardPrefs.reopen(context)
+    }
+
+    /**
+     * Just updated, the override was on before, and it is not working now. With [requireOperational] a service
+     * that is switched on in Settings but not bound also counts as lost: after an update Android can refuse to
+     * start it (restricted settings) while the setting itself reads "on", and the watchdog keeps writing it back.
+     */
+    fun isOverrideLostAfterUpdate(context: Context, requireOperational: Boolean = false): Boolean {
+        val prefs = preferences(context)
+        // Only after an update (a new version code, or the update broadcast), never because the user
+        // switched the override off on purpose.
+        val current = runCatching {
+            @Suppress("DEPRECATION")
+            context.packageManager.getPackageInfo(context.packageName, 0).longVersionCode
+        }.getOrDefault(0L)
+        val last = prefs.getLong(LAST_SEEN_VERSION, current)
+        prefs.edit().putLong(LAST_SEEN_VERSION, current).apply()
+        val pendingAt = prefs.getLong(UPDATE_PENDING_AT, 0L)
+        val updatedJustNow = pendingAt != 0L && System.currentTimeMillis() - pendingAt < 10 * 60 * 1000L
+        if (last == current && !updatedJustNow) return false
+        if (!prefs.getBoolean(OVERRIDE_WAS_ON, false)) return false
+        val enabled = LauncherAccessibilityService.isServiceEnabled(context)
+        val working = if (requireOperational) enabled && LauncherAccessibilityService.isOperational.value else enabled
+        return !working
+    }
+
+    /** Called from the update broadcast: for the next ten minutes [checkOverrideLost] treats the app as just updated. */
+    fun markUpdatePendingCheck(context: Context) {
+        preferences(context).edit().putLong(UPDATE_PENDING_AT, System.currentTimeMillis()).apply()
+    }
+
+    private const val LAST_SEEN_VERSION = "last_seen_version_code"
+    private const val UPDATE_PENDING_AT = "update_pending_override_at"
+
+    fun overrideLostNotice(context: Context): Boolean = preferences(context).getBoolean(OVERRIDE_LOST_NOTICE, false)
+
+    fun clearOverrideLostNotice(context: Context) {
+        preferences(context).edit().putBoolean(OVERRIDE_LOST_NOTICE, false).apply()
+    }
+
     // After a trip to a system settings screen (accessibility, notification access) the user has to find
     // their way back. We note that we sent them, and bring the launcher to the front as soon as the
     // thing they went to turn on is on.
@@ -53,12 +153,22 @@ internal object LauncherSetup {
 
     /** Brings the launcher's window back in front of whatever (Settings, the stock launcher) is showing. */
     fun bringToFront(context: Context) {
-        runCatching {
-            context.startActivity(
-                Intent(context, com.nuvio.tv.MainActivity::class.java).addFlags(
-                    Intent.FLAG_ACTIVITY_NEW_TASK or Intent.FLAG_ACTIVITY_SINGLE_TOP or Intent.FLAG_ACTIVITY_REORDER_TO_FRONT
+        val app = context.applicationContext
+        fun front() {
+            runCatching {
+                app.startActivity(
+                    Intent(app, com.nuvio.tv.MainActivity::class.java).addFlags(
+                        Intent.FLAG_ACTIVITY_NEW_TASK or Intent.FLAG_ACTIVITY_SINGLE_TOP or Intent.FLAG_ACTIVITY_REORDER_TO_FRONT
+                    )
                 )
-            )
+            }
+        }
+        front()
+        // Google TV starts its own home screen a moment after the Home role changes, which lands on top
+        // of us (seen on Chromecast with Google TV). Look again twice and take the screen back if needed.
+        val handler = android.os.Handler(android.os.Looper.getMainLooper())
+        longArrayOf(800L, 2_000L).forEach { delay ->
+            handler.postDelayed({ if (!HomeForegroundDelivery.isResumed) front() }, delay)
         }
     }
 

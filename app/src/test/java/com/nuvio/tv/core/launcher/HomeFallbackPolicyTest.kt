@@ -116,4 +116,30 @@ class HomeFallbackPolicyTest {
         assertEquals(HomeKeyPress.IGNORED, gesture.onPress(1_000))
         assertEquals(HomeKeyPress.DOUBLE, gesture.onPress(1_250))
     }
+
+    @Test
+    fun `a stock launcher window that lands after our start grants a bounded re-check without a key press`() {
+        val policy = HomeFallbackPolicy()
+        // Our start, then the stock launcher's window right after it (screensaver wake): ignored by the latch.
+        assertTrue(policy.acceptLauncherWindow(1_000))
+        policy.onLaunch(1_000)
+        assertFalse(policy.acceptLauncherWindow(1_700))
+        // No physical press happened, so no re-check budget exists yet...
+        assertFalse(policy.shouldScheduleRecheck(1_700))
+        // ...the re-assert grants exactly one.
+        assertTrue(policy.grantReassert(1_700))
+        assertTrue(policy.consumeRecheck())
+        assertFalse(policy.consumeRecheck())
+    }
+
+    @Test
+    fun `re-asserts are limited so a launcher that keeps coming back cannot cause a launch loop`() {
+        val policy = HomeFallbackPolicy()
+        assertTrue(policy.grantReassert(1_000))
+        assertTrue(policy.grantReassert(2_000))
+        assertFalse(policy.grantReassert(3_000))
+        assertFalse(policy.grantReassert(HomeFallbackPolicy.REASSERT_WINDOW_MS))
+        // A fresh window after the quiet period gets its budget back.
+        assertTrue(policy.grantReassert(1_000 + HomeFallbackPolicy.REASSERT_WINDOW_MS + 1))
+    }
 }
