@@ -63,15 +63,17 @@ class LauncherNotificationListenerService : NotificationListenerService() {
                 context.startActivity(
                     Intent(Settings.ACTION_NOTIFICATION_LISTENER_DETAIL_SETTINGS)
                         .putExtra(Settings.EXTRA_NOTIFICATION_LISTENER_COMPONENT_NAME, listener.flattenToString())
-                        .addFlags(Intent.FLAG_ACTIVITY_NEW_TASK or Intent.FLAG_ACTIVITY_MULTIPLE_TASK)
+                        .addFlags(Intent.FLAG_ACTIVITY_NEW_TASK or Intent.FLAG_ACTIVITY_CLEAR_TASK)
                 )
             }.isSuccess
-            // Own task: otherwise a Settings screen the user left open earlier (e.g. Developer options) is
-            // reused, and Back from here lands on that instead of returning to this app.
+            // A fresh Settings task (what Projectivy does). Reusing one the user left open earlier (e.g. Developer
+            // options) sent Back to that page, and MULTIPLE_TASK fixed Back but left the remote dead on the
+            // Notification access page (no focus, Down/OK do nothing). Tested on Chromecast with Google TV:
+            // with CLEAR_TASK the remote works there and one Back returns to this app.
             if (!opened) runCatching {
                 context.startActivity(
                     Intent(Settings.ACTION_NOTIFICATION_LISTENER_SETTINGS)
-                        .addFlags(Intent.FLAG_ACTIVITY_NEW_TASK or Intent.FLAG_ACTIVITY_MULTIPLE_TASK)
+                        .addFlags(Intent.FLAG_ACTIVITY_NEW_TASK or Intent.FLAG_ACTIVITY_CLEAR_TASK)
                 )
             }
         }
