@@ -55,6 +55,7 @@ class LauncherAccessibilityService : AccessibilityService() {
             serviceInfo = info
             LauncherSetup.observeNativeHome(this, LauncherSetup.isDefaultHome(this))
             operational.value = true
+            LauncherSetup.noteOverrideWasOn(this)
             openAfterBoot()
             // The user was sent to Settings to turn this on: bring the setup back in front of them.
             if (LauncherSetup.consumeAwaitingSettings(this)) LauncherSetup.bringToFront(this)
@@ -143,6 +144,9 @@ class LauncherAccessibilityService : AccessibilityService() {
                 launchHome(now)
             } else if (delivery.shouldScheduleRecheck(now) && !recheckPending) {
                 scheduleHomeRecheck()
+            } else if (!recheckPending && delivery.grantReassert(now)) {
+                // The stock launcher came up after our start and we are not in front: look again shortly.
+                scheduleHomeRecheck()
             }
             return
         }
@@ -228,7 +232,7 @@ class LauncherAccessibilityService : AccessibilityService() {
             "com.google.android.leanbacklauncher"
         )
         private const val BOOT_WINDOW_MS = 5 * 60 * 1000L
-        private const val BOOT_OPEN_DELAY_MS = 1_500L
+        private const val BOOT_OPEN_DELAY_MS = 200L
         private val operational = MutableStateFlow(false)
         @Volatile
         private var activeServiceRef: java.lang.ref.WeakReference<LauncherAccessibilityService>? = null
@@ -261,11 +265,16 @@ class LauncherAccessibilityService : AccessibilityService() {
                 context.startActivity(
                     Intent("android.settings.ACCESSIBILITY_DETAILS_SETTINGS")
                         .putExtra(Intent.EXTRA_COMPONENT_NAME, service.flattenToString())
-                        .addFlags(Intent.FLAG_ACTIVITY_NEW_TASK)
+                        .addFlags(Intent.FLAG_ACTIVITY_NEW_TASK or Intent.FLAG_ACTIVITY_MULTIPLE_TASK)
                 )
             }.isSuccess
+            // Own task: otherwise a Settings screen the user left open earlier (e.g. Developer options) is
+            // reused, and Back from here lands on that instead of returning to this app.
             if (!opened) runCatching {
-                context.startActivity(Intent(Settings.ACTION_ACCESSIBILITY_SETTINGS).addFlags(Intent.FLAG_ACTIVITY_NEW_TASK))
+                context.startActivity(
+                    Intent(Settings.ACTION_ACCESSIBILITY_SETTINGS)
+                        .addFlags(Intent.FLAG_ACTIVITY_NEW_TASK or Intent.FLAG_ACTIVITY_MULTIPLE_TASK)
+                )
             }
         }
     }

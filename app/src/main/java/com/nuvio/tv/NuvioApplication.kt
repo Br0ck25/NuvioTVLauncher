@@ -45,11 +45,13 @@ import javax.inject.Inject
 class NuvioApplication : Application(), SingletonImageLoader.Factory {
 
     @Inject lateinit var startupSyncService: StartupSyncService
-    @Inject lateinit var androidTvChannelSyncService: AndroidTvChannelSyncService
-    @Inject lateinit var sentrySettingsDataStore: SentrySettingsDataStore
+    // Lazy: these are only needed by the deferred start-up below, so Hilt does not build them (and everything
+    // they depend on) on the main thread before the launcher's accessibility service can bind.
+    @Inject lateinit var androidTvChannelSyncService: dagger.Lazy<AndroidTvChannelSyncService>
+    @Inject lateinit var sentrySettingsDataStore: dagger.Lazy<SentrySettingsDataStore>
     @Inject lateinit var imagePerformancePreferences: ImagePerformancePreferences
     @Inject lateinit var simklAnimeIdPreferenceHolder: SimklAnimeIdPreferenceHolder
-    @Inject lateinit var serverUserStateProjection: ServerUserStateProjection
+    @Inject lateinit var serverUserStateProjection: dagger.Lazy<ServerUserStateProjection>
 
     companion object {
         /**
@@ -86,23 +88,26 @@ class NuvioApplication : Application(), SingletonImageLoader.Factory {
         // Before super.onCreate(): Hilt creates injected services there, and the budget is read once.
         MemoryBudget.init(this)
         super.onCreate()
-        SentryInitializer.start(this, sentrySettingsDataStore)
         PluginRuntimeHooks.onApplicationCreate(this)
         // Live TV fork: VPN progress lines go into the start-up report.
         com.nuvio.vpn.android.VpnPlaybackProtection.diagnostics =
             java.util.function.Consumer { line -> com.nuvio.tv.livetv.model.LiveTvLoadReport.add(line) }
-        androidTvChannelSyncService.start()
-        // Launcher: keeps this app's own accessibility service switched on once the phone setup has
-        // granted the permission. Reads system settings, so it runs off the main thread.
-        kotlin.concurrent.thread(name = "launcher-watchdog", isDaemon = true) {
-            com.nuvio.tv.core.launcher.AccessibilityWatchdog.start(this)
-        }
-        serverUserStateProjection.start()
         // Load locale synchronously so it's available before Activity.attachBaseContext.
         // SharedPreferences reads are fast (cached in memory after first access).
         val tag = getSharedPreferences("app_locale", Context.MODE_PRIVATE)
             .getString("locale_tag", null)
         LocaleCache.localeTag = tag ?: ""
+        // After a restart the launcher's accessibility service can only take over from the TV's own launcher
+        // once this process has finished starting (about 15 s on a Chromecast with Google TV while it boots).
+        // Anything the first frame and the takeover do not need runs on a background thread instead.
+        kotlin.concurrent.thread(name = "app-startup", isDaemon = true) {
+            runCatching { SentryInitializer.start(this, sentrySettingsDataStore.get()) }
+            runCatching { androidTvChannelSyncService.get().start() }
+            runCatching { serverUserStateProjection.get().start() }
+            // Launcher: keeps this app's own accessibility service switched on once the phone setup has
+            // granted the permission. Reads system settings, so it runs off the main thread.
+            runCatching { com.nuvio.tv.core.launcher.AccessibilityWatchdog.start(this) }
+        }
     }
 
     @androidx.annotation.OptIn(androidx.media3.common.util.UnstableApi::class)

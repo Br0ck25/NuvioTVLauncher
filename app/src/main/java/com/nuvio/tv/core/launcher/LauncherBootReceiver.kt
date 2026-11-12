@@ -34,6 +34,11 @@ class LauncherBootReceiver : BroadcastReceiver() {
                 )
                 if (intent.action == Intent.ACTION_MY_PACKAGE_REPLACED) {
                     LauncherSetup.markRoleOfferAfterUpdate(context)
+                    LauncherSetup.markUpdatePendingCheck(context)
+                    // Android can switch the override off while it installs the update, a moment after this
+                    // broadcast. Look again once it has settled and remember it for the next time the app opens.
+                    val appContext = context.applicationContext
+                    Handler(Looper.getMainLooper()).postDelayed({ LauncherSetup.checkOverrideLost(appContext) }, 8_000L)
                 }
                 // The service takes over by itself when it is bound; this is only the backup.
                 val serviceBound = LauncherAccessibilityService.isOperational.value

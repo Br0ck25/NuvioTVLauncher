@@ -881,7 +881,12 @@ open class MainActivity : ComponentActivity() {
                         modifier = Modifier.align(Alignment.TopCenter).zIndex(100f)
                     )
                     // Launcher: the first-run setup (Home app, Home button, notifications) comes before sign-in.
-                    var showLauncherSetup by remember { mutableStateOf(!LauncherSetupWizardPrefs.isDone(this@MainActivity)) }
+                    // An update can quietly switch the Home button override off: if it was on and is off now,
+                    // reopen the setup at the checklist with a notice instead of leaving Home on the stock launcher.
+                    var showLauncherSetup by remember {
+                        com.nuvio.tv.core.launcher.LauncherSetup.checkOverrideLost(this@MainActivity)
+                        mutableStateOf(!LauncherSetupWizardPrefs.isDone(this@MainActivity))
+                    }
                     if (showLauncherSetup) {
                         startupDestination = StartupDestination.Setup
                         LauncherSetupWizard(
@@ -1428,8 +1433,10 @@ open class MainActivity : ComponentActivity() {
                     val updateViewModel: UpdateViewModel = hiltViewModel(this@MainActivity)
                     val updateState by updateViewModel.uiState.collectAsState()
                     val updateBannerState = updateState.copy(
+                        // Not over the first-run launcher setup: the banner used to sit on top of its screens.
                         showBanner = updateState.showBanner && currentRoute?.startsWith("player/") != true &&
-                            currentRoute != Screen.LiveTvMultiview.route && currentRoute != Screen.SportsMultiview.route
+                            currentRoute != Screen.LiveTvMultiview.route && currentRoute != Screen.SportsMultiview.route &&
+                            LauncherSetupWizardPrefs.isDone(this@MainActivity)
                     )
                     // Live TV fork: the Live TV row on Home lets Up through to the banner while it shows.
                     LaunchedEffect(updateBannerState.showBanner, updateBannerState.update != null) {

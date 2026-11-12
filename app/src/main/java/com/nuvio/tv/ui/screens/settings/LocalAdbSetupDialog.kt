@@ -118,15 +118,17 @@ internal fun LocalAdbSetupDialog(
                     }
                 }
             }
+        // Outside the scrolling area: when focus scrolled the fields into view it used to cut the start
+        // of this sentence off ("don't). Use the other buttons...").
+        Text(
+            text = stringResource(R.string.self_setup_not_found_hint),
+            style = MaterialTheme.typography.bodySmall,
+            color = NuvioTheme.colors.TextSecondary
+        )
         Column(
-            modifier = Modifier.heightIn(max = 240.dp).verticalScroll(rememberScrollState()),
+            modifier = Modifier.heightIn(max = 200.dp).verticalScroll(rememberScrollState()),
             verticalArrangement = Arrangement.spacedBy(10.dp)
         ) {
-            Text(
-                text = stringResource(R.string.self_setup_not_found_hint),
-                style = MaterialTheme.typography.bodySmall,
-                color = NuvioTheme.colors.TextSecondary
-            )
             InputField(
                 value = pairingPort,
                 onValueChange = { pairingPort = it.filter(Char::isDigit).take(5) },

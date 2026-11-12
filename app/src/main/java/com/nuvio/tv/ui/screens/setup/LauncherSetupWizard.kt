@@ -27,6 +27,7 @@ import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.focus.FocusRequester
+import androidx.compose.ui.focus.focusProperties
 import androidx.compose.ui.focus.focusRequester
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.res.stringResource
@@ -69,6 +70,14 @@ object LauncherSetupWizardPrefs {
     fun markDone(context: Context) {
         runCatching { context.getSharedPreferences(FILE, Context.MODE_PRIVATE).edit().putBoolean(KEY_DONE, true).apply() }
     }
+
+    /** Shows the setup again at the checklist (not the welcome screen), e.g. after an update turned the override off. */
+    fun reopen(context: Context) {
+        runCatching {
+            context.getSharedPreferences(FILE, Context.MODE_PRIVATE).edit()
+                .putBoolean(KEY_DONE, false).putBoolean(KEY_STARTED, true).apply()
+        }
+    }
 }
 
 /**
@@ -90,7 +99,12 @@ fun LauncherSetupWizard(onFinished: () -> Unit) {
     }
     val scroll = rememberScrollState()
     // Always start at the top: a focused button below the fold used to scroll the title out of view.
-    LaunchedEffect(step) { scroll.scrollTo(0) }
+    // Focus is requested shortly after composition and scrolls the page, so look again once it has settled.
+    LaunchedEffect(step) {
+        scroll.scrollTo(0)
+        kotlinx.coroutines.delay(350)
+        if (!scroll.isScrollInProgress) scroll.scrollTo(0)
+    }
     BackHandler { if (step > 0) step-- }
     Box(
         modifier = Modifier
@@ -150,10 +164,19 @@ private fun SetupStep(onDone: () -> Unit, onBack: () -> Unit) {
     val notificationsOn = remember(revision) { LauncherNotificationListenerService.isAccessGranted(context) }
     val homeOn = setup.isDefaultHome
     val overrideOn = setup.isAccessibilityActive
+    // Android blocks the override switch for apps installed outside a store; the TV has no menu to allow it.
+    val restrictedBlocked = remember(revision) { LauncherSetup.restrictedSettingsBlocked(context) == true }
+    // An update can switch the override off without telling anyone: say so.
+    val overrideLost = remember(revision) { LauncherSetup.overrideLostNotice(context) }
+    LaunchedEffect(overrideOn) { if (overrideOn) LauncherSetup.clearOverrideLostNotice(context) }
     val first = remember { FocusRequester() }
+    val continueFocus = remember { FocusRequester() }
     LaunchedEffect(Unit) { runCatching { first.requestFocus() } }
 
     Text(stringResource(R.string.wizard_setup_title), style = MaterialTheme.typography.headlineLarge, color = NuvioTheme.colors.TextPrimary)
+    if (overrideLost && !overrideOn) {
+        Text(stringResource(R.string.wizard_override_lost), style = MaterialTheme.typography.bodyLarge, color = androidx.compose.ui.graphics.Color(0xFFFFB74D))
+    }
     Text(stringResource(R.string.wizard_setup_body), style = MaterialTheme.typography.bodyLarge, color = NuvioTheme.colors.TextSecondary)
 
     Column(verticalArrangement = Arrangement.spacedBy(4.dp)) {
@@ -171,21 +194,16 @@ private fun SetupStep(onDone: () -> Unit, onBack: () -> Unit) {
     }
 
     Text(stringResource(R.string.wizard_manual_title), style = MaterialTheme.typography.titleMedium, color = NuvioTheme.colors.TextPrimary, modifier = Modifier.padding(top = 4.dp))
+    // No toasts here: they sat on top of Android's own dialog and hid its buttons. The hint is on screen already.
     Button(
-        onClick = {
-            android.widget.Toast.makeText(context, R.string.wizard_role_hint, android.widget.Toast.LENGTH_LONG).show()
-            setup.requestDefaultHome()
-        },
+        onClick = { setup.requestDefaultHome() },
         modifier = Modifier.fillMaxWidth().focusRequester(first)
     ) {
         Text(stringResource(R.string.wizard_make_home))
     }
     Text(stringResource(R.string.wizard_role_hint), style = MaterialTheme.typography.bodySmall, color = NuvioTheme.colors.TextSecondary)
     OutlinedButton(
-        onClick = {
-            android.widget.Toast.makeText(context, R.string.wizard_accessibility_steps, android.widget.Toast.LENGTH_LONG).show()
-            setup.openAccessibilitySettings()
-        },
+        onClick = { setup.openAccessibilitySettings() },
         modifier = Modifier.fillMaxWidth()
     ) {
         Text(stringResource(R.string.wizard_turn_on_override))
@@ -196,13 +214,29 @@ private fun SetupStep(onDone: () -> Unit, onBack: () -> Unit) {
         color = NuvioTheme.colors.TextSecondary
     )
     if (!overrideOn) {
-        Text(stringResource(R.string.wizard_restricted_settings_hint), style = MaterialTheme.typography.bodySmall, color = NuvioTheme.colors.TextSecondary)
+        if (restrictedBlocked) {
+            // The switch will not stay on. Say so plainly instead of letting it quietly flip back.
+            Text(
+                stringResource(R.string.wizard_override_blocked),
+                style = MaterialTheme.typography.bodyMedium,
+                color = androidx.compose.ui.graphics.Color(0xFFFFB74D)
+            )
+        } else {
+            Text(stringResource(R.string.wizard_restricted_settings_hint), style = MaterialTheme.typography.bodySmall, color = NuvioTheme.colors.TextSecondary)
+        }
     }
     OutlinedButton(onClick = { LauncherNotificationListenerService.openAccessSettings(context) }, modifier = Modifier.fillMaxWidth()) {
         Text(stringResource(R.string.wizard_turn_on_notifications))
     }
+    if (!notificationsOn) {
+        Text(stringResource(R.string.wizard_notifications_hint), style = MaterialTheme.typography.bodySmall, color = NuvioTheme.colors.TextSecondary)
+    }
     if (phoneSetup != null) {
-        OutlinedButton(onClick = { showPhoneSetup = true }, modifier = Modifier.fillMaxWidth()) {
+        // Down from here must reach "Continue to sign in", not skip past it to Back.
+        OutlinedButton(
+            onClick = { showPhoneSetup = true },
+            modifier = Modifier.fillMaxWidth().focusProperties { down = continueFocus }
+        ) {
             Text(stringResource(R.string.wizard_phone_setup))
         }
         Text(stringResource(R.string.wizard_phone_setup_hint), style = MaterialTheme.typography.bodySmall, color = NuvioTheme.colors.TextSecondary)
@@ -219,7 +253,7 @@ private fun SetupStep(onDone: () -> Unit, onBack: () -> Unit) {
         )
     }
     Row(horizontalArrangement = Arrangement.spacedBy(12.dp), modifier = Modifier.padding(top = 8.dp)) {
-        Button(onClick = onDone) { Text(stringResource(R.string.wizard_continue)) }
+        Button(onClick = onDone, modifier = Modifier.focusRequester(continueFocus)) { Text(stringResource(R.string.wizard_continue)) }
         OutlinedButton(onClick = onBack) { Text(stringResource(R.string.wizard_back)) }
     }
     Text(stringResource(R.string.wizard_later), style = MaterialTheme.typography.bodySmall, color = NuvioTheme.colors.TextSecondary)

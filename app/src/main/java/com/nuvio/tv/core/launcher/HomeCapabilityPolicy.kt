@@ -63,6 +63,27 @@ internal class HomeFallbackPolicy {
         launcherWindowHandled = false
     }
 
+    private var reassertsLeft = MAX_REASSERTS
+    private var reassertWindowStart = 0L
+
+    /**
+     * A stock-launcher window arrived that [acceptLauncherWindow] ignored (it latches after the first
+     * one), while we are not in front. Seen after the screensaver: our start landed 0.7 s before Google
+     * TV's home window and nothing took the screen back. Allows one bounded follow-up check, with no
+     * key press involved: at most [MAX_REASSERTS] per [REASSERT_WINDOW_MS], so a launcher that keeps
+     * re-asserting itself cannot cause a launch loop.
+     */
+    fun grantReassert(nowMs: Long): Boolean {
+        if (nowMs - reassertWindowStart > REASSERT_WINDOW_MS) {
+            reassertWindowStart = nowMs
+            reassertsLeft = MAX_REASSERTS
+        }
+        if (reassertsLeft <= 0) return false
+        reassertsLeft--
+        if (rechecksLeft < 1) rechecksLeft = 1
+        return true
+    }
+
     fun acceptLauncherWindow(nowMs: Long): Boolean {
         if (launcherWindowHandled) return false
         // Latch even a suppressed event, so later duplicate window events cannot become a fake tap.
@@ -80,5 +101,7 @@ internal class HomeFallbackPolicy {
         const val RECENT_LAUNCH_MS = 1_000L
         const val RECHECK_DELAY_MS = 600L
         const val MAX_RECHECKS = 2
+        const val MAX_REASSERTS = 2
+        const val REASSERT_WINDOW_MS = 20_000L
     }
 }

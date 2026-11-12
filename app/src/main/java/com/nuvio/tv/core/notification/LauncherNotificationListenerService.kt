@@ -63,11 +63,16 @@ class LauncherNotificationListenerService : NotificationListenerService() {
                 context.startActivity(
                     Intent(Settings.ACTION_NOTIFICATION_LISTENER_DETAIL_SETTINGS)
                         .putExtra(Settings.EXTRA_NOTIFICATION_LISTENER_COMPONENT_NAME, listener.flattenToString())
-                        .addFlags(Intent.FLAG_ACTIVITY_NEW_TASK)
+                        .addFlags(Intent.FLAG_ACTIVITY_NEW_TASK or Intent.FLAG_ACTIVITY_MULTIPLE_TASK)
                 )
             }.isSuccess
+            // Own task: otherwise a Settings screen the user left open earlier (e.g. Developer options) is
+            // reused, and Back from here lands on that instead of returning to this app.
             if (!opened) runCatching {
-                context.startActivity(Intent(Settings.ACTION_NOTIFICATION_LISTENER_SETTINGS).addFlags(Intent.FLAG_ACTIVITY_NEW_TASK))
+                context.startActivity(
+                    Intent(Settings.ACTION_NOTIFICATION_LISTENER_SETTINGS)
+                        .addFlags(Intent.FLAG_ACTIVITY_NEW_TASK or Intent.FLAG_ACTIVITY_MULTIPLE_TASK)
+                )
             }
         }
     }
