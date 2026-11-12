@@ -46,8 +46,30 @@ internal object LauncherSetup {
             val mode = ops.unsafeCheckOpNoThrow(
                 "android:access_restricted_settings", android.os.Process.myUid(), context.packageName
             )
+            // On a Chromecast with Google TV (Android 14) `appops get` said "deny" while this check did not
+            // report it as blocked, so the reading is logged to tell the two apart. See overrideAttemptFailed.
+            android.util.Log.i("LauncherSetup", "restricted-settings op mode=$mode")
             mode == android.app.AppOpsManager.MODE_ERRORED || mode == android.app.AppOpsManager.MODE_IGNORED
         }.getOrNull()
+    }
+
+    // The app-op reading above is not reliable on every firmware, so also go by what happened: the user was
+    // sent to Android's accessibility screen to turn the override on, came back, and it is still off.
+    private const val OVERRIDE_ATTEMPT_AT = "override_attempt_at"
+
+    fun markOverrideAttempt(context: Context) {
+        preferences(context).edit().putLong(OVERRIDE_ATTEMPT_AT, System.currentTimeMillis()).apply()
+    }
+
+    fun overrideAttemptFailed(context: Context): Boolean {
+        val prefs = preferences(context)
+        val at = prefs.getLong(OVERRIDE_ATTEMPT_AT, 0L)
+        if (at == 0L) return false
+        if (LauncherAccessibilityService.isServiceEnabled(context)) {
+            prefs.edit().putLong(OVERRIDE_ATTEMPT_AT, 0L).apply()
+            return false
+        }
+        return System.currentTimeMillis() - at > 5_000L
     }
 
     // An update can silently switch the Home button override off (Android re-applies the restricted-settings

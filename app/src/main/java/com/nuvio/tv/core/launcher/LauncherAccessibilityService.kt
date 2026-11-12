@@ -260,6 +260,7 @@ class LauncherAccessibilityService : AccessibilityService() {
             // User-initiated opt-in only; this does not grant or enable Accessibility authorization.
             LauncherSetup.allowAccessibilityFallback(context)
             LauncherSetup.markAwaitingSettings(context)
+            LauncherSetup.markOverrideAttempt(context)
             val service = ComponentName(context, LauncherAccessibilityService::class.java)
             val opened = android.os.Build.VERSION.SDK_INT >= 34 && runCatching {
                 context.startActivity(

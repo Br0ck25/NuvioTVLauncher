@@ -166,6 +166,8 @@ private fun SetupStep(onDone: () -> Unit, onBack: () -> Unit) {
     val overrideOn = setup.isAccessibilityActive
     // Android blocks the override switch for apps installed outside a store; the TV has no menu to allow it.
     val restrictedBlocked = remember(revision) { LauncherSetup.restrictedSettingsBlocked(context) == true }
+    // Or by what happened: the user went to turn it on, came back, and it is still off.
+    val attemptFailed = remember(revision) { LauncherSetup.overrideAttemptFailed(context) }
     // An update can switch the override off without telling anyone: say so.
     val overrideLost = remember(revision) { LauncherSetup.overrideLostNotice(context) }
     LaunchedEffect(overrideOn) { if (overrideOn) LauncherSetup.clearOverrideLostNotice(context) }
@@ -214,7 +216,7 @@ private fun SetupStep(onDone: () -> Unit, onBack: () -> Unit) {
         color = NuvioTheme.colors.TextSecondary
     )
     if (!overrideOn) {
-        if (restrictedBlocked) {
+        if (restrictedBlocked || attemptFailed) {
             // The switch will not stay on. Say so plainly instead of letting it quietly flip back.
             Text(
                 stringResource(R.string.wizard_override_blocked),

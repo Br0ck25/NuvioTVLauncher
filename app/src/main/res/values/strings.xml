@@ -3573,7 +3573,7 @@
     <string name="stream_resume_from_time">Resume from %1$s</string>
     <string name="stream_resume_from_percent">Resume from %1$d%%</string>
     <string name="wizard_restricted_settings_hint">If the switch turns itself back off, or Android says the setting is restricted: Android TV has no menu to allow it, so use \"Set up from your phone\" below (it allows it for you), or run the ADB command listed in the README.</string>
-    <string name="wizard_override_blocked">Android is blocking this switch for apps that were not installed from the Play Store, and Android TV has no menu to allow it. If you turn it on it will switch itself back off. Use \"Set up from your phone\" below: it allows it for you.</string>
+    <string name="wizard_override_blocked">The Home button override is still off. If the switch turned itself back off, Android is blocking it for apps that were not installed from the Play Store, and Android TV has no menu to allow it. Use \"Set up from your phone\" below: it allows it for you.</string>
     <string name="wizard_override_lost">An update turned off the Home button override, so Home may open the TV\'s own launcher again. Turn it back on below.</string>
     <string name="wizard_notifications_hint">If the list on the next screen does not respond to your remote, use \"Set up from your phone\" below, which turns this on for you.</string>
     <string name="wizard_role_hint">Android will ask: Set Nuvio Launcher as your default home app? It may have the current Google TV home preselected: choose Nuvio Launcher, then Set as default.</string>
