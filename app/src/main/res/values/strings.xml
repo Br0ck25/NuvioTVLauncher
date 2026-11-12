@@ -3590,6 +3590,7 @@
     <string name="setup_notifications_title">Show your TV\'s notifications</string>
     <string name="setup_notifications_body">Lets Nuvio show your TV\'s notifications under the bell on the Home screen.</string>
     <string name="setup_notifications_hint">In the list that opens, switch on Nuvio Launcher, then press Back.</string>
+    <string name="setup_notifications_phone_hint">Some TVs do not let the remote use the Android notification page. Setting up from your phone works on every TV.</string>
     <string name="setup_open_notifications">Open notification settings</string>
     <string name="setup_skip">Skip this step</string>
     <string name="setup_done_title">You\'re all set</string>

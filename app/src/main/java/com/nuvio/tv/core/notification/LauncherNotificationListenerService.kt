@@ -55,8 +55,32 @@ class LauncherNotificationListenerService : NotificationListenerService() {
             }.getOrDefault(false)
         }
 
+        /** True when this app may switch its own notification access on (phone setup granted WRITE_SECURE_SETTINGS). */
+        fun canEnableDirectly(context: Context): Boolean =
+            com.nuvio.tv.core.launcher.AccessibilityWatchdog.canWriteSecureSettings(context)
+
+        /**
+         * Adds this app to the enabled notification listeners without the Settings page. The TV's Notification access
+         * page can't be driven with the remote on some devices (Chromecast with Google TV: nothing gets focus and any
+         * key closes it), so this is the only way there. Returns whether access is on afterwards.
+         */
+        fun enableDirectly(context: Context): Boolean {
+            if (isAccessGranted(context)) return true
+            if (!canEnableDirectly(context)) return false
+            runCatching {
+                val me = android.content.ComponentName(context, LauncherNotificationListenerService::class.java).flattenToString()
+                val resolver = context.contentResolver
+                val current = Settings.Secure.getString(resolver, "enabled_notification_listeners").orEmpty()
+                if (current.split(':').none { it == me }) {
+                    Settings.Secure.putString(resolver, "enabled_notification_listeners", if (current.isEmpty()) me else "$current:$me")
+                }
+            }.onFailure { Log.w(TAG, "Could not enable notification access directly", it) }
+            return isAccessGranted(context)
+        }
+
         /** Straight to this app's own toggle (Android 11+), otherwise the Notification access list. */
         fun openAccessSettings(context: Context) {
+            if (enableDirectly(context)) return
             com.nuvio.tv.core.launcher.LauncherSetup.markAwaitingSettings(context)
             val listener = android.content.ComponentName(context, LauncherNotificationListenerService::class.java)
             val opened = android.os.Build.VERSION.SDK_INT >= 30 && runCatching {

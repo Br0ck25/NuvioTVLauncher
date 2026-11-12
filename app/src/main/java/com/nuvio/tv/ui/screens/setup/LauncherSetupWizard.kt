@@ -236,7 +236,10 @@ private fun SetupFlowScreen(onDone: () -> Unit) {
 
     val homeOn = setup.isDefaultHome
     val overrideOn = setup.isAccessibilityActive
-    val notificationsOn = remember(revision) { LauncherNotificationListenerService.isAccessGranted(context) }
+    // Once the phone setup has granted the permission, notification access needs no step at all.
+    val notificationsOn = remember(revision) {
+        LauncherNotificationListenerService.isAccessGranted(context) || LauncherNotificationListenerService.enableDirectly(context)
+    }
     // Android blocks the override switch for apps installed outside a store, and Android TV has no menu to allow it.
     val overrideBlocked = remember(revision) {
         LauncherSetup.restrictedSettingsBlocked(context) == true || LauncherSetup.overrideAttemptFailed(context)
@@ -326,15 +329,24 @@ private fun SetupFlowScreen(onDone: () -> Unit) {
                 }
                 SetupStepId.NOTIFICATIONS -> {
                     StepHeader(3, stringResource(R.string.setup_notifications_title), stringResource(R.string.setup_notifications_body))
-                    Button(
-                        onClick = { LauncherNotificationListenerService.openAccessSettings(context) },
-                        modifier = Modifier.fillMaxWidth().focusRequester(primaryFocus)
-                    ) { Text(stringResource(R.string.setup_open_notifications)) }
-                    Spacer(Modifier.height(8.dp))
-                    Text(stringResource(R.string.setup_notifications_hint), style = MaterialTheme.typography.bodySmall, color = NuvioTheme.colors.TextSecondary)
+                    // The TV's Notification access page can't be driven with the remote on some devices, so when the
+                    // phone setup is available it leads, and the page is the fallback.
                     if (phoneSetup != null) {
+                        phoneButton(true)
+                        Spacer(Modifier.height(8.dp))
+                        Text(stringResource(R.string.setup_notifications_phone_hint), style = MaterialTheme.typography.bodySmall, color = NuvioTheme.colors.TextSecondary)
                         Spacer(Modifier.height(12.dp))
-                        phoneButton(false)
+                        OutlinedButton(
+                            onClick = { LauncherNotificationListenerService.openAccessSettings(context) },
+                            modifier = Modifier.fillMaxWidth()
+                        ) { Text(stringResource(R.string.setup_open_notifications)) }
+                    } else {
+                        Button(
+                            onClick = { LauncherNotificationListenerService.openAccessSettings(context) },
+                            modifier = Modifier.fillMaxWidth().focusRequester(primaryFocus)
+                        ) { Text(stringResource(R.string.setup_open_notifications)) }
+                        Spacer(Modifier.height(8.dp))
+                        Text(stringResource(R.string.setup_notifications_hint), style = MaterialTheme.typography.bodySmall, color = NuvioTheme.colors.TextSecondary)
                     }
                     SkipButton { skipped = skipped + SetupStepId.NOTIFICATIONS }
                 }
