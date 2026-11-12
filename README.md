@@ -263,6 +263,16 @@ Turn any Home row, collection folder or library list into a scheduled Live TV ch
    | Not sure (works everywhere) | `universal` |
 
 3. Install it with a file manager or **Downloader** (by AFTVnews), allowing installs from unknown sources when asked.
+
+**Install with Downloader (no computer needed):**
+
+1. On your TV, install **Downloader** by AFTVnews from the Google Play Store (Android TV / Google TV) or the Amazon Appstore (Fire TV).
+2. Open Downloader and allow the file access prompt if it appears.
+3. In the URL box, enter the code **`2057622`** (or `aftv.news/2057622`) and select **Go**. It always downloads the newest stable release.
+4. When the download finishes, select **Install**. If Android says it can't install apps from this source, select **Settings**, turn on **Install unknown apps** for Downloader, go back, and select **Install** again.
+5. Select **Open** when it finishes. You can delete the downloaded APK when Downloader offers to.
+
+Nuvio Launcher is now installed but is **not your Home app yet**: see [Use it as your Home screen](#-use-it-as-your-home-screen).
 4. Open **Nuvio Launcher**. A short setup walks you through making it your Home screen (see [below](#-use-it-as-your-home-screen)).
 
 Requires **Android 7.0 or newer** (Fire OS 6 or later). It has its own app ID (`com.nuvio.tv.launcher`), so it installs **alongside** the official Nuvio app and *Nuvio + IPTV*. If you already have Nuvio Launcher 1.1.x, this updates it in place (Settings → About, or install over it) and keeps your sign-in.
@@ -316,6 +326,86 @@ The first-run setup shows the steps, and everything is also in **Settings → De
 | Turn off / back on the stock launcher | FLauncher's `pm disable-user` / `pm enable` for Google TV's launcher and its fallback (optional; the remote's YouTube button stops working while it is off, Button Mapper can remap it) |
 
 On **Google TV**, Android usually keeps Google's own launcher as Home even after "Make this the Home app"; the Home button override (or turning the stock launcher off) is what makes Home open Nuvio Launcher there. Already paired? Leave the port and code empty. The page also lists every command, with this TV's address filled in (`adb -s IP:PORT shell ...`), for anyone who would rather run them from a computer. Needs Android 11+ Wireless debugging and the `full` build; some TV firmware (many Fire TVs) refuses a different Home app however it is set.
+
+### Install with Tellyscope (no computer needed)
+
+[Tellyscope](https://github.com/man15h/tellyscope) is an ADB-based installer that runs on its own. After installing the release APK with it, open Nuvio Launcher, go to **Settings → Default launcher** and choose **Make this launcher the Home app**, then confirm the system dialog. Installing does not select Nuvio Launcher as Home by itself. Some TV firmware blocks third-party Home apps however they are installed; if the native Home setting works, the accessibility service is optional.
+
+### Fallback: manual ADB from a computer
+
+Use this only if your TV has no Wireless debugging option or the phone setup did not work. You can also try **Settings → Default launcher → Make this launcher the Home app** first.
+
+Before you start:
+
+- Download and extract Google's [Android SDK Platform-Tools](https://developer.android.com/tools/releases/platform-tools) and open PowerShell or Terminal in its `platform-tools` folder.
+- Put the computer and TV on the same trusted Wi-Fi network (no guest-network isolation).
+- The package is `com.nuvio.tv.launcher` and the Home activity is `com.nuvio.tv.launcher/com.nuvio.tv.MainActivity`.
+- Commands use `./adb`; in Windows PowerShell use `.\adb.exe`. Only authorize computers you trust. Menu names vary by TV and firmware, especially on Fire TV.
+
+**Method A: secure pairing (Wireless debugging with a pairing code, Android 11+)**
+
+1. On the TV: **Settings → System → About**, press **OS Build** 7 times, then **Settings → System → Developer options** and turn on **Wireless debugging**.
+2. Open **Pair device with pairing code** and keep the popup open. Note the 6-digit code and the address with the pairing port (for example `192.168.68.27:34197`).
+3. On the computer:
+
+   ```bash
+   ./adb pair IP_ADDRESS:PAIRING_PORT
+   ```
+
+   Enter the 6-digit code. Wait for "Successfully paired".
+4. Find the connection:
+
+   ```bash
+   ./adb devices
+   ```
+
+   Copy the identifier of the TV with status `device`. If it isn't listed, use the address and connection port from the main Wireless debugging screen (usually not the pairing port):
+
+   ```bash
+   ./adb connect IP_ADDRESS:CONNECTION_PORT
+   ```
+5. If Android blocks the accessibility switch ("restricted setting"), allow it, then set Nuvio Launcher as Home. Replace `YOUR_DEVICE_STRING` with the identifier from `adb devices`:
+
+   ```bash
+   ./adb -s YOUR_DEVICE_STRING shell appops set com.nuvio.tv.launcher ACCESS_RESTRICTED_SETTINGS allow
+   ```
+
+   ```bash
+   ./adb -s YOUR_DEVICE_STRING shell cmd package set-home-activity com.nuvio.tv.launcher/com.nuvio.tv.MainActivity
+   ```
+
+   If the first command reports an unknown operation, that firmware has no such restriction.
+6. Press Home on the TV to check. If Home still opens the stock launcher, turn on the accessibility override (below).
+
+**Method B: traditional ADB (no pairing code, older Android TV and some Fire TV)**
+
+1. Turn on **USB debugging / ADB debugging** (and **Network debugging** if listed) in Developer options (Fire TV: **Settings → My Fire TV → About**, press the device name 7 times). Find the TV's IP address in its network settings.
+2. Connect, and accept **Allow USB/Network debugging?** on the TV:
+
+   ```bash
+   ./adb connect IP_ADDRESS:5555
+   ```
+
+   Port 5555 is common but not guaranteed. If this firmware has no network ADB, this method can't be used.
+3. With one device connected you can drop `-s`:
+
+   ```bash
+   ./adb shell appops set com.nuvio.tv.launcher ACCESS_RESTRICTED_SETTINGS allow
+   ```
+
+   ```bash
+   ./adb shell cmd package set-home-activity com.nuvio.tv.launcher/com.nuvio.tv.MainActivity
+   ```
+
+Some Fire TV and vendor firmware blocks replacement Home apps. A successful install or ADB connection doesn't guarantee the TV honors it, and you should not disable or uninstall the stock launcher to work around a failed command.
+
+**Accessibility override and final checks**
+
+- The accessibility service is `com.nuvio.tv.launcher/com.nuvio.tv.core.launcher.LauncherAccessibilityService`.
+- Prefer turning it on in the TV's UI (**Settings → System → Accessibility**, or **Settings → Default launcher → Home button override**). Don't run `settings put secure enabled_accessibility_services ...` by hand: it replaces the whole enabled list and can switch off TalkBack. The phone setup page merges it safely for you.
+- Test Home from another app and from inside Nuvio Launcher, and double-Home for the profile switcher (some firmware reserves double-Home).
+- To go back, choose the original launcher in the TV's Default apps / Home app settings, or use **Switch back to the original launcher** on the phone setup page, and turn off the override.
+- When finished, disconnect ADB and turn off wireless debugging. Never expose ADB ports to the internet.
 
 ---
 
