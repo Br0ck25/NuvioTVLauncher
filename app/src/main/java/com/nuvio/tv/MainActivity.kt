@@ -242,6 +242,7 @@ val LocalSidebarExpanded = compositionLocalOf { false }
 
 /** Opens Nuvio's side menu from a screen (used by Live TV's back button). */
 val LocalOpenSidebar = compositionLocalOf<() -> Unit> { {} }
+val LocalRootContentInset = compositionLocalOf { 0.dp }
 val LocalContentFocusRequester = compositionLocalOf { FocusRequester.Default }
 
 data class SplashBackground(
@@ -2142,19 +2143,20 @@ private fun LegacySidebarScaffold(
         }
         }
     ) {
-        val contentStartPadding by animateDpAsState(
-            targetValue = if (showSidebar && !sidebarCollapsed) {
-                NuvioLayout.tokens.sidebarContentOffset
-            } else {
+        // Applied per root destination (not on the NavHost container) so it only changes
+        // with the collapse setting, never during a navigation transition.
+        val rootContentInset by animateDpAsState(
+            targetValue = if (sidebarCollapsed) {
                 NuvioTheme.spacing.none
+            } else {
+                NuvioLayout.tokens.sidebarContentOffset
             },
             animationSpec = tween(NuvioMotion.tokens.durations.medium),
-            label = "contentStartPadding"
+            label = "rootContentInset"
         )
         Box(
             modifier = Modifier
                 .fillMaxSize()
-                .padding(start = contentStartPadding)
                 .onPreviewKeyEvent { keyEvent ->
                     // Long-press Back on a root route directly opens the sidebar,
                     // bypassing the "scroll row to start" BackHandler in home content.
@@ -2206,6 +2208,7 @@ private fun LegacySidebarScaffold(
         ) {
             CompositionLocalProvider(
                 LocalSidebarExpanded provides (drawerState.currentValue == DrawerValue.Open),
+                LocalRootContentInset provides rootContentInset,
                 LocalContentFocusRequester provides contentFocusRequester,
                 LocalOpenSidebar provides {
                     pendingSidebarFocusRequest = true
@@ -2215,7 +2218,10 @@ private fun LegacySidebarScaffold(
                 NuvioNavHost(
                     navController = navController,
                     startDestination = startDestination,
-                    hideBuiltInHeaders = hideBuiltInHeaders
+                    hideBuiltInHeaders = hideBuiltInHeaders,
+                    discoverIsRoot = Screen.Discover.route in rootRoutes,
+                    liveTvIsRoot = Screen.LiveTv.route in rootRoutes,
+                    recordingsIsRoot = Screen.Recordings.route in rootRoutes
                 )
             }
         }

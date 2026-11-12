@@ -5,7 +5,7 @@ name: Build APK
 # attached to the run as a download (Artifacts, at the bottom of the run page).
 on:
   push:
-    branches: [claude/bold-goldberg-w50bnp, claude/list-channels, claude/home-rows-release-parity]
+    branches: [claude/bold-goldberg-w50bnp, claude/list-channels, claude/home-rows-release-parity, sync/nuvio-original]
   workflow_dispatch:
 
 permissions:
