@@ -44,6 +44,7 @@ class LauncherAccessibilityService : AccessibilityService() {
 
     override fun onServiceConnected() {
         super.onServiceConnected()
+        StartupTiming.mark(this, "accessibility service connected")
         activeServiceRef = java.lang.ref.WeakReference(this)
         boundAtElapsed = SystemClock.elapsedRealtime()
         delivery = HomeFallbackPolicy()
@@ -217,6 +218,7 @@ class LauncherAccessibilityService : AccessibilityService() {
                 startActivity(intent)
             }
             delivery.onLaunch(SystemClock.uptimeMillis())
+            StartupTiming.mark(this, "takeover: startActivity done")
             Log.i(TAG, "Takeover: started the launcher ${SystemClock.elapsedRealtime() - boundAtElapsed} ms after the service bound")
         } catch (e: Exception) {
             Log.e(TAG, "Failed to launch home activity", e)
