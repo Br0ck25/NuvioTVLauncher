@@ -2293,7 +2293,7 @@ private fun LegacySidebarScaffold(
     ) {
         // Applied per root destination (not on the NavHost container) so it only changes
         // with the collapse setting, never during a navigation transition.
-        val rootContentInset by animateDpAsState(
+        val animatedRootContentInset by animateDpAsState(
             targetValue = if (sidebarCollapsed) {
                 NuvioTheme.spacing.none
             } else {
@@ -2302,6 +2302,9 @@ private fun LegacySidebarScaffold(
             animationSpec = tween(NuvioMotion.tokens.durations.medium),
             label = "rootContentInset"
         )
+        // Live TV full screen hides the sidebar, so the page must not keep its inset either
+        // (it left a black strip down the left edge of the video).
+        val rootContentInset = if (liveTvFullscreen) NuvioTheme.spacing.none else animatedRootContentInset
         Box(
             modifier = Modifier
                 .fillMaxSize()
