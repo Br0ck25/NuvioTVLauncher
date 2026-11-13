@@ -2,7 +2,7 @@ name: Sync upstream
 
 # Every 6 hours: try merging each upstream into the launcher branch:
 #   plus  = homelessbrian/NuvioPlusIPTV (the fork this app is built on; carries the IPTV features)
-#   nuvio = NuvioMedia/NuvioTV (the original app)
+# NuvioTV itself is not synced: Plus is a fork of it and carries its changes. Pull individual NuvioTV fixes by cherry-pick.
 # Clean merge  -> pushed to the branch `sync/<name>` (review it, build it, merge it).
 # Conflicts    -> nothing is pushed; an issue lists the conflicting files.
 # NOTE: GitHub only runs scheduled workflows from the repository's default branch,
@@ -29,8 +29,6 @@ jobs:
         include:
           - name: plus
             url: https://github.com/homelessbrian/NuvioPlusIPTV.git
-          - name: nuvio
-            url: https://github.com/NuvioMedia/NuvioTV.git
     env:
       UPSTREAM_URL: ${{ matrix.url }}
       SYNC_BRANCH: sync/${{ matrix.name }}
