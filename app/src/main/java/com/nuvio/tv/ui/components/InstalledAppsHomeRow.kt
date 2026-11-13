@@ -58,7 +58,8 @@ fun InstalledAppsHomeRow(
                     loadImage = viewModel::image,
                     onClick = { viewModel.launch(app) },
                     onLongClick = { actionsFor = app },
-                    width = 160.dp
+                    width = 160.dp,
+                    showLabel = false
                 )
             }
         }

@@ -10,9 +10,10 @@
 [![Latest beta](https://img.shields.io/github/v/release/Br0ck25/NuvioTVLauncher?include_prereleases&label=latest%20beta&style=for-the-badge&color=orange)](https://github.com/Br0ck25/NuvioTVLauncher/releases)
 [![Downloads](https://img.shields.io/github/downloads/Br0ck25/NuvioTVLauncher/total?style=for-the-badge)](https://github.com/Br0ck25/NuvioTVLauncher/releases)
 [![License](https://img.shields.io/badge/license-GPL--3.0-blue?style=for-the-badge)](LICENSE)
+[![Support on Ko-fi](https://img.shields.io/badge/support-Ko--fi-FF5E5B?style=for-the-badge&logo=ko-fi&logoColor=white)](https://ko-fi.com/nuviotvlauncher)
 [![Based on Nuvio](https://img.shields.io/badge/based%20on-NuvioMedia%2FNuvioTV-8A2BE2?style=for-the-badge)](https://github.com/NuvioMedia/NuvioTV)
 
-[Download](#installation) · [Setup](#getting-started) · [Home screen](#use-it-as-your-home-screen) · [Live TV](#live-tv-features) · [Sports](#sports-hub) · [Calendar](#calendar) · [VPN](#built-in-vpn) · [Sync](#your-setup-everywhere) · [Remote controls](CONTROLS.md) · [FAQ](#faq) · [Report a bug](#reporting-bugs-and-requesting-features)
+[Download](#installation) · [Setup](#getting-started) · [Home screen](#use-it-as-your-home-screen) · [Live TV](#live-tv-features) · [Sports](#sports-hub) · [Calendar](#calendar) · [VPN](#built-in-vpn) · [Sync](#your-setup-everywhere) · [Remote controls](CONTROLS.md) · [FAQ](#faq) · [Report a bug](#reporting-bugs-and-requesting-features) · [Support](#support-the-project)
 
 </div>
 
@@ -433,6 +434,12 @@ Please search [existing issues](https://github.com/Br0ck25/NuvioTVLauncher/issue
 **If something in Sports or the Calendar is wrong,** say which game or show and which channel you expected.
 
 Problems with Nuvio's movies, shows, addons or accounts that also happen in the official app belong with [Nuvio](https://github.com/NuvioMedia/NuvioTV/issues).
+
+---
+
+## Support the project
+
+Nuvio Launcher is free and developed in spare time. If it is useful to you, you can support its development on [Ko-fi](https://ko-fi.com/nuviotvlauncher). Thank you!
 
 ---
 
