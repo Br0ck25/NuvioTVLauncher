@@ -18,9 +18,17 @@ class InstalledAppsViewModel @Inject constructor(
     val apps: StateFlow<List<InstalledApp>> = repository.apps
         .stateIn(viewModelScope, SharingStarted.WhileSubscribed(5_000), emptyList())
 
+    /** The apps the Home row shows (the Apps page uses [apps], which has the hidden ones too). */
+    val homeApps: StateFlow<List<InstalledApp>> = repository.homeApps
+        .stateIn(viewModelScope, SharingStarted.WhileSubscribed(5_000), emptyList())
+
     suspend fun image(app: InstalledApp): Bitmap? = repository.image(app)
     fun launch(app: InstalledApp) = repository.launch(app)
-    fun move(app: InstalledApp, delta: Int) = repository.move(apps.value, app, delta)
+    /** Moves [app] within the Home row: hidden apps are stepped over. */
+    fun move(app: InstalledApp, delta: Int) = repository.move(apps.value, app, delta, skipHidden = true)
+    /** Moves [app] within the Apps page, where every app is shown. */
+    fun moveAmongAll(app: InstalledApp, delta: Int) = repository.move(apps.value, app, delta)
+    fun setHidden(app: InstalledApp, hidden: Boolean) = repository.setHidden(app, hidden)
     fun openAppInfo(app: InstalledApp) = repository.openAppInfo(app)
     fun rename(app: InstalledApp, name: String?) = repository.rename(app, name)
 

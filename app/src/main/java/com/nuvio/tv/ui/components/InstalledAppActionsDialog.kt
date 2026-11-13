@@ -49,6 +49,8 @@ fun InstalledAppActionsDialog(
     onRename: (String?) -> Unit,
     /** When given, a "Change icon" button opens the icon picker for this app. */
     iconChooser: com.nuvio.tv.core.apps.AppIconChooser? = null,
+    /** When given, a button hides this app from the Home row (or shows it there again, when it is hidden). */
+    onSetHidden: ((Boolean) -> Unit)? = null,
     onDismiss: () -> Unit,
     /** Home was pressed: close this and whatever opened it. */
     onHome: () -> Unit = onDismiss
@@ -105,6 +107,11 @@ fun InstalledAppActionsDialog(
             if (iconChooser != null) {
                 Button(onClick = { choosingIcon = true }, modifier = Modifier.fillMaxWidth()) {
                     Text(stringResource(R.string.app_action_change_icon))
+                }
+            }
+            if (onSetHidden != null) {
+                Button(onClick = { onDismiss(); onSetHidden(!app.hidden) }, modifier = Modifier.fillMaxWidth()) {
+                    Text(stringResource(if (app.hidden) R.string.app_action_show_on_home else R.string.app_action_hide_from_home))
                 }
             }
             Button(onClick = { onDismiss(); onAppInfo() }, modifier = Modifier.fillMaxWidth()) {

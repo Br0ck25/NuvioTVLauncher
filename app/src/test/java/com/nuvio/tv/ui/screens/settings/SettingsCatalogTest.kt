@@ -32,6 +32,7 @@ class SettingsCatalogTest {
                 SettingsCategory.INTEGRATION,
                 SettingsCategory.TRACKING,
                 SettingsCategory.DEFAULT_LAUNCHER,
+                SettingsCategory.REMOTE_BUTTONS,
                 SettingsCategory.ADVANCED,
                 SettingsCategory.ABOUT,
                 SettingsCategory.DEBUG

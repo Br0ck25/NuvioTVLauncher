@@ -526,6 +526,7 @@ internal fun ModernRowSection(
             onAppInfo = { appsViewModel.openAppInfo(app) },
             onRename = { appsViewModel.rename(app, it) },
             iconChooser = appsViewModel.iconChooser(app),
+            onSetHidden = { appsViewModel.setHidden(app, it) },
             onDismiss = { contextMenuApp = null }
         )
     }

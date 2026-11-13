@@ -40,7 +40,9 @@ data class InstalledApp(
     /** The activity the app opens from the launcher; icon packs are matched on it. */
     val componentName: ComponentName? = null,
     /** Changes whenever the icon pack or this app's chosen icon changes, so cards load the new image. */
-    val iconKey: String = ""
+    val iconKey: String = "",
+    /** The user hid this app from the Home row. It still shows (dimmed) on the Apps page so it can be shown again. */
+    val hidden: Boolean = false
 )
 
 /**
@@ -66,18 +68,41 @@ class InstalledAppsRepository @Inject constructor(
     // The icon pack used for every app (a package name), and icons picked for single apps.
     private val savedPack = MutableStateFlow(prefs.getString(KEY_ICON_PACK, null)?.takeIf { it.isNotBlank() })
     private val savedIcons = MutableStateFlow(AppLabels.decode(prefs.getString(KEY_ICONS, null)))
+    // Apps the user hid from the Home row (package names).
+    private val savedHidden = MutableStateFlow(AppHidden.decode(prefs.getString(KEY_HIDDEN, null)))
     val order: StateFlow<List<String>> = savedOrder.asStateFlow()
     val selectedIconPack: StateFlow<String?> = savedPack.asStateFlow()
 
     /** Emits the current list at once, then again whenever the set of apps or their order changes. */
-    val apps: Flow<List<InstalledApp>> = combine(installed(), savedOrder, savedLabels, savedPack, savedIcons) { list, order, labels, pack, icons ->
+    val apps: Flow<List<InstalledApp>> = combine(installed(), savedOrder, savedLabels, savedPack, savedIcons, savedHidden) { values ->
+        @Suppress("UNCHECKED_CAST")
+        val list = values[0] as List<InstalledApp>
+        @Suppress("UNCHECKED_CAST")
+        val order = values[1] as List<String>
+        @Suppress("UNCHECKED_CAST")
+        val labels = values[2] as Map<String, String>
+        val pack = values[3] as String?
+        @Suppress("UNCHECKED_CAST")
+        val icons = values[4] as Map<String, String>
+        @Suppress("UNCHECKED_CAST")
+        val hidden = values[5] as Set<String>
         AppOrder.apply(
             list.map { app ->
                 val named = labels[app.packageName]?.let { app.copy(label = it) } ?: app
-                named.copy(iconKey = IconChoice.key(pack, icons[app.packageName]))
+                named.copy(iconKey = IconChoice.key(pack, icons[app.packageName]), hidden = app.packageName in hidden)
             },
             order
         )
+    }
+
+    /** The apps the Home row shows: [apps] without the ones the user hid. */
+    val homeApps: Flow<List<InstalledApp>> = apps.map { list -> list.filterNot { it.hidden } }
+
+    /** Hides [app] from the Home row ([hidden] true) or shows it there again. Nothing is uninstalled. */
+    fun setHidden(app: InstalledApp, hidden: Boolean) {
+        val updated = AppHidden.set(savedHidden.value, app.packageName, hidden)
+        prefs.edit().putString(KEY_HIDDEN, AppHidden.encode(updated)).apply()
+        savedHidden.value = updated
     }
 
     /** Uses the icon pack [packageName] for every app; null goes back to each app's own icon. Per-app picks are kept. */
@@ -109,9 +134,13 @@ class InstalledAppsRepository @Inject constructor(
         savedLabels.value = updated
     }
 
-    /** Moves [app] one place earlier (-1) or later (+1) in the list as it is shown now. */
-    fun move(shown: List<InstalledApp>, app: InstalledApp, delta: Int) {
-        val updated = AppOrder.move(shown.map { it.packageName }, app.packageName, delta) ?: return
+    /**
+     * Moves [app] one place earlier (-1) or later (+1) in the list as it is shown now. With [skipHidden] (the Home
+     * row) the app swaps places with the next app that is shown there, not with a hidden one in between.
+     */
+    fun move(shown: List<InstalledApp>, app: InstalledApp, delta: Int, skipHidden: Boolean = false) {
+        val hidden = if (skipHidden) shown.filter { it.hidden }.map { it.packageName }.toSet() else emptySet()
+        val updated = AppOrder.move(shown.map { it.packageName }, app.packageName, delta, hidden) ?: return
         prefs.edit().putString(KEY_ORDER, AppOrder.encode(updated)).apply()
         savedOrder.value = updated
     }
@@ -142,6 +171,7 @@ class InstalledAppsRepository @Inject constructor(
         const val KEY_LABELS = "labels"
         const val KEY_ICON_PACK = "icon_pack"
         const val KEY_ICONS = "icons"
+        const val KEY_HIDDEN = "hidden"
     }
 
     private fun query(): List<InstalledApp> {
@@ -248,12 +278,27 @@ object AppOrder {
     }
 
     /** The whole shown order with [pkg] moved by [delta] places; null when it can't move that way. */
-    fun move(shown: List<String>, pkg: String, delta: Int): List<String>? {
+    fun move(shown: List<String>, pkg: String, delta: Int, hidden: Set<String> = emptySet()): List<String>? {
         val from = shown.indexOf(pkg)
-        val to = from + delta
-        if (from < 0 || to !in shown.indices) return null
+        if (from < 0 || delta == 0) return null
+        // Hidden apps are not in the row the user is looking at, so one place there steps over them.
+        val step = if (delta > 0) 1 else -1
+        var to = from
+        var left = kotlin.math.abs(delta)
+        while (left > 0) {
+            to += step
+            if (to !in shown.indices) return null
+            if (shown[to] !in hidden) left--
+        }
         return shown.toMutableList().apply { add(to, removeAt(from)) }
     }
+}
+
+/** The apps hidden from the Home row, kept apart from Android so it can be tested. One package per line. */
+object AppHidden {
+    fun encode(hidden: Set<String>): String = AppOrder.encode(hidden.sorted())
+    fun decode(saved: String?): Set<String> = saved?.lines()?.map { it.trim() }?.filter { it.isNotEmpty() }?.toSet().orEmpty()
+    fun set(hidden: Set<String>, pkg: String, hide: Boolean): Set<String> = if (hide) hidden + pkg else hidden - pkg
 }
 
 /** The names the user gave apps, kept apart from Android so it can be tested. One line per app: package, tab, name. */

@@ -84,6 +84,7 @@ class LauncherAccessibilityService : AccessibilityService() {
      * lands on the launcher's home page and a quick second press reaches the profile switcher.
      */
     override fun onKeyEvent(event: KeyEvent): Boolean {
+        if (mappedKeyHandled(event)) return true
         if (AppsKeyStore.matches(this, event.keyCode)) return onAppsKey(event)
         if (event.keyCode != KeyEvent.KEYCODE_HOME) return super.onKeyEvent(event)
         // isDefaultHome is a PackageManager binder call: only pay for it for the Home key.
@@ -100,6 +101,29 @@ class LauncherAccessibilityService : AccessibilityService() {
             scheduleHomeRecheck()
         }
         return true
+    }
+
+    /**
+     * Button Mapper, for every app: a remote button the user gave actions to (or that is being taught in
+     * Settings) is taken here, so Android TV can't act on it first. Only buttons that can be mapped at all
+     * reach the mapper (never the D-pad, Back, volume or power), and nothing is built until one of them is pressed.
+     * Home is only taken when the user changed what it does; otherwise it keeps the handling below.
+     */
+    private fun mappedKeyHandled(event: KeyEvent): Boolean {
+        val code = event.keyCode
+        if (!RemoteButtonCatalog.isMappableKey(code)) return false
+        val mapper = ButtonKeyEventHandler.fromContext(this) ?: return false
+        val foreground = HomeForegroundDelivery.isResumed
+        val source = if (foreground) ButtonEventSource.FOREGROUND else ButtonEventSource.GLOBAL
+        // Teaching a button in Settings: the press belongs to the capture.
+        if (mapper.captureController.isCapturingOrReleasing(code, event.action)) {
+            return mapper.onKeyEvent(event = event, source = source, accessibilityEnabled = true, nativeHomeActive = LauncherSetup.isDefaultHome(this))
+        }
+        val mapping = mapper.repository.activeMappingFor(code, isGlobal = !foreground) ?: return false
+        if (code == KeyEvent.KEYCODE_HOME && mapping.matchesFactoryHomeDefaults()) return false
+        val handled = mapper.onKeyEvent(event = event, source = source, accessibilityEnabled = true, nativeHomeActive = LauncherSetup.isDefaultHome(this))
+        if (handled && code == KeyEvent.KEYCODE_HOME) delivery.onLaunch(SystemClock.uptimeMillis())
+        return handled
     }
 
     /**

@@ -203,6 +203,11 @@ import com.nuvio.tv.ui.membership.LocalMemberAccess
 import com.nuvio.tv.ui.screens.account.AuthQrSignInScreen
 import com.nuvio.tv.ui.screens.addon.EssentialAddonSetupScreen
 import com.nuvio.tv.ui.screens.profile.ProfileSelectionScreen
+import com.nuvio.tv.core.launcher.AndroidButtonActionPlatformBridge
+import com.nuvio.tv.core.launcher.ButtonAction
+import com.nuvio.tv.core.launcher.ButtonEventSource
+import com.nuvio.tv.core.launcher.ButtonKeyEventHandler
+import com.nuvio.tv.core.launcher.ForegroundButtonActionHandler
 import com.nuvio.tv.core.launcher.HomeForegroundDelivery
 import com.nuvio.tv.ui.screens.setup.LauncherSetupWizard
 import com.nuvio.tv.ui.screens.setup.LauncherSetupWizardPrefs
@@ -393,6 +398,14 @@ open class MainActivity : ComponentActivity() {
 
     @Inject
     lateinit var partyRepository: PartyRepository
+
+    // The remote Button Mapper. Lazy: nothing about it is built until the activity is up (or a mapped
+    // button asks for it), so it adds nothing to the launcher's start-up.
+    @Inject
+    lateinit var buttonMapperProvider: dagger.Lazy<ButtonKeyEventHandler>
+
+    private val pendingMappedRouteRequest = MutableStateFlow<String?>(null)
+    private val pendingMappedRouteNonce = MutableStateFlow(0)
 
     private val pendingDeepLinkUrl = MutableStateFlow<String?>(null)
     private val pendingLaunchIntent = MutableStateFlow<Intent?>(null)
@@ -1070,6 +1083,22 @@ open class MainActivity : ComponentActivity() {
                             restoreState = true
                         }
                     }
+                    // A remote button mapped to open a page (Search, Library, Settings, the TV guide).
+                    val mappedRoute by pendingMappedRouteRequest.collectAsStateWithLifecycle()
+                    val mappedRouteNonce by pendingMappedRouteNonce.collectAsStateWithLifecycle()
+                    LaunchedEffect(mappedRoute, mappedRouteNonce, layoutChosen) {
+                        val targetRoute = mappedRoute ?: return@LaunchedEffect
+                        if (layoutChosen != true) return@LaunchedEffect
+                        pendingMappedRouteRequest.value = null
+                        if (navController.currentDestination?.route == targetRoute) return@LaunchedEffect
+                        if (!navController.popBackStack(targetRoute, inclusive = false)) {
+                            navController.navigate(targetRoute) {
+                                popUpTo(navController.graph.startDestinationId) { saveState = true }
+                                launchSingleTop = true
+                                restoreState = true
+                            }
+                        }
+                    }
                     LaunchedEffect(pendingHomeScrollReset, actualRoute) {
                         if (!pendingHomeScrollReset || actualRoute != Screen.Home.route) return@LaunchedEffect
                         repeat(2) { withFrameNanos { } }
@@ -1641,6 +1670,11 @@ open class MainActivity : ComponentActivity() {
                 .onFailure { LauncherSetup.recordRoleRequestResult(this, launchFailed = true) }
         }
         HomeForegroundDelivery.attach(this, ::handleHomeKeyPress)
+        // After the first frame, so the Button Mapper is never built on the way to the launcher showing.
+        window?.decorView?.post {
+            if (isFinishing || isDestroyed) return@post
+            runCatching { buttonMapperProvider.get().actionExecutor.attachForegroundHandler(this, foregroundButtonHandler) }
+        }
         if (::jankStats.isInitialized) jankStats.isTrackingEnabled = true
         memberAccessRepository.refreshIfStale()
         lifecycleScope.launch {
@@ -1669,7 +1703,64 @@ open class MainActivity : ComponentActivity() {
 
     /** Home pressed while the launcher is already in front: a single tap goes to the top of Home, two open the profile switcher. */
     private fun handleHomeKeyPress(pressedAtMs: Long) {
+        // A Home button the user changed in Button Mapper runs their actions; otherwise it is the usual
+        // tap (top of Home) / double tap (profiles).
+        val mapper = customHomeMapper()
+        if (mapper != null) {
+            mapper.onHomePress(pressedAtMs = pressedAtMs, source = ButtonEventSource.FOREGROUND)
+            return
+        }
         applyHomeKeyPress(homeKeyGesture.onPress(pressedAtMs))
+    }
+
+    /** The Button Mapper, once it has been built; it is never built by asking. */
+    private fun builtMapper(): ButtonKeyEventHandler? = ButtonKeyEventHandler.currentInstance()
+
+    /** The Button Mapper, but only when the user has changed what the Home button does. */
+    private fun customHomeMapper(): ButtonKeyEventHandler? {
+        val mapper = builtMapper() ?: return null
+        val mapping = mapper.repository.activeMappingFor(KeyEvent.KEYCODE_HOME, isGlobal = false) ?: return null
+        return if (mapping.matchesFactoryHomeDefaults()) null else mapper
+    }
+
+    /** What a mapped button asks the launcher to do while it is in front. */
+    private val foregroundButtonHandler = object : ForegroundButtonActionHandler {
+        override fun onExecuteAction(action: ButtonAction): Boolean = executeForegroundButtonAction(action)
+    }
+
+    private fun openMappedRoute(route: String) {
+        pendingMappedRouteRequest.value = route
+        pendingMappedRouteNonce.value += 1
+    }
+
+    private fun executeForegroundButtonAction(action: ButtonAction): Boolean {
+        ambientIdleController.dismiss()
+        return when (action) {
+            ButtonAction.GoToTopOfHome -> {
+                pendingHomeRequestNonce.value += 1
+                true
+            }
+            ButtonAction.OpenProfileSwitcher -> {
+                pendingHomeRequestNonce.value += 1
+                pendingProfileSwitchRequest.value = true
+                true
+            }
+            ButtonAction.OpenHome -> { openMappedRoute(Screen.Home.route); true }
+            ButtonAction.OpenSearch -> { openMappedRoute(Screen.Search.route); true }
+            ButtonAction.OpenLibrary -> { openMappedRoute(Screen.Library.route); true }
+            ButtonAction.OpenSettings -> { openMappedRoute(Screen.Settings.route); true }
+            ButtonAction.OpenApps,
+            ButtonAction.OpenAppDrawer -> {
+                pendingOpenAppsNonce.value += 1
+                true
+            }
+            ButtonAction.OpenTvGuide -> { openMappedRoute(Screen.LiveTv.route); true }
+            ButtonAction.OpenLiveTv -> {
+                com.nuvio.tv.livetv.calendar.CalendarNav.openLiveTv()
+                true
+            }
+            else -> false
+        }
     }
 
     private fun applyHomeKeyPress(press: HomeKeyPress, openProfileSelection: Boolean = false) {
@@ -1697,6 +1788,13 @@ open class MainActivity : ComponentActivity() {
      * native HOME launch records the first press but leaves startup/onboarding alone.
      */
     private fun captureHomeRequestIntent(intent: Intent?, fromNewIntent: Boolean = true) {
+        // A mapped button pressed in another app asked the launcher to do something (open Search ...).
+        if (!intent?.getStringExtra(AndroidButtonActionPlatformBridge.EXTRA_BUTTON_MAPPER_ACTION).isNullOrBlank()) {
+            val handled = runCatching {
+                buttonMapperProvider.get().onActivityIntent(intent, android.os.SystemClock.uptimeMillis(), fromNewIntent)
+            }.getOrDefault(false)
+            if (handled) return
+        }
         val press = LauncherHomeRequest.onIntent(
             intent = intent,
             gesture = homeKeyGesture,
@@ -1720,6 +1818,10 @@ open class MainActivity : ComponentActivity() {
 
     override fun onPause() {
         HomeForegroundDelivery.detach(this)
+        builtMapper()?.let {
+            it.actionExecutor.detachForegroundHandler(this)
+            it.cancelPendingGestures()
+        }
         super.onPause()
         if (::jankStats.isInitialized) jankStats.isTrackingEnabled = false
     }
@@ -1740,7 +1842,23 @@ open class MainActivity : ComponentActivity() {
         ambientIdleController.onInteraction()
     }
 
+    override fun onWindowFocusChanged(hasFocus: Boolean) {
+        super.onWindowFocusChanged(hasFocus)
+        if (!hasFocus) builtMapper()?.cancelPendingGestures()
+    }
+
     override fun dispatchKeyEvent(event: KeyEvent): Boolean {
+        // Button Mapper: while the user is teaching it a button (Settings), that press belongs to it.
+        val mapper = builtMapper()
+        if (mapper != null && mapper.captureController.isListening()) {
+            if (mapper.onKeyEvent(
+                    event = event,
+                    source = ButtonEventSource.FOREGROUND,
+                    accessibilityEnabled = com.nuvio.tv.core.launcher.LauncherAccessibilityService.isServiceEnabled(this),
+                    nativeHomeActive = LauncherSetup.isDefaultHome(this)
+                )
+            ) return true
+        }
         // Live TV fork: remember when the remote was last used (the home screen's Live TV row
         // only claims the first highlight while nobody has pressed anything yet).
         if (event.action == KeyEvent.ACTION_DOWN) com.nuvio.tv.livetv.home.LiveTvHomeFocus.lastKeyAt = android.os.SystemClock.uptimeMillis()
@@ -1782,6 +1900,16 @@ open class MainActivity : ComponentActivity() {
             }
             return true
         }
+        // Button Mapper: a remote button the user gave actions to (only when that button has an enabled mapping).
+        if (mapper != null && event.keyCode != KeyEvent.KEYCODE_HOME &&
+            mapper.repository.activeMappingFor(event.keyCode, isGlobal = false) != null &&
+            mapper.onKeyEvent(
+                event = event,
+                source = ButtonEventSource.FOREGROUND,
+                accessibilityEnabled = com.nuvio.tv.core.launcher.LauncherAccessibilityService.isServiceEnabled(this),
+                nativeHomeActive = LauncherSetup.isDefaultHome(this)
+            )
+        ) return true
         return super.dispatchKeyEvent(event)
     }
 
@@ -1810,6 +1938,10 @@ open class MainActivity : ComponentActivity() {
     }
 
     override fun onDestroy() {
+        builtMapper()?.let {
+            it.actionExecutor.detachForegroundHandler(this)
+            it.cancelPendingGestures()
+        }
         super.onDestroy()
         PluginRuntimeHooks.onActivityDestroy()
     }

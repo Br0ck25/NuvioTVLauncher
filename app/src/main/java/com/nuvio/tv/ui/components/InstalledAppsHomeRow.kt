@@ -37,7 +37,7 @@ fun InstalledAppsHomeRow(
 ) {
     // Folder pages and other screens reuse the home rows' layout; the Apps row is only for Home itself.
     if (!com.nuvio.tv.livetv.home.LocalLiveTvHomeActions.current.onHome) return
-    val apps by viewModel.apps.collectAsStateWithLifecycle()
+    val apps by viewModel.homeApps.collectAsStateWithLifecycle()
     var actionsFor by remember { mutableStateOf<com.nuvio.tv.core.apps.InstalledApp?>(null) }
     if (apps.isEmpty()) return
 
@@ -75,6 +75,7 @@ fun InstalledAppsHomeRow(
             onAppInfo = { viewModel.openAppInfo(app) },
             onRename = { viewModel.rename(app, it) },
             iconChooser = viewModel.iconChooser(app),
+            onSetHidden = { viewModel.setHidden(app, it) },
             onDismiss = { actionsFor = null }
         )
     }
