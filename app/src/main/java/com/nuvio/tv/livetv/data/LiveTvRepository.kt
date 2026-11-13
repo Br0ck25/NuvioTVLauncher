@@ -74,7 +74,11 @@ class LiveTvRepository @Inject constructor(
 
     private val mutex = Mutex()
 
-    private val http: OkHttpClient = ForkHttp.builder()
+    // Built on first use, not while the app is starting: setting up the TLS trust store takes seconds on a
+    // slow box's first start after an update, and this used to run on the main thread inside the app's setup.
+    private val http: OkHttpClient by lazy { buildHttp() }
+
+    private fun buildHttp(): OkHttpClient = ForkHttp.builder()
         .connectTimeout(20, TimeUnit.SECONDS)
         .readTimeout(90, TimeUnit.SECONDS)
         // A provider that trickles data forever would otherwise hold up every other update

@@ -17,6 +17,7 @@ import androidx.compose.runtime.remember
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.draw.alpha
 import androidx.compose.ui.focus.FocusRequester
 import androidx.compose.ui.focus.focusRequester
 import androidx.compose.ui.res.stringResource
@@ -71,7 +72,9 @@ fun AppsScreen(viewModel: InstalledAppsViewModel = hiltViewModel()) {
                         loadImage = viewModel::image,
                         onClick = { viewModel.launch(app) },
                         onLongClick = { actionsFor = app },
-                        modifier = if (app == apps.first()) Modifier.focusRequester(first) else Modifier,
+                        modifier = (if (app == apps.first()) Modifier.focusRequester(first) else Modifier)
+                            // Hidden from the Home row: still here so it can be shown again.
+                            .alpha(if (app.hidden) 0.45f else 1f),
                         width = 176.dp
                     )
                 }
@@ -85,10 +88,12 @@ fun AppsScreen(viewModel: InstalledAppsViewModel = hiltViewModel()) {
             canMoveEarlier = index > 0,
             canMoveLater = index < apps.lastIndex,
             onOpen = { viewModel.launch(app) },
-            onMoveEarlier = { viewModel.move(app, -1) },
-            onMoveLater = { viewModel.move(app, 1) },
+            onMoveEarlier = { viewModel.moveAmongAll(app, -1) },
+            onMoveLater = { viewModel.moveAmongAll(app, 1) },
             onAppInfo = { viewModel.openAppInfo(app) },
             onRename = { viewModel.rename(app, it) },
+            iconChooser = viewModel.iconChooser(app),
+            onSetHidden = { viewModel.setHidden(app, it) },
             onDismiss = { actionsFor = null }
         )
     }

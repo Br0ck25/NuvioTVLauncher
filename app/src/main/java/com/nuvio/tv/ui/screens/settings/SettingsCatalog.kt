@@ -26,6 +26,7 @@ internal enum class SettingsCategory(val group: SettingsRailGroup) {
     INTEGRATION(SettingsRailGroup.SERVICES),
     TRACKING(SettingsRailGroup.SERVICES),
     DEFAULT_LAUNCHER(SettingsRailGroup.SYSTEM),
+    REMOTE_BUTTONS(SettingsRailGroup.SYSTEM),
     ADVANCED(SettingsRailGroup.SYSTEM),
     ABOUT(SettingsRailGroup.SYSTEM),
     DEBUG(SettingsRailGroup.SYSTEM),

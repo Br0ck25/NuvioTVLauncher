@@ -17,7 +17,7 @@ permissions:
   issues: write
 
 env:
-  BASE_BRANCH: claude/list-channels
+  BASE_BRANCH: dev
   UPSTREAM_BRANCH: dev
 
 jobs:
@@ -69,5 +69,9 @@ jobs:
         run: |
           title="Upstream sync has conflicts (${{ matrix.name }})"
           body="Merging ${{ matrix.name }}/$UPSTREAM_BRANCH into $BASE_BRANCH conflicts in:"$'\n\n'"$(sed 's/^/- /' "$RUNNER_TEMP/conflicts.txt")"
-          n=$(gh issue list --state open --search "$title in:title" --json number --jq '.[0].number')
-          if [ -n "$n" ]; then gh issue comment "$n" --body "$body"; else gh issue create --title "$title" --body "$body"; fi
+          # The conflict list always goes in the run summary. Opening an issue is a bonus: it fails when the
+          # repository has Issues turned off, and that must not turn a reported conflict into a failed run.
+          { echo "### $title"; echo; echo "$body"; } >> "$GITHUB_STEP_SUMMARY"
+          echo "$body"
+          n=$(gh issue list --state open --search "$title in:title" --json number --jq '.[0].number' 2>/dev/null || true)
+          if [ -n "$n" ]; then gh issue comment "$n" --body "$body" || true; else gh issue create --title "$title" --body "$body" || true; fi

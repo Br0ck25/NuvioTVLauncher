@@ -184,10 +184,12 @@ fun HomeSettingsDrawer(
                 canMoveEarlier = index > 0,
                 canMoveLater = index < apps.lastIndex,
                 onOpen = { if (appsViewModel.launch(app)) onDismiss() },
-                onMoveEarlier = { appsViewModel.move(app, -1) },
-                onMoveLater = { appsViewModel.move(app, 1) },
+                onMoveEarlier = { appsViewModel.moveAmongAll(app, -1) },
+                onMoveLater = { appsViewModel.moveAmongAll(app, 1) },
                 onAppInfo = { appsViewModel.openAppInfo(app) },
             onRename = { appsViewModel.rename(app, it) },
+                iconChooser = appsViewModel.iconChooser(app),
+                onSetHidden = { appsViewModel.setHidden(app, it) },
                 onDismiss = { actionsFor = null },
                 onHome = onDismiss
             )
