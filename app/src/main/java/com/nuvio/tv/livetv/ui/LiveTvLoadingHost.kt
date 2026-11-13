@@ -116,8 +116,8 @@ fun LiveTvLoadingHost(navController: NavController) {
         LiveTvFullscreen.active.collect { hold.value = it }
     }
     val message = when {
-        live.loading && !live.quiet -> live.message ?: "Updating Live TV…"
-        vod.loading -> vod.message ?: "Importing movies and series…"
+        live.loading && !live.quiet && !live.silent -> live.message ?: "Updating Live TV…"
+        vod.loading && !vod.silent -> vod.message ?: "Importing movies and series…"
         else -> null
     }
     // How long it's been working, so a long first load reads as busy rather than stuck.

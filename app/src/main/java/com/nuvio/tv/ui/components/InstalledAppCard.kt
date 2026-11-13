@@ -42,7 +42,9 @@ fun InstalledAppCard(
     onClick: () -> Unit,
     onLongClick: () -> Unit,
     modifier: Modifier = Modifier,
-    width: Dp = 168.dp
+    width: Dp = 168.dp,
+    /** The Home row shows the banners alone; other screens keep the name under the tile. */
+    showLabel: Boolean = true
 ) {
     val image by produceState<Bitmap?>(initialValue = null, app.packageName, app.iconKey) { value = loadImage(app) }
     Column(modifier = Modifier.width(width)) {
@@ -71,7 +73,7 @@ fun InstalledAppCard(
                 }
             }
         }
-        Text(
+        if (showLabel) Text(
             text = app.label,
             style = MaterialTheme.typography.labelMedium,
             color = NuvioTheme.colors.TextSecondary,

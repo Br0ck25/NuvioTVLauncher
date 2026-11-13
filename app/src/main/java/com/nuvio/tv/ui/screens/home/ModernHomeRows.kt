@@ -1018,7 +1018,8 @@ internal fun ModernRowSection(
                                     modifier = Modifier
                                         .focusRequester(requester)
                                         .onFocusChanged { if (it.isFocused) onFocused() },
-                                    width = 160.dp
+                                    width = 160.dp,
+                                    showLabel = false
                                 )
                             }
                         }

@@ -276,7 +276,7 @@ private fun LiveTvGuideScreenBody(
         return when {
             onNow && recordingUntil.containsKey(ch.key) -> "Stop recording"
             p.startMs in scheduledStarts[ch.key].orEmpty() -> "Cancel recording"
-            p.stopMs <= nowMs -> if (CatchupUrlBuilder.isAvailable(ch.catchup, p.startMs, nowMs)) "Save to Recordings" else null
+            p.stopMs <= nowMs -> if (CatchupUrlBuilder.isAvailable(ch, p, nowMs)) "Save to Recordings" else null
             else -> "Record"
         }
     }
@@ -454,6 +454,9 @@ private fun LiveTvGuideScreenBody(
     var logoPickerFor by remember { mutableStateOf<LiveChannel?>(null) }
     var logoPanelFocusTick by remember { mutableIntStateOf(0) }
     LaunchedEffect(epgPickerFor) { if (epgPickerFor != null) viewModel.ensureEpgDetails() }
+    // The guides' channel lists are only kept while Assign EPG or the logo picker is open.
+    val epgListsOpen = epgPickerFor != null || logoPickerFor != null
+    DisposableEffect(epgListsOpen) { onDispose { if (epgListsOpen) viewModel.releaseEpgLists() } }
     var epgPanelFocusTick by remember { mutableIntStateOf(0) }
     val epgSources by viewModel.epgSources.collectAsStateWithLifecycle()
     val epgListsLoading by viewModel.epgListsLoading.collectAsStateWithLifecycle()
@@ -822,6 +825,20 @@ private fun LiveTvGuideScreenBody(
         if (column == GuideColumn.PROGRAM) blockAt(focusedPrograms, cursorMs) else blockAt(focusedPrograms, now)
     }
 
+    // A future portal listing may gain its archive id only after it airs. Refresh the
+    // selected past schedule when browsing it; opening the guide does not fan out requests.
+    LaunchedEffect(focusedChannel?.key, focusedBlock?.program?.startMs,
+        focusedBlock?.program?.providerSourceIdentity, focusedBlock?.program?.providerProgramId, column) {
+        val channel = focusedChannel ?: return@LaunchedEffect
+        val program = focusedBlock?.program ?: return@LaunchedEffect
+        if (column != GuideColumn.PROGRAM || channel.stalkerRef == null ||
+            program.stopMs > System.currentTimeMillis() || (!program.providerProgramId.isNullOrBlank() &&
+                program.providerSourceIdentity == channel.stalkerRef.sourceIdentity)
+        ) return@LaunchedEffect
+        delay(300)
+        viewModel.ensureChannelSchedule(channel.key)
+    }
+
     // Poster for the highlighted show in the info panel (what Nuvio's catalogs would show).
     // While browsing the group list, the info panel stays on what's playing in the preview;
     // it only follows the highlight when you're moving through the channels themselves.
@@ -900,7 +917,7 @@ private fun LiveTvGuideScreenBody(
         when {
             now >= block.startMs && now < block.stopMs -> playChannel(ch)
             block.stopMs <= now && block.program != null &&
-                CatchupUrlBuilder.isAvailable(ch.catchup, block.startMs, now) -> {
+                CatchupUrlBuilder.isAvailable(ch, block.program, now) -> {
                 if (viewModel.playCatchup(ch, block.program)) goFullscreen()
             }
             else -> infoTarget = MenuTarget(ch, block)
@@ -1125,7 +1142,7 @@ private fun LiveTvGuideScreenBody(
                 playbackBuffering = playback.isBuffering,
                 playbackError = playback.error,
                 catchupTitle = playback.catchupTitle,
-                status = status.message.takeIf { settings.showImportProgress && status.loading }
+                status = status.message.takeIf { settings.showImportProgress && status.loading && !status.silent }
             )
 
             // ---------------------------------------------------------------- groups + guide
@@ -1829,7 +1846,7 @@ private fun LiveTvGuideScreenBody(
                 }
             }
         }
-        if (settings.showImportProgress && !fullscreen && (settings.showProgramDetails || settings.showPreview) && status.loading) {
+        if (settings.showImportProgress && !fullscreen && (settings.showProgramDetails || settings.showPreview) && status.loading && !status.silent) {
             status.message?.let {
                 LiveText(
                     it,
@@ -2014,7 +2031,7 @@ private fun LiveTvGuideScreenBody(
                 current = user.epgOverrides[ch.key],
                 automatic = epgAutoMatches[ch.key],
                 loading = status.loading || epgListsLoading,
-                statusMessage = status.message.takeIf { status.loading }
+                statusMessage = status.message.takeIf { status.loading && !status.silent }
                     ?: "Reading the guides' channel lists…".takeIf { epgListsLoading },
                 unassignedOnly = epgUnassignedOnly,
                 onToggleUnassigned = { epgUnassignedOnly = !epgUnassignedOnly },
@@ -2420,6 +2437,7 @@ private fun LiveTvGuideScreenBody(
                 embedded = true,
                 onOpenSettings = onOpenSettings,
                 onOpenSportsMultiview = { panes -> onOpenSportsMultiview(panes, playback.channelKey) },
+                onOpenMultiview = onOpenMultiview,
                 viewModel = viewModel
             )
         }
@@ -3679,7 +3697,7 @@ private fun ChannelContextMenu(
     val first = remember { FocusRequester() }
     val ch = target.channel
     val program = target.block?.program
-    val canCatchup = program != null && program.stopMs <= now && CatchupUrlBuilder.isAvailable(ch.catchup, program.startMs, now)
+    val canCatchup = program != null && program.stopMs <= now && CatchupUrlBuilder.isAvailable(ch, program, now)
     // The Calendar's bell: follow this show, or put this movie's airing on the Calendar.
     val bell = com.nuvio.tv.livetv.calendar.rememberLiveBell(program ?: streamProgram, ch)
     LiveDialog(onDismiss = onDismiss, width = 460.dp) {
@@ -3689,6 +3707,7 @@ private fun ChannelContextMenu(
         LazyColumn(verticalArrangement = Arrangement.spacedBy(4.dp)) {
             item { MenuHeader("Watch", first = true) }
             item { MenuItem("Watch full screen", Modifier.focusRequester(first), onWatch) }
+            item { MenuItem("Add to Multiview", onClick = { com.nuvio.tv.livetv.multiview.MultiviewQueue.addAndAnnounce(ch.key); onDismiss() }) }
             // On now, with catch-up or a recording running: start it over (right under Watch).
             if (canRestart && (program == null || (now >= program.startMs && now < program.stopMs))) item {
                 MenuItem(restartLabel, onClick = onRestart)
@@ -4419,7 +4438,7 @@ private fun ProgramInfoDialog(
             modifier = Modifier.horizontalScroll(androidx.compose.foundation.rememberScrollState())
         ) {
             val live = block != null && now >= block.startMs && now < block.stopMs
-            val archive = p != null && p.stopMs <= now && CatchupUrlBuilder.isAvailable(target.channel.catchup, p.startMs, now)
+            val archive = p != null && p.stopMs <= now && CatchupUrlBuilder.isAvailable(target.channel, p, now)
             val upcoming = p != null && block != null && block.startMs > now
             // For a show that hasn't started, streaming it through Nuvio is the main action.
             if (upcoming) {
@@ -4496,7 +4515,7 @@ internal fun TextInputDialog(
         Spacer(Modifier.height(16.dp))
         Row(horizontalArrangement = Arrangement.spacedBy(10.dp)) {
             LiveFocusRow(onClick = { onConfirm(text) }) { f -> LiveText(confirmLabel, color = focusedTextColor(f)) }
-            LiveFocusRow(onClick = onDismiss) { f -> LiveText("Cancel", color = focusedTextColor(f)) }
+            LiveFocusRow(onClick = onDismiss) { f -> LiveText(androidx.compose.ui.res.stringResource(com.nuvio.tv.R.string.action_cancel), color = focusedTextColor(f)) }
         }
     }
     LaunchedEffect(Unit) { delay(80); runCatching { fieldFocus.requestFocus() } }
@@ -4631,7 +4650,9 @@ private fun LogoSidePanel(
     var choices by remember { mutableStateOf<List<com.nuvio.tv.livetv.data.LogoChoice>?>(null) }
     var libraryLoading by remember { mutableStateOf(false) }
     val picked = viewModel.hasPickedLogo(channel)
-    LaunchedEffect(channel.key, query, logoSourcesOff) {
+    // Your guides' logos come with their channel lists, read when the panel opens.
+    val guideLists by viewModel.epgSources.collectAsStateWithLifecycle()
+    LaunchedEffect(channel.key, query, logoSourcesOff, guideLists.isEmpty()) {
         // Your playlists and guides straight away; the libraries' lists may need fetching first.
         choices = null
         choices = viewModel.logoChoices(context, channel, query, withLibrary = false)
