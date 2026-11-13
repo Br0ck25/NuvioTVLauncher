@@ -1,0 +1,39 @@
+name: NuvioTV pending fixes
+
+# NuvioPlusIPTV is a fork of NuvioTV and is merged into dev by "Sync upstream".
+# This job lists the NuvioTV commits that neither NuvioPlusIPTV nor dev has yet, so they can be
+# cherry-picked (git cherry-pick -x <sha>) in small batches. Nothing is pushed; the list is in the run summary.
+# Commits already cherry-picked here are matched by patch-id and do not show up again.
+on:
+  schedule:
+    - cron: "37 */12 * * *"
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  list:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          ref: dev
+          fetch-depth: 0
+      - name: List pending NuvioTV commits
+        run: |
+          git remote add plus https://github.com/homelessbrian/NuvioPlusIPTV.git
+          git remote add nuvio https://github.com/NuvioMedia/NuvioTV.git
+          git fetch --quiet plus dev
+          git fetch --quiet nuvio dev
+          {
+            echo "## NuvioTV commits not yet in NuvioPlusIPTV or dev"
+            echo
+            # '+' = not applied anywhere in dev (which already contains Plus). Merge commits are skipped.
+            git cherry -v HEAD nuvio/dev | grep '^+' | sed 's/^+ //' > "$RUNNER_TEMP/pending.txt" || true
+            echo "Pending: $(wc -l < "$RUNNER_TEMP/pending.txt")"
+            echo
+            echo '```'
+            head -n 200 "$RUNNER_TEMP/pending.txt"
+            echo '```'
+          } >> "$GITHUB_STEP_SUMMARY"
