@@ -84,6 +84,7 @@ class LauncherAccessibilityService : AccessibilityService() {
      * lands on the launcher's home page and a quick second press reaches the profile switcher.
      */
     override fun onKeyEvent(event: KeyEvent): Boolean {
+        if (event.action == KeyEvent.ACTION_DOWN && event.repeatCount == 0) Log.i(MAPPER_TAG, "onKeyEvent key=${event.keyCode}")
         if (mappedKeyHandled(event)) return true
         if (AppsKeyStore.matches(this, event.keyCode)) return onAppsKey(event)
         if (event.keyCode != KeyEvent.KEYCODE_HOME) return super.onKeyEvent(event)
@@ -111,17 +112,23 @@ class LauncherAccessibilityService : AccessibilityService() {
      */
     private fun mappedKeyHandled(event: KeyEvent): Boolean {
         val code = event.keyCode
-        if (!RemoteButtonCatalog.isMappableKey(code)) return false
-        val mapper = ButtonKeyEventHandler.fromContext(this) ?: return false
+        val trace = event.action == KeyEvent.ACTION_DOWN && event.repeatCount == 0
+        fun note(why: String) { if (trace) Log.i(MAPPER_TAG, "key=$code $why") }
+        if (!RemoteButtonCatalog.isMappableKey(code)) { note("not mappable"); return false }
+        val mapper = ButtonKeyEventHandler.fromContext(this)
+        if (mapper == null) { note("no mapper (entry point failed)"); return false }
         val foreground = HomeForegroundDelivery.isResumed
         val source = if (foreground) ButtonEventSource.FOREGROUND else ButtonEventSource.GLOBAL
         // Teaching a button in Settings: the press belongs to the capture.
         if (mapper.captureController.isCapturingOrReleasing(code, event.action)) {
+            note("capturing, source=$source")
             return mapper.onKeyEvent(event = event, source = source, accessibilityEnabled = true, nativeHomeActive = LauncherSetup.isDefaultHome(this))
         }
-        val mapping = mapper.repository.activeMappingFor(code, isGlobal = !foreground) ?: return false
-        if (code == KeyEvent.KEYCODE_HOME && mapping.matchesFactoryHomeDefaults()) return false
+        val mapping = mapper.repository.activeMappingFor(code, isGlobal = !foreground)
+        if (mapping == null) { note("no active mapping, foreground=$foreground"); return false }
+        if (code == KeyEvent.KEYCODE_HOME && mapping.matchesFactoryHomeDefaults()) { note("home defaults"); return false }
         val handled = mapper.onKeyEvent(event = event, source = source, accessibilityEnabled = true, nativeHomeActive = LauncherSetup.isDefaultHome(this))
+        note("mapping found, source=$source, handled=$handled")
         if (handled && code == KeyEvent.KEYCODE_HOME) delivery.onLaunch(SystemClock.uptimeMillis())
         return handled
     }
@@ -251,6 +258,7 @@ class LauncherAccessibilityService : AccessibilityService() {
 
     companion object {
         private const val TAG = "LauncherAccessibility"
+        private const val MAPPER_TAG = "ButtonMapperSvc"
         /** Firmware launchers seen on Google TV / Android TV; the Home-resolver scan covers any others. */
         private val KNOWN_STOCK_LAUNCHERS = setOf(
             "com.google.android.apps.tv.launcherx",
