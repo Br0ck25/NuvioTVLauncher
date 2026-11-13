@@ -604,9 +604,6 @@
     <string name="app_rename_title">Rename app</string>
     <string name="app_rename_save">Save name</string>
     <string name="app_rename_reset">Use the app\'s own name</string>
-    <string name="settings_apps_button_title">Remote Apps button</string>
-    <string name="settings_apps_button_default">Standard Apps button</string>
-    <string name="settings_apps_button_subtitle">Choose the button on your remote that opens the Apps page. Remotes disagree about what their Apps button sends, so press the one you want.</string>
     <string name="apps_key_capture_title">Press the button</string>
     <string name="apps_key_capture_body">Press the remote button that should open Apps. Back cancels.</string>
     <string name="apps_key_capture_rejected">That button can\'t be used (it is needed for moving around, Home or volume). Try another.</string>

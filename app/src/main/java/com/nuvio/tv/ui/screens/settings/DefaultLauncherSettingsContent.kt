@@ -31,8 +31,6 @@ internal fun DefaultLauncherSettingsContent(initialFocusRequester: FocusRequeste
     val selfSetup = remember { LocalAdbSetupFactory.create(context) }
     var showSelfSetup by remember { mutableStateOf(false) }
     var setupRevision by remember { mutableStateOf(0) }
-    var capturingAppsKey by remember { mutableStateOf(false) }
-    val appsKeyChosen = remember(capturingAppsKey) { com.nuvio.tv.core.launcher.AppsKeyStore.chosen(context) }
     val secureGranted = remember(setupRevision) { AccessibilityWatchdog.canWriteSecureSettings(context) }
     var keepOverride by remember(setupRevision) { mutableStateOf(AccessibilityWatchdog.isOptedIn(context)) }
     Column(
@@ -77,12 +75,6 @@ internal fun DefaultLauncherSettingsContent(initialFocusRequester: FocusRequeste
                 subtitle = stringResource(R.string.settings_home_override_subtitle),
                 onClick = setup.openAccessibilitySettings
             )
-            SettingsActionRow(
-                title = stringResource(R.string.settings_apps_button_title),
-                subtitle = stringResource(R.string.settings_apps_button_subtitle),
-                value = if (appsKeyChosen > 0) com.nuvio.tv.core.launcher.AppsKeyStore.describe(appsKeyChosen) else stringResource(R.string.settings_apps_button_default),
-                onClick = { capturingAppsKey = true }
-            )
             if (selfSetup == null) {
                 val support = com.nuvio.tv.core.launcher.PhoneSetupSupport.current()
                 SettingsNote(
@@ -116,7 +108,6 @@ internal fun DefaultLauncherSettingsContent(initialFocusRequester: FocusRequeste
                 )
             }
         }
-        if (capturingAppsKey) AppsKeyCaptureDialog(onDone = { capturingAppsKey = false })
         if (showSelfSetup && selfSetup != null) {
             LocalAdbSetupDialog(
                 setup = selfSetup,

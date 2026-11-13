@@ -174,15 +174,4 @@ class AppCustomisationTest {
         assertEquals(emptyMap<String, String>(), l.decode(null))
         assertEquals(emptyMap<String, String>(), l.decode("garbage without a tab"))
     }
-
-    @Test
-    fun theRemoteButtonCannotBeAKeyNeededForNavigation() {
-        val k = AppsKeyStore
-        listOf(
-            android.view.KeyEvent.KEYCODE_DPAD_UP, android.view.KeyEvent.KEYCODE_DPAD_CENTER, android.view.KeyEvent.KEYCODE_BACK,
-            android.view.KeyEvent.KEYCODE_HOME, android.view.KeyEvent.KEYCODE_VOLUME_UP, android.view.KeyEvent.KEYCODE_POWER, 0, -1
-        ).forEach { assertFalse("$it", k.isAllowed(it)) }
-        listOf(android.view.KeyEvent.KEYCODE_ALL_APPS, android.view.KeyEvent.KEYCODE_PROG_RED, android.view.KeyEvent.KEYCODE_GUIDE)
-            .forEach { assertTrue("$it", k.isAllowed(it)) }
-    }
 }
