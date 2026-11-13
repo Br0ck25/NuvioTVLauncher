@@ -1,6 +1,18 @@
-# 🎮 Remote controls
+# Remote controls
 
-How to get around Nuvio + IPTV with your TV remote. [Back to the README](README.md)
+How to get around Nuvio Launcher with your TV remote. [Back to the README](README.md)
+
+### Home screen and remote buttons
+
+| Button | Action |
+|---|---|
+| **Home** | Home page, scrolled to the top (from anywhere, once Nuvio Launcher is your Home app) |
+| **Double-tap Home** | Profile switcher |
+| **Apps button** | Apps page instead of the TV's own app list |
+| **Long-press OK on an app** | Open, Rename, Move earlier / later, Change icon, **Hide from Home** (or **Show on Home**), App info |
+| **Any other remote button** | Whatever you set in **Settings → Remote & Buttons**: a separate action for a single press, a double press and a long press |
+
+The D-pad, Back, volume and power buttons can't be remapped.
 
 ### In the guide
 | Button | Action |
@@ -23,7 +35,7 @@ How to get around Nuvio + IPTV with your TV remote. [Back to the README](README.
 | **OK** | Info panel (catch-up: pause / play) |
 | **◀** | Overlay mode (catch-up: skip back) |
 | **▶** | Catch-up: skip forward (hold to skip faster) |
-| **⏪ / ⏩** | Catch-up and paused live TV: 30 seconds back / forward (hold to go faster) |
+| ** / ** | Catch-up and paused live TV: 30 seconds back / forward (hold to go faster) |
 | **Long-press OK** or **Menu** | Audio, subtitles, screen size, picture shape, stream info, sleep timer, record, watch from the beginning, find & stream |
 | **Back** | Back to the guide |
 
@@ -51,7 +63,7 @@ How to get around Nuvio + IPTV with your TV remote. [Back to the README](README.
 | **OK** on a game | Game info: channels, score, Remind me, Record |
 | **Hold OK** on a game | Watch it in the video window (again: full screen) |
 | **◀ / ▶** on the big card | Your next games |
-| **▲** from the games | The top bar: My Sports, All Events, 🏆 Tables, your sports (and the day tabs on All Events) |
+| **▲** from the games | The top bar: My Sports, All Events, Tables, your sports (and the day tabs on All Events) |
 | **Hold Back** | Full screen on the game in the video window |
 | **Back** | The side menu |
 
