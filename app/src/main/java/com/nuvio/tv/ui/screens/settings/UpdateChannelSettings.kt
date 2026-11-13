@@ -2,7 +2,7 @@ package com.nuvio.tv.ui.screens.settings
 
 import androidx.activity.ComponentActivity
 import androidx.compose.material.icons.Icons
-import androidx.compose.material.icons.automirrored.filled.OpenInNew
+import androidx.compose.material.icons.filled.Refresh
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
@@ -78,7 +78,8 @@ internal fun UpdateChannelSettings(
     SettingsActionRow(
         title = stringResource(R.string.about_check_updates),
         subtitle = stringResource(R.string.about_check_updates_subtitle),
-        trailingIcon = Icons.AutoMirrored.Filled.OpenInNew,
+        // Not an external link: it checks here and the banner at the top then downloads and installs it.
+        trailingIcon = Icons.Default.Refresh,
         onClick = {
             viewModel.checkForUpdates(force = true, showNoUpdateFeedback = true)
         }

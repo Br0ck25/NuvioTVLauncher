@@ -115,6 +115,8 @@ import com.nuvio.tv.domain.model.ContinueWatchingCardStyle
 import com.nuvio.tv.domain.model.PLACEHOLDER_IMAGE_URL
 import com.nuvio.tv.domain.model.isPlaceholder
 import com.nuvio.tv.ui.components.ContinueWatchingCard
+import com.nuvio.tv.ui.components.UPCOMING_SCHEDULE_CARD_WIDTH
+import com.nuvio.tv.ui.components.continueWatchingArtworkHeight
 import com.nuvio.tv.ui.components.continueWatchingArtworkWidth
 import com.nuvio.tv.ui.components.continueWatchingImageCacheKey
 import com.nuvio.tv.ui.components.continueWatchingImageModel
@@ -175,6 +177,7 @@ private fun ModernContinueWatchingRowItem(
     onFocused: () -> Unit,
     onContinueWatchingClick: (ContinueWatchingItem) -> Unit,
     onShowOptions: (ContinueWatchingItem) -> Unit,
+    isUpcomingCard: Boolean = false,
     modifier: Modifier = Modifier
 ) {
     val item = payload.item
@@ -213,6 +216,7 @@ private fun ModernContinueWatchingRowItem(
         cardStyle = continueWatchingCardStyle,
         cornerRadius = continueWatchingCornerRadius,
         isFocused = isCardFocused,
+        isUpcomingCard = isUpcomingCard,
         modifier = modifier
             .focusRequester(requester)
             .onFocusChanged {
@@ -264,7 +268,7 @@ private fun ModernCatalogRowItem(
     val focusKey = when (payload) {
         is ModernPayload.Catalog -> payload.focusKey
         is ModernPayload.CollectionFolder -> payload.focusKey
-        is ModernPayload.ContinueWatching -> error("Unsupported payload for ModernCatalogRowItem")
+        is ModernPayload.ContinueWatching, is ModernPayload.InstalledApp -> error("Unsupported payload for ModernCatalogRowItem")
     }
 
     val metaPreview = item.metaPreview
@@ -326,7 +330,7 @@ private fun ModernCatalogRowItem(
                     )
                 )
             }
-            is ModernPayload.ContinueWatching -> Unit
+            is ModernPayload.ContinueWatching, is ModernPayload.InstalledApp -> Unit
         }
     }
 
@@ -424,7 +428,7 @@ private fun ModernCatalogRowItem(
                         payload.folderId
                     )
                 }
-                is ModernPayload.ContinueWatching -> Unit
+                is ModernPayload.ContinueWatching, is ModernPayload.InstalledApp -> Unit
             }
         },
         onLongPress = onLongPress,
@@ -504,6 +508,28 @@ internal fun ModernRowSection(
 
     // Blocks vertical focus exit during placeholder→data transition.
     val blockingFocusExit = remember { mutableStateOf(false) }
+
+    // Launcher: the Apps row. Long-press on an app opens its menu (open, rename, move, app info).
+    val appsViewModel: com.nuvio.tv.core.apps.InstalledAppsViewModel? =
+        if (row.key == com.nuvio.tv.core.apps.INSTALLED_APPS_CATALOG_KEY) androidx.hilt.navigation.compose.hiltViewModel() else null
+    var contextMenuApp by remember { mutableStateOf<com.nuvio.tv.core.apps.InstalledApp?>(null) }
+    contextMenuApp?.let { app ->
+        val shown = row.items.list.mapNotNull { (it.payload as? ModernPayload.InstalledApp)?.app }
+        val index = shown.indexOfFirst { it.packageName == app.packageName }
+        if (appsViewModel == null || index < 0) contextMenuApp = null else com.nuvio.tv.ui.components.InstalledAppActionsDialog(
+            app = app,
+            canMoveEarlier = index > 0,
+            canMoveLater = index < shown.lastIndex,
+            onOpen = { appsViewModel.launch(app) },
+            onMoveEarlier = { appsViewModel.move(app, -1) },
+            onMoveLater = { appsViewModel.move(app, 1) },
+            onAppInfo = { appsViewModel.openAppInfo(app) },
+            onRename = { appsViewModel.rename(app, it) },
+            iconChooser = appsViewModel.iconChooser(app),
+            onSetHidden = { appsViewModel.setHidden(app, it) },
+            onDismiss = { contextMenuApp = null }
+        )
+    }
 
     // Item keys carry item identity, which the placeholder the ring sits on loses when real data
     // arrives: its key changes and Compose tears the focused node down. Lend that one card a
@@ -675,14 +701,18 @@ internal fun ModernRowSection(
         ) {
             if (!isActiveRow() || isVerticalRowsScrollingState.value) return@LaunchedEffect
             delay(150) // Wait before spamming image requests to survive rapid vertical D-pad scrolls!
+            val isUpcomingRow = row.key == MODERN_UPCOMING_ROW_KEY
             val cwWidthPx = with(density) {
                 continueWatchingArtworkWidth(
-                    continueWatchingCardStyle, continueWatchingCardWidth, continueWatchingCardHeight
+                    continueWatchingCardStyle, continueWatchingCardWidth, continueWatchingCardHeight, isUpcomingRow
                 ).roundToPx()
             }
-            val cwHeightPx = with(density) { continueWatchingCardHeight.roundToPx() }
+            val cwHeightPx = with(density) {
+                continueWatchingArtworkHeight(continueWatchingCardHeight, isUpcomingRow).roundToPx()
+            }
             fun imageUrlAndKey(item: ModernCarouselItem): Pair<String, String>? {
                 return when (val payload = item.payload) {
+                    is ModernPayload.InstalledApp -> null
                     is ModernPayload.Catalog -> {
                         val url = item.imageUrl ?: return null
                         val metrics = item.catalogCardMetrics(
@@ -711,13 +741,14 @@ internal fun ModernRowSection(
                     }
                     is ModernPayload.ContinueWatching -> {
                         // Use the same model and cache key the card computes so the prefetch warms the entry the card actually reads.
+                        val effectiveCardStyle = if (isUpcomingRow) ContinueWatchingCardStyle.CARD else continueWatchingCardStyle
                         val model = continueWatchingImageModel(
-                            payload.item, continueWatchingUsesEpisodeThumbnails(continueWatchingCardStyle, useEpisodeThumbnails),
-                            continueWatchingCardStyle != ContinueWatchingCardStyle.CARD
+                            payload.item, continueWatchingUsesEpisodeThumbnails(effectiveCardStyle, useEpisodeThumbnails),
+                            effectiveCardStyle != ContinueWatchingCardStyle.CARD
                         ) ?: return null
                         val blur = continueWatchingShouldBlur(
-                            payload.item, blurUnwatchedEpisodes, continueWatchingUsesEpisodeThumbnails(continueWatchingCardStyle, useEpisodeThumbnails),
-                            continueWatchingCardStyle != ContinueWatchingCardStyle.CARD
+                            payload.item, blurUnwatchedEpisodes, continueWatchingUsesEpisodeThumbnails(effectiveCardStyle, useEpisodeThumbnails),
+                            effectiveCardStyle != ContinueWatchingCardStyle.CARD
                         )
                         model to continueWatchingImageCacheKey(model, cwWidthPx, cwHeightPx, blur)
                     }
@@ -750,6 +781,7 @@ internal fun ModernRowSection(
                 for (i in 0 until minOf(POSTER_PREFETCH_DISTANCE, items.size)) {
                     val item = items.getOrNull(i) ?: continue
                     val (wPx, hPx) = when (item.payload) {
+                        is ModernPayload.InstalledApp -> 0 to 0
                         is ModernPayload.Catalog -> {
                             val metrics = item.catalogCardMetrics(
                                 useLandscapePosters = useLandscapePosters,
@@ -786,6 +818,7 @@ internal fun ModernRowSection(
                         for (i in (lastVisibleIndex + 1)..(lastVisibleIndex + POSTER_PREFETCH_DISTANCE)) {
                             val item = currentItems.getOrNull(i) ?: continue
                             val (wPx, hPx) = when (item.payload) {
+                                is ModernPayload.InstalledApp -> 0 to 0
                                 is ModernPayload.Catalog -> {
                                     val metrics = item.catalogCardMetrics(
                                         useLandscapePosters = useLandscapePosters,
@@ -939,6 +972,7 @@ internal fun ModernRowSection(
                             is ModernPayload.ContinueWatching -> "modern_cw_card"
                             is ModernPayload.Catalog -> if (payload.itemId.startsWith("__placeholder_")) "placeholder" else payload.itemType
                             is ModernPayload.CollectionFolder -> "modern_collection_folder_card"
+                            is ModernPayload.InstalledApp -> "installed_app"
                         }
                     }
                 ) { index, item ->
@@ -966,20 +1000,53 @@ internal fun ModernRowSection(
                     }
 
                     when (val payload = item.payload) {
+                        is ModernPayload.InstalledApp -> {
+                            // Launcher: one app in the Apps row.
+                            LaunchedEffect(isTargetItem) {
+                                if (isTargetItem) runCatching { requester.requestFocus() }
+                            }
+                            val appsVm = appsViewModel
+                            if (appsVm != null) {
+                                com.nuvio.tv.ui.components.InstalledAppCard(
+                                    app = payload.app,
+                                    loadImage = appsVm::image,
+                                    onClick = {
+                                        onFocused()
+                                        appsVm.launch(payload.app)
+                                    },
+                                    onLongClick = { contextMenuApp = payload.app },
+                                    modifier = Modifier
+                                        .focusRequester(requester)
+                                        .onFocusChanged { if (it.isFocused) onFocused() },
+                                    width = 160.dp
+                                )
+                            }
+                        }
                         is ModernPayload.ContinueWatching -> {
+                            val isUpcoming = row.key == MODERN_UPCOMING_ROW_KEY
                             ModernContinueWatchingRowItem(
                                 payload = payload,
                                 requester = requester,
                                 isTargetItem = isTargetItem,
-                                cardWidth = continueWatchingCardWidth,
+                                cardWidth = if (isUpcoming) UPCOMING_SCHEDULE_CARD_WIDTH else continueWatchingCardWidth,
                                 imageHeight = continueWatchingCardHeight,
                                 blurUnwatchedEpisodes = blurUnwatchedEpisodes,
                                 useEpisodeThumbnails = useEpisodeThumbnails,
                                 continueWatchingCardStyle = continueWatchingCardStyle,
                                 continueWatchingCornerRadius = continueWatchingCornerRadius,
                                 onFocused = onFocused,
-                                onContinueWatchingClick = onContinueWatchingClick,
-                                onShowOptions = onContinueWatchingOptions
+                                // An upcoming episode isn't out yet, so selecting it shows its details instead of playing.
+                                onContinueWatchingClick = if (isUpcoming) {
+                                    { item ->
+                                        val (id, type) = when (item) {
+                                            is ContinueWatchingItem.InProgress -> item.progress.contentId to item.progress.contentType
+                                            is ContinueWatchingItem.NextUp -> item.info.contentId to item.info.contentType
+                                        }
+                                        onNavigateToDetail(id, type, "")
+                                    }
+                                } else onContinueWatchingClick,
+                                onShowOptions = onContinueWatchingOptions,
+                                isUpcomingCard = isUpcoming
                             )
                         }
 

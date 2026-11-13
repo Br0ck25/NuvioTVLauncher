@@ -307,12 +307,14 @@ object SideMenuPages {
     const val SPORTS = "sports"
     const val ON_DEMAND = "ondemand"
     const val DISCOVER = "discover"
+    /** Launcher: every installed app (and the Apps row on Home). */
+    const val APPS = "apps"
 
-    val DEFAULT_ORDER = listOf(HOME, DISCOVER, SEARCH, LIBRARY, CALENDAR, LIVE_TV, SPORTS, ON_DEMAND, RECORDINGS)
+    val DEFAULT_ORDER = listOf(HOME, DISCOVER, SEARCH, LIBRARY, APPS, CALENDAR, LIVE_TV, SPORTS, ON_DEMAND, RECORDINGS)
 
     val NAMES = mapOf(
         HOME to "Home", SEARCH to "Search", LIBRARY to "Library", CALENDAR to "Calendar", LIVE_TV to "Live TV",
-        SPORTS to "Sports", ON_DEMAND to "On Demand", DISCOVER to "Discover", RECORDINGS to "Recordings"
+        SPORTS to "Sports", ON_DEMAND to "On Demand", DISCOVER to "Discover", RECORDINGS to "Recordings", APPS to "Apps"
     )
 
     /** The order as saved, with any page it doesn't mention in its usual place. */

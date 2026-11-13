@@ -14,9 +14,23 @@ import okhttp3.mockwebserver.SocketPolicy
 import org.junit.Assert.assertEquals
 import org.junit.Assert.assertNotNull
 import org.junit.Assert.assertNull
+import org.junit.After
+import org.junit.Before
 import org.junit.Test
 
 class EmbeddedSubtitleTimelineLoaderTest {
+    private val protection = PlaybackHttpProtection.wrap
+
+    @Before
+    fun withoutVpnLayer() {
+        PlaybackHttpProtection.wrap = { it }
+    }
+
+    @After
+    fun restoreVpnLayer() {
+        PlaybackHttpProtection.wrap = protection
+    }
+
     @Test
     fun concurrentIndexLoadsShareOneDownload(): Unit = runBlocking {
         MockWebServer().use { server ->

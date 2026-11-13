@@ -172,7 +172,10 @@ object CalendarHomeFeed {
         }.toSet()
         val gone = synchronized(dismissed) { dismissed.toSet() }
         val addMain = r.filter { it.info.contentId !in native && key(it.info.contentId, it.info.season, it.info.episode).let { k -> k !in gone && !isSnoozed(k) } }
-        val addUp = u.filter { it.info.contentId !in native && it.info.contentId !in addMain.map { a -> a.info.contentId } }
+        // A show Continue Watching already has a card for still gets its next airing episode in
+        // Upcoming (the calendar lists it); only a show Nuvio's own Upcoming row already holds is skipped.
+        val nativeUp = baseUp.mapNotNull { (it as? ContinueWatchingItem.NextUp)?.info?.contentId }.toSet()
+        val addUp = u.filter { it.info.contentId !in nativeUp && it.info.contentId !in addMain.map { a -> a.info.contentId } }
         val addMovies = mv.filter { it.progress.contentId !in native && key(it.progress.contentId, null, null) !in gone }
         injected = (addMain + addUp).map { "${it.info.contentId}|${it.info.videoId}" }.toSet()
         injectedMovies = addMovies.map { it.progress.contentId }.toSet()

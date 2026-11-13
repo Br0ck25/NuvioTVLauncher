@@ -1,28 +1,279 @@
 <div align="center">
 
-# Nuvio + IPTV
+  <img src="assets/brand/app_logo_wordmark_readme.png" alt="Nuvio Launcher" width="340" />
 
-**Everything in Nuvio, plus everything IPTV: a TiviMate-style Live TV guide, a Sports hub that finds every game on your own channels, a Calendar of your shows, movies and games, catch-up, recordings, your provider's movies and series, and a built-in VPN for your playback, all in one app for Google TV, Android TV and Fire TV. Your setup follows your Nuvio account, and there's a [phone app](https://github.com/homelessbrian/NuvioPlusIPTV-Mobile) too.**
+# Nuvio Launcher
 
-[![Latest release](https://img.shields.io/github/v/release/homelessbrian/NuvioPlusIPTV?include_prereleases&label=latest&style=for-the-badge)](https://github.com/homelessbrian/NuvioPlusIPTV/releases)
-[![Downloads](https://img.shields.io/github/downloads/homelessbrian/NuvioPlusIPTV/total?style=for-the-badge)](https://github.com/homelessbrian/NuvioPlusIPTV/releases)
+**A real Android TV home screen built on Nuvio: your apps, your Live TV guide, Sports, Calendar, recordings and a built-in VPN, all in one launcher for Google TV, Android TV and Fire TV. Sign in with your Nuvio account and your setup follows you.**
+
+[![Latest release](https://img.shields.io/github/v/release/Br0ck25/NuvioTVLauncher?label=latest%20release&style=for-the-badge)](https://github.com/Br0ck25/NuvioTVLauncher/releases/latest)
+[![Latest beta](https://img.shields.io/github/v/release/Br0ck25/NuvioTVLauncher?include_prereleases&label=latest%20beta&style=for-the-badge&color=orange)](https://github.com/Br0ck25/NuvioTVLauncher/releases)
+[![Downloads](https://img.shields.io/github/downloads/Br0ck25/NuvioTVLauncher/total?style=for-the-badge)](https://github.com/Br0ck25/NuvioTVLauncher/releases)
 [![License](https://img.shields.io/badge/license-GPL--3.0-blue?style=for-the-badge)](LICENSE)
 [![Based on Nuvio](https://img.shields.io/badge/based%20on-NuvioMedia%2FNuvioTV-8A2BE2?style=for-the-badge)](https://github.com/NuvioMedia/NuvioTV)
-[![Discord](https://img.shields.io/badge/chat-Discord-5865F2?style=for-the-badge&logo=discord&logoColor=white)](https://discord.gg/NvK5JVvvm)
-[![Support on Ko-fi](https://img.shields.io/badge/support-Ko--fi-FF5E5B?style=for-the-badge&logo=ko-fi&logoColor=white)](https://ko-fi.com/homelessbrian)
 
-**Downloader code: 6532491**
-
-[Sports hub](#-sports-hub) · [Calendar](#-calendar) · [VPN](#-built-in-vpn) · [Sync](#-your-setup-everywhere) · [Phone app](#-on-your-phone-too) · [Download](#-installation) · [Features](#-features) · [Setup](#-getting-started) · [Remote controls](CONTROLS.md) · [Report a bug](#-reporting-bugs-and-requesting-features) · [Discord](https://discord.gg/NvK5JVvvm) · [Support](#-support-the-project)
-
-> ### 🙌 Big thanks to [ghbarker](https://github.com/ghbarker)
-> The **built-in VPN** is his work. He wrote the WireGuard and OpenVPN support and contributed it to this project, so your playback can be protected without a separate VPN app. Thank you!
+[Download](#installation) · [Setup](#getting-started) · [Home screen](#use-it-as-your-home-screen) · [Live TV](#live-tv-features) · [Sports](#sports-hub) · [Calendar](#calendar) · [VPN](#built-in-vpn) · [Sync](#your-setup-everywhere) · [Remote controls](CONTROLS.md) · [FAQ](#faq) · [Report a bug](#reporting-bugs-and-requesting-features)
 
 </div>
 
+**Nuvio Launcher uses Trakt but is not endorsed or certified by Trakt.** See the [privacy page](PRIVACY.md).
+
 ---
 
-## 🏆 Sports hub
+## Installation
+
+1. Open the **[latest release](https://github.com/Br0ck25/NuvioTVLauncher/releases/latest)**.
+2. Download the APK for your device:
+
+   | Device | APK |
+   |---|---|
+   | Most Google TV / Android TV devices | `arm64-v8a` |
+   | Fire TV (all models), older or budget boxes | `armeabi-v7a` |
+   | Not sure (works everywhere) | `universal` |
+
+3. Install it with a file manager or **Downloader** (by AFTVnews), allowing installs from unknown sources when asked.
+4. Open **Nuvio Launcher**. A short setup walks you through making it your Home screen (see [Use it as your Home screen](#use-it-as-your-home-screen)). Installing does not make it your Home app by itself.
+
+**Install with Downloader (no computer needed):**
+
+1. On your TV, install **Downloader** by AFTVnews from the Google Play Store (Android TV / Google TV) or the Amazon Appstore (Fire TV).
+2. Open Downloader and allow the file access prompt if it appears.
+3. In the URL box, enter the code **`2057622`** (or `aftv.news/2057622`) and select **Go**. It always downloads the newest stable release.
+4. When the download finishes, select **Install**. If Android says it can't install apps from this source, select **Settings**, turn on **Install unknown apps** for Downloader, go back, and select **Install** again.
+5. Select **Open** when it finishes. You can delete the downloaded APK when Downloader offers to.
+
+Requires **Android 7.0 or newer** (Fire OS 6 or later). It has its own app ID (`com.nuvio.tv.launcher`), so it installs **alongside** the official Nuvio app and *Nuvio + IPTV*. If you already have Nuvio Launcher 1.1.x, this updates it in place (Settings → About, or install over it) and keeps your sign-in.
+
+**Updating:** updates appear **inside the app** (Settings → About) from this repository's releases. Stable releases go to everyone. Beta builds are marked **Pre-release** on the releases page and are only offered to people who opted in to betas.
+
+---
+
+## Getting started
+
+1. On first run, follow the short **launcher setup** (Home app, Home button, notifications), then sign in with your Nuvio account. You can redo it later in **Settings → Default launcher**.
+2. Open **Settings → Live TV**.
+3. Choose **Add M3U Playlist** or **Add Xtream Codes Login**. For Xtream, pick **Include TV channels** and/or **Include movies & series**.
+4. Optionally **Add EPG Source** for an extra TV guide.
+5. Open **Live TV**, **On Demand** or **Sports** from the side menu. The first load can take a minute on big providers; a small progress bubble shows what's happening.
+6. Optional, all in **Settings → Live TV**:
+   - choose the page the app opens on (**Settings → Menu & Features → Open the App On**)
+   - turn on the **home screen row**
+   - choose where recordings are saved under **Recordings**
+   - set a parental **PIN**
+   - turn on **Setup Sync** (signed in to Nuvio)
+   - import a WireGuard or OpenVPN profile under **Settings → VPN** if you want your playback protected
+7. In **Sports**, press **Follow Teams & Leagues** to pick your teams. Set your region and reminders under **Settings → Sports**.
+8. Open **Calendar** and ring the bell on the shows you watch.
+
+---
+
+## Use it as your Home screen
+
+Nuvio Launcher is a real Android Home app, the same way FLauncher and ArcLauncher are. It is not set as your Home app automatically: the first-run setup (and **Settings → Default launcher**) does it. Once it is your Home app:
+
+- **Home** goes to the launcher's home page, scrolled to the top, from anywhere (another app, a detail page, the player). Any open panel closes.
+- **Double-tap Home** opens the profile switcher.
+- **Back** never leaves the launcher: on the home screen it only opens and closes the side menu. (When the app is not your Home app, Back still exits as usual.)
+- **Apps** is a page in the side menu and a row on Home: every installed app, TV apps with their banner. OK opens one. **Press and hold** for Open, Rename, Move earlier, Move later and App info (uninstall); the order and names are shared by the page, the row and the top-right panel. The row is placed like any other Home row: open **Reorder Home Catalogs** (Settings) and move **Apps** up or down, or switch it off there. Until you move it, it sits first, right under Continue Watching.
+- **Hide apps from the Home row** (1.2.1 and later): press and hold an app and choose **Hide from Home** so the row shows only the apps you want. Hidden apps stay on the Apps page and in the top-right panel (dimmed), where **Show on Home** brings them back.
+- **Remote Apps button** opens the Apps page instead of the TV's own app list.
+- **Button Mapper** (1.2.1 and later): **Settings → Remote & Buttons** gives any remote button (red, green, YouTube, Netflix and so on, but not the D-pad, Back, volume or power) its own single-press, double-press and long-press action: open an app, Search, Library, Settings, the Apps page, Live TV, the TV guide and more. Mappings work from inside other apps too once the accessibility service is on. The Home button keeps its usual behaviour unless you change it there.
+- **Top right of Home:** TV inputs, notifications (the bell) and a settings panel with **Apps**, **Launcher settings** and **Android settings**.
+
+### Simple setup: from the TV and your phone, no computer
+
+The first-run setup shows the steps, and everything is also in **Settings → Default launcher → Set up without a computer**. The TV shows a phone address; open it on a phone on the same Wi-Fi. On the TV turn on **Developer options → Wireless debugging** and open **Pair device with pairing code**, then type the port and code into the phone page and tap **Pair and set up**. The TV runs the commands itself (a phone can't run ADB), so there is nothing to copy:
+
+| Button on the phone page | What it does on the TV |
+|---|---|
+| Pair and set up | Pairs once, lets the app keep its accessibility setting on, makes it the Home app, turns on notifications |
+| Make this the Home app | `cmd package set-home-activity` |
+| Turn on Home button override | Turns on the app's accessibility setting (it stays on after a restart) so Home still opens the launcher on TVs that won't switch Home apps |
+| Turn on notifications | `cmd notification allow_listener` for the bell at the top right of Home |
+| Which launcher is Home now? | `cmd package resolve-activity` (read-only) |
+| Switch back to the original launcher | Finds the stock launcher and points Home back at it |
+| Turn off / back on the stock launcher | FLauncher's `pm disable-user` / `pm enable` for Google TV's launcher and its fallback (optional; the remote's YouTube button stops working while it is off, Button Mapper can remap it) |
+
+On **Google TV**, Android usually keeps Google's own launcher as Home even after "Make this the Home app"; the Home button override (or turning the stock launcher off) is what makes Home open Nuvio Launcher there. Already paired? Leave the port and code empty. The page also lists every command, with this TV's address filled in (`adb -s IP:PORT shell ...`), for anyone who would rather run them from a computer. Needs Android 11+ Wireless debugging and the `full` build; some TV firmware (many Fire TVs) refuses a different Home app however it is set.
+
+### Install with Tellyscope (no computer needed)
+
+[Tellyscope](https://github.com/man15h/tellyscope) is an ADB-based installer that runs on its own. After installing the release APK with it, open Nuvio Launcher, go to **Settings → Default launcher** and choose **Make this launcher the Home app**, then confirm the system dialog. Installing does not select Nuvio Launcher as Home by itself. Some TV firmware blocks third-party Home apps however they are installed; if the native Home setting works, the accessibility service is optional.
+
+### Fallback: manual ADB from a computer
+
+Use this only if your TV has no Wireless debugging option or the phone setup did not work. You can also try **Settings → Default launcher → Make this launcher the Home app** first.
+
+Before you start:
+
+- Download and extract Google's [Android SDK Platform-Tools](https://developer.android.com/tools/releases/platform-tools) and open PowerShell or Terminal in its `platform-tools` folder.
+- Put the computer and TV on the same trusted Wi-Fi network (no guest-network isolation).
+- The package is `com.nuvio.tv.launcher` and the Home activity is `com.nuvio.tv.launcher/com.nuvio.tv.MainActivity`.
+- Commands use `./adb`; in Windows PowerShell use `.\adb.exe`. Only authorize computers you trust. Menu names vary by TV and firmware, especially on Fire TV.
+
+**Method A: secure pairing (Wireless debugging with a pairing code, Android 11+)**
+
+1. On the TV: **Settings → System → About**, press **OS Build** 7 times, then **Settings → System → Developer options** and turn on **Wireless debugging**.
+2. Open **Pair device with pairing code** and keep the popup open. Note the 6-digit code and the address with the pairing port (for example `192.168.68.27:34197`).
+3. On the computer:
+
+   ```bash
+   ./adb pair IP_ADDRESS:PAIRING_PORT
+   ```
+
+   Enter the 6-digit code. Wait for "Successfully paired".
+4. Find the connection:
+
+   ```bash
+   ./adb devices
+   ```
+
+   Copy the identifier of the TV with status `device`. If it isn't listed, use the address and connection port from the main Wireless debugging screen (usually not the pairing port):
+
+   ```bash
+   ./adb connect IP_ADDRESS:CONNECTION_PORT
+   ```
+5. If Android blocks the accessibility switch ("restricted setting"), allow it, then set Nuvio Launcher as Home. Replace `YOUR_DEVICE_STRING` with the identifier from `adb devices`:
+
+   ```bash
+   ./adb -s YOUR_DEVICE_STRING shell appops set com.nuvio.tv.launcher ACCESS_RESTRICTED_SETTINGS allow
+   ```
+
+   ```bash
+   ./adb -s YOUR_DEVICE_STRING shell cmd package set-home-activity com.nuvio.tv.launcher/com.nuvio.tv.MainActivity
+   ```
+
+   If the first command reports an unknown operation, that firmware has no such restriction.
+6. Press Home on the TV to check. If Home still opens the stock launcher, turn on the accessibility override (below).
+
+**Method B: traditional ADB (no pairing code, older Android TV and some Fire TV)**
+
+1. Turn on **USB debugging / ADB debugging** (and **Network debugging** if listed) in Developer options (Fire TV: **Settings → My Fire TV → About**, press the device name 7 times). Find the TV's IP address in its network settings.
+2. Connect, and accept **Allow USB/Network debugging?** on the TV:
+
+   ```bash
+   ./adb connect IP_ADDRESS:5555
+   ```
+
+   Port 5555 is common but not guaranteed. If this firmware has no network ADB, this method can't be used.
+3. With one device connected you can drop `-s`:
+
+   ```bash
+   ./adb shell appops set com.nuvio.tv.launcher ACCESS_RESTRICTED_SETTINGS allow
+   ```
+
+   ```bash
+   ./adb shell cmd package set-home-activity com.nuvio.tv.launcher/com.nuvio.tv.MainActivity
+   ```
+
+Some Fire TV and vendor firmware blocks replacement Home apps. A successful install or ADB connection doesn't guarantee the TV honors it, and you should not disable or uninstall the stock launcher to work around a failed command.
+
+**Accessibility override and final checks**
+
+- The accessibility service is `com.nuvio.tv.launcher/com.nuvio.tv.core.launcher.LauncherAccessibilityService`.
+- Prefer turning it on in the TV's UI (**Settings → System → Accessibility**, or **Settings → Default launcher → Home button override**). Don't run `settings put secure enabled_accessibility_services ...` by hand: it replaces the whole enabled list and can switch off TalkBack. The phone setup page merges it safely for you.
+- Test Home from another app and from inside Nuvio Launcher, and double-Home for the profile switcher (some firmware reserves double-Home).
+- To go back, choose the original launcher in the TV's Default apps / Home app settings, or use **Switch back to the original launcher** on the phone setup page, and turn off the override.
+- When finished, disconnect ADB and turn off wireless debugging. Never expose ADB ports to the internet.
+
+---
+
+## Live TV features
+
+### List channels (Home rows as TV channels)
+Turn any Home row, collection folder or library list into a scheduled Live TV channel. Open **Settings → Live TV → List Channels**, pick the rows you want, and each becomes a channel in the Live TV guide with its own schedule. Press OK on one to play it through your debrid service or addons, and the next title starts when one ends. These channels count as a source, so the guide shows them even with no playlist added. They play like live TV (no seek bar), and torrent-only streams aren't played.
+
+### A proper TV guide
+- **TiviMate-style guide:** channels down the side, a timeline across, and a line marking "now" (which you can hide). It fits **8 or more channels** on screen.
+- **Guide Size:** Compact, Standard, Large or Extra Large. It sets the size of overlay mode too.
+- **Fast browsing:** hold Left to step back through earlier shows at double speed.
+- **Group list:**
+  - **Opening it:** it slides out with a tap of Left.
+  - **Grouping:** optionally grouped by playlist.
+  - **Browse by channel name** (satellite-box style).
+- **Open on Last Group:** Live TV opens on the group you were last watching.
+- **Info panel** with a big show poster (or just the channel logo, if you prefer), time left, the description (as much as fits), the playlist it comes from, and a live preview window.
+- **Make room for more channels:** a smaller info panel, and hiding numbers, logos, names or episode numbers.
+- **Badges:** catch-up icons on channels that support it, and 4K / FHD / HD / SD badges on channels you've watched.
+- **Change Logo:** pick a channel's logo from your playlists, your guides, logo libraries or TMDB, search for one, or send a link from your phone.
+- **Playing channel:** a red outline marks the channel you're watching (you can turn it off).
+
+### Overlay mode (while watching)
+- Press **Left** in full screen for a see-through guide over the video: the group's channels, the highlighted channel's schedule, and the show's details.
+- **Left again** switches groups. **Right** opens the channel's full schedule, with a date picker.
+- **Grouped by playlist** (when you have more than one), with headings you can fold, as in the guide.
+
+### Your sources, your way
+- **Multiple M3U playlists** and **multiple XMLTV guides,** merged into one guide.
+- **Xtream Codes logins:**
+  - **Pick what to include:** TV channels, movies & series, or both.
+  - **Stream format:** Auto, TS or HLS. M3U link playlists have it too, including Dispatcharr.
+  - **Account details:** expiry date, status and connections in use, with a warning before it runs out.
+- **Smart guide matching:** real listings always beat "Programming" placeholders. Fine-tune any channel with **Assign EPG**.
+- **Catch-up:**
+  - **Watch past shows** with a seek bar, or **restart what's on now**. Skips land where you aimed, even with providers that are slow to jump.
+  - **Follow-on playback:** carries straight on into the next show.
+  - **Guide time shift** and **Catch-up time shift** for providers that are off by an hour or more.
+- **Backup channels:** a button on the info bar lists the other copies of the channel you're watching, hidden ones included, so you can switch when one is having trouble. Copies match even when the name has a sound layout like 5.1.
+- **Channel name editor** (like TiviMate): strip "USA:", "HD", "24/7" and similar from channel names. Prefixes followed by just a space ("USA ESPN") are removed too when a playlist uses them on lots of channels.
+
+### Recordings
+- **Record a show, or a whole series,** from the guide. Series recordings skip repeats of episodes already recorded. Shows on catch-up channels are saved from catch-up after they end, which is the most reliable way.
+- **Save to this device or a USB drive.** Choose what happens when space runs low: stop recording, or delete the oldest.
+- **Choose the padding:** how early recordings start and how long they keep going after the show.
+- **Recordings carry on with the app closed or the box in standby**, and catch-up saves wait for the connection to come back.
+- **Watch while it records,** with skipping back and forward.
+- **Recordings button** (the red dot) next to the guide's settings gear.
+- **Size and details** for every recording: channel, air time, length, size and where it's saved.
+
+### Channel management
+- **Manage visibility** and **reorder** for channels *and* groups. Move several groups at once.
+- **Copy, rename and renumber** channels, **create your own groups,** and **number channels 1, 2, 3…** in each group.
+- **Channel numbers from your playlist** are used when it has them.
+- **Favorites** and **Recently watched,** with sorting that works everywhere. **Pick favorites** ticks many channels in a group at once.
+
+### On Demand
+- **What it is:** movies and series from your Xtream providers, with **categories or genres**, **Recently added**, **Search** and **Sort by**.
+- **Your posters, not the provider's:** posters and details come from your own addons. Matched titles open on Nuvio's normal details page, with watched marks and the usual long-press menu.
+- **On Demand** in Nuvio's stream list, with quality, codec and audio badges. Choose where its tab goes, and whether auto-play may pick it.
+- **Each title once:** duplicates are merged, and a picker lets you choose the version when there are several. Your provider's copies are listed best quality first, with quality tags.
+- **Play Straight from My Provider:** Play skips the source list for titles you opened from On Demand.
+- **Adult titles** never appear in Continue watching.
+
+### Watching
+- **Start in Full Screen:** open the app straight into the last channel you watched.
+- **Zap** with Up/Down, type a channel number, or jump to the **last channel**.
+- **Pause and rewind live TV**, even on channels without catch-up.
+- **Reminders:** "Remind me" on any upcoming show, with a pop-up and a Watch button.
+- **Player menu:** audio, **closed captions**, screen size, **picture shape**, stream info, **sleep timer**, record, find & stream, and watch from the beginning.
+- **Your audio choice is remembered for each channel** (a second language, or 5.1 over stereo).
+- **Rewind and fast-forward on the remote** skip 30 seconds in catch-up and paused live TV; hold to go faster.
+- **On-screen clock** in any corner, if you want one.
+- **Smooth playback:**
+  - **Keeps the TV awake** while you watch (no screen saver).
+  - **Match frame rate** (Off, On start, or On start/stop, as in Nuvio's player) and **audio passthrough** settings.
+  - **Auto-reconnect,** plus automatic recovery from frozen or stuck streams, with the reason shown when a stream fails.
+
+### Parental controls
+- **PIN locks:** a PIN that locks any group or category. Adult content locks automatically.
+
+### Part of Nuvio, not bolted on
+- **In the side menu:** Live TV, Sports, On Demand, Recordings and the Calendar sit in Nuvio's side menu, with their settings inside Nuvio's own Settings.
+- **Menu & Features:** turn pages on or off for each profile (including Live TV, Sports, On Demand and Recordings), put the side menu in your order, and put Discover in the menu or inside Search. **How the Menu Looks** adds a line above Live TV and **Shrink the Menu to Fit**.
+- **Open the App On:** start straight on Home, Live TV, Sports, the Calendar, On Demand and more.
+- **Home screen row:** your favorite channels and what's on now, next to Continue watching.
+- **Rows on your TV's home screen:** Live Now in Sports, Favorite Channels and Recently Watched Channels for Google TV, Projectivy and similar launchers, with Wide, Tall or Square cards.
+- **One search** for movies, shows, channels and On Demand.
+- **Live TV in Nuvio search:**
+  - **Your order:** choose which results come first.
+  - **Preview behind search:** live channels play in the background while you search.
+- **Find & stream in Nuvio:** see a movie in the guide, and stream it through your own addons and debrid.
+- **Setup Sync** (or Google Drive sync): your setup on every TV and phone, combined correctly when you use more than one.
+- **Settings in order:** Live TV, On Demand, Sports, Calendar and VPN sit together under Playback.
+
+---
+
+## Sports hub
 
 Sports in the side menu shows scores and schedules, and works out **which of your own channels are showing each game**. No more scrolling through sports channels to find the match.
 
@@ -39,8 +290,8 @@ Sports in the side menu shows scores and schedules, and works out **which of you
   - **Following a club includes its cups** and European games.
 - **Where they stand:** each team's row on My Sports says where it is in its league ("2nd in Premier League").
 
-### 🏆 Tables
-- **🏆 Tables** in the Sports top bar: your leagues across the top, the table below, opened on your team. The video keeps playing beside it.
+### Tables
+- **Tables** in the Sports top bar: your leagues across the top, the table below, opened on your team. The video keeps playing beside it.
 - **Football:** played, won, drawn, lost, goal difference and points, the **last five** as coloured squares, **▲ / ▼ place changes** since the last round, and coloured edges for **Champions League, Europa League and relegation** places.
 - **US sports:** **Division / Conference / League** views, clinched marks (x, y, z, e) and **playoff lines** (Play-In too for the NBA).
 - **Racing:** F1, NASCAR and IndyCar drivers' standings, with points behind the leader.
@@ -49,7 +300,7 @@ Sports in the side menu shows scores and schedules, and works out **which of you
 - **Players:** a team's page has a **Players** list and player profiles.
 - **From a game:** OK on a game's Table panel opens the whole table with both teams marked.
 
-### 📡 League Networks
+### League Networks
 - **Each league's own channel in one place:** NFL Network, NFL RedZone, NBA TV, MLB Network, MLB Strike Zone, NHL Network, Golf Channel, Tennis Channel, LaLiga TV and more, found in your own playlists.
 - **What's on now and next** on each one, with HD, FHD and SD copies combined.
 - **Pick a different channel by hand** (hold OK) if the app chose the wrong one, or go back to automatic. A network the app couldn't find still has its tile: press OK on it to choose the channel yourself.
@@ -77,7 +328,7 @@ Sports in the side menu shows scores and schedules, and works out **which of you
 - **Wrestling and boxing schedules.** WWE and AEW shows are matched to your channels by show name.
 - **Your TV guide fills the gaps:** darts, snooker, horse racing, cycling and cricket internationals are found in your own guide.
 
-### 🧩 Sports addons
+### Sports addons
 Have a sports addon installed in Nuvio, like **HighFly** or **StremVerse**? Sports now uses it too. There's nothing to set up.
 - **Found automatically:** open a game and the app looks for it in your sports addons. While the page is open and nothing has shown up yet, it keeps checking, since streams usually appear close to the start.
 - **Live streams in the channel list:** a game that's on shows the addons' streams in its channel list, after your own channels.
@@ -114,7 +365,7 @@ Have a sports addon installed in Nuvio, like **HighFly** or **StremVerse**? Spor
 
 ---
 
-## 📅 Calendar
+## Calendar
 
 **Calendar** in the side menu shows what's coming for the things you care about.
 
@@ -132,7 +383,7 @@ Have a sports addon installed in Nuvio, like **HighFly** or **StremVerse**? Spor
 
 ---
 
-## 🔐 Built-in VPN
+## Built-in VPN
 
 Protect what you watch without installing a separate VPN app. **Settings → VPN** imports a **WireGuard** or **OpenVPN** profile from your VPN provider and uses it for your playback.
 
@@ -146,11 +397,10 @@ Protect what you watch without installing a separate VPN app. **Settings → VPN
 - **Import your provider's file:** WireGuard configs and self-contained OpenVPN profiles (UDP or TCP). If the profile needs a username and password, the app asks for them.
 - **One choice for every profile,** or a separate one for just the Nuvio profile you're using.
 - **Comes with your setup:** your VPN profiles are carried to your other devices by Setup Sync and encrypted on each one.
-- The same VPN is in the [phone app](https://github.com/homelessbrian/NuvioPlusIPTV-Mobile).
 
 ---
 
-## ☁️ Your setup, everywhere
+## Your setup, everywhere
 
 - **Setup Sync (Nuvio Account Sync):** sign in to Nuvio and your Live TV setup (playlists, guides, favorites, hidden and renamed channels, reminders, Sports and Calendar follows, VPN profiles and settings) is restored and kept in sync on every TV and phone with that account. You can **choose what to sync**.
 - **A new TV in minutes:** sign in with the QR code and everything comes back by itself.
@@ -160,168 +410,21 @@ Protect what you watch without installing a separate VPN app. **Settings → VPN
 
 ---
 
-## 📱 On your phone too
-
-**[Nuvio + IPTV Mobile](https://github.com/homelessbrian/NuvioPlusIPTV-Mobile)** brings Live TV, the guide, Sports, catch-up, recordings and On Demand to Android phones and tablets. Sign in to the same Nuvio account and it uses the same setup as your TV.
-
----
-
-## ✨ Features
-
-### 📺 A proper TV guide
-- **TiviMate-style guide:** channels down the side, a timeline across, and a line marking "now" (which you can hide). It fits **8 or more channels** on screen.
-- **Guide Size:** Compact, Standard, Large or Extra Large. It sets the size of overlay mode too.
-- **Fast browsing:** hold Left to step back through earlier shows at double speed.
-- **Group list:**
-  - **Opening it:** it slides out with a tap of Left.
-  - **Grouping:** optionally grouped by playlist.
-  - **Browse by channel name** (satellite-box style).
-- **Open on Last Group:** Live TV opens on the group you were last watching.
-- **Info panel** with a big show poster (or just the channel logo, if you prefer), time left, the description (as much as fits), the playlist it comes from, and a live preview window.
-- **Make room for more channels:** a smaller info panel, and hiding numbers, logos, names or episode numbers.
-- **Badges:** catch-up icons on channels that support it, and 4K / FHD / HD / SD badges on channels you've watched.
-- **Change Logo:** pick a channel's logo from your playlists, your guides, logo libraries or TMDB, search for one, or send a link from your phone.
-- **Playing channel:** a red outline marks the channel you're watching (you can turn it off).
-
-### 🎬 Overlay mode (while watching)
-- Press **Left** in full screen for a see-through guide over the video: the group's channels, the highlighted channel's schedule, and the show's details.
-- **Left again** switches groups. **Right** opens the channel's full schedule, with a date picker.
-- **Grouped by playlist** (when you have more than one), with headings you can fold, as in the guide.
-
-### 📡 Your sources, your way
-- **Multiple M3U playlists** and **multiple XMLTV guides,** merged into one guide.
-- **Xtream Codes logins:**
-  - **Pick what to include:** TV channels, movies & series, or both.
-  - **Stream format:** Auto, TS or HLS. M3U link playlists have it too, including Dispatcharr.
-  - **Account details:** expiry date, status and connections in use, with a warning before it runs out.
-- **Smart guide matching:** real listings always beat "Programming" placeholders. Fine-tune any channel with **Assign EPG**.
-- **Catch-up:**
-  - **Watch past shows** with a seek bar, or **restart what's on now**. Skips land where you aimed, even with providers that are slow to jump.
-  - **Follow-on playback:** carries straight on into the next show.
-  - **Guide time shift** and **Catch-up time shift** for providers that are off by an hour or more.
-- **Backup channels:** a button on the info bar lists the other copies of the channel you're watching, hidden ones included, so you can switch when one is having trouble. Copies match even when the name has a sound layout like 5.1.
-- **Channel name editor** (like TiviMate): strip "USA:", "HD", "24/7" and similar from channel names. Prefixes followed by just a space ("USA ESPN") are removed too when a playlist uses them on lots of channels.
-
-### ⏺️ Recordings
-- **Record a show, or a whole series,** from the guide. Series recordings skip repeats of episodes already recorded. Shows on catch-up channels are saved from catch-up after they end, which is the most reliable way.
-- **Save to this device or a USB drive.** Choose what happens when space runs low: stop recording, or delete the oldest.
-- **Choose the padding:** how early recordings start and how long they keep going after the show.
-- **Recordings carry on with the app closed or the box in standby**, and catch-up saves wait for the connection to come back.
-- **Watch while it records,** with skipping back and forward.
-- **Recordings button (●)** next to the guide's ⚙.
-- **Size and details** for every recording: channel, air time, length, size and where it's saved.
-
-### 🗂️ Channel management
-- **Manage visibility** and **reorder** for channels *and* groups. Move several groups at once.
-- **Copy, rename and renumber** channels, **create your own groups,** and **number channels 1, 2, 3…** in each group.
-- **Channel numbers from your playlist** are used when it has them.
-- **Favorites** and **Recently watched,** with sorting that works everywhere. **Pick favorites** ticks many channels in a group at once.
-
-### 🎞️ On Demand
-- **What it is:** movies and series from your Xtream providers, with **categories or genres**, **Recently added**, **Search** and **Sort by**.
-- **Your posters, not the provider's:** posters and details come from your own addons. Matched titles open on Nuvio's normal details page, with watched marks and the usual long-press menu.
-- **📡 On Demand** in Nuvio's stream list, with quality, codec and audio badges. Choose where its tab goes, and whether auto-play may pick it.
-- **Each title once:** duplicates are merged, and a picker lets you choose the version when there are several. Your provider's copies are listed best quality first, with quality tags.
-- **Play Straight from My Provider:** Play skips the source list for titles you opened from On Demand.
-- **Adult titles** never appear in Continue watching.
-
-### 🔔 Watching
-- **Start in Full Screen:** open the app straight into the last channel you watched.
-- **Zap** with Up/Down, type a channel number, or jump to the **last channel**.
-- **Pause and rewind live TV**, even on channels without catch-up.
-- **Reminders:** "Remind me" on any upcoming show, with a pop-up and a Watch button.
-- **Player menu:** audio, **closed captions**, screen size, **picture shape**, stream info, **sleep timer**, record, find & stream, and watch from the beginning.
-- **Your audio choice is remembered for each channel** (a second language, or 5.1 over stereo).
-- **⏪ / ⏩ on the remote** skip 30 seconds in catch-up and paused live TV; hold to go faster.
-- **On-screen clock** in any corner, if you want one.
-- **Smooth playback:**
-  - **Keeps the TV awake** while you watch (no screen saver).
-  - **Match frame rate** (Off, On start, or On start/stop, as in Nuvio's player) and **audio passthrough** settings.
-  - **Auto-reconnect,** plus automatic recovery from frozen or stuck streams, with the reason shown when a stream fails.
-
-### 🔒 Parental controls
-- **PIN locks:** a PIN that locks any group or category. Adult content locks automatically.
-
-### 🔎 Part of Nuvio, not bolted on
-- **In the side menu:** Live TV, Sports, On Demand, Recordings and the Calendar sit in Nuvio's side menu, with their settings inside Nuvio's own Settings.
-- **Menu & Features:** turn pages on or off for each profile (including Live TV, Sports, On Demand and Recordings), put the side menu in your order, and put Discover in the menu or inside Search. **How the Menu Looks** adds a line above Live TV and **Shrink the Menu to Fit**.
-- **Open the App On:** start straight on Home, Live TV, Sports, the Calendar, On Demand and more.
-- **Home screen row:** your favorite channels and what's on now, next to Continue watching.
-- **Rows on your TV's home screen:** Live Now in Sports, Favorite Channels and Recently Watched Channels for Google TV, Projectivy and similar launchers, with Wide, Tall or Square cards.
-- **One search** for movies, shows, channels and On Demand.
-- **Live TV in Nuvio search:**
-  - **Your order:** choose which results come first.
-  - **Preview behind search:** live channels play in the background while you search.
-- **Find & stream in Nuvio:** see a movie in the guide, and stream it through your own addons and debrid.
-- **Setup Sync** (or Google Drive sync): your setup on every TV and phone, combined correctly when you use more than one.
-- **Settings in order:** Live TV, On Demand, Sports, Calendar and VPN sit together under Playback.
-
----
-
-## 📥 Installation
-
-### The quick way: Downloader code **6532491**
-
-1. Install **Downloader** (by AFTVnews) from your TV's app store.
-2. Open it, type **6532491** in the search or address box, and press **Go**.
-3. It downloads the latest **universal** version (works on every device). Press **Install**, allowing installs from unknown sources when asked.
-
-### Or pick the APK for your device
-
-The universal version works everywhere. The device-specific ones are smaller downloads.
-
-1. Open the **[latest release](https://github.com/homelessbrian/NuvioPlusIPTV/releases)**.
-2. Download the APK for your device:
-
-   | Device | APK |
-   |---|---|
-   | Most Google TV / Android TV devices | `arm64-v8a` |
-   | Fire TV (all models), older or budget boxes | `armeabi-v7a` |
-   | Not sure (works everywhere) | `universal` |
-
-3. Install it with a file manager or **Downloader**, allowing installs from unknown sources when asked.
-
-Requires **Android 7.0 or newer** (Fire OS 6 or later). It installs **alongside** the official Nuvio app.
-
-**On a phone or tablet?** Get **[Nuvio + IPTV Mobile](https://github.com/homelessbrian/NuvioPlusIPTV-Mobile/releases)** instead.
-
-**Updating:** updates appear **inside the app**. Each new Nuvio release is followed by a matching Nuvio + IPTV version (currently based on Nuvio 1.1.0-beta.11).
-
----
-
-## 🚀 Getting started
-
-1. Open **Settings → Live TV**.
-2. Choose **Add M3U Playlist** or **Add Xtream Codes Login**. For Xtream, pick **Include TV channels** and/or **Include movies & series**.
-3. Optionally **Add EPG Source** for an extra TV guide.
-4. Open **Live TV**, **On Demand** or **Sports** from the side menu. The first load can take a minute on big providers; a small progress bubble shows what's happening.
-5. Optional, all in **Settings → Live TV**:
-   - choose the page the app opens on (**Settings → Menu & Features → Open the App On**)
-   - turn on the **home screen row**
-   - choose where recordings are saved under **Recordings**
-   - set a parental **PIN**
-   - turn on **Setup Sync** (signed in to Nuvio)
-   - import a WireGuard or OpenVPN profile under **Settings → VPN** if you want your playback protected
-6. In **Sports**, press **✎ Follow Teams & Leagues** to pick your teams. Set your region and reminders under **Settings → Sports**.
-7. Open **Calendar** and ring the bell on the shows you watch.
-
----
-
-## 🎮 Remote controls
+## Remote controls
 
 Every button for the guide, full screen, Sports, the Calendar, On Demand and Recordings: see **[CONTROLS.md](CONTROLS.md)**.
 
 ---
 
-## 🐞 Reporting bugs and requesting features
+## Reporting bugs and requesting features
 
-Please search [existing issues](https://github.com/homelessbrian/NuvioPlusIPTV/issues) first. Questions and chat are welcome on **[Discord](https://discord.gg/NvK5JVvvm)**.
+Please search [existing issues](https://github.com/Br0ck25/NuvioTVLauncher/issues) first.
 
-| | |
+| I want to... | Link |
 |---|---|
-| 🐛 **Something isn't working** | [Report a bug](https://github.com/homelessbrian/NuvioPlusIPTV/issues/new?template=live_tv_bug.yml) |
-| 📺 **An idea for a new feature** | [Request a feature](https://github.com/homelessbrian/NuvioPlusIPTV/issues/new?template=live_tv_feature.yml) |
-| 🎨 **The look or layout could be better** | [Suggest a UI / UX improvement](https://github.com/homelessbrian/NuvioPlusIPTV/issues/new?template=live_tv_ui.yml) |
+| **Report something that isn't working** | [Report a bug](https://github.com/Br0ck25/NuvioTVLauncher/issues/new?template=live_tv_bug.yml) |
+| **Request a new feature** | [Request a feature](https://github.com/Br0ck25/NuvioTVLauncher/issues/new?template=live_tv_feature.yml) |
+| **Suggest a look or layout improvement** | [Suggest a UI / UX improvement](https://github.com/Br0ck25/NuvioTVLauncher/issues/new?template=live_tv_ui.yml) |
 
 **If the app crashes,** scan the QR code on the crash screen with your phone and paste the text into your report.
 
@@ -333,7 +436,7 @@ Problems with Nuvio's movies, shows, addons or accounts that also happen in the 
 
 ---
 
-## ❓ FAQ
+## FAQ
 
 <details>
 <summary><b>Does this include any channels or movies?</b></summary>
@@ -356,7 +459,7 @@ Open the game and press **Fix channel**. Pick the right channel for that game, f
 <details>
 <summary><b>I can't find my team or league in Sports.</b></summary>
 
-Search for it in **✎ Follow Teams & Leagues**: search covers every league, not just your region's. If it still isn't there, follow it as a name, and any show in your TV guide with that name in the title appears on My Sports.
+Search for it in **Follow Teams & Leagues**: search covers every league, not just your region's. If it still isn't there, follow it as a name, and any show in your TV guide with that name in the title appears on My Sports.
 </details>
 
 <details>
@@ -374,13 +477,13 @@ It looks for each network by its channel name. If your provider names it differe
 <details>
 <summary><b>Where did NFL or NBA go?</b></summary>
 
-Outside the US and Canada they're no longer shown by default. Follow the league (or a team) in **✎ Follow Teams & Leagues** and its games come back.
+Outside the US and Canada they're no longer shown by default. Follow the league (or a team) in **Follow Teams & Leagues** and its games come back.
 </details>
 
 <details>
 <summary><b>A game lists too many channels from other countries.</b></summary>
 
-Use **🌐 All regions ▾** on the game's page, or **Settings → Sports → Channels From**, to show one region's or language's channels first. Channels whose name doesn't say a region count as "other regions".
+Use **All regions** on the game's page, or **Settings → Sports → Channels From**, to show one region's or language's channels first. Channels whose name doesn't say a region count as "other regions".
 </details>
 
 <details>
@@ -446,7 +549,7 @@ WireGuard configs and OpenVPN profiles that contain everything in one file (the 
 <details>
 <summary><b>What does Nuvio Account Sync store, and where?</b></summary>
 
-Your Live TV setup (playlists, guides, logins, favorites and settings), encrypted, linked to your Nuvio account and kept only to copy it between your devices. It's stored on the app's own sync service, not on Nuvio's servers. **Delete Saved Setup** removes it at any time. It works only with the official Nuvio server. See the [privacy policy](https://homelessbrian.github.io/privacy.html).
+Your Live TV setup (playlists, guides, logins, favorites and settings), encrypted, linked to your Nuvio account and kept only to copy it between your devices. It is stored on the sync service of Nuvio + IPTV (run by homelessbrian), not on Nuvio's servers, so that service has to stay online for Setup Sync to work. **Delete Saved Setup** removes it at any time. It works only with the official Nuvio server. See the [privacy policy](https://homelessbrian.github.io/privacy.html).
 </details>
 
 <details>
@@ -463,26 +566,20 @@ Your Live TV setup, in a private app folder in your own Google Drive that only t
 
 ---
 
-## ☕ Support the project
+## Credits
 
-Nuvio + IPTV is free. If it's made your TV better and you'd like to say thanks, you can buy me a coffee on **[Ko-fi](https://ko-fi.com/homelessbrian)**. It's completely optional, and every bit helps keep updates coming.
-
-[![Support me on Ko-fi](https://img.shields.io/badge/Buy%20me%20a%20coffee-Ko--fi-FF5E5B?style=for-the-badge&logo=ko-fi&logoColor=white)](https://ko-fi.com/homelessbrian)
-
----
-
-## 🙏 Credits
-
-- **🙌 [ghbarker](https://github.com/ghbarker): a huge thank you.** He built the **built-in VPN** (WireGuard and OpenVPN playback protection) and contributed it to this project. He also made the original [phone port](https://github.com/ghbarker/NuvioMobile-IPTV) that the phone app is built on.
-- **[Nuvio](https://github.com/NuvioMedia/NuvioTV)** by the NuvioMedia team: Nuvio + IPTV is built on their work and follows their releases.
+- ** [ghbarker](https://github.com/ghbarker): a huge thank you.** He built the **built-in VPN** (WireGuard and OpenVPN playback protection) and contributed it to this project. He also made the original [phone port](https://github.com/ghbarker/NuvioMobile-IPTV) that the phone app is built on.
+- **[Nuvio](https://github.com/NuvioMedia/NuvioTV)** by the NuvioMedia team: Nuvio Launcher is built on their work.
+- **[Nuvio + IPTV](https://github.com/homelessbrian/NuvioPlusIPTV)** by [homelessbrian](https://github.com/homelessbrian): the Live TV guide, Sports hub, Calendar, recordings, On Demand and sync that this launcher is built on.
+- The launcher itself (Home screen, Apps, the phone-driven setup) takes its approach from [FLauncher](https://gitlab.com/flauncher/flauncher) and [ArcLauncher](https://github.com/meddouribadis/arclauncher).
 - Guide and overlay design inspired by **TiviMate**.
 - Channel logo libraries from **[iptv-org](https://github.com/iptv-org)** and **[tv-logos](https://github.com/tv-logo/tv-logos)**.
-- Sports data from **ESPN**'s public feed, **[TheSportsDB](https://www.thesportsdb.com)**, **HockeyTech**, **MLB**'s stats service and **sporting-events.org**. Show schedules from **[TVmaze](https://www.tvmaze.com)**, and pictures and logos from **[TMDB](https://www.themoviedb.org)**. Nuvio + IPTV isn't affiliated with any of them, and team and league names and logos belong to their owners.
+- Sports data (collected by [homelessbrian's nuvio-data](https://github.com/homelessbrian/nuvio-data)) from **ESPN**'s public feed, **[TheSportsDB](https://www.thesportsdb.com)**, **HockeyTech**, **MLB**'s stats service and **sporting-events.org**. Show schedules from **[TVmaze](https://www.tvmaze.com)**, and pictures and logos from **[TMDB](https://www.themoviedb.org)**. Nuvio Launcher isn't affiliated with any of them, and team and league names and logos belong to their owners.
 - Built with Kotlin, Jetpack Compose, TV Material 3 and Media3 / ExoPlayer.
 
-Nuvio + IPTV is an unofficial fork and is **not affiliated with or endorsed by NuvioMedia or TiviMate**. Please report issues here, not to the Nuvio team.
+Nuvio Launcher is an unofficial fork and is **not affiliated with or endorsed by NuvioMedia, homelessbrian or TiviMate**. Please report issues here, not to the Nuvio team.
 
-## ⚖️ Legal
+## Legal
 
 This app is a client-side player. It does not host, store or distribute any media, and it ships with no channels, playlists or content sources. Only use sources you own or are authorized to access. See Nuvio's [legal and DMCA information](https://github.com/NuvioMedia/NuvioTV#legal--dmca), which applies here as well.
 

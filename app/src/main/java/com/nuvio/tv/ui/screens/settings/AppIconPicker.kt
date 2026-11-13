@@ -81,12 +81,6 @@ internal fun AppIconPickerDialog(
         contentSpacing = 12.dp
     ) {
         Column(verticalArrangement = Arrangement.spacedBy(10.dp)) {
-            // Live TV fork: show "+ IPTV" on the icon, or use Nuvio's original icons.
-            com.nuvio.tv.livetv.branding.IptvIconToggle(
-                enabled = state.iptvBranding,
-                busy = state.pending != null,
-                onToggle = onToggleIptv
-            )
             AppIconOption.entries.chunked(3).forEach { options ->
                 Row(
                     modifier = Modifier.fillMaxWidth(),

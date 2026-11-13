@@ -153,6 +153,10 @@ sealed class HomeRow {
     @Immutable
     data class CollectionRow(val collection: Collection) : HomeRow()
 
+    /** Launcher: the installed apps, placed like any other row. */
+    @Immutable
+    data class InstalledApps(val apps: List<com.nuvio.tv.core.apps.InstalledApp>) : HomeRow()
+
     /**
      * Placeholder for a catalog row whose data hasn't been fetched yet.
      * Rendered as a shimmer/skeleton row until the user scrolls near it
@@ -205,6 +209,9 @@ sealed class GridItem {
         val collectionId: String,
         val title: String
     ) : GridItem()
+    @Immutable
+    data class InstalledAppsRow(val apps: List<com.nuvio.tv.core.apps.InstalledApp>) : GridItem()
+
     @Immutable
     data class CollectionFolder(
         val collectionId: String,

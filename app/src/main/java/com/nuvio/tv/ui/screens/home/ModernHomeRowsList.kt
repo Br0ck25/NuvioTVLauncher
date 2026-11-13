@@ -20,6 +20,7 @@ import androidx.compose.runtime.CompositionLocalProvider
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.State
 import androidx.compose.runtime.derivedStateOf
+import androidx.compose.runtime.collectAsState
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.remember
 import androidx.compose.runtime.rememberUpdatedState
@@ -407,6 +408,11 @@ internal fun ModernHomeRowsList(
                         // Always keep the focusedItemByRow map in sync for ALL rows
                         if (focusedItemByRowMap[rowKey] != index) {
                             focusedItemByRowMap[rowKey] = index
+                        }
+
+                        if (rowKey == com.nuvio.tv.core.apps.INSTALLED_APPS_CATALOG_KEY) {
+                            onFocusedCatalogSelectionChange(null)
+                            onExpandedCatalogFocusKeyChange(null)
                         }
 
                         if (isContinueWatchingRow) {

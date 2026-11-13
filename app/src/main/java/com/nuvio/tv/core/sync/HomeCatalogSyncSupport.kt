@@ -34,10 +34,14 @@ internal fun homeCollectionKey(collectionId: String): String {
     return "collection_${collectionId}"
 }
 
+/** Server rows and the Apps row belong to this device: their position and state are never taken from the account. */
+private fun isDeviceLocalHomeKey(key: String): Boolean =
+    ServerCatalog.isServerKey(key) || key == com.nuvio.tv.core.apps.INSTALLED_APPS_CATALOG_KEY
+
 internal fun List<String>.withLocalServerKeys(local: List<String>): List<String> =
     local.withIndex()
-        .filter { ServerCatalog.isServerKey(it.value) }
-        .fold(filterNot(ServerCatalog::isServerKey).toMutableList()) { keys, (index, key) ->
+        .filter { isDeviceLocalHomeKey(it.value) }
+        .fold(filterNot(::isDeviceLocalHomeKey).toMutableList()) { keys, (index, key) ->
             keys.apply { add(index.coerceAtMost(size), key) }
         }
 

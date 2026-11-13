@@ -1,0 +1,77 @@
+name: Sync upstream
+
+# Every 6 hours: try merging each upstream into the launcher branch:
+#   plus  = homelessbrian/NuvioPlusIPTV (the fork this app is built on; carries the IPTV features)
+#   nuvio = NuvioMedia/NuvioTV (the original app)
+# Clean merge  -> pushed to the branch `sync/<name>` (review it, build it, merge it).
+# Conflicts    -> nothing is pushed; an issue lists the conflicting files.
+# NOTE: GitHub only runs scheduled workflows from the repository's default branch,
+# so this file must also exist there.
+on:
+  schedule:
+    - cron: "17 */6 * * *"
+  workflow_dispatch:
+
+permissions:
+  contents: write
+  issues: write
+
+env:
+  BASE_BRANCH: dev
+  UPSTREAM_BRANCH: dev
+
+jobs:
+  sync:
+    runs-on: ubuntu-latest
+    strategy:
+      fail-fast: false
+      matrix:
+        include:
+          - name: plus
+            url: https://github.com/homelessbrian/NuvioPlusIPTV.git
+          - name: nuvio
+            url: https://github.com/NuvioMedia/NuvioTV.git
+    env:
+      UPSTREAM_URL: ${{ matrix.url }}
+      SYNC_BRANCH: sync/${{ matrix.name }}
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          ref: ${{ env.BASE_BRANCH }}
+          fetch-depth: 0
+
+      - name: Merge upstream
+        id: merge
+        run: |
+          git config user.name "upstream-sync"
+          git config user.email "upstream-sync@users.noreply.github.com"
+          git remote add upstream "$UPSTREAM_URL"
+          git fetch -q upstream "$UPSTREAM_BRANCH"
+          if git merge-base --is-ancestor "upstream/$UPSTREAM_BRANCH" HEAD; then
+            echo "state=uptodate" >> "$GITHUB_OUTPUT"; exit 0
+          fi
+          if git merge --no-edit "upstream/$UPSTREAM_BRANCH" -m "Merge upstream $UPSTREAM_BRANCH"; then
+            echo "state=clean" >> "$GITHUB_OUTPUT"
+          else
+            git diff --name-only --diff-filter=U > "$RUNNER_TEMP/conflicts.txt"
+            git merge --abort
+            echo "state=conflict" >> "$GITHUB_OUTPUT"
+          fi
+
+      - name: Push clean merge
+        if: steps.merge.outputs.state == 'clean'
+        run: git push --force origin HEAD:refs/heads/$SYNC_BRANCH
+
+      - name: Report conflicts
+        if: steps.merge.outputs.state == 'conflict'
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          title="Upstream sync has conflicts (${{ matrix.name }})"
+          body="Merging ${{ matrix.name }}/$UPSTREAM_BRANCH into $BASE_BRANCH conflicts in:"$'\n\n'"$(sed 's/^/- /' "$RUNNER_TEMP/conflicts.txt")"
+          # The conflict list always goes in the run summary. Opening an issue is a bonus: it fails when the
+          # repository has Issues turned off, and that must not turn a reported conflict into a failed run.
+          { echo "### $title"; echo; echo "$body"; } >> "$GITHUB_STEP_SUMMARY"
+          echo "$body"
+          n=$(gh issue list --state open --search "$title in:title" --json number --jq '.[0].number' 2>/dev/null || true)
+          if [ -n "$n" ]; then gh issue comment "$n" --body "$body" || true; else gh issue create --title "$title" --body "$body" || true; fi

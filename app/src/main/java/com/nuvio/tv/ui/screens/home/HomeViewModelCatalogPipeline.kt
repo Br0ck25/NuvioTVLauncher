@@ -58,6 +58,20 @@ internal fun HomeViewModel.observeCollectionsPipeline() {
     }
 }
 
+/** Launcher: keeps the Apps row's content (the installed apps, in the user's order and names) up to date. */
+internal fun HomeViewModel.observeInstalledAppsRowPipeline() {
+    val repository = installedAppsRepository ?: return
+    viewModelScope.launch {
+        repository.homeApps
+            .distinctUntilChanged()
+            .collectLatest { apps ->
+                installedAppsCache = apps
+                rebuildCatalogOrder(addonsCache)
+                scheduleUpdateCatalogRows()
+            }
+    }
+}
+
 internal fun HomeViewModel.loadHomeCatalogOrderPreferencePipeline() {
     viewModelScope.launch {
         layoutPreferenceDataStore.homeCatalogOrderKeys.collectLatest { keys ->
@@ -732,6 +746,10 @@ internal suspend fun HomeViewModel.updateCatalogRowsPipeline() {
         }
         for (key in orderedKeys) {
             if (key in disabledHomeCatalogKeys) continue
+            if (key == com.nuvio.tv.core.apps.INSTALLED_APPS_CATALOG_KEY) {
+                installedAppsCache.takeIf { it.isNotEmpty() }?.let { add(HomeRow.InstalledApps(it)) }
+                continue
+            }
             val collectionEntry = collectionsSnapshot[key]
             if (collectionEntry != null) {
                 if (!collectionEntry.pinToTop && addedCollectionIds.add(collectionEntry.id)) {
@@ -862,6 +880,7 @@ internal suspend fun HomeViewModel.updateCatalogRowsPipeline() {
                             ))
                         }
                     }
+                    is HomeRow.InstalledApps -> add(GridItem.InstalledAppsRow(homeRow.apps))
                     is HomeRow.PlaceholderCatalog -> {
                         // Grid layout: skip placeholders (grid loads all at once)
                     }

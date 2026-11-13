@@ -32,6 +32,7 @@ import androidx.compose.runtime.Composable
 import androidx.compose.runtime.DisposableEffect
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.derivedStateOf
+import androidx.compose.runtime.collectAsState
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.mutableIntStateOf
@@ -340,6 +341,7 @@ fun GridHomeContent(
                 is GridItem.SeeAll -> "see_all_${item.addonBaseUrl.hashCode()}_${item.catalogId}_${item.addonId}_${item.type}"
                 is GridItem.CollectionHeader -> "col_header_${item.collectionId}"
                 is GridItem.CollectionFolder -> "col_folder_${item.collectionId}_${item.folder.id}"
+                is GridItem.InstalledAppsRow -> "installed_apps_row"
             }
             item to key
         }
@@ -480,7 +482,7 @@ fun GridHomeContent(
                     key = { it.second },
                     span = { pair ->
                         val spanCount = when (pair.first) {
-                            is GridItem.Hero, is GridItem.SectionDivider, is GridItem.CollectionHeader -> maxLineSpan
+                            is GridItem.Hero, is GridItem.SectionDivider, is GridItem.CollectionHeader, is GridItem.InstalledAppsRow -> maxLineSpan
                             else -> 1
                         }
                         GridItemSpan(spanCount)
@@ -493,6 +495,7 @@ fun GridHomeContent(
                             is GridItem.SeeAll -> "see_all"
                             is GridItem.CollectionHeader -> "collection_header"
                             is GridItem.CollectionFolder -> "collection_folder"
+                            is GridItem.InstalledAppsRow -> "installed_apps"
                         }
                     }
                 ) { (gridItem, itemKey) ->
@@ -642,7 +645,14 @@ fun GridHomeContent(
                         rowFocusRequester = upcomingRowFocusRequester,
                         listState = upcomingListState,
                         onItemFocused = { lastFocusedUpcomingIndex.intValue = it; activeCwRowKey.value = "upcoming_section" },
-                        onItemClick = onContinueWatchingClick,
+                        // An upcoming episode isn't out yet, so selecting it shows its details instead of playing.
+                        onItemClick = { item ->
+                        val (id, type) = when (item) {
+                            is ContinueWatchingItem.InProgress -> item.progress.contentId to item.progress.contentType
+                            is ContinueWatchingItem.NextUp -> item.info.contentId to item.info.contentType
+                        }
+                        onNavigateToDetail(id, type, "")
+                    },
                         onStartFromBeginning = onContinueWatchingStartFromBeginning,
                         showManualPlayOption = showContinueWatchingManualPlayOption,
                         onPlayManually = onContinueWatchingPlayManually,
@@ -681,7 +691,8 @@ fun GridHomeContent(
                         cardStyle = uiState.continueWatchingCardStyle,
                         cornerRadius = posterCardStyle.cornerRadius,
                         posterCardWidth = posterCardStyle.width,
-                        posterCardHeight = posterCardStyle.height
+                        posterCardHeight = posterCardStyle.height,
+                        isUpcomingSection = true
                     )
                 }
             }
@@ -693,7 +704,7 @@ fun GridHomeContent(
                     key = { it.second },
                     span = { pair ->
                         val spanCount = when (pair.first) {
-                            is GridItem.Hero, is GridItem.SectionDivider, is GridItem.CollectionHeader -> maxLineSpan
+                            is GridItem.Hero, is GridItem.SectionDivider, is GridItem.CollectionHeader, is GridItem.InstalledAppsRow -> maxLineSpan
                             else -> 1
                         }
                         GridItemSpan(spanCount)
@@ -706,6 +717,7 @@ fun GridHomeContent(
                             is GridItem.SeeAll -> "see_all"
                             is GridItem.CollectionHeader -> "collection_header"
                             is GridItem.CollectionFolder -> "collection_folder"
+                            is GridItem.InstalledAppsRow -> "installed_apps"
                         }
                     }
                 ) { (gridItem, itemKey) ->
@@ -846,6 +858,10 @@ fun GridHomeContent(
                         SectionDivider(catalogName = gridItem.title)
                     }
 
+                    is GridItem.InstalledAppsRow -> {
+                        // Launcher: the installed apps, placed like any other row.
+                        com.nuvio.tv.ui.components.InstalledAppsHomeRow(startPadding = 0.dp, titleStyle = MaterialTheme.typography.headlineMedium)
+                    }
                     is GridItem.CollectionFolder -> {
                         GridCollectionFolderCard(
                             folder = gridItem.folder,

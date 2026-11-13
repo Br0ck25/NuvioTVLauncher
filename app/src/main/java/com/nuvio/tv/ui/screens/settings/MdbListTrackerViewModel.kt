@@ -6,6 +6,7 @@ import androidx.lifecycle.viewModelScope
 import com.nuvio.tv.R
 import com.nuvio.tv.core.profile.ProfileManager
 import com.nuvio.tv.core.tracking.TrackingRefreshIntent
+import com.nuvio.tv.data.mdblist.MdbListApiException
 import com.nuvio.tv.data.mdblist.MdbListAuthError
 import com.nuvio.tv.data.mdblist.MdbListAuthException
 import com.nuvio.tv.data.mdblist.MdbListAuthRepository
@@ -221,8 +222,15 @@ class MdbListTrackerViewModel @Inject constructor(
     fun onSyncNow() = sync.refreshAsync(TrackingRefreshIntent.USER_INITIATED)
     fun onAccountOpened() = sync.refreshAsync(TrackingRefreshIntent.AUTOMATIC)
 
-    private fun Exception.messageForUser(): String =
-        if (this is MdbListAuthException) error.message() else toMdbListSyncError().message()
+    private fun Exception.messageForUser(): String {
+        val base = if (this is MdbListAuthException) error.message() else toMdbListSyncError().message()
+        // Say what MDBList actually answered (for example HTTP 400 invalid_request: the client id was
+        // not accepted), so a failure can be told apart from a network problem.
+        val detail = (this as? MdbListApiException)?.let { e ->
+            listOfNotNull(e.status?.let { "HTTP $it" }, e.code?.takeIf { it.isNotBlank() }).joinToString(": ")
+        }.orEmpty()
+        return if (detail.isBlank()) base else "$base ($detail)"
+    }
 
     private fun MdbListAuthError.message(): String = context.getString(when (this) {
         MdbListAuthError.MISSING_CLIENT_ID -> R.string.mdblist_missing_client

@@ -26,6 +26,7 @@ import kotlinx.coroutines.SupervisorJob
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.asStateFlow
+import kotlinx.coroutines.flow.stateIn
 import kotlinx.coroutines.flow.first
 import kotlinx.coroutines.flow.collectLatest
 import kotlinx.coroutines.async
@@ -81,7 +82,11 @@ class LiveTvRepository @Inject constructor(
 
     private val mutex = Mutex()
 
-    private val http: OkHttpClient = ForkHttp.builder()
+    // Built on first use, not while the app is starting: setting up the TLS trust store takes seconds on a
+    // slow box's first start after an update, and this used to run on the main thread inside the app's setup.
+    private val http: OkHttpClient by lazy { buildHttp() }
+
+    private fun buildHttp(): OkHttpClient = ForkHttp.builder()
         .connectTimeout(20, TimeUnit.SECONDS)
         .readTimeout(90, TimeUnit.SECONDS)
         // A provider that trickles data forever would otherwise hold up every other update
@@ -98,11 +103,19 @@ class LiveTvRepository @Inject constructor(
     private val epgDir = File(baseDir, "epg")
 
     private val _channels = MutableStateFlow<List<LiveChannel>>(emptyList())
-    val channels: StateFlow<List<LiveChannel>> = _channels.asStateFlow()
+
+    /** The playlists' channels, plus the viewer's list channels (see [com.nuvio.tv.livetv.lists.ListChannels]). */
+    val channels: StateFlow<List<LiveChannel>> = kotlinx.coroutines.flow.combine(
+        _channels, com.nuvio.tv.livetv.lists.ListChannels.liveChannelsFlow
+    ) { playlist, lists -> if (lists.isEmpty()) playlist else playlist + lists }
+        .stateIn(scope, kotlinx.coroutines.flow.SharingStarted.Eagerly, emptyList())
 
     /** Programs keyed by [LiveChannel.key], sorted by start. Offset is not applied here. */
     private val _programs = MutableStateFlow<Map<String, List<EpgProgram>>>(emptyMap())
-    val programs: StateFlow<Map<String, List<EpgProgram>>> = _programs.asStateFlow()
+    val programs: StateFlow<Map<String, List<EpgProgram>>> = kotlinx.coroutines.flow.combine(
+        _programs, com.nuvio.tv.livetv.lists.ListChannels.programmesFlow
+    ) { guide, lists -> if (lists.isEmpty()) guide else guide + lists }
+        .stateIn(scope, kotlinx.coroutines.flow.SharingStarted.Eagerly, emptyMap())
 
     /** Channel key -> the guide channel picked automatically (shown in Assign EPG). */
     private val _autoMatches = MutableStateFlow<Map<String, EpgAssignment>>(emptyMap())
@@ -1230,7 +1243,8 @@ class LiveTvRepository @Inject constructor(
 
     /** One show's full details (description, cast…), from the stored guide. */
     suspend fun programDetails(channelKey: String, startMs: Long): EpgProgram? = withContext(Dispatchers.IO) {
-        if (!guideInDb) null else runCatching { guideDb.program(channelKey, startMs) }.getOrNull()
+        if (channelKey.startsWith("list:")) com.nuvio.tv.livetv.lists.ListChannels.schedule(channelKey).firstOrNull { it.startMs == startMs }
+        else if (!guideInDb) null else runCatching { guideDb.program(channelKey, startMs) }.getOrNull()
     }
 
     /**
@@ -1560,6 +1574,7 @@ class LiveTvRepository @Inject constructor(
     /** A channel's listings from an hour ago to [days] ahead (series recordings look through these). */
     suspend fun upcomingListings(channelKey: String, days: Int): List<EpgProgram> = withContext(Dispatchers.IO) {
         val now = System.currentTimeMillis()
+        if (channelKey.startsWith("list:")) return@withContext com.nuvio.tv.livetv.lists.ListChannels.schedule(channelKey).filter { it.stopMs > now - HOUR && it.startMs < now + days * 24 * HOUR }
         if (!guideInDb) return@withContext _programs.value[channelKey].orEmpty()
         runCatching { guideDb.channelRange(channelKey, now - HOUR, now + days * 24 * HOUR) }
             .getOrNull()?.takeIf { it.isNotEmpty() } ?: _programs.value[channelKey].orEmpty()

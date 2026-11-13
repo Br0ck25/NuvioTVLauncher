@@ -71,6 +71,8 @@ data class HeroPreview(
 @Immutable
 sealed class ModernPayload {
     data class ContinueWatching(val item: ContinueWatchingItem) : ModernPayload()
+    /** Launcher: one app in the Apps row. */
+    data class InstalledApp(val app: com.nuvio.tv.core.apps.InstalledApp) : ModernPayload()
     data class Catalog(
         val focusKey: String,
         val itemId: String,
@@ -236,7 +238,7 @@ internal fun ModernCarouselItem.catalogCardMetrics(
     val posterShape = when (payload) {
         is ModernPayload.Catalog -> metaPreview?.posterShape ?: PosterShape.POSTER
         is ModernPayload.CollectionFolder -> payload.posterShape
-        is ModernPayload.ContinueWatching -> PosterShape.POSTER
+        is ModernPayload.ContinueWatching, is ModernPayload.InstalledApp -> PosterShape.POSTER
     }
 
     return when (posterShape) {
@@ -585,13 +587,10 @@ internal fun buildCollectionFolderItem(
     )
 }
 
+// One key per show, like the shuffle key: when its card moves to another episode it stays the
+// same row item, so focus stays on it instead of passing to the next card.
 internal fun continueWatchingItemKey(item: ContinueWatchingItem): String {
-    return item.shuffleFocusKey ?: when (item) {
-        is ContinueWatchingItem.InProgress ->
-            "cw_inprogress_${item.progress.contentId}_${item.progress.season ?: -1}_${item.progress.episode ?: -1}"
-        is ContinueWatchingItem.NextUp ->
-            "cw_nextup_${item.info.contentId}_${item.info.season}_${item.info.episode}"
-    }
+    return item.shuffleFocusKey ?: "cw_${item.contentId()}"
 }
 
 internal fun catalogRowKey(row: CatalogRow): String {
