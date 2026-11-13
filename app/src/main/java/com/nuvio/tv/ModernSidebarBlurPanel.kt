@@ -14,6 +14,7 @@ import androidx.compose.foundation.layout.fillMaxHeight
 import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.verticalScroll
 import androidx.compose.foundation.layout.fillMaxSize
+import com.nuvio.tv.livetv.ui.followMenuScale
 import com.nuvio.tv.livetv.ui.shrinkToFit
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
@@ -243,6 +244,7 @@ internal fun ModernSidebarBlurPanel(
         }
         // Shrinks a little to fit when the pages don't (Settings → Menu & Features).
         val fitMenu = com.nuvio.tv.livetv.ui.LocalSideMenuFit.current
+        val menuScale = androidx.compose.runtime.remember { androidx.compose.runtime.mutableFloatStateOf(1f) }
         androidx.compose.foundation.layout.BoxWithConstraints(
             Modifier
                 .fillMaxWidth()
@@ -259,7 +261,7 @@ internal fun ModernSidebarBlurPanel(
                 Column(
                     modifier = Modifier
                         .fillMaxWidth()
-                        .shrinkToFit(fitMenu, room, 0.5f),
+                        .shrinkToFit(fitMenu, room, 0.5f, menuScale),
                     verticalArrangement = Arrangement.spacedBy(4.dp),
                     horizontalAlignment = Alignment.CenterHorizontally
                 ) {
@@ -268,7 +270,7 @@ internal fun ModernSidebarBlurPanel(
             }
         }
         Column(
-            modifier = Modifier.fillMaxWidth().padding(top = 4.dp),
+            modifier = Modifier.fillMaxWidth().padding(top = 4.dp).followMenuScale(menuScale, 0.5f),
             verticalArrangement = Arrangement.spacedBy(4.dp),
             horizontalAlignment = Alignment.CenterHorizontally
         ) {

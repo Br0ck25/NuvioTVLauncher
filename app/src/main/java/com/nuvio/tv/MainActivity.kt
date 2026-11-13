@@ -39,6 +39,7 @@ import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.fillMaxHeight
 import androidx.compose.foundation.verticalScroll
+import com.nuvio.tv.livetv.ui.followMenuScale
 import com.nuvio.tv.livetv.ui.shrinkToFit
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
@@ -2256,6 +2257,7 @@ private fun LegacySidebarScaffold(
                     ) {
                         // Shrinks a little to fit when the pages don't (Settings → Menu & Features).
                         val fitMenu = com.nuvio.tv.livetv.ui.LocalSideMenuFit.current
+                        val menuScale = androidx.compose.runtime.remember { androidx.compose.runtime.mutableFloatStateOf(1f) }
                         androidx.compose.foundation.layout.BoxWithConstraints(
                             Modifier
                                 .weight(1f)
@@ -2272,7 +2274,7 @@ private fun LegacySidebarScaffold(
                                 Column(
                                     modifier = Modifier
                                         .fillMaxWidth()
-                                        .shrinkToFit(fitMenu, room, 0f),
+                                        .shrinkToFit(fitMenu, room, 0f, menuScale),
                                     verticalArrangement = Arrangement.spacedBy(4.dp),
                                     horizontalAlignment = Alignment.Start
                                 ) {
@@ -2281,6 +2283,7 @@ private fun LegacySidebarScaffold(
                             }
                         }
                         Column(
+                            modifier = Modifier.followMenuScale(menuScale, 0f),
                             verticalArrangement = Arrangement.spacedBy(4.dp),
                             horizontalAlignment = Alignment.Start
                         ) {
