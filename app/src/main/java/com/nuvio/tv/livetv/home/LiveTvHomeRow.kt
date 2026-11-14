@@ -277,8 +277,8 @@ private fun LiveTvHomeRowContent(
             .height(1.dp)
             // While the highlight is in the row this spot steps aside, so Up goes on to what is above (the
             // update banner, or the Notifications and Settings buttons) instead of landing here and
-            // being sent back down. Modern keeps it, as it has no such buttons to reach this way.
-            .focusProperties { canFocus = !(rowHasFocus && (bannerShown || !hideUnlessFocused)) }
+            // being sent back down. All layouts (Modern too, which has the same top buttons).
+            .focusProperties { canFocus = !rowHasFocus }
             .onFocusChanged {
                 catcherFocused = it.isFocused
                 if (it.isFocused) LiveTvHomeReveal.open.value = true
@@ -314,14 +314,8 @@ private fun LiveTvHomeRowContent(
         Column(
             modifier = Modifier
                 .fillMaxWidth()
-                // The Live TV row is the top of the page: Up stays put (instead of landing on the
-                // spot above it, which would close the row), unless the update banner is there.
-                .onPreviewKeyEvent { e ->
-                    // Classic and Grid: Up leaves the row for the top buttons (see the spot above). Modern: stays put.
-                    hideUnlessFocused && !bannerShown &&
-                        e.key == androidx.compose.ui.input.key.Key.DirectionUp &&
-                        e.type == androidx.compose.ui.input.key.KeyEventType.KeyDown
-                }
+                // Up leaves the row for what is above it: the update banner, or the TV inputs,
+                // Notifications and Settings buttons (see the spot above). Same in every layout.
                 .onFocusChanged {
                     if (rowHasFocus && !it.hasFocus) {
                         LiveTvHomeFocus.lostAt = android.os.SystemClock.uptimeMillis()
@@ -336,7 +330,7 @@ private fun LiveTvHomeRowContent(
                 .padding(vertical = if (hideUnlessFocused) 6.dp else 0.dp)
         ) {
             Row(
-                modifier = Modifier.padding(start = startPadding, end = startPadding, bottom = if (hideUnlessFocused) 8.dp else NuvioTheme.spacing.lg),
+                modifier = Modifier.padding(start = startPadding, end = startPadding, bottom = if (hideUnlessFocused) 14.dp else NuvioTheme.spacing.lg), // Modern: its rows use 14.dp (rowTitleBottom)
                 verticalAlignment = Alignment.CenterVertically
             ) {
                 // Your own title wins; otherwise the title says what the row holds.
