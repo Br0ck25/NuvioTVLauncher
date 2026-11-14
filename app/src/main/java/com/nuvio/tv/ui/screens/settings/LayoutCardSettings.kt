@@ -287,6 +287,18 @@ internal fun LayoutPosterCardSection(
         PresetOption(stringResource(R.string.layout_preset_pill), 16)
     )
 
+    val tileSizeOptions = listOf(
+        PresetOption(stringResource(R.string.layout_preset_compact), 80),
+        PresetOption(stringResource(R.string.layout_preset_standard), 100),
+        PresetOption(stringResource(R.string.layout_preset_comfort), 115),
+        PresetOption(stringResource(R.string.layout_preset_large), 130)
+    )
+    OptionRow(
+        title = stringResource(R.string.layout_tile_size),
+        selectedValue = uiState.homeTileScalePct,
+        options = tileSizeOptions,
+        onSelected = { pct -> onEvent(LayoutSettingsEvent.SetHomeTileScale(pct)) }
+    )
     OptionRow(
         title = stringResource(R.string.layout_card_width),
         selectedValue = uiState.posterCardWidthDp,

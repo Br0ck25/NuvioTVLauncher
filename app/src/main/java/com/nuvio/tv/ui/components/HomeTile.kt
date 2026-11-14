@@ -24,10 +24,36 @@ data class HomeTile(val width: Dp, val height: Dp, val gap: Dp) {
  */
 object HomeTiles {
     private val current = MutableStateFlow<HomeTile?>(null)
-    val tile: StateFlow<HomeTile?> = current
 
-    fun publish(tile: HomeTile) {
-        if (current.value != tile) current.value = tile
+    /** The user's tile size (Layout settings), 1f by default. Applied to the published tile and Continue Watching. */
+    private val scaleState = MutableStateFlow(1f)
+    val scale: StateFlow<Float> = scaleState
+
+    /** The published tile with the user's size applied. */
+    private val scaledState = MutableStateFlow<HomeTile?>(null)
+    val tile: StateFlow<HomeTile?> = scaledState
+
+    private var scalable = true
+
+    fun publish(tile: HomeTile, scalable: Boolean = true) {
+        if (current.value != tile || this.scalable != scalable) {
+            this.scalable = scalable
+            current.value = tile
+            update()
+        }
+    }
+
+    fun setScale(value: Float) {
+        if (scaleState.value != value) {
+            scaleState.value = value
+            update()
+        }
+    }
+
+    private fun update() {
+        val base = current.value
+        val s = if (scalable) scaleState.value else 1f
+        scaledState.value = base?.let { HomeTile(it.width * s, it.height * s, it.gap) }
     }
 }
 
@@ -35,4 +61,10 @@ object HomeTiles {
 fun rememberHomeTile(): HomeTile? {
     val tile by HomeTiles.tile.collectAsStateWithLifecycle()
     return tile
+}
+
+@Composable
+fun rememberHomeTileScale(): Float {
+    val scale by HomeTiles.scale.collectAsStateWithLifecycle()
+    return scale
 }

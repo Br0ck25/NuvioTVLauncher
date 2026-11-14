@@ -43,6 +43,7 @@ import kotlinx.coroutines.flow.first
 import kotlinx.coroutines.flow.flatMapLatest
 import kotlinx.coroutines.flow.map
 import kotlinx.coroutines.flow.stateIn
+import kotlinx.coroutines.launch
 import javax.inject.Inject
 import javax.inject.Singleton
 
@@ -93,6 +94,7 @@ class LayoutPreferenceDataStore @Inject constructor(
     private val focusedPosterBackdropTrailerPlaybackTargetKey =
         stringPreferencesKey("focused_poster_backdrop_trailer_playback_target")
     private val posterCardWidthDpKey = intPreferencesKey("poster_card_width_dp")
+    private val homeTileScalePctKey = intPreferencesKey("home_tile_scale_pct")
     private val posterCardHeightDpKey = intPreferencesKey("poster_card_height_dp")
     private val posterCardCornerRadiusDpKey = intPreferencesKey("poster_card_corner_radius_dp")
     private val cardDepthEnabledKey = booleanPreferencesKey("card_depth_enabled")
@@ -312,6 +314,16 @@ class LayoutPreferenceDataStore @Inject constructor(
 
     val posterCardWidthDp: Flow<Int> = profileFlow { prefs ->
         positiveOrDefault(prefs[posterCardWidthDpKey], DEFAULT_POSTER_CARD_WIDTH_DP)
+    }
+
+    /** The one size for the Home tiles (Continue Watching, Upcoming, Live TV, apps), as a percent of the default. */
+    val homeTileScalePct: Flow<Int> = profileFlow { prefs ->
+        (prefs[homeTileScalePctKey] ?: 100).coerceIn(70, 140)
+    }
+
+    init {
+        // Home's tiles read the size from HomeTiles, which they share with the Apps page.
+        scope.launch { homeTileScalePct.collect { com.nuvio.tv.ui.components.HomeTiles.setScale(it / 100f) } }
     }
 
     val posterCardHeightDp: Flow<Int> = profileFlow { prefs ->
@@ -682,6 +694,10 @@ class LayoutPreferenceDataStore @Inject constructor(
         store().edit { prefs ->
             prefs[posterCardWidthDpKey] = positiveOrDefault(widthDp, DEFAULT_POSTER_CARD_WIDTH_DP)
         }
+    }
+
+    suspend fun setHomeTileScalePct(pct: Int) {
+        store().edit { prefs -> prefs[homeTileScalePctKey] = pct.coerceIn(70, 140) }
     }
 
     suspend fun setPosterCardHeightDp(heightDp: Int) {

@@ -1332,6 +1332,7 @@
     <string name="layout_preset_rounded">Rounded</string>
     <string name="layout_preset_pill">Pill</string>
     <string name="layout_card_width">Width</string>
+    <string name="layout_tile_size">Tile size (Continue Watching, Upcoming, Live TV, apps)</string>
     <string name="layout_card_radius">Corner Radius</string>
     <string name="layout_reset_default">Reset to Default</string>
     <string name="layout_custom">Custom</string>
