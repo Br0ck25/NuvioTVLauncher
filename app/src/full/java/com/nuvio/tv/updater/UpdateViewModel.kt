@@ -322,7 +322,10 @@ class UpdateViewModel @Inject constructor(
         // installer screen). It still shows the system confirmation; a failed session falls back to the system
         // installer screen in UpdateInstallResultReceiver.
         viewModelScope.launch(Dispatchers.IO) {
-            runCatching { ApkInstaller.install(context, apkFile, background = false, withDexMetadata = false) }
+            // With the dex metadata, ART compiles the baseline profile during the install. Without it the app stays
+            // "verify"-only until background dexopt runs, which on a Chromecast made cold start about 70% slower and
+            // scrolling visibly janky. A failed session is retried without it (UpdateInstallResultReceiver).
+            runCatching { ApkInstaller.install(context, apkFile, background = false, withDexMetadata = true) }
                 .onFailure { e ->
                     Log.w(TAG, "Session install failed, opening the system installer", e)
                     runCatching { ApkInstaller.launchSystemInstaller(context, apkFile) }

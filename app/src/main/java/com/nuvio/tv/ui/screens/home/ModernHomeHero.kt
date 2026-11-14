@@ -174,8 +174,11 @@ internal fun ModernHeroMediaLayer(
                 modifier = Modifier
                     .fillMaxSize()
                     .graphicsLayer {
-                        compositingStrategy = CompositingStrategy.Offscreen
-                        alpha = 1f - transitionProgressState.value
+                        // A full-screen off-screen buffer is only needed while the trailer fades over the image;
+                        // the rest of the time (alpha 1) it is an extra full-screen pass on every frame.
+                        val fade = 1f - transitionProgressState.value
+                        compositingStrategy = if (fade < 1f) CompositingStrategy.Offscreen else CompositingStrategy.Auto
+                        alpha = fade
                     },
                 contentScale = ContentScale.Crop,
                 alignment = Alignment.TopEnd
@@ -218,7 +221,8 @@ internal fun ModernHeroGradientLayer(
     Box(
         modifier = modifier
             .graphicsLayer {
-                compositingStrategy = CompositingStrategy.Offscreen
+                // The alpha only ever switches between 0 and 1, so there is nothing to group: no off-screen buffer.
+                compositingStrategy = CompositingStrategy.Auto
                 alpha = if (isTrailerPlayingFullScreen()) 0f else 1f
             }
             .drawWithCache {
