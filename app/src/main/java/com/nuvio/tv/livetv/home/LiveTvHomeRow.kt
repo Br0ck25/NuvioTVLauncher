@@ -275,7 +275,10 @@ private fun LiveTvHomeRowContent(
         modifier = Modifier
             .fillMaxWidth()
             .height(1.dp)
-            .focusProperties { canFocus = !(bannerShown && rowHasFocus) }
+            // While the highlight is in the row this spot steps aside, so Up goes on to what is above (the
+            // update banner, or the Notifications and Settings buttons) instead of landing here and
+            // being sent back down. Modern keeps it, as it has no such buttons to reach this way.
+            .focusProperties { canFocus = !(rowHasFocus && (bannerShown || !hideUnlessFocused)) }
             .onFocusChanged {
                 catcherFocused = it.isFocused
                 if (it.isFocused) LiveTvHomeReveal.open.value = true
@@ -314,7 +317,8 @@ private fun LiveTvHomeRowContent(
                 // The Live TV row is the top of the page: Up stays put (instead of landing on the
                 // spot above it, which would close the row), unless the update banner is there.
                 .onPreviewKeyEvent { e ->
-                    !bannerShown &&
+                    // Classic and Grid: Up leaves the row for the top buttons (see the spot above). Modern: stays put.
+                    hideUnlessFocused && !bannerShown &&
                         e.key == androidx.compose.ui.input.key.Key.DirectionUp &&
                         e.type == androidx.compose.ui.input.key.KeyEventType.KeyDown
                 }
