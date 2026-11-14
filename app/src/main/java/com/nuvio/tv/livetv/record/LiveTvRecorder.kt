@@ -20,6 +20,7 @@ import kotlinx.coroutines.delay
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.asStateFlow
+import kotlinx.coroutines.flow.stateIn
 import kotlinx.coroutines.isActive
 import kotlinx.coroutines.launch
 import org.json.JSONObject
@@ -46,6 +47,7 @@ class LiveTvRecorder @Inject constructor(
     @ApplicationContext private val context: Context,
     private val prefs: com.nuvio.tv.livetv.data.LiveTvPreferences,
     private val stalker: StalkerGateway,
+    private val profileManager: com.nuvio.tv.core.profile.ProfileManager,
 ) {
     val appContext: Context get() = context
     private val scope = CoroutineScope(SupervisorJob() + Dispatchers.IO)
@@ -63,8 +65,13 @@ class LiveTvRecorder @Inject constructor(
     fun catchupBusy(sourceId: String?): Boolean = sourceId != null && sourceId in catchupSources.values
 
     private val _recordings = MutableStateFlow<List<LiveTvRecording>>(emptyList())
-    /** Every recording, newest first. */
-    val recordings: StateFlow<List<LiveTvRecording>> = _recordings.asStateFlow()
+    /** The recordings of the profile in use, newest first (each profile has its own). */
+    val recordings: StateFlow<List<LiveTvRecording>> =
+        kotlinx.coroutines.flow.combine(_recordings, profileManager.activeProfileId) { all, id -> all.filter { it.ownerProfile == id } }
+            .stateIn(scope, kotlinx.coroutines.flow.SharingStarted.Eagerly, emptyList())
+
+    /** Every profile's recordings: for the scheduler's bookkeeping (series rules keep the last N, repeats are not recorded twice). */
+    fun allRecordings(): List<LiveTvRecording> = _recordings.value
 
     /** The Recordings settings (where to save, what to do when space runs low), kept up to date. */
     @Volatile private var settings = com.nuvio.tv.livetv.model.LiveTvSettings()
@@ -121,6 +128,8 @@ class LiveTvRecorder @Inject constructor(
         stopAtMs: Long,
         /** A catch-up download: it ends by itself (end of file / end of playlist); no reconnecting. */
         finite: Boolean = false,
+        /** The profile the recording belongs to (the one in use unless a schedule says otherwise). */
+        owner: Int = com.nuvio.tv.core.profile.ActiveProfile.id,
         /** Other links to try if the first doesn't work (catch-up variants). */
         fallbacks: List<String> = emptyList(),
         /** Called once it's finished (done or failed). */
@@ -158,6 +167,7 @@ class LiveTvRecorder @Inject constructor(
             startedAtMs = now,
             stopAtMs = stopAtMs,
             dir = dir.absolutePath,
+            ownerProfile = owner,
             seriesId = seriesId,
             fromCatchup = finite,
             expectedSec = expectedSec ?: 0.0
