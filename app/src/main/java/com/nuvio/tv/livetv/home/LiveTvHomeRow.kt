@@ -267,15 +267,14 @@ private fun LiveTvHomeRowContent(
     // first channel, so the page doesn't lurch while the row is still growing.
     var catcherFocused by remember { mutableStateOf(false) }
     var rowHasFocus by remember { mutableStateOf(false) }
-    // With an update banner above the page, Up from the Live TV row goes on to the banner: the
-    // spot is skipped while the row has the highlight (it used to catch Up, so the banner could
-    // never be reached while the row was there).
-    val bannerShown by LiveTvHomeReveal.updateBannerShown.collectAsStateWithLifecycle()
     Box(
         modifier = Modifier
             .fillMaxWidth()
             .height(1.dp)
-            .focusProperties { canFocus = !(bannerShown && rowHasFocus) }
+            // While the highlight is in the row this spot steps aside, so Up goes on to what is above (the
+            // update banner, or the Notifications and Settings buttons) instead of landing here and
+            // being sent back down. All layouts (Modern too, which has the same top buttons).
+            .focusProperties { canFocus = !rowHasFocus }
             .onFocusChanged {
                 catcherFocused = it.isFocused
                 if (it.isFocused) LiveTvHomeReveal.open.value = true
@@ -303,25 +302,16 @@ private fun LiveTvHomeRowContent(
     )
     androidx.compose.animation.AnimatedVisibility(
         visible = open,
-        enter = androidx.compose.animation.expandVertically(
-            animationSpec = androidx.compose.animation.core.tween(OPEN_MS, easing = androidx.compose.animation.core.FastOutSlowInEasing),
-            expandFrom = Alignment.Bottom
-        ) + androidx.compose.animation.fadeIn(androidx.compose.animation.core.tween(OPEN_MS)),
-        exit = androidx.compose.animation.shrinkVertically(
-            animationSpec = androidx.compose.animation.core.tween(CLOSE_MS, easing = androidx.compose.animation.core.FastOutSlowInEasing),
-            shrinkTowards = Alignment.Bottom
-        ) + androidx.compose.animation.fadeOut(androidx.compose.animation.core.tween(CLOSE_MS))
+        // Fade only: the row's height changes once, not over several frames. Animating it fought the
+        // list's own scroll to the focused row, and the page bounced going to the row and back.
+        enter = androidx.compose.animation.fadeIn(androidx.compose.animation.core.tween(OPEN_MS)),
+        exit = androidx.compose.animation.fadeOut(androidx.compose.animation.core.tween(CLOSE_MS))
     ) {
         Column(
             modifier = Modifier
                 .fillMaxWidth()
-                // The Live TV row is the top of the page: Up stays put (instead of landing on the
-                // spot above it, which would close the row), unless the update banner is there.
-                .onPreviewKeyEvent { e ->
-                    !bannerShown &&
-                        e.key == androidx.compose.ui.input.key.Key.DirectionUp &&
-                        e.type == androidx.compose.ui.input.key.KeyEventType.KeyDown
-                }
+                // Up leaves the row for what is above it: the update banner, or the TV inputs,
+                // Notifications and Settings buttons (see the spot above). Same in every layout.
                 .onFocusChanged {
                     if (rowHasFocus && !it.hasFocus) {
                         LiveTvHomeFocus.lostAt = android.os.SystemClock.uptimeMillis()
@@ -332,9 +322,13 @@ private fun LiveTvHomeRowContent(
                     LiveTvHomeFocus.rowHasFocus = it.hasFocus
                 }
                 .graphicsLayer { this.alpha = alpha }
-                .padding(vertical = 6.dp)
+                // Classic and Grid: no extra padding, so the gaps match Continue Watching's (Modern keeps its own).
+                .padding(vertical = if (hideUnlessFocused) 6.dp else 0.dp)
         ) {
-            Row(modifier = Modifier.padding(start = startPadding, end = startPadding, bottom = 8.dp), verticalAlignment = Alignment.CenterVertically) {
+            Row(
+                modifier = Modifier.padding(start = startPadding, end = startPadding, bottom = if (hideUnlessFocused) 14.dp else NuvioTheme.spacing.lg), // Modern: its rows use 14.dp (rowTitleBottom)
+                verticalAlignment = Alignment.CenterVertically
+            ) {
                 // Your own title wins; otherwise the title says what the row holds.
                 val title = settings.homeRowTitle.ifBlank {
                     when (settings.homeRowSource) {
@@ -495,6 +489,18 @@ private fun HomeCard(
                 else -> entry.channel.group.takeIf { it.isNotBlank() && it != entry.channel.name } ?: ""
             }
             if (sub.isNotBlank()) LiveText(sub, color = NuvioTheme.extendedColors.textSecondary, size = 12.sp, marquee = focused)
+            // How far through the show it is.
+            if (!compact && p != null) {
+                Box(
+                    modifier = Modifier.fillMaxWidth().height(3.dp).clip(RoundedCornerShape(2.dp))
+                        .background(Color.White.copy(alpha = 0.18f))
+                ) {
+                    Box(
+                        modifier = Modifier.fillMaxWidth(p.progress(now)).height(3.dp)
+                            .background(NuvioTheme.colors.Secondary)
+                    )
+                }
+            }
         }
     }
 }
