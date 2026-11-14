@@ -382,13 +382,15 @@ class LiveTvPreferences @Inject constructor(
     private val settingsMemo = SnapshotMemo<LiveTvSettings>()
     private val userStateMemo = SnapshotMemo<LiveUserState>()
 
-    val playlists: Flow<List<PlaylistSource>> = store.data
-        .map { p -> playlistsMemo.get(p, null, 0) { decodePlaylists(p[Keys.playlists]) } }
-        .distinctUntilChanged()
+    // Playlists and guides are per profile too (each profile is a different user): the first profile keeps the original keys,
+    // another profile starts with a copy of them (see seedProfileSettings) and then has its own.
+    val playlists: Flow<List<PlaylistSource>> = kotlinx.coroutines.flow.combine(store.data, profileManager.activeProfileId) { p, id ->
+        playlistsMemo.get(p, null, id) { decodePlaylists(p[my(Keys.playlists, id)]) }
+    }.distinctUntilChanged()
 
-    val epgSources: Flow<List<EpgSource>> = store.data
-        .map { p -> epgsMemo.get(p, null, 0) { decodeEpgs(p[Keys.epgs]) } }
-        .distinctUntilChanged()
+    val epgSources: Flow<List<EpgSource>> = kotlinx.coroutines.flow.combine(store.data, profileManager.activeProfileId) { p, id ->
+        epgsMemo.get(p, null, id) { decodeEpgs(p[my(Keys.epgs, id)]) }
+    }.distinctUntilChanged()
 
     val addonChannelSources: Flow<List<AddonChannelSource>> = store.data
         .map { decodeAddonChannels(it[Keys.addonChannels]) }
@@ -414,7 +416,8 @@ class LiveTvPreferences @Inject constructor(
     // same names with "_p<id>" on the end. Playlists and guides stay shared, and so do the parental lock settings: a profile
     // must not be able to switch the lock off for the others.
 
-    private val sharedSettingKeyNames = setOf(Keys.parentalPin.name, Keys.lockAdultContent.name)
+    // Nothing is shared between profiles any more (the parental lock included: it belongs to the profile that set it).
+    private val sharedSettingKeyNames = emptySet<String>()
 
     /** The names of the settings keys: whatever [writeSettings] writes, minus the ones every profile shares. */
     private val settingsKeyNames: Set<String> by lazy {
@@ -462,6 +465,9 @@ class LiveTvPreferences @Inject constructor(
             for (name in settingsKeyNames) {
                 val base = byName[name] ?: continue
                 if (byName[ownName(name, id)] == null) typedKey(ownName(name, id), base.value)?.let { p[it] = base.value }
+            }
+            for (k in listOf(Keys.playlists, Keys.epgs)) {
+                if (p[my(k, id)] == null) p[k]?.let { p[my(k, id)] = it }
             }
             p[settingsSeededKey(id)] = true
         }
@@ -699,10 +705,11 @@ class LiveTvPreferences @Inject constructor(
     suspend fun updatePlaylists(transform: (List<PlaylistSource>) -> List<PlaylistSource>) = sourceMutations.withLock {
         var removed = emptySet<String>()
         store.edit { p ->
-            val before = decodePlaylists(p[Keys.playlists])
+            val key = my(Keys.playlists)
+            val before = decodePlaylists(p[key])
             val after = transform(before)
             removed = before.map { it.id }.toSet() - after.map { it.id }.toSet()
-            p[Keys.playlists] = encodePlaylists(after)
+            p[key] = encodePlaylists(after)
         }
         noteRemovedSources(removed)
     }
@@ -716,10 +723,11 @@ class LiveTvPreferences @Inject constructor(
     suspend fun updateEpgSources(transform: (List<EpgSource>) -> List<EpgSource>) {
         var removed = emptySet<String>()
         store.edit { p ->
-            val before = decodeEpgs(p[Keys.epgs])
+            val key = my(Keys.epgs)
+            val before = decodeEpgs(p[key])
             val after = transform(before)
             removed = before.map { it.id }.toSet() - after.map { it.id }.toSet()
-            p[Keys.epgs] = encodeEpgs(after)
+            p[key] = encodeEpgs(after)
         }
         noteRemovedSources(removed)
     }
