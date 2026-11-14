@@ -34,6 +34,7 @@ internal object AccessibilityWatchdog {
     private const val TAG = "AccessibilityWatchdog"
     private const val OPT_IN = "accessibility_watchdog_opt_in"
     private const val WRITE_SECURE = "android.permission.WRITE_SECURE_SETTINGS"
+    private const val STABLE_ENABLED_MS = 30_000L
 
     @Volatile private var observer: ContentObserver? = null
 
@@ -68,12 +69,14 @@ internal object AccessibilityWatchdog {
             val current = Settings.Secure.getString(resolver, Settings.Secure.ENABLED_ACCESSIBILITY_SERVICES)
             val listed = LauncherAccessibilityService.containsEnabledComponent(current, target)
             val masterOn = Settings.Secure.getInt(resolver, Settings.Secure.ACCESSIBILITY_ENABLED, 0) == 1
+            val now = SystemClock.elapsedRealtime()
             if (listed && masterOn) {
-                failedWrites = 0
+                // Only a service that has stayed enabled counts as working: right after our own write it reads as
+                // enabled for a moment even when Android is about to undo it, and resetting then kept the loop going.
+                if (lastWriteAtMs == 0L || now - lastWriteAtMs >= STABLE_ENABLED_MS) failedWrites = 0
                 return@runCatching true
             }
             // Not enabled: write now, unless a recent write of ours did not stick (then wait, and look again).
-            val now = SystemClock.elapsedRealtime()
             val waitMs = accessibilityWriteBackoffMs(failedWrites) - (now - lastWriteAtMs)
             if (lastWriteAtMs != 0L && waitMs > 0L) {
                 scheduleRetry(app, waitMs)
