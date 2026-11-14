@@ -27,6 +27,7 @@ import kotlinx.coroutines.SupervisorJob
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.asStateFlow
+import kotlinx.coroutines.flow.stateIn
 import kotlinx.coroutines.flow.debounce
 import kotlinx.coroutines.flow.first
 import kotlinx.coroutines.launch
@@ -105,6 +106,8 @@ data class RecordingSchedule(
     val postMs: Long = -1L,
     val providerProgramId: String? = null,
     val providerSourceIdentity: String? = null,
+    /** The Nuvio profile it belongs to (older ones belong to the first). */
+    val owner: Int = com.nuvio.tv.core.profile.ActiveProfile.id,
 ) {
     val pre: Long get() = if (preMs >= 0) preMs else LiveTvRecordingScheduler.PRE_MS
     val post: Long get() = if (postMs >= 0) postMs else LiveTvRecordingScheduler.POST_MS
@@ -117,6 +120,7 @@ data class RecordingSchedule(
         put("preMs", preMs); put("postMs", postMs)
         providerProgramId?.let { put("providerProgramId", it) }
         providerSourceIdentity?.let { put("providerSourceIdentity", it) }
+        put("owner", owner)
     }
 
     companion object {
@@ -136,6 +140,7 @@ data class RecordingSchedule(
             postMs = o.optLong("postMs", -1L),
             providerProgramId = o.optString("providerProgramId").ifBlank { null },
             providerSourceIdentity = o.optString("providerSourceIdentity").ifBlank { null },
+            owner = o.optInt("owner", 1).coerceAtLeast(1),
         )
     }
 }
@@ -152,19 +157,22 @@ data class SeriesRule(
      * after a recording is deleted or dropped by "keep the last N", so a repeat later in the
      * week is never recorded again.
      */
-    val seen: List<String> = emptyList()
+    val seen: List<String> = emptyList(),
+    val owner: Int = com.nuvio.tv.core.profile.ActiveProfile.id
 ) {
     val norm: String get() = LiveTvRepository.normalize(title)
 
     fun toJson(): JSONObject = JSONObject().apply {
         put("id", id); put("channel", channel.toJson()); put("title", title); put("keepLast", keepLast)
         put("seen", org.json.JSONArray(seen))
+        put("owner", owner)
     }
 
     companion object {
         fun fromJson(o: JSONObject) = SeriesRule(
             o.optString("id"), ChannelSnapshot.fromJson(o.getJSONObject("channel")), o.optString("title"), o.optInt("keepLast"),
-            o.optJSONArray("seen")?.let { a -> (0 until a.length()).map { a.optString(it) }.filter { it.isNotBlank() } }.orEmpty()
+            o.optJSONArray("seen")?.let { a -> (0 until a.length()).map { a.optString(it) }.filter { it.isNotBlank() } }.orEmpty(),
+            o.optInt("owner", 1).coerceAtLeast(1)
         )
     }
 }
@@ -183,16 +191,22 @@ class LiveTvRecordingScheduler @Inject constructor(
     @ApplicationContext private val context: Context,
     private val recorder: LiveTvRecorder,
     private val repository: LiveTvRepository,
-    private val prefs: LiveTvPreferences
+    private val prefs: LiveTvPreferences,
+    private val profileManager: com.nuvio.tv.core.profile.ProfileManager
 ) {
     private val scope = CoroutineScope(SupervisorJob() + Dispatchers.IO)
     private val mutex = Mutex()
     private val file = File(File(context.filesDir, "livetv"), "recording_schedules.json")
 
     private val _schedules = MutableStateFlow<List<RecordingSchedule>>(emptyList())
-    val schedules: StateFlow<List<RecordingSchedule>> = _schedules.asStateFlow()
+    /** The profile in use's scheduled recordings (every profile's still fire; each sees only its own). */
+    val schedules: StateFlow<List<RecordingSchedule>> =
+        kotlinx.coroutines.flow.combine(_schedules, profileManager.activeProfileId) { all, id -> all.filter { it.owner == id } }
+            .stateIn(scope, kotlinx.coroutines.flow.SharingStarted.Eagerly, emptyList())
     private val _series = MutableStateFlow<List<SeriesRule>>(emptyList())
-    val series: StateFlow<List<SeriesRule>> = _series.asStateFlow()
+    val series: StateFlow<List<SeriesRule>> =
+        kotlinx.coroutines.flow.combine(_series, profileManager.activeProfileId) { all, id -> all.filter { it.owner == id } }
+            .stateIn(scope, kotlinx.coroutines.flow.SharingStarted.Eagerly, emptyList())
 
     @Volatile private var started = false
     /** Extra time before and after recordings (Settings → Live TV → Recordings), kept up to date. */
@@ -359,7 +373,7 @@ class LiveTvRecordingScheduler @Inject constructor(
     private fun keepOnlyNewest(seriesId: String) {
         val keep = _series.value.firstOrNull { it.id == seriesId }?.keepLast ?: return
         if (keep <= 0) return
-        recorder.recordings.value
+        recorder.allRecordings()
             .filter { it.seriesId == seriesId && !it.isRecording }
             .sortedByDescending { it.programStartMs.takeIf { s -> s > 0 } ?: it.startedAtMs }
             .drop(keep)
@@ -395,10 +409,10 @@ class LiveTvRecordingScheduler @Inject constructor(
                 val ep = episodeKey(p.episode)
                 val current = _series.value.firstOrNull { it.id == rule.id } ?: rule
                 val already = _schedules.value.any { it.channel.key == rule.channel.key && it.startMs == p.startMs } ||
-                    recorder.recordings.value.any { it.channelKey == rule.channel.key && it.programStartMs == p.startMs } ||
+                    recorder.allRecordings().any { it.channelKey == rule.channel.key && it.programStartMs == p.startMs } ||
                     (ep != null && (ep in current.seen ||
                         _schedules.value.any { it.seriesId == rule.id && episodeKey(it.episode) == ep } ||
-                        recorder.recordings.value.any {
+                        recorder.allRecordings().any {
                             (it.seriesId == rule.id || it.channelKey == rule.channel.key) && episodeKey(it.episode) == ep &&
                                 LiveTvRepository.normalize(cleanTitle(it.title)) == rule.norm
                         }))
@@ -474,7 +488,7 @@ class LiveTvRecordingScheduler @Inject constructor(
                 val channel = freshChannel(s.channel)
                 markSeen(s)
                 recorder.start(channel, channel.url, s.title, s.episode, s.description, s.startMs, s.stopMs, s.stopMs + s.post,
-                    onFinished = { rec -> s.seriesId?.let { keepOnlyNewest(it) } }, seriesId = s.seriesId)
+                    onFinished = { rec -> s.seriesId?.let { keepOnlyNewest(it) } }, seriesId = s.seriesId, owner = s.owner)
                 remove(s)
                 LiveTvNotice.show("Recording \"${s.title}\" on ${channel.name}")
                 return@launch
@@ -532,6 +546,7 @@ class LiveTvRecordingScheduler @Inject constructor(
                 channel, url, s.title, s.episode, s.description, s.startMs, s.stopMs,
                 stopAtMs = now + (s.stopMs - s.startMs) * 3 + 30 * 60_000L,
                 finite = true,
+                owner = s.owner,
                 fallbacks = if (stalkerArchive == null) CatchupUrlBuilder.alternatives(url, zone) else emptyList(),
                 seriesId = s.seriesId,
                 // Cut off part way: the rest of the show, from a little before where it got to
