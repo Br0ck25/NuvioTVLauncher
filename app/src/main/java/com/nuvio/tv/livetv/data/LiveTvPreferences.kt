@@ -268,10 +268,12 @@ class LiveTvPreferences @Inject constructor(
     private val personalStringKeys: List<Preferences.Key<String>> = listOf(
         Keys.favorites, Keys.recent, Keys.recentGroups, Keys.lastChannel, Keys.previousChannel, Keys.lastGroup,
         Keys.groupOrder, Keys.customGroups, Keys.channelOrder, Keys.channelCopies, Keys.reminders,
-        Keys.vodGroupOrder, Keys.vodSorts, Keys.sportsMine
+        Keys.vodGroupOrder, Keys.vodSorts, Keys.sportsMine,
+        Keys.sports, Keys.channelNames, Keys.channelLogos, Keys.channelNumbers, Keys.groupNames, Keys.epgOverrides,
+        Keys.channelAudio, Keys.channelCaptions, Keys.vodGroupNames, Keys.pictureShapes, Keys.calendarChannelPicks, Keys.calendarPlans
     )
     private val personalSetKeys: List<Preferences.Key<Set<String>>> = listOf(
-        Keys.hiddenChannels, Keys.hiddenGroups, Keys.vodHiddenCategories
+        Keys.hiddenChannels, Keys.hiddenGroups, Keys.vodHiddenCategories, Keys.lockedGroups
     )
 
     @JvmName("myString")
@@ -786,17 +788,19 @@ class LiveTvPreferences @Inject constructor(
     suspend fun editCalendarHiddenShows(transform: (String) -> String) = editMine(Keys.calendarHiddenShows, transform)
 
     /** The channel picked for each network ("Always use the channel I pick for FX"): a JSON object. */
-    val calendarChannelPicks: Flow<String> = store.data.map { it[Keys.calendarChannelPicks] ?: "" }.distinctUntilChanged()
+    val calendarChannelPicks: Flow<String> =
+        kotlinx.coroutines.flow.combine(store.data, profileManager.activeProfileId) { p, id -> mineOrShared(p, Keys.calendarChannelPicks, id) }.distinctUntilChanged()
 
     suspend fun editCalendarChannelPicks(transform: (String) -> String) {
-        store.edit { it[Keys.calendarChannelPicks] = transform(it[Keys.calendarChannelPicks] ?: "") }
+        editMine(Keys.calendarChannelPicks, transform)
     }
 
     /** The Calendar's Live TV plans ("record when it's in my guide", "record every new episode"), as JSON. */
-    val calendarPlans: Flow<String> = store.data.map { it[Keys.calendarPlans] ?: "" }.distinctUntilChanged()
+    val calendarPlans: Flow<String> =
+        kotlinx.coroutines.flow.combine(store.data, profileManager.activeProfileId) { p, id -> mineOrShared(p, Keys.calendarPlans, id) }.distinctUntilChanged()
 
     suspend fun editCalendarPlans(transform: (String) -> String) {
-        store.edit { it[Keys.calendarPlans] = transform(it[Keys.calendarPlans] ?: "") }
+        editMine(Keys.calendarPlans, transform)
     }
 
     // ---------- settings ----------
@@ -966,26 +970,26 @@ class LiveTvPreferences @Inject constructor(
 
     suspend fun setChannelName(key: String, name: String?) {
         store.edit { p ->
-            val m = decodeStringMap(p[Keys.channelNames]).toMutableMap()
+            val m = decodeStringMap(p[my(Keys.channelNames)]).toMutableMap()
             if (name.isNullOrBlank()) m.remove(key) else m[key] = name.trim()
-            p[Keys.channelNames] = encodeStringMap(m)
+            p[my(Keys.channelNames)] = encodeStringMap(m)
         }
     }
 
     /** The logo picked for a channel ("Change Logo"); null puts its own back. */
     suspend fun setChannelLogo(key: String, url: String?) {
         store.edit { p ->
-            val m = decodeStringMap(p[Keys.channelLogos]).toMutableMap()
+            val m = decodeStringMap(p[my(Keys.channelLogos)]).toMutableMap()
             if (url.isNullOrBlank()) m.remove(key) else m[key] = url.trim()
-            p[Keys.channelLogos] = encodeStringMap(m)
+            p[my(Keys.channelLogos)] = encodeStringMap(m)
         }
     }
 
     suspend fun setChannelNumber(key: String, number: Int?) {
         store.edit { p ->
-            val m = decodeStringMap(p[Keys.channelNumbers]).toMutableMap()
+            val m = decodeStringMap(p[my(Keys.channelNumbers)]).toMutableMap()
             if (number == null) m.remove(key) else m[key] = number.toString()
-            p[Keys.channelNumbers] = encodeStringMap(m)
+            p[my(Keys.channelNumbers)] = encodeStringMap(m)
         }
     }
 
@@ -995,9 +999,9 @@ class LiveTvPreferences @Inject constructor(
             return
         }
         store.edit { p ->
-            val m = decodeStringMap(p[Keys.groupNames]).toMutableMap()
+            val m = decodeStringMap(p[my(Keys.groupNames)]).toMutableMap()
             if (name.isNullOrBlank()) m.remove(groupId) else m[groupId] = name.trim()
-            p[Keys.groupNames] = encodeStringMap(m)
+            p[my(Keys.groupNames)] = encodeStringMap(m)
         }
     }
 
@@ -1041,20 +1045,24 @@ class LiveTvPreferences @Inject constructor(
 
     suspend fun setEpgOverride(key: String, assignment: com.nuvio.tv.livetv.model.EpgAssignment?) {
         store.edit { p ->
-            val m = decodeStringMap(p[Keys.epgOverrides]).toMutableMap()
+            val m = decodeStringMap(p[my(Keys.epgOverrides)]).toMutableMap()
             if (assignment == null) m.remove(key) else m[key] = assignment.sourceId + EPG_SEP + assignment.xmltvId
-            p[Keys.epgOverrides] = encodeStringMap(m)
+            p[my(Keys.epgOverrides)] = encodeStringMap(m)
         }
     }
 
     /** Picture shape chosen per channel (channels left on Auto aren't listed). */
-    val pictureShapes: Flow<Map<String, String>> = store.data.map { decodeStringMap(it[Keys.pictureShapes]) }
+    val pictureShapes: Flow<Map<String, String>> =
+        kotlinx.coroutines.flow.combine(store.data, profileManager.activeProfileId) { p, id -> decodeStringMap(profileView(p, id)[Keys.pictureShapes]) }
+            .distinctUntilChanged()
 
     // ---------- Sports ----------
     // Kept with Live TV's settings so Google Drive sync carries them to your other TVs too.
 
     /** Sports settings and channel fixes (JSON, read by the Sports page). */
-    val sportsSettingsJson: Flow<String?> = store.data.map { it[Keys.sports] }.distinctUntilChanged()
+    val sportsSettingsJson: Flow<String?> =
+        kotlinx.coroutines.flow.combine(store.data, profileManager.activeProfileId) { p, id -> profileView(p, id)[Keys.sports] }
+            .distinctUntilChanged()
 
     /** What this profile follows in Sports (JSON). */
     val sportsMineJson: Flow<String?> =
@@ -1062,7 +1070,10 @@ class LiveTvPreferences @Inject constructor(
             .distinctUntilChanged()
 
     suspend fun editSportsSettings(transform: (String?) -> String) {
-        store.edit { p -> p[Keys.sports] = transform(p[Keys.sports]) }
+        store.edit { p ->
+            val id = currentProfile
+            p[my(Keys.sports, id)] = transform(profileView(p, id)[Keys.sports])
+        }
     }
 
     suspend fun editSportsMine(transform: (String?) -> String) {
@@ -1074,22 +1085,22 @@ class LiveTvPreferences @Inject constructor(
 
     suspend fun setPictureShape(key: String, shape: com.nuvio.tv.livetv.player.PictureShape) {
         store.edit { p ->
-            val m = decodeStringMap(p[Keys.pictureShapes]).toMutableMap()
+            val m = decodeStringMap(p[my(Keys.pictureShapes)]).toMutableMap()
             if (shape == com.nuvio.tv.livetv.player.PictureShape.AUTO) m.remove(key) else m[key] = shape.name
-            p[Keys.pictureShapes] = encodeStringMap(m)
+            p[my(Keys.pictureShapes)] = encodeStringMap(m)
         }
     }
 
     suspend fun clearEpgOverrides() {
-        store.edit { it[Keys.epgOverrides] = encodeStringMap(emptyMap()) }
+        store.edit { it[my(Keys.epgOverrides)] = encodeStringMap(emptyMap()) }
     }
 
     // ---------- parental controls, reminders, quality, On Demand ----------
 
     suspend fun setGroupLocked(groupId: String, locked: Boolean) {
         store.edit { p ->
-            val cur = p[Keys.lockedGroups] ?: emptySet()
-            p[Keys.lockedGroups] = if (locked) cur + groupId else cur - groupId
+            val cur = p[my(Keys.lockedGroups)] ?: emptySet()
+            p[my(Keys.lockedGroups)] = if (locked) cur + groupId else cur - groupId
         }
     }
 
@@ -1120,18 +1131,18 @@ class LiveTvPreferences @Inject constructor(
     /** The audio track picked on a channel, used every time it plays (null forgets it). */
     suspend fun setChannelAudio(key: String, audio: String?) {
         store.edit { p ->
-            val m = decodeStringMap(p[Keys.channelAudio]).toMutableMap()
+            val m = decodeStringMap(p[my(Keys.channelAudio)]).toMutableMap()
             if (audio == null) m.remove(key) else m[key] = audio
-            p[Keys.channelAudio] = encodeStringMap(m)
+            p[my(Keys.channelAudio)] = encodeStringMap(m)
         }
     }
 
     /** The caption choice made on a channel, used every time it plays (null forgets it). */
     suspend fun setChannelCaptions(key: String, captions: String?) {
         store.edit { p ->
-            val m = decodeStringMap(p[Keys.channelCaptions]).toMutableMap()
+            val m = decodeStringMap(p[my(Keys.channelCaptions)]).toMutableMap()
             if (captions == null) m.remove(key) else m[key] = captions
-            p[Keys.channelCaptions] = encodeStringMap(m)
+            p[my(Keys.channelCaptions)] = encodeStringMap(m)
         }
     }
 
@@ -1166,7 +1177,7 @@ class LiveTvPreferences @Inject constructor(
         store.edit { p ->
             p[my(Keys.vodHiddenCategories)] = hidden
             p[my(Keys.vodGroupOrder)] = encodeStringList(order)
-            p[Keys.vodGroupNames] = encodeStringMap(names.filterValues { it.isNotBlank() })
+            p[my(Keys.vodGroupNames)] = encodeStringMap(names.filterValues { it.isNotBlank() })
         }
     }
 
@@ -1295,14 +1306,14 @@ class LiveTvPreferences @Inject constructor(
 
     suspend fun resetChannelEdits() {
         store.edit {
-            it[Keys.channelNames] = encodeStringMap(emptyMap())
-            it[Keys.channelNumbers] = encodeStringMap(emptyMap())
+            it[my(Keys.channelNames)] = encodeStringMap(emptyMap())
+            it[my(Keys.channelNumbers)] = encodeStringMap(emptyMap())
         }
     }
 
     suspend fun resetGroupEdits() {
         store.edit {
-            it[Keys.groupNames] = encodeStringMap(emptyMap())
+            it[my(Keys.groupNames)] = encodeStringMap(emptyMap())
             it[my(Keys.groupOrder)] = encodeStringList(emptyList())
         }
     }
