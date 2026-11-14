@@ -12,7 +12,8 @@ Everything below was observed on the device; where something was not tried it sa
 | First run | 7-step wizard: welcome, default launcher, accessibility, TV listings, location, Bluetooth, done. Every permission step has a "Later" button. | Profile picker ("Who's watching?") first, then Home. Setup of the Home override is in Settings → Default launcher. |
 | Default launcher | Wizard opens Android's "Default home app" picker. Selecting Monet made it the `android.app.role.HOME` holder. | Was the HOME role holder before the test. |
 | Home button with the role alone | **Still opened Google TV** on this Chromecast. The firmware ignores the role for the Home key. Monet's own wizard warns it may not work on some TV models. | Same limitation. |
-| Home button override | Optional Monet accessibility service (not enabled in this test, see below). | Accessibility service plus the app-ops "restricted settings" allow and WRITE_SECURE_SETTINGS. Home opened Nuvio. |
+| Home button override | Optional Monet accessibility service. Enabled by hand in Android's Accessibility settings (Monet's wizard opens that screen). With it on, **Home opened Monet** from Android Settings and from YouTube. | Accessibility service plus the app-ops "restricted settings" allow and WRITE_SECURE_SETTINGS. Home opened Nuvio from YouTube. |
+| Enabling the service | No adb or WRITE_SECURE_SETTINGS grant needed: Monet's in-app disclosure, then Android's "Use Monet?" confirmation, then the toggle. | Needs WRITE_SECURE_SETTINGS and the restricted-settings allow (set over adb or Wireless debugging); the app writes the setting itself. |
 | Both installed, Nuvio's override on | Home opened Nuvio even though Monet held the Home role. | |
 
 Other Android 14 facts seen on the way:
@@ -20,14 +21,18 @@ Other Android 14 facts seen on the way:
   alone, Nuvio's WRITE_SECURE_SETTINGS grant had to be revoked temporarily (and was granted back afterwards).
 - With Nuvio's service off and Monet as the role holder, Home opened **Google TV**, not Monet.
 - Monet declares WRITE_SECURE_SETTINGS in its manifest; it was not granted.
+- Two Home overrides at once is not a supported combination: only one accessibility service was enabled at a time during
+  the test (the other was switched off), and Nuvio's was restored afterwards.
 
-## Permissions Monet asked for (all declined or skipped)
+## Permissions Monet asked for
 
 - Accessibility service: its disclosure says it sees which app is open and which buttons and keys are pressed, can tap where
-  the mouse cursor points, take screenshots when asked, and block apps in kids profiles. Declined: this goes beyond
-  "default launcher" and is the user's call.
+  the mouse cursor points, take screenshots when asked, and block apps in kids profiles. First declined, then enabled
+  on the owner's explicit approval to compare Home-button behaviour, and switched off again afterwards. Android's own
+  confirmation says the service "can collect all of the text you type, except passwords" (standard wording for a
+  service that sees key events); Monet's disclosure says it does not read text inside apps.
 - TV listings (live channels / continue watching / recommendations), approximate location (weather), nearby devices
-  (Bluetooth panel). Skipped with "Later".
+  (Bluetooth panel). Skipped with "Later" and not granted.
 - Because of that, Monet's Home showed a "Permission required. Press to continue." banner, and its Continue Watching row was
   not populated. So Monet's Continue Watching was not compared against Nuvio's.
 
@@ -60,11 +65,15 @@ Other Android 14 facts seen on the way:
 
 ## Not tested
 
-- Monet with its accessibility service enabled (Home / standby / button mapping over other apps).
+- Monet's accessibility features beyond Home (standby timer, button mapping, menus over other apps, screenshots).
+- Home-button speed, and what happens after a Monet update.
 - Monet's Continue Watching, live channels and weather (needed permissions that were declined).
 - Behaviour after an update, Monet's Premium features, parental controls.
 
 ## State left on the Chromecast
 
 - Monet installed and set as the Android default home app (HOME role).
-- Nuvio's Home override restored (accessibility service enabled, restricted-settings allow, WRITE_SECURE_SETTINGS granted).
+- Nuvio's Home override restored (accessibility service enabled, restricted-settings allow, WRITE_SECURE_SETTINGS granted);
+  Home from YouTube opens Nuvio.
+- Monet's accessibility service switched off again (turn it on in Settings → Accessibility → Monet, and Nuvio's off, to
+  use Monet as the Home launcher).
