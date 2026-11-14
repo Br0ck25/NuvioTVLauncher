@@ -71,7 +71,8 @@ fun AppsScreen(viewModel: InstalledAppsViewModel = hiltViewModel()) {
             }
         } else {
             LazyVerticalGrid(
-                columns = GridCells.Adaptive(tileWidth),
+                // Fixed-size cells: Adaptive stretches its columns to fill the row, so the tiles never came out the Home size.
+                columns = GridCells.FixedSize(tileWidth),
                 contentPadding = PaddingValues(top = 18.dp, bottom = 40.dp),
                 horizontalArrangement = Arrangement.spacedBy(16.dp),
                 verticalArrangement = Arrangement.spacedBy(14.dp),
