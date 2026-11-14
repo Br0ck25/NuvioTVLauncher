@@ -701,6 +701,15 @@ fun ModernHomeContent(
         ContinueWatchingCardStyle.CARD -> continueWatchingCardWidth / 1.77f
     }
 
+    // The tile every row shares: Continue Watching's 16:9 card size, whatever style it is set to.
+    val modernTileWidth = portraitBaseWidth * 1.24f * continueWatchingScale
+    val modernTileGap = NuvioTheme.spacing.md
+    androidx.compose.runtime.SideEffect {
+        com.nuvio.tv.ui.components.HomeTiles.publish(
+            com.nuvio.tv.ui.components.HomeTile(modernTileWidth, modernTileWidth / 1.77f, modernTileGap)
+        )
+    }
+
     val localConfiguration = LocalConfiguration.current
     val screenWidth = localConfiguration.screenWidthDp.dp
     val screenHeight = localConfiguration.screenHeightDp.dp

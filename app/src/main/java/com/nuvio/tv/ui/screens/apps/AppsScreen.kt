@@ -8,6 +8,12 @@ import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.lazy.grid.GridCells
 import androidx.compose.foundation.lazy.grid.LazyVerticalGrid
+import androidx.compose.foundation.lazy.grid.rememberLazyGridState
+import android.widget.Toast
+import androidx.compose.ui.platform.LocalContext
+import com.nuvio.tv.ui.components.appMoveKeys
+import com.nuvio.tv.ui.components.clampedStep
+import com.nuvio.tv.ui.components.rememberAppMoveState
 import androidx.compose.foundation.lazy.grid.items
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
@@ -37,6 +43,11 @@ fun AppsScreen(viewModel: InstalledAppsViewModel = hiltViewModel()) {
     val apps by viewModel.apps.collectAsStateWithLifecycle()
     val first = remember { FocusRequester() }
     var actionsFor by remember { mutableStateOf<com.nuvio.tv.core.apps.InstalledApp?>(null) }
+    val move = rememberAppMoveState()
+    val gridState = rememberLazyGridState()
+    // The same tile as the Home rows.
+    val tileWidth = com.nuvio.tv.ui.components.rememberHomeTile()?.width ?: 176.dp
+    val context = LocalContext.current
     LaunchedEffect(apps.isNotEmpty()) {
         if (apps.isNotEmpty()) runCatching { first.requestFocus() }
     }
@@ -60,11 +71,25 @@ fun AppsScreen(viewModel: InstalledAppsViewModel = hiltViewModel()) {
             }
         } else {
             LazyVerticalGrid(
-                columns = GridCells.Adaptive(176.dp),
+                columns = GridCells.Adaptive(tileWidth),
                 contentPadding = PaddingValues(top = 18.dp, bottom = 40.dp),
                 horizontalArrangement = Arrangement.spacedBy(16.dp),
                 verticalArrangement = Arrangement.spacedBy(14.dp),
-                modifier = Modifier.fillMaxSize()
+                state = gridState,
+                modifier = Modifier
+                    .fillMaxSize()
+                    .appMoveKeys(
+                        state = move,
+                        // Apps per row on screen right now, for the up/down steps.
+                        rowSize = {
+                            val visible = gridState.layoutInfo.visibleItemsInfo
+                            visible.count { it.offset.y == visible.firstOrNull()?.offset?.y }.coerceAtLeast(1)
+                        }
+                    ) { delta ->
+                        val carried = apps.firstOrNull { it.packageName == move.carrying } ?: return@appMoveKeys
+                        val step = clampedStep(apps.indexOf(carried), delta, apps.lastIndex)
+                        if (step != 0) viewModel.moveAmongAll(carried, step)
+                    }
             ) {
                 items(apps, key = { it.packageName }) { app ->
                     InstalledAppCard(
@@ -72,10 +97,11 @@ fun AppsScreen(viewModel: InstalledAppsViewModel = hiltViewModel()) {
                         loadImage = viewModel::image,
                         onClick = { viewModel.launch(app) },
                         onLongClick = { actionsFor = app },
+                        moving = move.carrying == app.packageName,
                         modifier = (if (app == apps.first()) Modifier.focusRequester(first) else Modifier)
                             // Hidden from the Home row: still here so it can be shown again.
                             .alpha(if (app.hidden) 0.45f else 1f),
-                        width = 176.dp
+                        width = tileWidth
                     )
                 }
             }
@@ -85,11 +111,12 @@ fun AppsScreen(viewModel: InstalledAppsViewModel = hiltViewModel()) {
         val index = apps.indexOfFirst { it.packageName == app.packageName }
         if (index < 0) actionsFor = null else com.nuvio.tv.ui.components.InstalledAppActionsDialog(
             app = app,
-            canMoveEarlier = index > 0,
-            canMoveLater = index < apps.lastIndex,
+            canMove = apps.size > 1,
             onOpen = { viewModel.launch(app) },
-            onMoveEarlier = { viewModel.moveAmongAll(app, -1) },
-            onMoveLater = { viewModel.moveAmongAll(app, 1) },
+            onMove = {
+                move.pickUp(app.packageName)
+                Toast.makeText(context, R.string.app_move_hint, Toast.LENGTH_SHORT).show()
+            },
             onAppInfo = { viewModel.openAppInfo(app) },
             onRename = { viewModel.rename(app, it) },
             iconChooser = viewModel.iconChooser(app),

@@ -108,6 +108,8 @@ import coil3.request.CachePolicy
 import coil3.request.crossfade
 import coil3.request.transformations
 import com.nuvio.tv.R
+import com.nuvio.tv.ui.components.appMoveKeys
+import com.nuvio.tv.ui.components.clampedStep
 import com.nuvio.tv.domain.model.FocusedPosterTrailerPlaybackTarget
 import com.nuvio.tv.domain.model.CardDepthSurface
 import com.nuvio.tv.domain.model.MetaPreview
@@ -513,16 +515,19 @@ internal fun ModernRowSection(
     val appsViewModel: com.nuvio.tv.core.apps.InstalledAppsViewModel? =
         if (row.key == com.nuvio.tv.core.apps.INSTALLED_APPS_CATALOG_KEY) androidx.hilt.navigation.compose.hiltViewModel() else null
     var contextMenuApp by remember { mutableStateOf<com.nuvio.tv.core.apps.InstalledApp?>(null) }
+    val appMove = com.nuvio.tv.ui.components.rememberAppMoveState()
+    val appMoveContext = androidx.compose.ui.platform.LocalContext.current
     contextMenuApp?.let { app ->
         val shown = row.items.list.mapNotNull { (it.payload as? ModernPayload.InstalledApp)?.app }
         val index = shown.indexOfFirst { it.packageName == app.packageName }
         if (appsViewModel == null || index < 0) contextMenuApp = null else com.nuvio.tv.ui.components.InstalledAppActionsDialog(
             app = app,
-            canMoveEarlier = index > 0,
-            canMoveLater = index < shown.lastIndex,
+            canMove = shown.size > 1,
             onOpen = { appsViewModel.launch(app) },
-            onMoveEarlier = { appsViewModel.move(app, -1) },
-            onMoveLater = { appsViewModel.move(app, 1) },
+            onMove = {
+                appMove.pickUp(app.packageName)
+                android.widget.Toast.makeText(appMoveContext, R.string.app_move_hint, android.widget.Toast.LENGTH_SHORT).show()
+            },
             onAppInfo = { appsViewModel.openAppInfo(app) },
             onRename = { appsViewModel.rename(app, it) },
             iconChooser = appsViewModel.iconChooser(app),
@@ -945,6 +950,19 @@ internal fun ModernRowSection(
                 state = rowListState,
                 modifier = Modifier
                     .recompositionHighlighter()
+                    // Launcher: an app picked up with "Move" is carried along the Apps row by the D-pad.
+                    .appMoveKeys(appMove) { delta ->
+                        val vm = appsViewModel ?: return@appMoveKeys
+                        val shownApps = row.items.list.mapNotNull { (it.payload as? ModernPayload.InstalledApp)?.app }
+                        val carried = shownApps.firstOrNull { it.packageName == appMove.carrying } ?: return@appMoveKeys
+                        val from = shownApps.indexOf(carried)
+                        val step = clampedStep(from, delta, shownApps.lastIndex)
+                        if (step != 0) {
+                            vm.move(carried, step)
+                            // The focus index follows the app, so the ring stays on it where it lands.
+                            onRowItemFocused(row.key, from + step, false)
+                        }
+                    }
                     .focusRequester(rowFocusRequester)
                     .focusRestorer {
                         val savedIdx = rowFocusedIndex.value
@@ -1018,8 +1036,9 @@ internal fun ModernRowSection(
                                     modifier = Modifier
                                         .focusRequester(requester)
                                         .onFocusChanged { if (it.isFocused) onFocused() },
-                                    width = 160.dp,
-                                    showLabel = false
+                                    width = com.nuvio.tv.ui.components.rememberHomeTile()?.width ?: 160.dp,
+                                    showLabel = false,
+                                    moving = appMove.carrying == payload.app.packageName
                                 )
                             }
                         }
