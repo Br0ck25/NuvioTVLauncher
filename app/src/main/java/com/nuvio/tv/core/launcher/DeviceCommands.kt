@@ -14,7 +14,10 @@ enum class DeviceAction(val id: String) {
     /** Let this launcher read notifications, for the bell at the top right of Home. */
     ENABLE_NOTIFICATIONS("enable-notifications"),
 
-    /** Turn the stock launcher (and Google TV's setup service) back on, if something turned them off. */
+    /** FLauncher's way: turn off the Google TV launcher so only this launcher is left. Optional and risky; see the warning on the setup page. */
+    DISABLE_STOCK("disable-stock"),
+
+    /** Turn the stock launcher (and Google TV's setup service) back on. Undoes [DISABLE_STOCK]. */
     ENABLE_STOCK("enable-stock"),
 
     /** Point the Home button back at the launcher the TV came with. */
@@ -48,6 +51,12 @@ object DeviceCommands {
         output.lineSequence().map { it.trim() }
             .firstOrNull { it.isNotEmpty() && !it.startsWith("Error", true) && !it.startsWith("Exception", true) }
             ?.substringBefore(':')?.trim()?.takeIf { ' ' !in it }
+
+    /**
+     * Only the Google TV launcher itself. Google TV's setup service ([GOOGLE_TV_SETUP_FALLBACK]) is left
+     * alone: turning it off took a TV's Wi-Fi connection down. [enableStock] turns both back on.
+     */
+    val disableStock = listOf("pm disable-user --user 0 $GOOGLE_TV_LAUNCHER")
 
     /** Turns the stock launchers (and Google TV's setup service) back on. Harmless if they already are. */
     val enableStock = STOCK_LAUNCHERS.map { "pm enable $it" } + "pm enable $GOOGLE_TV_SETUP_FALLBACK"

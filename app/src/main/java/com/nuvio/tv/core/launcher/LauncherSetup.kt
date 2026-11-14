@@ -172,21 +172,6 @@ internal object LauncherSetup {
         }
     }
 
-    /** Stock launchers that are installed but turned off. Nuvio's takeover needs the stock launcher enabled. */
-    fun disabledStockLaunchers(context: Context): List<String> {
-        val pm = context.packageManager
-        return DeviceCommands.STOCK_LAUNCHERS.filter { pkg ->
-            runCatching {
-                @Suppress("DEPRECATION")
-                val info = pm.getApplicationInfo(pkg, PackageManager.MATCH_DISABLED_COMPONENTS)
-                !info.enabled || pm.getApplicationEnabledSetting(pkg).let {
-                    it == PackageManager.COMPONENT_ENABLED_STATE_DISABLED ||
-                        it == PackageManager.COMPONENT_ENABLED_STATE_DISABLED_USER
-                }
-            }.getOrDefault(false)
-        }
-    }
-
     fun handlesHome(context: Context): Boolean {
         val nativeHome = isDefaultHome(context)
         observeNativeHome(context, nativeHome)

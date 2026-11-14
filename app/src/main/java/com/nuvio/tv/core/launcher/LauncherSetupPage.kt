@@ -20,8 +20,10 @@ internal object LauncherSetupPage {
         "Go back" to listOf(
             Button(DeviceAction.RESTORE_ORIGINAL, "Switch back to the original launcher", "Points the Home button at the launcher the TV came with.")
         ),
-        "If the Home screen looks broken" to listOf(
-            Button(DeviceAction.ENABLE_STOCK, "Turn the stock launcher on", "Makes sure the TV's own launcher is enabled. This launcher's Home takeover needs it, and turning it off can leave the TV stuck on a black screen.")
+        "The TV's own launcher" to listOf(
+            Button(DeviceAction.DISABLE_STOCK, "Turn off the stock launcher", "Warning: optional, and only for TVs that keep going back to Google TV after the Home button override is on. This launcher's Home takeover works best with the TV's own launcher left on. With it off, Google TV can show a black screen or loop on a recovery screen when you press Home, and the remote's YouTube button stops working (Button Mapper can remap it). Turn it back on with the button below.",
+                confirm = "Turn off the TV's own launcher? On some TVs this causes a black screen or a recovery loop. You can turn it back on from this page."),
+            Button(DeviceAction.ENABLE_STOCK, "Turn the stock launcher on", "Turns the TV's own launcher back on. Harmless if it already is. Use this if Home shows a black screen.")
         )
     )
 
