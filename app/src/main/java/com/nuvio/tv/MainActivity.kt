@@ -1419,7 +1419,9 @@ open class MainActivity : ComponentActivity() {
                                 if (id in pages.LIVE_FAMILY) lineDone = true
                                 add(if (line) item.copy(sectionStart = true) else item)
                             }
-                            add(
+                            // Settings can be taken off the menu (Settings → Menu & Features); the gear at the top
+                            // of Home still opens it.
+                            if (pages.SETTINGS !in hiddenPages) add(
                                 DrawerItem(
                                     route = Screen.Settings.route,
                                     label = strNavSettings,

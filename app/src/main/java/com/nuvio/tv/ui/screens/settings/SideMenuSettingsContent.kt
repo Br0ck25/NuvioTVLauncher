@@ -184,7 +184,7 @@ fun SideMenuSettingsContent(initialFocusRequester: FocusRequester? = null) {
                 }
             }
             item(key = "pages") {
-                SettingsGroupCard(title = "Pages", subtitle = "OK turns a page on or off. The arrows move it up or down the menu. Settings always stays at the bottom.") {
+                SettingsGroupCard(title = "Pages", subtitle = "OK turns a page on or off. The arrows move it up or down the menu. Settings stays at the bottom when it's on.") {
                     order.forEachIndexed { index, id ->
                         val r = rowFor(id)
                         Row(verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(8.dp)) {
@@ -209,6 +209,12 @@ fun SideMenuSettingsContent(initialFocusRequester: FocusRequester? = null) {
                             ArrowButton(up = false, enabled = index < order.lastIndex) { move(id, 1) }
                         }
                     }
+                    SettingsToggleRow(
+                        title = "Settings",
+                        subtitle = "Off: Settings leaves the side menu. The gear at the top of Home still opens it.",
+                        checked = SideMenuPages.SETTINGS !in hidden,
+                        onToggle = { setHidden(SideMenuPages.SETTINGS, SideMenuPages.SETTINGS !in hidden) }
+                    )
                 }
             }
             item(key = "look") {

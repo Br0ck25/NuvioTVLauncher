@@ -66,6 +66,7 @@ data class LayoutSettingsUiState(
     val focusedPosterBackdropTrailerPlaybackTarget: FocusedPosterTrailerPlaybackTarget =
         FocusedPosterTrailerPlaybackTarget.HERO_MEDIA,
     val posterCardWidthDp: Int = 126,
+    val homeTileScalePct: Int = 100,
     val posterCardHeightDp: Int = 189,
     val posterCardCornerRadiusDp: Int = 12,
     val cardDepthStyle: CardDepthStyle = CardDepthStyle(),
@@ -126,6 +127,7 @@ sealed class LayoutSettingsEvent {
         val target: FocusedPosterTrailerPlaybackTarget
     ) : LayoutSettingsEvent()
     data class SetPosterCardWidth(val widthDp: Int) : LayoutSettingsEvent()
+    data class SetHomeTileScale(val pct: Int) : LayoutSettingsEvent()
     data class SetPosterCardCornerRadius(val cornerRadiusDp: Int) : LayoutSettingsEvent()
     data class SetCardDepthEnabled(val enabled: Boolean) : LayoutSettingsEvent()
     data class SetCardDepthEdgeStrength(val strength: Int) : LayoutSettingsEvent()
@@ -310,6 +312,11 @@ class LayoutSettingsViewModel @Inject constructor(
             }
         }
         viewModelScope.launch {
+            layoutPreferenceDataStore.homeTileScalePct.distinctUntilChanged().collectLatest { pct ->
+                updateUiStateIfChanged { it.copy(homeTileScalePct = pct) }
+            }
+        }
+        viewModelScope.launch {
             layoutPreferenceDataStore.posterCardHeightDp.distinctUntilChanged().collectLatest { heightDp ->
                 updateUiStateIfChanged { it.copy(posterCardHeightDp = heightDp) }
             }
@@ -483,6 +490,9 @@ class LayoutSettingsViewModel @Inject constructor(
             is LayoutSettingsEvent.SetFocusedPosterBackdropTrailerPlaybackTarget ->
                 setFocusedPosterBackdropTrailerPlaybackTarget(event.target)
             is LayoutSettingsEvent.SetPosterCardWidth -> setPosterCardWidth(event.widthDp)
+            is LayoutSettingsEvent.SetHomeTileScale -> viewModelScope.launch {
+                layoutPreferenceDataStore.setHomeTileScalePct(event.pct)
+            }
             is LayoutSettingsEvent.SetPosterCardCornerRadius -> setPosterCardCornerRadius(event.cornerRadiusDp)
             is LayoutSettingsEvent.SetCardDepthEnabled -> setCardDepthEnabled(event.enabled)
             is LayoutSettingsEvent.SetCardDepthEdgeStrength -> setCardDepthEdgeStrength(event.strength)

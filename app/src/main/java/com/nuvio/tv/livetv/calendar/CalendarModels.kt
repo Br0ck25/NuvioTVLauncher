@@ -309,6 +309,8 @@ object SideMenuPages {
     const val DISCOVER = "discover"
     /** Launcher: every installed app (and the Apps row on Home). */
     const val APPS = "apps"
+    /** Settings is always at the bottom of the menu (not in the order); this only lets it be taken off the menu. */
+    const val SETTINGS = "settings"
 
     val DEFAULT_ORDER = listOf(HOME, DISCOVER, SEARCH, LIBRARY, APPS, CALENDAR, LIVE_TV, SPORTS, ON_DEMAND, RECORDINGS)
 
