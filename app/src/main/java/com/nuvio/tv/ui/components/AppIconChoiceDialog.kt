@@ -58,16 +58,9 @@ fun AppIconChoiceDialog(app: InstalledApp, chooser: AppIconChooser, onDismiss: (
     var openPack by remember { mutableStateOf<IconPackInfo?>(null) }
     LaunchedEffect(Unit) { packs = runCatching { chooser.loadPacks() }.getOrDefault(emptyList()) }
 
-    Dialog(onDismissRequest = onDismiss) {
-        Column(
-            modifier = Modifier
-                .width(560.dp)
-                .clip(RoundedCornerShape(16.dp))
-                .background(NuvioTheme.colors.BackgroundCard)
-                .padding(20.dp),
-            verticalArrangement = Arrangement.spacedBy(8.dp)
-        ) {
-            Text(app.label, style = MaterialTheme.typography.titleLarge, color = NuvioTheme.colors.TextPrimary, maxLines = 1)
+    // The app's own dialog look, like the app's menu this was opened from.
+    NuvioDialog(onDismiss = onDismiss, title = app.label, width = 560.dp) {
+        Column(verticalArrangement = Arrangement.spacedBy(8.dp)) {
             val pack = openPack
             if (pack == null) {
                 PackList(
@@ -100,10 +93,10 @@ private fun PackList(
 ) {
     val first = remember { FocusRequester() }
     LaunchedEffect(Unit) { runCatching { first.requestFocus() } }
-    Button(onClick = onFollowPack, modifier = Modifier.fillMaxWidth().focusRequester(first)) {
+    Button(colors = appMenuButtonColors(), onClick = onFollowPack, modifier = Modifier.fillMaxWidth().focusRequester(first)) {
         Text(stringResource(R.string.app_menu_icon_default))
     }
-    Button(onClick = onSystemIcon, modifier = Modifier.fillMaxWidth()) {
+    Button(colors = appMenuButtonColors(), onClick = onSystemIcon, modifier = Modifier.fillMaxWidth()) {
         Text(stringResource(R.string.app_menu_icon_system))
     }
     Text(
@@ -124,13 +117,13 @@ private fun PackList(
             verticalArrangement = Arrangement.spacedBy(6.dp)
         ) {
             items(packs, key = { it.packageName }) { pack ->
-                Button(onClick = { onOpenPack(pack) }, modifier = Modifier.fillMaxWidth()) {
+                Button(colors = appMenuButtonColors(), onClick = { onOpenPack(pack) }, modifier = Modifier.fillMaxWidth()) {
                     Text(pack.name, maxLines = 1)
                 }
             }
         }
     }
-    Button(onClick = onClose, modifier = Modifier.fillMaxWidth().padding(top = 4.dp)) {
+    Button(colors = appMenuButtonColors(), onClick = onClose, modifier = Modifier.fillMaxWidth().padding(top = 4.dp)) {
         Text(stringResource(R.string.self_setup_close))
     }
 }
@@ -182,10 +175,10 @@ private fun PackIcons(
             }
         }
     }
-    Button(onClick = onUseForAll, modifier = Modifier.fillMaxWidth()) {
+    Button(colors = appMenuButtonColors(), onClick = onUseForAll, modifier = Modifier.fillMaxWidth()) {
         Text(stringResource(R.string.app_menu_apply_pack_to_all))
     }
-    Button(onClick = onBack, modifier = Modifier.fillMaxWidth()) {
+    Button(colors = appMenuButtonColors(), onClick = onBack, modifier = Modifier.fillMaxWidth()) {
         Text(stringResource(R.string.app_menu_back))
     }
 }

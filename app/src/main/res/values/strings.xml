@@ -574,8 +574,8 @@
     <string name="home_drawer_android_settings">Android settings</string>
     <string name="home_drawer_wifi">Wi-Fi</string>
     <string name="app_action_open">Open</string>
-    <string name="app_action_move_earlier">Move earlier</string>
-    <string name="app_action_move_later">Move later</string>
+    <string name="app_action_move">Move</string>
+    <string name="app_move_hint">Use the D-pad to move it, then press OK to drop it</string>
     <string name="app_action_info">App info (uninstall)</string>
     <string name="wizard_welcome_title">Set up your launcher</string>
     <string name="wizard_welcome_body">This app can be your TV\'s Home screen. A few quick steps make the Home button open it, and let it show your TV\'s notifications. Then you sign in.</string>

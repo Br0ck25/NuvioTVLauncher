@@ -7,7 +7,9 @@ import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.lazy.LazyRow
 import androidx.compose.foundation.lazy.items
+import android.widget.Toast
 import androidx.compose.runtime.Composable
+import androidx.compose.ui.platform.LocalContext
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
@@ -39,6 +41,8 @@ fun InstalledAppsHomeRow(
     if (!com.nuvio.tv.livetv.home.LocalLiveTvHomeActions.current.onHome) return
     val apps by viewModel.homeApps.collectAsStateWithLifecycle()
     var actionsFor by remember { mutableStateOf<com.nuvio.tv.core.apps.InstalledApp?>(null) }
+    val move = rememberAppMoveState()
+    val context = LocalContext.current
     if (apps.isEmpty()) return
 
     Column(Modifier.fillMaxWidth().padding(top = 12.dp, bottom = 12.dp)) {
@@ -50,7 +54,12 @@ fun InstalledAppsHomeRow(
         )
         LazyRow(
             contentPadding = PaddingValues(horizontal = startPadding, vertical = 6.dp),
-            horizontalArrangement = Arrangement.spacedBy(14.dp)
+            horizontalArrangement = Arrangement.spacedBy(14.dp),
+            modifier = Modifier.appMoveKeys(move) { delta ->
+                val carried = apps.firstOrNull { it.packageName == move.carrying } ?: return@appMoveKeys
+                val step = clampedStep(apps.indexOf(carried), delta, apps.lastIndex)
+                if (step != 0) viewModel.move(carried, step)
+            }
         ) {
             items(apps, key = { it.packageName }) { app ->
                 InstalledAppCard(
@@ -59,7 +68,8 @@ fun InstalledAppsHomeRow(
                     onClick = { viewModel.launch(app) },
                     onLongClick = { actionsFor = app },
                     width = 160.dp,
-                    showLabel = false
+                    showLabel = false,
+                    moving = move.carrying == app.packageName
                 )
             }
         }
@@ -68,11 +78,12 @@ fun InstalledAppsHomeRow(
         val index = apps.indexOfFirst { it.packageName == app.packageName }
         if (index < 0) actionsFor = null else InstalledAppActionsDialog(
             app = app,
-            canMoveEarlier = index > 0,
-            canMoveLater = index < apps.lastIndex,
+            canMove = apps.size > 1,
             onOpen = { viewModel.launch(app) },
-            onMoveEarlier = { viewModel.move(app, -1) },
-            onMoveLater = { viewModel.move(app, 1) },
+            onMove = {
+                move.pickUp(app.packageName)
+                Toast.makeText(context, R.string.app_move_hint, Toast.LENGTH_SHORT).show()
+            },
             onAppInfo = { viewModel.openAppInfo(app) },
             onRename = { viewModel.rename(app, it) },
             iconChooser = viewModel.iconChooser(app),

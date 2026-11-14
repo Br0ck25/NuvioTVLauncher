@@ -23,8 +23,8 @@ import androidx.compose.ui.focus.FocusRequester
 import androidx.compose.ui.focus.focusRequester
 import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.unit.dp
-import androidx.compose.ui.window.Dialog
 import androidx.tv.material3.Button
+import androidx.tv.material3.ButtonDefaults
 import androidx.tv.material3.ExperimentalTvMaterial3Api
 import androidx.tv.material3.MaterialTheme
 import androidx.tv.material3.Text
@@ -33,18 +33,16 @@ import com.nuvio.tv.core.apps.InstalledApp
 import com.nuvio.tv.ui.theme.NuvioTheme
 
 /**
- * Long-press on an app: open it, move it earlier or later (the Apps page and the Home row share
- * one order), or see its system page (Uninstall, Force stop). Moves keep the dialog open so an app
- * can be walked along the row.
+ * Long-press on an app: open it, move it (the Apps page and the Home row share one order; "Move" picks
+ * the app up and the D-pad carries it, like Projectivy), or see its system page (Uninstall, Force stop).
  */
 @Composable
 fun InstalledAppActionsDialog(
     app: InstalledApp,
-    canMoveEarlier: Boolean,
-    canMoveLater: Boolean,
+    canMove: Boolean,
     onOpen: () -> Unit,
-    onMoveEarlier: () -> Unit,
-    onMoveLater: () -> Unit,
+    /** Picks the app up: the D-pad then carries it, OK drops it (see AppMoveMode). */
+    onMove: () -> Unit,
     onAppInfo: () -> Unit,
     onRename: (String?) -> Unit,
     /** When given, a "Change icon" button opens the icon picker for this app. */
@@ -56,9 +54,6 @@ fun InstalledAppActionsDialog(
     onHome: () -> Unit = onDismiss
 ) {
     val first = remember { FocusRequester() }
-    // The menu opens while the select key is still held down (that is the long-press). Ignore that key,
-    // including its release, until a fresh press arrives, so letting go doesn't pick the first option.
-    var ready by remember { mutableStateOf(false) }
     var renaming by remember { mutableStateOf(false) }
     var choosingIcon by remember { mutableStateOf(false) }
     LaunchedEffect(Unit) { runCatching { first.requestFocus() } }
@@ -66,63 +61,62 @@ fun InstalledAppActionsDialog(
     if (choosingIcon && iconChooser != null) {
         AppIconChoiceDialog(app = app, chooser = iconChooser, onDismiss = { choosingIcon = false })
     }
-    Dialog(onDismissRequest = onDismiss) {
+    // The app's own menu look (NuvioDialog, like a poster's options). It also ignores the select key
+    // that is still down from the long-press, so letting go doesn't pick the first option.
+    NuvioDialog(onDismiss = onDismiss, title = app.label, width = 420.dp) {
         Column(
-            modifier = Modifier
-                .onPreviewKeyEvent { event ->
-                    val native = event.nativeKeyEvent
-                    if (native.keyCode == AndroidKeyEvent.KEYCODE_HOME) {
-                        if (native.action == AndroidKeyEvent.ACTION_UP) onHome()
-                        return@onPreviewKeyEvent true
-                    }
-                    if (native.keyCode == AndroidKeyEvent.KEYCODE_DPAD_CENTER ||
-                        native.keyCode == AndroidKeyEvent.KEYCODE_ENTER ||
-                        native.keyCode == AndroidKeyEvent.KEYCODE_NUMPAD_ENTER ||
-                        native.keyCode == AndroidKeyEvent.KEYCODE_BUTTON_A
-                    ) {
-                        if (native.action == AndroidKeyEvent.ACTION_DOWN && native.repeatCount == 0) ready = true
-                        if (!ready) return@onPreviewKeyEvent true
-                    }
-                    false
+            modifier = Modifier.onPreviewKeyEvent { event ->
+                val native = event.nativeKeyEvent
+                if (native.keyCode == AndroidKeyEvent.KEYCODE_HOME) {
+                    if (native.action == AndroidKeyEvent.ACTION_UP) onHome()
+                    return@onPreviewKeyEvent true
                 }
-                .width(380.dp)
-                .clip(RoundedCornerShape(16.dp))
-                .background(NuvioTheme.colors.BackgroundCard)
-                .padding(20.dp),
-            verticalArrangement = Arrangement.spacedBy(8.dp)
+                false
+            },
+            verticalArrangement = Arrangement.spacedBy(NuvioTheme.spacing.lg)
         ) {
-            Text(app.label, style = MaterialTheme.typography.titleLarge, color = NuvioTheme.colors.TextPrimary, maxLines = 1)
-            Button(onClick = { onDismiss(); onOpen() }, modifier = Modifier.fillMaxWidth().focusRequester(first)) {
-                Text(stringResource(R.string.app_action_open))
-            }
-            Button(onClick = onMoveEarlier, enabled = canMoveEarlier, modifier = Modifier.fillMaxWidth()) {
-                Text(stringResource(R.string.app_action_move_earlier))
-            }
-            Button(onClick = onMoveLater, enabled = canMoveLater, modifier = Modifier.fillMaxWidth()) {
-                Text(stringResource(R.string.app_action_move_later))
-            }
-            Button(onClick = { renaming = true }, modifier = Modifier.fillMaxWidth()) {
-                Text(stringResource(R.string.app_action_rename))
-            }
+            AppMenuButton(stringResource(R.string.app_action_open), onClick = { onDismiss(); onOpen() }, modifier = Modifier.focusRequester(first))
+            AppMenuButton(stringResource(R.string.app_action_move), enabled = canMove, onClick = { onDismiss(); onMove() })
+            AppMenuButton(stringResource(R.string.app_action_rename), onClick = { renaming = true })
             if (iconChooser != null) {
-                Button(onClick = { choosingIcon = true }, modifier = Modifier.fillMaxWidth()) {
-                    Text(stringResource(R.string.app_action_change_icon))
-                }
+                AppMenuButton(stringResource(R.string.app_action_change_icon), onClick = { choosingIcon = true })
             }
             if (onSetHidden != null) {
-                Button(onClick = { onDismiss(); onSetHidden(!app.hidden) }, modifier = Modifier.fillMaxWidth()) {
-                    Text(stringResource(if (app.hidden) R.string.app_action_show_on_home else R.string.app_action_hide_from_home))
-                }
+                AppMenuButton(
+                    stringResource(if (app.hidden) R.string.app_action_show_on_home else R.string.app_action_hide_from_home),
+                    onClick = { onDismiss(); onSetHidden(!app.hidden) }
+                )
             }
-            Button(onClick = { onDismiss(); onAppInfo() }, modifier = Modifier.fillMaxWidth()) {
-                Text(stringResource(R.string.app_action_info))
-            }
-            Button(onClick = onDismiss, modifier = Modifier.fillMaxWidth().padding(top = 4.dp)) {
-                Text(stringResource(R.string.self_setup_close))
-            }
+            AppMenuButton(stringResource(R.string.app_action_info), onClick = { onDismiss(); onAppInfo() })
+            AppMenuButton(stringResource(R.string.self_setup_close), onClick = onDismiss)
         }
     }
 }
+
+/** A button as the app's other option menus draw them (a poster's options, for one). */
+@Composable
+private fun AppMenuButton(
+    text: String,
+    onClick: () -> Unit,
+    modifier: Modifier = Modifier,
+    enabled: Boolean = true
+) {
+    Button(
+        onClick = onClick,
+        enabled = enabled,
+        modifier = modifier.fillMaxWidth(),
+        colors = appMenuButtonColors()
+    ) {
+        Text(text)
+    }
+}
+
+/** The colours of those buttons, for the other dialogs of the Apps menus. */
+@Composable
+internal fun appMenuButtonColors() = ButtonDefaults.colors(
+    containerColor = NuvioTheme.colors.BackgroundCard,
+    contentColor = NuvioTheme.colors.TextPrimary
+)
 
 /** Rename: a text box prefilled with the current name; Save keeps it, Reset goes back to the app's own name. */
 @Composable
@@ -130,34 +124,24 @@ private fun RenameDialog(app: InstalledApp, onSave: (String?) -> Unit, onDismiss
     var text by remember { mutableStateOf(app.label) }
     val field = remember { FocusRequester() }
     LaunchedEffect(Unit) { runCatching { field.requestFocus() } }
-    Dialog(onDismissRequest = onDismiss) {
-        Column(
+    NuvioDialog(onDismiss = onDismiss, title = stringResource(R.string.app_rename_title), width = 460.dp) {
+        androidx.compose.foundation.text.BasicTextField(
+            value = text,
+            onValueChange = { text = it.take(40) },
+            singleLine = true,
+            textStyle = MaterialTheme.typography.bodyLarge.copy(color = NuvioTheme.colors.TextPrimary),
+            cursorBrush = androidx.compose.ui.graphics.SolidColor(NuvioTheme.colors.TextPrimary),
+            keyboardOptions = androidx.compose.foundation.text.KeyboardOptions(imeAction = androidx.compose.ui.text.input.ImeAction.Done),
+            keyboardActions = androidx.compose.foundation.text.KeyboardActions(onDone = { onSave(text); onDismiss() }),
             modifier = Modifier
-                .width(420.dp)
-                .clip(RoundedCornerShape(16.dp))
+                .fillMaxWidth()
+                .focusRequester(field)
+                .clip(RoundedCornerShape(10.dp))
                 .background(NuvioTheme.colors.BackgroundCard)
-                .padding(20.dp),
-            verticalArrangement = Arrangement.spacedBy(10.dp)
-        ) {
-            Text(stringResource(R.string.app_rename_title), style = MaterialTheme.typography.titleLarge, color = NuvioTheme.colors.TextPrimary)
-            androidx.compose.foundation.text.BasicTextField(
-                value = text,
-                onValueChange = { text = it.take(40) },
-                singleLine = true,
-                textStyle = MaterialTheme.typography.bodyLarge.copy(color = NuvioTheme.colors.TextPrimary),
-                cursorBrush = androidx.compose.ui.graphics.SolidColor(NuvioTheme.colors.TextPrimary),
-                keyboardOptions = androidx.compose.foundation.text.KeyboardOptions(imeAction = androidx.compose.ui.text.input.ImeAction.Done),
-                keyboardActions = androidx.compose.foundation.text.KeyboardActions(onDone = { onSave(text); onDismiss() }),
-                modifier = Modifier
-                    .fillMaxWidth()
-                    .focusRequester(field)
-                    .clip(RoundedCornerShape(10.dp))
-                    .background(androidx.compose.ui.graphics.Color.White.copy(alpha = 0.08f))
-                    .padding(14.dp)
-            )
-            Button(onClick = { onSave(text); onDismiss() }, modifier = Modifier.fillMaxWidth()) { Text(stringResource(R.string.app_rename_save)) }
-            Button(onClick = { onSave(null); onDismiss() }, modifier = Modifier.fillMaxWidth()) { Text(stringResource(R.string.app_rename_reset)) }
-            Button(onClick = onDismiss, modifier = Modifier.fillMaxWidth()) { Text(stringResource(R.string.self_setup_close)) }
-        }
+                .padding(14.dp)
+        )
+        AppMenuButton(stringResource(R.string.app_rename_save), onClick = { onSave(text); onDismiss() })
+        AppMenuButton(stringResource(R.string.app_rename_reset), onClick = { onSave(null); onDismiss() })
+        AppMenuButton(stringResource(R.string.self_setup_close), onClick = onDismiss)
     }
 }

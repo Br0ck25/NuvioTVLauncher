@@ -62,6 +62,9 @@ import com.nuvio.tv.core.apps.InstalledApp
 import com.nuvio.tv.core.apps.InstalledAppsViewModel
 import com.nuvio.tv.ui.components.InstalledAppActionsDialog
 import com.nuvio.tv.ui.components.InstalledAppCard
+import com.nuvio.tv.ui.components.appMoveKeys
+import com.nuvio.tv.ui.components.clampedStep
+import com.nuvio.tv.ui.components.rememberAppMoveState
 import com.nuvio.tv.ui.theme.NuvioTheme
 
 private enum class DrawerMode { MENU, APPS }
@@ -81,6 +84,7 @@ fun HomeSettingsDrawer(
     val apps by appsViewModel.apps.collectAsStateWithLifecycle()
     var mode by remember { mutableStateOf(DrawerMode.MENU) }
     var actionsFor by remember { mutableStateOf<InstalledApp?>(null) }
+    val move = rememberAppMoveState()
     val first = remember { FocusRequester() }
 
     val handleBack = { if (mode == DrawerMode.APPS) mode = DrawerMode.MENU else onDismiss() }
@@ -99,6 +103,8 @@ fun HomeSettingsDrawer(
                 .background(Color.Black.copy(alpha = 0.65f))
                 // Home always means "go to the launcher's home page": close the panel, let the press through.
                 .onPreviewKeyEvent { event ->
+                    // An app is being carried: the app list takes the keys (Back and OK drop it).
+                    if (move.carrying != null) return@onPreviewKeyEvent false
                     val native = event.nativeKeyEvent
                     // Back steps back one level (the app list goes back to the menu, the menu closes).
                     // Handled here, on release, rather than leaving it to the dialog.
@@ -159,7 +165,13 @@ fun HomeSettingsDrawer(
                                 contentPadding = PaddingValues(vertical = 8.dp),
                                 horizontalArrangement = Arrangement.spacedBy(12.dp),
                                 verticalArrangement = Arrangement.spacedBy(12.dp),
-                                modifier = Modifier.fillMaxSize()
+                                modifier = Modifier
+                                    .fillMaxSize()
+                                    .appMoveKeys(move, rowSize = { 2 }) { delta ->
+                                        val carried = apps.firstOrNull { it.packageName == move.carrying } ?: return@appMoveKeys
+                                        val step = clampedStep(apps.indexOf(carried), delta, apps.lastIndex)
+                                        if (step != 0) appsViewModel.moveAmongAll(carried, step)
+                                    }
                             ) {
                                 items(apps, key = { it.packageName }) { app ->
                                     InstalledAppCard(
@@ -168,6 +180,7 @@ fun HomeSettingsDrawer(
                                         onClick = { if (appsViewModel.launch(app)) onDismiss() },
                                         onLongClick = { actionsFor = app },
                                         modifier = if (app == apps.first()) Modifier.focusRequester(first) else Modifier,
+                                        moving = move.carrying == app.packageName,
                                         width = 158.dp
                                     )
                                 }
@@ -181,11 +194,12 @@ fun HomeSettingsDrawer(
             val index = apps.indexOfFirst { it.packageName == app.packageName }
             if (index < 0) actionsFor = null else InstalledAppActionsDialog(
                 app = app,
-                canMoveEarlier = index > 0,
-                canMoveLater = index < apps.lastIndex,
+                canMove = apps.size > 1,
                 onOpen = { if (appsViewModel.launch(app)) onDismiss() },
-                onMoveEarlier = { appsViewModel.moveAmongAll(app, -1) },
-                onMoveLater = { appsViewModel.moveAmongAll(app, 1) },
+                onMove = {
+                    move.pickUp(app.packageName)
+                    android.widget.Toast.makeText(context, R.string.app_move_hint, android.widget.Toast.LENGTH_SHORT).show()
+                },
                 onAppInfo = { appsViewModel.openAppInfo(app) },
             onRename = { appsViewModel.rename(app, it) },
                 iconChooser = appsViewModel.iconChooser(app),

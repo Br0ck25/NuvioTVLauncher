@@ -23,6 +23,7 @@ import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.PaddingValues
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.Spacer
+import androidx.compose.foundation.layout.fillMaxHeight
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.padding
@@ -46,6 +47,8 @@ import androidx.compose.ui.focus.focusProperties
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.graphicsLayer
 import androidx.compose.ui.platform.LocalContext
+import androidx.compose.ui.res.stringResource
+import com.nuvio.tv.R
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
@@ -332,7 +335,14 @@ private fun LiveTvHomeRowContent(
                 .padding(vertical = 6.dp)
         ) {
             Row(modifier = Modifier.padding(start = startPadding, end = startPadding, bottom = 8.dp), verticalAlignment = Alignment.CenterVertically) {
-                val title = settings.homeRowTitle.ifBlank { "Live TV" }
+                // Your own title wins; otherwise the title says what the row holds.
+                val title = settings.homeRowTitle.ifBlank {
+                    when (settings.homeRowSource) {
+                        "recent" -> stringResource(R.string.iptv_settings_recently_watched)
+                        "favorites", "" -> stringResource(R.string.iptv_settings_favorites)
+                        else -> "Live TV"
+                    }
+                }
                 if (titleStyle != null) {
                     androidx.tv.material3.Text(text = title, style = titleStyle, color = NuvioTheme.colors.TextPrimary)
                 } else {
@@ -386,6 +396,10 @@ private fun LiveTvHomeRowContent(
     }
 }
 
+/**
+ * One channel, drawn like an Upcoming card: the channel's logo where the poster goes, a small pill
+ * (LIVE, or NEXT when "show next" is on), the show's name, and the channel with how long is left.
+ */
 @OptIn(ExperimentalFoundationApi::class)
 @Composable
 private fun HomeCard(
@@ -400,20 +414,22 @@ private fun HomeCard(
     onClick: () -> Unit
 ) {
     var focused by remember { mutableStateOf(false) }
-    val colors = liveCellColors(focused = focused, idle = NuvioTheme.colors.BackgroundElevated)
     val shape = RoundedCornerShape(com.nuvio.tv.livetv.ui.liveCorner())
     val p = entry.now
+    val next = entry.next
+    val cardHeight = if (compact) 64.dp else 88.dp
+    val cardWidth = if (compact) 260.dp else 330.dp
+    val scale by androidx.compose.animation.core.animateFloatAsState(if (focused) 1.04f else 1f, label = "liveCardScale")
     Row(
         modifier = modifier
-            .width(if (compact) 180.dp else 230.dp)
-            .height(if (compact) 54.dp else 72.dp)
+            .graphicsLayer { scaleX = scale; scaleY = scale }
+            .width(cardWidth)
+            .height(cardHeight)
             .clip(shape)
-            .background(colors.background)
-            // A light white outline so cards stand out from the background; the highlight color
-            // takes over when a card is highlighted.
+            .background(NuvioTheme.colors.BackgroundCard.copy(alpha = 0.92f))
             .border(
                 if (focused) 2.dp else 1.dp,
-                if (focused) colors.border else Color.White.copy(alpha = 0.22f),
+                if (focused) NuvioTheme.colors.FocusRing else Color.White.copy(alpha = 0.12f),
                 shape
             )
             .onFocusChanged { focused = it.isFocused; if (it.isFocused) onFocused() }
@@ -422,45 +438,60 @@ private fun HomeCard(
                 indication = null,
                 onClick = onClick
             )
-            .padding(horizontal = 10.dp, vertical = 6.dp),
+            .padding(8.dp),
         verticalAlignment = Alignment.CenterVertically
     ) {
-        Box(modifier = Modifier.width(if (compact) 40.dp else 48.dp), contentAlignment = Alignment.Center) {
-            ChannelLogo(entry.channel.logo, if (compact) 34.dp else 42.dp)
+        // Where an Upcoming card has its poster: the logo on a dark tile.
+        Box(
+            modifier = Modifier
+                .width(if (compact) 80.dp else 112.dp)
+                .fillMaxHeight()
+                .clip(RoundedCornerShape(6.dp))
+                .background(Color.Black.copy(alpha = 0.35f)),
+            contentAlignment = Alignment.Center
+        ) {
+            ChannelLogo(entry.channel.logo, if (compact) 36.dp else 50.dp)
         }
-        Spacer(Modifier.width(8.dp))
-        Column(modifier = Modifier.weight(1f)) {
-            Row(verticalAlignment = Alignment.CenterVertically) {
-                if (playing) {
-                    LiveText("● ", color = NuvioTheme.colors.Error, size = 10.sp)
-                }
-                LiveText(
-                    p?.title ?: entry.channel.name,
-                    color = colors.text, size = 13.sp, weight = FontWeight.SemiBold, marquee = focused
-                )
-            }
+        Column(
+            modifier = Modifier.weight(1f).fillMaxHeight().padding(start = 12.dp, end = 6.dp),
+            verticalArrangement = Arrangement.spacedBy(3.dp, Alignment.CenterVertically)
+        ) {
             if (!compact) {
-                if (p != null) {
-                    Spacer(Modifier.height(4.dp))
-                    Box(
-                        modifier = Modifier.fillMaxWidth().height(3.dp).clip(RoundedCornerShape(2.dp))
-                            .background(Color.White.copy(alpha = 0.18f))
-                    ) {
-                        Box(
-                            modifier = Modifier.fillMaxWidth(p.progress(now)).height(3.dp)
-                                .background(if (focused) colors.text else NuvioTheme.colors.Secondary)
-                        )
-                    }
-                    Spacer(Modifier.height(3.dp))
+                val pill = when {
+                    showNext && next != null -> "NEXT" to Color(0xFF334155)
+                    p != null -> "LIVE" to Color(0xFF0284C7)
+                    else -> "CH ${entry.channel.number}" to Color(0xFF334155)
                 }
-                val sub = if (showNext && entry.next != null) {
-                    "Next: ${formatClock(entry.next.startMs, use24h)} ${entry.next.title}"
-                } else {
-                    listOfNotNull("${entry.channel.number}  ${entry.channel.name}", p?.let { minutesLeftLabel(it.stopMs, now) })
-                        .joinToString(" · ")
+                Box(
+                    modifier = Modifier
+                        .clip(RoundedCornerShape(4.dp))
+                        .background(pill.second)
+                        .padding(horizontal = 7.dp, vertical = 2.dp)
+                ) {
+                    androidx.tv.material3.Text(
+                        text = if (playing) pill.first + "  ●" else pill.first,
+                        style = androidx.tv.material3.MaterialTheme.typography.labelSmall.copy(
+                            fontWeight = FontWeight.SemiBold,
+                            letterSpacing = 0.5.sp
+                        ),
+                        color = Color.White,
+                        maxLines = 1,
+                        softWrap = false
+                    )
                 }
-                LiveText(sub, color = if (focused) colors.text else NuvioTheme.colors.TextSecondary, size = 10.sp, marquee = focused)
             }
+            val shown = if (showNext && next != null) next else p
+            LiveText(
+                shown?.title ?: entry.channel.name,
+                color = NuvioTheme.colors.TextPrimary, size = if (compact) 14.sp else 16.sp,
+                weight = FontWeight.SemiBold, marquee = focused
+            )
+            val sub = when {
+                showNext && next != null -> "${entry.channel.name} · ${formatClock(next.startMs, use24h)}"
+                p != null -> listOfNotNull(entry.channel.name, minutesLeftLabel(p.stopMs, now)).joinToString(" · ")
+                else -> entry.channel.name
+            }
+            LiveText(sub, color = NuvioTheme.extendedColors.textSecondary, size = 12.sp, marquee = focused)
         }
     }
 }

@@ -4,8 +4,7 @@ package com.nuvio.tv.ui.screens.home
 
 import android.content.Context
 import android.content.Intent
-import android.net.ConnectivityManager
-import android.net.NetworkCapabilities
+import android.text.format.DateFormat
 import android.widget.Toast
 import androidx.compose.foundation.BorderStroke
 import androidx.compose.foundation.background
@@ -27,10 +26,10 @@ import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.Notifications
 import androidx.compose.material.icons.filled.Settings
 import androidx.compose.material.icons.filled.Tv
-import androidx.compose.material.icons.filled.Wifi
 import androidx.compose.runtime.Composable
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import androidx.compose.runtime.getValue
+import androidx.compose.runtime.produceState
 import androidx.compose.runtime.remember
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
@@ -50,6 +49,10 @@ import androidx.tv.material3.Text
 import com.nuvio.tv.R
 import com.nuvio.tv.core.notification.LauncherNotificationListenerService
 import com.nuvio.tv.ui.theme.NuvioTheme
+import java.text.SimpleDateFormat
+import java.util.Date
+import java.util.Locale
+import kotlinx.coroutines.delay
 
 @Composable
 fun HomeTopBarHeader(
@@ -72,23 +75,12 @@ fun HomeTopBarHeader(
         candidateIntents.any { context.packageManager.resolveActivity(it, 0) != null }
     }
 
-    val isConnected = remember(context) { isNetworkConnected(context) }
-
     Row(
         modifier = modifier
             .padding(end = 48.dp, top = 28.dp),
         verticalAlignment = Alignment.CenterVertically,
         horizontalArrangement = Arrangement.spacedBy(14.dp)
     ) {
-        if (isConnected) {
-            Icon(
-                imageVector = Icons.Default.Wifi,
-                contentDescription = null,
-                tint = Color.White.copy(alpha = 0.7f),
-                modifier = Modifier.size(20.dp)
-            )
-        }
-
         // TV Inputs Button
         if (hasTvInputs) {
             Surface(
@@ -226,14 +218,34 @@ fun HomeTopBarHeader(
                 )
             }
         }
+
+        HomeTopBarClock()
     }
 }
 
-private fun isNetworkConnected(context: Context): Boolean {
-    return runCatching {
-        val cm = context.getSystemService(Context.CONNECTIVITY_SERVICE) as? ConnectivityManager
-        val active = cm?.activeNetwork ?: return false
-        val caps = cm.getNetworkCapabilities(active) ?: return false
-        caps.hasCapability(NetworkCapabilities.NET_CAPABILITY_INTERNET)
-    }.getOrDefault(true)
+/** The time, to the right of Settings. Follows the TV's 12/24-hour setting and updates on the minute. */
+@Composable
+private fun HomeTopBarClock() {
+    val context = LocalContext.current
+    val time by produceState(initialValue = formatClock(context)) {
+        while (true) {
+            value = formatClock(context)
+            val now = System.currentTimeMillis()
+            delay(60_000L - now % 60_000L + 50L)
+        }
+    }
+    Text(
+        text = time,
+        style = MaterialTheme.typography.titleMedium.copy(fontWeight = FontWeight.Medium),
+        color = Color.White.copy(alpha = 0.9f),
+        maxLines = 1
+    )
+}
+
+private fun formatClock(context: Context): String {
+    val pattern = DateFormat.getBestDateTimePattern(
+        Locale.getDefault(),
+        if (DateFormat.is24HourFormat(context)) "Hm" else "hmm"
+    )
+    return SimpleDateFormat(pattern, Locale.getDefault()).format(Date())
 }
