@@ -51,6 +51,32 @@ fun AppsScreen(viewModel: InstalledAppsViewModel = hiltViewModel()) {
     LaunchedEffect(apps.isNotEmpty()) {
         if (apps.isNotEmpty()) runCatching { first.requestFocus() }
     }
+    // A focus handle per app, so the one being carried can be given the focus back (and kept on screen) after each step:
+    // when it moves to a place that isn't composed yet (the top row, scrolled away) the highlight used to be lost and the
+    // D-pad then did nothing.
+    val requesters = remember { mutableMapOf<String, FocusRequester>() }
+    fun requesterFor(pkg: String): FocusRequester =
+        if (apps.firstOrNull()?.packageName == pkg) first else requesters.getOrPut(pkg) { FocusRequester() }
+    val carriedIndex = apps.indexOfFirst { it.packageName == move.carrying }
+    LaunchedEffect(move.carrying, carriedIndex) {
+        val pkg = move.carrying ?: return@LaunchedEffect
+        if (carriedIndex < 0) return@LaunchedEffect
+        val info = gridState.layoutInfo
+        val visible = info.visibleItemsInfo
+        val shown = visible.firstOrNull { it.index == carriedIndex }
+        val fullyVisible = shown != null && shown.offset.y >= info.viewportStartOffset &&
+            shown.offset.y + shown.size.height <= info.viewportEndOffset
+        if (!fullyVisible) {
+            when {
+                visible.isEmpty() || carriedIndex < visible.first().index -> gridState.animateScrollToItem(carriedIndex)
+                else -> gridState.animateScrollToItem((carriedIndex - (visible.size - 1)).coerceAtLeast(0))
+            }
+        }
+        repeat(6) {
+            if (runCatching { requesterFor(pkg).requestFocus() }.isSuccess) return@LaunchedEffect
+            kotlinx.coroutines.delay(40)
+        }
+    }
     Column(
         Modifier
             .fillMaxSize()
@@ -99,7 +125,7 @@ fun AppsScreen(viewModel: InstalledAppsViewModel = hiltViewModel()) {
                         onClick = { viewModel.launch(app) },
                         onLongClick = { actionsFor = app },
                         moving = move.carrying == app.packageName,
-                        modifier = (if (app == apps.first()) Modifier.focusRequester(first) else Modifier)
+                        modifier = Modifier.focusRequester(requesterFor(app.packageName))
                             // Hidden from the Home row: still here so it can be shown again.
                             .alpha(if (app.hidden) 0.45f else 1f),
                         width = tileWidth

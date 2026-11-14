@@ -323,7 +323,10 @@ class LiveTvPreferences @Inject constructor(
             runCatching { turnOnPlaylistGroupsOnce() }
         }
         CoroutineScope(Dispatchers.IO + SupervisorJob()).launch {
-            profileManager.activeProfileId.collect { id -> runCatching { seedProfile(id) } }
+            profileManager.activeProfileId.collect { id ->
+                runCatching { seedProfile(id) }
+                runCatching { seedProfileSettings(id) }
+            }
         }
     }
 
@@ -367,13 +370,15 @@ class LiveTvPreferences @Inject constructor(
     private val settingsMemo = SnapshotMemo<LiveTvSettings>()
     private val userStateMemo = SnapshotMemo<LiveUserState>()
 
-    val playlists: Flow<List<PlaylistSource>> = store.data
-        .map { p -> playlistsMemo.get(p, null, 0) { decodePlaylists(p[Keys.playlists]) } }
-        .distinctUntilChanged()
+    // Playlists and guides are per profile too (each profile is a different user): the first profile keeps the original keys,
+    // another profile starts with a copy of them (see seedProfileSettings) and then has its own.
+    val playlists: Flow<List<PlaylistSource>> = kotlinx.coroutines.flow.combine(store.data, profileManager.activeProfileId) { p, id ->
+        playlistsMemo.get(p, null, id) { decodePlaylists(p[my(Keys.playlists, id)]) }
+    }.distinctUntilChanged()
 
-    val epgSources: Flow<List<EpgSource>> = store.data
-        .map { p -> epgsMemo.get(p, null, 0) { decodeEpgs(p[Keys.epgs]) } }
-        .distinctUntilChanged()
+    val epgSources: Flow<List<EpgSource>> = kotlinx.coroutines.flow.combine(store.data, profileManager.activeProfileId) { p, id ->
+        epgsMemo.get(p, null, id) { decodeEpgs(p[my(Keys.epgs, id)]) }
+    }.distinctUntilChanged()
 
     /**
      * Which side-menu pages are off (Calendar and the others) is chosen per Nuvio profile. The first
@@ -388,8 +393,72 @@ class LiveTvPreferences @Inject constructor(
         return m
     }
 
+    // ---------- per-profile settings ----------
+    // Every setting (the side menu, the Live TV row, the guide, IPTV options...) is kept per Nuvio profile: changing one in a
+    // profile never changes another's. The first profile keeps the original keys. Another profile starts as a copy of the
+    // first profile's settings (so nobody loses their set-up) and from then on changes only its own copies, stored under the
+    // same names with "_p<id>" on the end. Playlists and guides stay shared, and so do the parental lock settings: a profile
+    // must not be able to switch the lock off for the others.
+
+    // Nothing is shared between profiles any more (the parental lock included: it belongs to the profile that set it).
+    private val sharedSettingKeyNames = emptySet<String>()
+
+    /** The names of the settings keys: whatever [writeSettings] writes, minus the ones every profile shares. */
+    private val settingsKeyNames: Set<String> by lazy {
+        val tmp = androidx.datastore.preferences.core.mutablePreferencesOf()
+        writeSettings(tmp, LiveTvSettings())
+        tmp.asMap().keys.map { it.name }.filter { it !in sharedSettingKeyNames }.toSet()
+    }
+
+    private fun ownName(name: String, id: Int) = "${name}_p$id"
+
+    private fun settingsSeededKey(id: Int) = booleanPreferencesKey("settings_seeded_p$id")
+
+    /** A key called [name] of the same type as [sample]; null for a type settings never use. */
+    @Suppress("UNCHECKED_CAST")
+    private fun typedKey(name: String, sample: Any): Preferences.Key<Any>? = when (sample) {
+        is Boolean -> booleanPreferencesKey(name)
+        is Int -> intPreferencesKey(name)
+        is String -> stringPreferencesKey(name)
+        is Long -> androidx.datastore.preferences.core.longPreferencesKey(name)
+        is Float -> androidx.datastore.preferences.core.floatPreferencesKey(name)
+        is Double -> androidx.datastore.preferences.core.doublePreferencesKey(name)
+        is Set<*> -> stringSetPreferencesKey(name)
+        else -> null
+    } as Preferences.Key<Any>?
+
+    /** The stored data as profile [id] sees its settings: its own copies in place of the first profile's. */
+    private fun settingsView(p: Preferences, id: Int): Preferences {
+        if (id <= 1 || p[settingsSeededKey(id)] != true) return p
+        val byName = p.asMap().entries.associateBy { it.key.name }
+        val m = p.toMutablePreferences()
+        for (name in settingsKeyNames) {
+            val mine = byName[ownName(name, id)]
+            if (mine != null) typedKey(name, mine.value)?.let { m[it] = mine.value }
+            else byName[name]?.let { m.remove(it.key) }
+        }
+        return m
+    }
+
+    /** The first time a profile is used, it takes a copy of the first profile's settings (never over its own choices). */
+    private suspend fun seedProfileSettings(id: Int) {
+        if (id <= 1) return
+        store.edit { p ->
+            if (p[settingsSeededKey(id)] == true) return@edit
+            val byName = p.asMap().entries.associateBy { it.key.name }
+            for (name in settingsKeyNames) {
+                val base = byName[name] ?: continue
+                if (byName[ownName(name, id)] == null) typedKey(ownName(name, id), base.value)?.let { p[it] = base.value }
+            }
+            for (k in listOf(Keys.playlists, Keys.epgs)) {
+                if (p[my(k, id)] == null) p[k]?.let { p[my(k, id)] = it }
+            }
+            p[settingsSeededKey(id)] = true
+        }
+    }
+
     val settings: Flow<LiveTvSettings> = kotlinx.coroutines.flow.combine(store.data, profileManager.activeProfileId) { p0, id ->
-        settingsMemo.get(p0, null, id) { buildSettings(withMyMenu(p0, id)) }
+        settingsMemo.get(p0, null, id) { buildSettings(withMyMenu(settingsView(p0, id), id)) }
     }.distinctUntilChanged()
 
     private fun buildSettings(p: Preferences): LiveTvSettings {
@@ -609,10 +678,11 @@ class LiveTvPreferences @Inject constructor(
     suspend fun updatePlaylists(transform: (List<PlaylistSource>) -> List<PlaylistSource>) = sourceMutations.withLock {
         var removed = emptySet<String>()
         store.edit { p ->
-            val before = decodePlaylists(p[Keys.playlists])
+            val key = my(Keys.playlists)
+            val before = decodePlaylists(p[key])
             val after = transform(before)
             removed = before.map { it.id }.toSet() - after.map { it.id }.toSet()
-            p[Keys.playlists] = encodePlaylists(after)
+            p[key] = encodePlaylists(after)
         }
         noteRemovedSources(removed)
     }
@@ -620,10 +690,11 @@ class LiveTvPreferences @Inject constructor(
     suspend fun updateEpgSources(transform: (List<EpgSource>) -> List<EpgSource>) {
         var removed = emptySet<String>()
         store.edit { p ->
-            val before = decodeEpgs(p[Keys.epgs])
+            val key = my(Keys.epgs)
+            val before = decodeEpgs(p[key])
             val after = transform(before)
             removed = before.map { it.id }.toSet() - after.map { it.id }.toSet()
-            p[Keys.epgs] = encodeEpgs(after)
+            p[key] = encodeEpgs(after)
         }
         noteRemovedSources(removed)
     }
@@ -722,8 +793,22 @@ class LiveTvPreferences @Inject constructor(
     // ---------- settings ----------
 
     suspend fun updateSettings(transform: (LiveTvSettings) -> LiveTvSettings) {
+        val me = currentProfile
+        if (me > 1) seedProfileSettings(me)
         val next = transform(currentSettings())
-        store.edit { p -> writeSettings(p, next) }
+        store.edit { p ->
+            if (me <= 1) {
+                writeSettings(p, next)
+            } else {
+                // Another profile: its own copies, never the first profile's keys (the shared ones stay shared).
+                val tmp = androidx.datastore.preferences.core.mutablePreferencesOf()
+                writeSettings(tmp, next)
+                for ((k, v) in tmp.asMap()) {
+                    if (k.name in sharedSettingKeyNames) p[typedKey(k.name, v) ?: continue] = v
+                    else typedKey(ownName(k.name, me), v)?.let { p[it] = v }
+                }
+            }
+        }
     }
 
     private fun writeSettings(p: MutablePreferences, s: LiveTvSettings) {

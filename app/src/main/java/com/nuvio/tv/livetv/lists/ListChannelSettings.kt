@@ -12,9 +12,9 @@ object ListChannelSettings {
      * (it is only ever done while a channel is being watched). On unless turned off.
      */
     fun torboxDownloads(context: Context): Boolean =
-        runCatching { context.applicationContext.getSharedPreferences(FILE, Context.MODE_PRIVATE).getBoolean(KEY_TORBOX, true) }.getOrDefault(true)
+        runCatching { com.nuvio.tv.core.profile.ActiveProfile.prefs(context, FILE).getBoolean(KEY_TORBOX, true) }.getOrDefault(true)
 
     fun setTorboxDownloads(context: Context, enabled: Boolean) {
-        runCatching { context.applicationContext.getSharedPreferences(FILE, Context.MODE_PRIVATE).edit().putBoolean(KEY_TORBOX, enabled).apply() }
+        runCatching { com.nuvio.tv.core.profile.ActiveProfile.prefs(context, FILE).edit().putBoolean(KEY_TORBOX, enabled).apply() }
     }
 }

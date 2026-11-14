@@ -24,6 +24,7 @@ import kotlinx.coroutines.flow.combine
 import kotlinx.coroutines.flow.conflate
 import kotlinx.coroutines.flow.flowOn
 import kotlinx.coroutines.flow.map
+import kotlinx.coroutines.launch
 import kotlinx.coroutines.withContext
 import javax.inject.Inject
 import javax.inject.Singleton
@@ -53,16 +54,23 @@ data class InstalledApp(
 @Singleton
 class InstalledAppsRepository @Inject constructor(
     @ApplicationContext private val context: Context,
-    private val iconPackManager: IconPackManager
+    private val iconPackManager: IconPackManager,
+    private val profileManager: com.nuvio.tv.core.profile.ProfileManager
 ) {
     private val pm: PackageManager get() = context.packageManager
 
     // Banners are 320x180, icons much smaller; 48 entries covers a home row + the Apps grid.
     private val images = LruCache<String, Bitmap>(48)
 
-    // The order the user arranged (package names). Apps not in it follow, A to Z. Shared by the Apps
-    // page and the Home row.
-    private val prefs = context.getSharedPreferences("launcher_apps", Context.MODE_PRIVATE)
+    // Everything here (the order, hidden apps, names, icon pack and icon picks) belongs to the Nuvio profile in use: the
+    // first profile keeps the original file, each other profile has its own ("launcher_apps_p<id>") and starts with the
+    // usual A to Z. The Apps page and the Home row share it within a profile.
+    private fun prefsFor(profileId: Int) =
+        context.getSharedPreferences(if (profileId <= 1) "launcher_apps" else "launcher_apps_p$profileId", Context.MODE_PRIVATE)
+
+    @Volatile private var prefs = prefsFor(profileManager.activeProfileId.value)
+
+    // The order the user arranged (package names). Apps not in it follow, A to Z.
     private val savedOrder = MutableStateFlow(AppOrder.decode(prefs.getString(KEY_ORDER, null)))
     private val savedLabels = MutableStateFlow(AppLabels.decode(prefs.getString(KEY_LABELS, null)))
     // The icon pack used for every app (a package name), and icons picked for single apps.
@@ -70,6 +78,23 @@ class InstalledAppsRepository @Inject constructor(
     private val savedIcons = MutableStateFlow(AppLabels.decode(prefs.getString(KEY_ICONS, null)))
     // Apps the user hid from the Home row (package names).
     private val savedHidden = MutableStateFlow(AppHidden.decode(prefs.getString(KEY_HIDDEN, null)))
+
+    init {
+        // Switching profile loads that profile's arrangement.
+        kotlinx.coroutines.CoroutineScope(Dispatchers.IO + kotlinx.coroutines.SupervisorJob()).launch {
+            profileManager.activeProfileId.collect { id ->
+                val next = prefsFor(id)
+                if (next === prefs) return@collect
+                prefs = next
+                images.evictAll()
+                savedOrder.value = AppOrder.decode(next.getString(KEY_ORDER, null))
+                savedLabels.value = AppLabels.decode(next.getString(KEY_LABELS, null))
+                savedPack.value = next.getString(KEY_ICON_PACK, null)?.takeIf { it.isNotBlank() }
+                savedIcons.value = AppLabels.decode(next.getString(KEY_ICONS, null))
+                savedHidden.value = AppHidden.decode(next.getString(KEY_HIDDEN, null))
+            }
+        }
+    }
     val order: StateFlow<List<String>> = savedOrder.asStateFlow()
     val selectedIconPack: StateFlow<String?> = savedPack.asStateFlow()
 
