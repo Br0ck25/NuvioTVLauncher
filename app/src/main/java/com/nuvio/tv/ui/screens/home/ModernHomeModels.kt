@@ -219,7 +219,23 @@ internal data class ModernCatalogCardMetrics(
     val height: androidx.compose.ui.unit.Dp
 )
 
+/** Collection folders follow the user's Tile size (Layout settings); catalog posters keep the poster width. */
 internal fun ModernCarouselItem.catalogCardMetrics(
+    useLandscapePosters: Boolean,
+    portraitCardWidth: androidx.compose.ui.unit.Dp,
+    portraitCardHeight: androidx.compose.ui.unit.Dp,
+    landscapeCardWidth: androidx.compose.ui.unit.Dp,
+    landscapeCardHeight: androidx.compose.ui.unit.Dp
+): ModernCatalogCardMetrics {
+    val base = unscaledCatalogCardMetrics(
+        useLandscapePosters, portraitCardWidth, portraitCardHeight, landscapeCardWidth, landscapeCardHeight
+    )
+    if (payload !is ModernPayload.CollectionFolder) return base
+    val scale = com.nuvio.tv.ui.components.HomeTiles.scale.value
+    return if (scale == 1f) base else ModernCatalogCardMetrics(base.width * scale, base.height * scale)
+}
+
+private fun ModernCarouselItem.unscaledCatalogCardMetrics(
     useLandscapePosters: Boolean,
     portraitCardWidth: androidx.compose.ui.unit.Dp,
     portraitCardHeight: androidx.compose.ui.unit.Dp,
