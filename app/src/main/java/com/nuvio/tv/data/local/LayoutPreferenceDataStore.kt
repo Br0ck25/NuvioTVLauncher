@@ -94,7 +94,7 @@ class LayoutPreferenceDataStore @Inject constructor(
     private val focusedPosterBackdropTrailerPlaybackTargetKey =
         stringPreferencesKey("focused_poster_backdrop_trailer_playback_target")
     private val posterCardWidthDpKey = intPreferencesKey("poster_card_width_dp")
-    private val homeTileScalePctKey = intPreferencesKey("home_tile_scale_pct")
+    private val homeTileWidthDpKey = intPreferencesKey("home_tile_width_dp")
     private val posterCardHeightDpKey = intPreferencesKey("poster_card_height_dp")
     private val posterCardCornerRadiusDpKey = intPreferencesKey("poster_card_corner_radius_dp")
     private val cardDepthEnabledKey = booleanPreferencesKey("card_depth_enabled")
@@ -316,14 +316,20 @@ class LayoutPreferenceDataStore @Inject constructor(
         positiveOrDefault(prefs[posterCardWidthDpKey], DEFAULT_POSTER_CARD_WIDTH_DP)
     }
 
-    /** The one size for the Home tiles (Continue Watching, Upcoming, Live TV, apps), as a percent of the default. */
-    val homeTileScalePct: Flow<Int> = profileFlow { prefs ->
-        (prefs[homeTileScalePctKey] ?: 100).coerceIn(70, 140)
-    }
+    /**
+     * The size for the Home tiles (Continue Watching, Upcoming, Live TV, apps), as a poster width preset (104 to 140):
+     * a tile is the size of a landscape poster at that preset. Null follows the poster Width setting.
+     */
+    val homeTileWidthDp: Flow<Int?> = profileFlow { prefs -> prefs[homeTileWidthDpKey]?.takeIf { it > 0 } }
 
     init {
-        // Home's tiles read the size from HomeTiles, which they share with the Apps page.
-        scope.launch { homeTileScalePct.collect { com.nuvio.tv.ui.components.HomeTiles.setScale(it / 100f) } }
+        // Home's tiles read the size from HomeTiles, which they share with the Apps page. The scale is the chosen
+        // preset against the poster width the layouts already size their tiles from, so "follow" is exactly 1.
+        scope.launch {
+            kotlinx.coroutines.flow.combine(posterCardWidthDp, homeTileWidthDp) { poster, tile ->
+                if (tile == null) 1f else tile / poster.toFloat()
+            }.collect { com.nuvio.tv.ui.components.HomeTiles.setScale(it) }
+        }
     }
 
     val posterCardHeightDp: Flow<Int> = profileFlow { prefs ->
@@ -696,8 +702,10 @@ class LayoutPreferenceDataStore @Inject constructor(
         }
     }
 
-    suspend fun setHomeTileScalePct(pct: Int) {
-        store().edit { prefs -> prefs[homeTileScalePctKey] = pct.coerceIn(70, 140) }
+    suspend fun setHomeTileWidthDp(widthDp: Int?) {
+        store().edit { prefs ->
+            if (widthDp == null) prefs.remove(homeTileWidthDpKey) else prefs[homeTileWidthDpKey] = widthDp
+        }
     }
 
     suspend fun setPosterCardHeightDp(heightDp: Int) {

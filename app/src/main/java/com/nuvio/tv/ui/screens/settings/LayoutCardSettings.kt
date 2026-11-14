@@ -287,17 +287,14 @@ internal fun LayoutPosterCardSection(
         PresetOption(stringResource(R.string.layout_preset_pill), 16)
     )
 
-    val tileSizeOptions = listOf(
-        PresetOption(stringResource(R.string.layout_preset_compact), 80),
-        PresetOption(stringResource(R.string.layout_preset_standard), 100),
-        PresetOption(stringResource(R.string.layout_preset_comfort), 115),
-        PresetOption(stringResource(R.string.layout_preset_large), 130)
-    )
+    // The same six sizes as the poster Width below, and a tile is the size of a landscape poster at that preset, so
+    // with Landscape Poster Mode on, a tile and a poster at the same preset match. Until one is chosen the tiles
+    // follow the poster Width.
     OptionRow(
         title = stringResource(R.string.layout_tile_size),
-        selectedValue = uiState.homeTileScalePct,
-        options = tileSizeOptions,
-        onSelected = { pct -> onEvent(LayoutSettingsEvent.SetHomeTileScale(pct)) }
+        selectedValue = uiState.homeTileWidthDp ?: uiState.posterCardWidthDp,
+        options = widthOptions,
+        onSelected = { width -> onEvent(LayoutSettingsEvent.SetHomeTileWidth(width)) }
     )
     OptionRow(
         title = stringResource(R.string.layout_card_width),
