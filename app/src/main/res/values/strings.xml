@@ -3619,10 +3619,6 @@
     <string name="wizard_override_done">Home button override is on. Press Back to continue.</string>
     <string name="wizard_works_native">Home works: Android opens Nuvio Launcher when you press Home.</string>
     <string name="wizard_works_override">Home works: Nuvio Launcher opens over the TV\'s own launcher when you press Home.</string>
-    <string name="stock_launcher_off_title">The TV\'s own launcher is turned off</string>
-    <string name="stock_launcher_off_body">Nuvio Launcher takes over Home while the TV\'s own launcher stays on. With it off, Google TV can get stuck on a black screen when you press Home. Turn it back on.</string>
-    <string name="stock_launcher_off_action">Turn the stock launcher back on</string>
-    <string name="stock_launcher_off_open_settings">Press Enable on the next screen to turn it back on.</string>
     <string name="appearance_icon_pack_title">Icon pack</string>
     <string name="appearance_icon_pack_subtitle">Choose an icon pack for the apps on your Home screen and Apps page</string>
     <string name="appearance_icon_pack_row_title">Icon pack</string>

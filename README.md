@@ -93,9 +93,10 @@ The first-run setup shows the steps, and everything is also in **Settings → De
 | Turn on notifications | `cmd notification allow_listener` for the bell at the top right of Home |
 | Which launcher is Home now? | `cmd package resolve-activity` (read-only) |
 | Switch back to the original launcher | Finds the stock launcher and points Home back at it |
-| Turn off / back on the stock launcher | FLauncher's `pm disable-user` / `pm enable` for Google TV's launcher and its fallback (optional; the remote's YouTube button stops working while it is off, Button Mapper can remap it) |
+| Turn off the stock launcher | FLauncher's `pm disable-user` for Google TV's launcher (optional and risky: with it off, Google TV can show a black screen or loop on a recovery screen, and the remote's YouTube button stops working; Button Mapper can remap it). Asks you to confirm first |
+| Turn the stock launcher on | `pm enable` for Google TV's launcher and its setup service. Use it to undo the button above or if Home shows a black screen |
 
-On **Google TV**, Android usually keeps Google's own launcher as Home even after "Make this the Home app"; the Home button override (or turning the stock launcher off) is what makes Home open Nuvio Launcher there. Already paired? Leave the port and code empty. The page also lists every command, with this TV's address filled in (`adb -s IP:PORT shell ...`), for anyone who would rather run them from a computer. Needs Android 11+ Wireless debugging and the `full` build; some TV firmware (many Fire TVs) refuses a different Home app however it is set.
+On **Google TV**, Android usually keeps Google's own launcher as Home even after "Make this the Home app"; the Home button override is what makes Home open Nuvio Launcher there. Turning the stock launcher off is a last resort, only if the override does not work for you; read its warning first. Already paired? Leave the port and code empty. The page also lists every command, with this TV's address filled in (`adb -s IP:PORT shell ...`), for anyone who would rather run them from a computer. Needs Android 11+ Wireless debugging and the `full` build; some TV firmware (many Fire TVs) refuses a different Home app however it is set.
 
 ### Install with Tellyscope (no computer needed)
 

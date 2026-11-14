@@ -118,6 +118,10 @@ internal class LoopbackAdbSetup(private val context: Context) : LocalAdbSetup {
                 else -> "The Home button opens ${resolved ?: holder ?: "another launcher"}, not this launcher."
             }
         }
+        DeviceAction.DISABLE_STOCK -> {
+            DeviceCommands.disableStock.forEach { shell(manager, it) }
+            "The TV's own launcher is turned off. If the TV shows a black screen or a recovery screen, turn it back on from this page."
+        }
         DeviceAction.ENABLE_STOCK -> {
             DeviceCommands.enableStock.forEach { shell(manager, it) }
             "The TV's own launcher is on."

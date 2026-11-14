@@ -23,9 +23,10 @@ class LauncherSetupCommandsTest {
     }
 
     @Test
-    fun neverOffersToDisableTheStockLauncher() {
-        // Disabling it made Android loop on Google TV's recovery screen.
-        assertTrue(all.none { "pm disable" in it })
+    fun disablingTheStockLauncherIsOptionalAndOnlyTouchesTheLauncher() {
+        // Turning off the setup service took a TV's Wi-Fi down, so only the launcher is disabled.
+        assertEquals(listOf("pm disable-user --user 0 com.google.android.apps.tv.launcherx"), DeviceCommands.disableStock)
+        assertTrue(all.none { "pm disable" in it && "setupwraith" in it })
         assertTrue(all.any { "pm enable com.google.android.apps.tv.launcherx" in it })
         assertTrue(all.any { "pm enable com.google.android.tungsten.setupwraith" in it })
     }
@@ -109,8 +110,8 @@ class LauncherSetupCommandsTest {
         assertTrue("T &lt;x&gt;" in html)
         assertTrue("echo &quot;&lt;b&gt;&quot; &amp; ok" in html)
         assertFalse("<b>\"" in html)
-        // There is no button that turns the stock launcher off.
-        assertFalse("disable-stock" in html)
+        // The stock-launcher button is there, behind a confirm and a warning.
+        assertTrue(Regex("data-action=\"disable-stock\" data-confirm=").containsMatchIn(html))
         assertFalse("%%" in html)
     }
 }
