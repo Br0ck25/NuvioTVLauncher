@@ -107,7 +107,7 @@ object LiveTvLauncherRows {
         val shape = CardShape.of(settings.launcherCardShape)
         // The three rows are always on offer: the launcher's own settings decide which to show.
         val wanted = listOf(ROW_SPORTS, ROW_FAVORITES, ROW_RECENT)
-        val store = context.getSharedPreferences(PREFS, Context.MODE_PRIVATE)
+        val store = com.nuvio.tv.core.profile.ActiveProfile.prefs(context, PREFS)
         val helper = PreviewChannelHelper(context)
         LauncherImages.tidy(context)
 

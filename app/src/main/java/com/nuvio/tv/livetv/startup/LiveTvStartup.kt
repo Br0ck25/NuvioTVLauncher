@@ -89,7 +89,7 @@ object StartPage {
 
     /** The page to open on, or null for Home. */
     fun cachedRoute(context: Context): String? = runCatching {
-        context.getSharedPreferences(PREFS, Context.MODE_PRIVATE).getString(KEY, null)
+        com.nuvio.tv.core.profile.ActiveProfile.prefs(context, PREFS).getString(KEY, null)
     }.getOrNull()?.takeIf { it in ROUTES }
 
     /** The page for a setting ([LiveTvSettings.openOn]); null for Home. Live TV only while it's in the menu. */
@@ -109,7 +109,7 @@ object StartPage {
 
     fun save(context: Context, route: String?) {
         runCatching {
-            val prefs = context.getSharedPreferences(PREFS, Context.MODE_PRIVATE)
+            val prefs = com.nuvio.tv.core.profile.ActiveProfile.prefs(context, PREFS)
             if (prefs.getString(KEY, null) == route) return
             prefs.edit().apply { if (route == null) remove(KEY) else putString(KEY, route) }.apply()
         }

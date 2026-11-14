@@ -35,7 +35,7 @@ class ProfileManager @Inject constructor(
     private val scope = CoroutineScope(SupervisorJob() + Dispatchers.IO)
 
     val activeProfileId: StateFlow<Int> = profileDataStore.activeProfileId
-        .onEach { VpnPlaybackProtection.setActiveUserProfile(it) }
+        .onEach { VpnPlaybackProtection.setActiveUserProfile(it); ActiveProfile.id = it }
         .stateIn(scope, SharingStarted.Eagerly, 1)
 
     val activeProfileReady: StateFlow<Boolean> = profileDataStore.activeProfileId
