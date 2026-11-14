@@ -127,6 +127,11 @@ fun GridHomeContent(
 ) {
     // Live TV fork: where the Live TV row goes (null = hidden).
     val liveTvRowAbove = com.nuvio.tv.livetv.home.rememberLiveTvHomeRowPosition()
+    // The tile every row shares: Continue Watching's 16:9 card in this layout.
+    val gridTileGap = NuvioTheme.spacing.md
+    androidx.compose.runtime.SideEffect {
+        com.nuvio.tv.ui.components.HomeTiles.publish(com.nuvio.tv.ui.components.HomeTile(220.dp, 124.dp, gridTileGap))
+    }
     val gridState = rememberLazyGridState(
         initialFirstVisibleItemIndex = gridFocusState.verticalScrollIndex,
         initialFirstVisibleItemScrollOffset = gridFocusState.verticalScrollOffset

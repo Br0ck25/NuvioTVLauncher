@@ -45,6 +45,8 @@ fun AppsScreen(viewModel: InstalledAppsViewModel = hiltViewModel()) {
     var actionsFor by remember { mutableStateOf<com.nuvio.tv.core.apps.InstalledApp?>(null) }
     val move = rememberAppMoveState()
     val gridState = rememberLazyGridState()
+    // The same tile as the Home rows.
+    val tileWidth = com.nuvio.tv.ui.components.rememberHomeTile()?.width ?: 176.dp
     val context = LocalContext.current
     LaunchedEffect(apps.isNotEmpty()) {
         if (apps.isNotEmpty()) runCatching { first.requestFocus() }
@@ -69,7 +71,7 @@ fun AppsScreen(viewModel: InstalledAppsViewModel = hiltViewModel()) {
             }
         } else {
             LazyVerticalGrid(
-                columns = GridCells.Adaptive(176.dp),
+                columns = GridCells.Adaptive(tileWidth),
                 contentPadding = PaddingValues(top = 18.dp, bottom = 40.dp),
                 horizontalArrangement = Arrangement.spacedBy(16.dp),
                 verticalArrangement = Arrangement.spacedBy(14.dp),
@@ -99,7 +101,7 @@ fun AppsScreen(viewModel: InstalledAppsViewModel = hiltViewModel()) {
                         modifier = (if (app == apps.first()) Modifier.focusRequester(first) else Modifier)
                             // Hidden from the Home row: still here so it can be shown again.
                             .alpha(if (app.hidden) 0.45f else 1f),
-                        width = 176.dp
+                        width = tileWidth
                     )
                 }
             }
