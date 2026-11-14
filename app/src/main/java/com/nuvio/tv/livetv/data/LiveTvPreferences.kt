@@ -310,10 +310,15 @@ class LiveTvPreferences @Inject constructor(
      */
     private suspend fun seedProfile(id: Int) {
         if (id <= 1) return
+        com.nuvio.tv.core.profile.ActiveProfile.baselineReady.await()
+        val legacy = com.nuvio.tv.core.profile.ActiveProfile.isLegacy(id)
         store.edit { p ->
             if (p[seededKey(id)] == true) return@edit
-            personalStringKeys.forEach { k -> if (p[my(k, id)] == null) p[k]?.let { p[my(k, id)] = it } }
-            personalSetKeys.forEach { k -> if (p[my(k, id)] == null) p[k]?.let { p[my(k, id)] = it } }
+            // Only a profile that existed before per-profile settings takes a one-time copy; a new one starts empty.
+            if (legacy) {
+                personalStringKeys.forEach { k -> if (p[my(k, id)] == null) p[k]?.let { p[my(k, id)] = it } }
+                personalSetKeys.forEach { k -> if (p[my(k, id)] == null) p[k]?.let { p[my(k, id)] = it } }
+            }
             p[seededKey(id)] = true
         }
     }
@@ -443,15 +448,19 @@ class LiveTvPreferences @Inject constructor(
     /** The first time a profile is used, it takes a copy of the first profile's settings (never over its own choices). */
     private suspend fun seedProfileSettings(id: Int) {
         if (id <= 1) return
+        com.nuvio.tv.core.profile.ActiveProfile.baselineReady.await()
+        val legacy = com.nuvio.tv.core.profile.ActiveProfile.isLegacy(id)
         store.edit { p ->
             if (p[settingsSeededKey(id)] == true) return@edit
-            val byName = p.asMap().entries.associateBy { it.key.name }
-            for (name in settingsKeyNames) {
-                val base = byName[name] ?: continue
-                if (byName[ownName(name, id)] == null) typedKey(ownName(name, id), base.value)?.let { p[it] = base.value }
-            }
-            for (k in listOf(Keys.playlists, Keys.epgs)) {
-                if (p[my(k, id)] == null) p[k]?.let { p[my(k, id)] = it }
+            if (legacy) {
+                val byName = p.asMap().entries.associateBy { it.key.name }
+                for (name in settingsKeyNames) {
+                    val base = byName[name] ?: continue
+                    if (byName[ownName(name, id)] == null) typedKey(ownName(name, id), base.value)?.let { p[it] = base.value }
+                }
+                for (k in listOf(Keys.playlists, Keys.epgs)) {
+                    if (p[my(k, id)] == null) p[k]?.let { p[my(k, id)] = it }
+                }
             }
             p[settingsSeededKey(id)] = true
         }
