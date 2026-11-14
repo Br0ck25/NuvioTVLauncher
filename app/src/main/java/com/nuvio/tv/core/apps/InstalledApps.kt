@@ -66,7 +66,7 @@ class InstalledAppsRepository @Inject constructor(
     // first profile keeps the original file, each other profile has its own ("launcher_apps_p<id>") and starts with the
     // usual A to Z. The Apps page and the Home row share it within a profile.
     private fun prefsFor(profileId: Int) =
-        context.getSharedPreferences(if (profileId <= 1) "launcher_apps" else "launcher_apps_p$profileId", Context.MODE_PRIVATE)
+        com.nuvio.tv.core.profile.ActiveProfile.prefsFor(context, "launcher_apps", profileId)
 
     @Volatile private var prefs = prefsFor(profileManager.activeProfileId.value)
 
@@ -82,9 +82,10 @@ class InstalledAppsRepository @Inject constructor(
     init {
         // Switching profile loads that profile's arrangement.
         kotlinx.coroutines.CoroutineScope(Dispatchers.IO + kotlinx.coroutines.SupervisorJob()).launch {
+            com.nuvio.tv.core.profile.ActiveProfile.baselineReady.await()
             profileManager.activeProfileId.collect { id ->
                 val next = prefsFor(id)
-                if (next === prefs) return@collect
+                // Always read again: a profile that existed before gets its one-time copy only now (see ActiveProfile).
                 prefs = next
                 images.evictAll()
                 savedOrder.value = AppOrder.decode(next.getString(KEY_ORDER, null))
