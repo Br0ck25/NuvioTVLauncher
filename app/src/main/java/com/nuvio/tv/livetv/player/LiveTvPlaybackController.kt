@@ -300,6 +300,13 @@ class LiveTvPlaybackController @Inject constructor(
         return start + timeshift.trimmedMs + if (shiftPrepared) p.currentPosition.coerceAtLeast(0) else 0L
     }
 
+    /** Seek thumbnails: the rewind buffer's list of pieces on this box, while playing from it. */
+    val shiftPlaylistFile: java.io.File?
+        get() {
+            if (_shiftStartedAt.value == null || !shiftPrepared) return null
+            return timeshift.session?.playUri?.path?.let { java.io.File(it) }?.takeIf { it.exists() }
+        }
+
     /** Skipping back and forward works on every recording (TS ones are saved in pieces too now). */
     fun shiftCanSeek(): Boolean = (timeshift.session != null && shiftPrepared) || _recordingPlayback.value != null || _ownTimeline.value
 
@@ -2106,6 +2113,17 @@ class LiveTvPlaybackController @Inject constructor(
      */
     fun replaySavedMs(): Long? =
         if (replayLocal && savedRecordingId == null && replayCache.session != null) replayCache.savedMs else null
+
+    /** Seek thumbnails: the list of pieces of the catch-up being saved on this box (null if none). */
+    val replayPlaylistFile: java.io.File?
+        get() = if (replayLocal && savedRecordingId == null) replayCache.session?.playUri?.path?.let { java.io.File(it) } else null
+
+    /** Seek thumbnails: what the provider needs on each stream request (Stalker portals). */
+    val thumbnailPolicy: StalkerMediaPolicy? get() = stalkerMediaPolicy
+
+    /** Seek thumbnails: the replay is a streamed (HLS) link that plays straight from the provider. */
+    fun catchupIsHls(): Boolean =
+        !replayLocal && (stalkerMimeType == StalkerMimeProbe.HLS || currentUrl?.substringBefore('?')?.contains("m3u8", ignoreCase = true) == true)
 
     /** A TS catch-up link tried after another failed: saved while it plays (false if it can't be). */
     private fun saveFallback(ch: LiveChannel, url: String): Boolean =

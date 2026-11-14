@@ -13,12 +13,15 @@ import com.nuvio.tv.livetv.player.LiveTvPlaybackController
 import kotlinx.coroutines.delay
 
 /**
- * Seek thumbnails in the Live TV player: saved recordings (from their pieces on this box) and
- * sports addon replays sent as one video file. Live TV, catch-up and the pause buffer say why
- * there are none. The player is only read here, on the main thread; the engine gets copies.
+ * Seek thumbnails in the Live TV player: saved recordings (from their pieces on this box),
+ * catch-up (the part saved with Faster Catch-Up Skipping, or a streamed HLS replay), and sports
+ * addon replays (one video file or HLS), and Live TV's rewind buffer (its pieces on this box).
+ * Plain live TV says why there are none.
+ * The player is only read here, on the main thread; the engine gets copies.
  */
 @Composable
-fun LiveTvSeekThumbsHook(playback: LiveTvPlaybackController) {
+fun LiveTvSeekThumbsHook(viewModel: com.nuvio.tv.livetv.ui.LiveTvViewModel) {
+    val playback = viewModel.playback
     val context = LocalContext.current
     val settings by SeekThumbSettings.values.collectAsState()
     val seen = remember { Seen() }
@@ -26,8 +29,8 @@ fun LiveTvSeekThumbsHook(playback: LiveTvPlaybackController) {
         SeekThumbSettings.load(context)
         var n = 0
         while (true) {
-            seen.read(playback)
-            if (n++ % 4 == 0) update(context, playback, seen)
+            seen.read(playback, viewModel)
+            if (n++ % 4 == 0) update(context, playback, viewModel, seen)
             delay(500)
         }
     }
@@ -44,10 +47,16 @@ private class Seen {
     @Volatile var hdr = false
     @Volatile var growing = false
 
-    fun read(c: LiveTvPlaybackController) {
+    fun read(c: LiveTvPlaybackController, vm: com.nuvio.tv.livetv.ui.LiveTvViewModel) {
         val p = c.player ?: return
         playing = p.isPlaying
-        positionMs = p.currentPosition.coerceAtLeast(0L)
+        // Catch-up: time into the show (the seek bar's time); otherwise the player's own.
+        val cs = vm.catchup.value
+        val anchor = SeekThumbs.origin(SeekThumbs.Owner.LIVE)
+        positionMs = (if (cs != null && cs.recordingId == null) vm.catchupPositionMs() else null)
+            // The rewind buffer: clock time, counted from where its pictures start.
+            ?: (if (anchor != null) c.shiftPositionWallMs()?.minus(anchor)?.coerceAtLeast(0L) else null)
+            ?: p.currentPosition.coerceAtLeast(0L)
         aheadMs = (p.bufferedPosition - p.currentPosition).coerceAtLeast(0L)
         durationMs = p.duration.takeIf { it != C.TIME_UNSET && it > 0 } ?: 0L
         growing = p.isCurrentMediaItemDynamic
@@ -63,11 +72,17 @@ private class Seen {
     )
 }
 
-private fun update(context: android.content.Context, c: LiveTvPlaybackController, seen: Seen) {
+private fun update(
+    context: android.content.Context,
+    c: LiveTvPlaybackController,
+    vm: com.nuvio.tv.livetv.ui.LiveTvViewModel,
+    seen: Seen,
+) {
     val owner = SeekThumbs.Owner.LIVE
     if (!SeekThumbSettings.values.value.enabled) { SeekThumbs.close(owner); return }
     val recording = c.savedRecordingPlaylist
     val recordingId = c.savedRecordingId
+    val catchup = vm.catchup.value?.takeIf { it.recordingId == null && c.playingChannel != null }
     when {
         recording != null && recordingId != null -> {
             if (seen.durationMs <= 0L) return
@@ -76,15 +91,62 @@ private fun update(context: android.content.Context, c: LiveTvPlaybackController
                 seen.durationMs, seen.height, seen.hdr, seen.playback
             )
         }
+        catchup != null -> {
+            val program = catchup.program
+            val length = (program.stopMs - program.startMs).coerceAtLeast(0L)
+            if (length <= 0L) return
+            val show = "${catchup.channel.key}|${program.startMs}"
+            val replay = c.replayPlaylistFile
+            val url = c.playingUrl
+            when {
+                // Saved on this box while it plays (Faster Catch-Up Skipping): from its pieces.
+                replay != null -> SeekThumbs.open(
+                    context, owner, SeekThumbs.Source.Recording(replay, "replay|$show|${catchup.baseOffsetMs}|${replay.path}"),
+                    length, seen.height, seen.hdr, seen.playback, shiftMs = catchup.baseOffsetMs
+                )
+                url == null -> Unit
+                // The live stream with rewind, placed by the stream's own clock.
+                c.archiveWallMapped -> SeekThumbs.open(
+                    context, owner,
+                    SeekThumbs.Source.Hls(url, catchup.channel.headers, "catchup-clock|$show", programStartMs = program.startMs, policy = c.thumbnailPolicy),
+                    length, seen.height, seen.hdr, seen.playback
+                )
+                // A streamed replay straight from the provider.
+                c.catchupIsHls() -> SeekThumbs.open(
+                    context, owner,
+                    SeekThumbs.Source.Hls(url, catchup.channel.headers, "catchup|$show|${catchup.baseOffsetMs}", policy = c.thumbnailPolicy),
+                    length, seen.height, seen.hdr, seen.playback, shiftMs = catchup.baseOffsetMs
+                )
+                // A replay file straight from the provider: reading it again would take a second
+                // connection on the account, so pictures come from the saved copy instead.
+                else -> SeekThumbs.unsupported(owner, SeekThumbs.MSG_CATCHUP_SAVE)
+            }
+        }
+        // Live TV played from the rewind buffer (paused, behind live, or Rewind Anytime).
+        !c.ownTimeline.value && c.shiftPlaylistFile != null && c.shiftStartedAt.value != null -> {
+            val playlist = c.shiftPlaylistFile ?: return
+            val anchor = c.shiftStartedAt.value ?: return
+            val length = System.currentTimeMillis() - anchor
+            SeekThumbs.open(
+                context, owner,
+                SeekThumbs.Source.Buffer(playlist, "buffer|${c.playingChannel?.key}|$anchor|${playlist.path}", anchor) { c.shiftEarliestWallMs() },
+                length, seen.height, seen.hdr, seen.playback
+            )
+        }
         c.ownTimeline.value && !seen.growing -> {
             // A sports addon replay or highlight.
             val url = c.playingUrl ?: c.playingChannel?.url ?: return
+            val file = url.substringBefore('?').substringBefore('#').trimEnd('/').substringAfterLast('/')
             when {
-                isSegmentedLink(url) -> SeekThumbs.unsupported(owner, SeekThumbs.MSG_STREAMED)
                 !url.startsWith("http://", true) && !url.startsWith("https://", true) ->
                     SeekThumbs.unsupported(owner, "No thumbnails for this kind of link")
+                isHlsLink(url) && seen.durationMs > 0L -> SeekThumbs.open(
+                    context, owner,
+                    SeekThumbs.Source.Hls(url, c.playingChannel?.headers.orEmpty(), "sports-hls|$file|${url.hashCode()}|${seen.durationMs / 1000}"),
+                    seen.durationMs, seen.height, seen.hdr, seen.playback
+                )
+                isSegmentedLink(url) -> SeekThumbs.unsupported(owner, SeekThumbs.MSG_STREAMED)
                 seen.durationMs > 0L -> {
-                    val file = url.substringBefore('?').substringBefore('#').trimEnd('/').substringAfterLast('/')
                     SeekThumbs.open(
                         context, owner,
                         SeekThumbs.Source.Remote(url, c.playingChannel?.headers.orEmpty(), "sports|$file|${seen.durationMs / 1000}"),
@@ -93,12 +155,18 @@ private fun update(context: android.content.Context, c: LiveTvPlaybackController
                 }
             }
         }
-        // Live TV, catch-up, the pause buffer, a live addon stream.
+        // Live TV, the pause buffer, a live addon stream.
         else -> SeekThumbs.unsupported(owner, SeekThumbs.MSG_LIVE)
     }
 }
 
-/** HLS, DASH or Smooth Streaming (by the link's ending): no single file to take pictures from. */
+/** An HLS link (by the link's ending): read piece by piece for thumbnails. */
+internal fun isHlsLink(url: String): Boolean {
+    val path = url.substringBefore('#').substringBefore('?').trimEnd('/').lowercase()
+    return path.endsWith(".m3u8") || path.endsWith(".m3u") || path.contains("/hls/")
+}
+
+/** HLS, DASH or Smooth Streaming (by the link's ending). */
 internal fun isSegmentedLink(url: String): Boolean {
     val path = url.substringBefore('#').substringBefore('?').trimEnd('/').lowercase()
     return listOf(".m3u8", ".m3u", ".mpd", ".ism", ".ism/manifest").any { path.endsWith(it) } ||
@@ -106,8 +174,8 @@ internal fun isSegmentedLink(url: String): Boolean {
 }
 
 /**
- * The seek thumbnail over the Live TV player's seek bar: shown while the bar is selected and
- * you're moving through the video (a jump of more than a few seconds), for 2 seconds after.
+ * The seek thumbnail over the Live TV player's seek bar: shown while you're moving through the
+ * video (a jump of more than a few seconds, bar selected or not), for 2 seconds after.
  */
 @Composable
 fun LiveTvTimelineThumb(
@@ -123,7 +191,7 @@ fun LiveTvTimelineThumb(
     LaunchedEffect(positionMs, grabbed) {
         val previous = last[0]
         last[0] = positionMs
-        if (!grabbed) { seekingUntil = 0L; return@LaunchedEffect }
+        // Any jump of more than a few seconds is a seek: Up-to-seek on the bar, or ◀ ▶ with it closed.
         if (previous != Long.MIN_VALUE && kotlin.math.abs(positionMs - previous) > 6_000L) {
             seekingUntil = android.os.SystemClock.elapsedRealtime() + 2_000L
         }
@@ -133,12 +201,16 @@ fun LiveTvTimelineThumb(
     }
     val span = (endMs - startMs).coerceAtLeast(1L)
     val rel = (positionMs - startMs).coerceIn(0L, span)
+    // The rewind buffer counts its pictures from its own start (clock time), not the bar's.
+    val origin = SeekThumbs.origin(SeekThumbs.Owner.LIVE)
+    val at = if (origin != null) (positionMs - origin).coerceAtLeast(0L) else rel
     SeekThumbAbove(
         owner = SeekThumbs.Owner.LIVE,
-        positionMs = rel,
+        positionMs = at,
         fraction = rel.toFloat() / span,
         timeLabel = seekThumbTime(rel),
-        visible = grabbed && now < seekingUntil,
+        visible = now < seekingUntil,
         modifier = modifier,
     )
 }
+
