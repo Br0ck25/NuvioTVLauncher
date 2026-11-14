@@ -43,6 +43,7 @@ fun InstalledAppsHomeRow(
     var actionsFor by remember { mutableStateOf<com.nuvio.tv.core.apps.InstalledApp?>(null) }
     val move = rememberAppMoveState()
     val context = LocalContext.current
+    val tile = rememberHomeTile()
     if (apps.isEmpty()) return
 
     Column(Modifier.fillMaxWidth().padding(top = 12.dp, bottom = 12.dp)) {
@@ -67,7 +68,7 @@ fun InstalledAppsHomeRow(
                     loadImage = viewModel::image,
                     onClick = { viewModel.launch(app) },
                     onLongClick = { actionsFor = app },
-                    width = 160.dp,
+                    width = tile?.width ?: 160.dp,
                     showLabel = false,
                     moving = move.carrying == app.packageName
                 )

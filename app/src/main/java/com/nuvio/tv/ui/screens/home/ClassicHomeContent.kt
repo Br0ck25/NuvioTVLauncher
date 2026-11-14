@@ -147,6 +147,18 @@ fun ClassicHomeContent(
             ContinueWatchingCardStyle.CARD -> if (globalLandscape) classicLandscapeCatalogHeight else classicSecondaryPosterCardStyle.width
         }
     }
+    // The tile every row shares: Continue Watching's 16:9 card size, whatever style it is set to.
+    val classicTileGap = NuvioTheme.spacing.lg
+    val classicHomeTile = remember(classicSecondaryPosterCardStyle, classicLandscapeCatalogWidth, classicLandscapeCatalogHeight, globalLandscape, classicTileGap) {
+        if (globalLandscape) {
+            com.nuvio.tv.ui.components.HomeTile(classicLandscapeCatalogWidth, classicLandscapeCatalogHeight, classicTileGap)
+        } else {
+            com.nuvio.tv.ui.components.HomeTile(
+                classicSecondaryPosterCardStyle.width * (16f / 9f), classicSecondaryPosterCardStyle.width, classicTileGap
+            )
+        }
+    }
+    androidx.compose.runtime.SideEffect { com.nuvio.tv.ui.components.HomeTiles.publish(classicHomeTile) }
     // Match catalog poster label style so CW poster titles look the same as catalog ones.
     val classicPosterTitleStyle = if (uiState.continueWatchingCardStyle == ContinueWatchingCardStyle.POSTER) {
         MaterialTheme.typography.titleMedium

@@ -1036,7 +1036,7 @@ internal fun ModernRowSection(
                                     modifier = Modifier
                                         .focusRequester(requester)
                                         .onFocusChanged { if (it.isFocused) onFocused() },
-                                    width = 160.dp,
+                                    width = com.nuvio.tv.ui.components.rememberHomeTile()?.width ?: 160.dp,
                                     showLabel = false,
                                     moving = appMove.carrying == payload.app.packageName
                                 )

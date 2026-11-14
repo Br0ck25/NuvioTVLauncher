@@ -693,7 +693,9 @@ fun ContinueWatchingCard(
     
     val bgCardColor = NuvioTheme.colors.BackgroundCard
     val backgroundPainter = remember(bgCardColor) { androidx.compose.ui.graphics.painter.ColorPainter(bgCardColor) }
-    val effectiveCardWidth = if (isUpcomingCard) UPCOMING_SCHEDULE_CARD_WIDTH else cardWidth
+    // Upcoming is two tiles wide (the shared Home tile and the gap between), so it lines up with the rows around it.
+    val homeTile = rememberHomeTile()
+    val effectiveCardWidth = if (isUpcomingCard) (homeTile?.wideWidth ?: UPCOMING_SCHEDULE_CARD_WIDTH) else cardWidth
 
     LightweightCard(
         onClick = {
