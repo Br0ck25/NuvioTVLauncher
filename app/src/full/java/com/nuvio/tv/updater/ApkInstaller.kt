@@ -50,6 +50,11 @@ object ApkInstaller {
             // Sessions default to internal-only, which the system rejects for an app the user moved to adopted
             // storage. Auto keeps the update on the volume the app is already on.
             setInstallLocation(PackageInfo.INSTALL_LOCATION_AUTO)
+            // Android 14 puts the restricted-settings block back on updates from other sources, which switches the
+            // Home-button override off. This is the app updating itself from its own releases.
+            if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.UPSIDE_DOWN_CAKE) {
+                setPackageSource(PackageInstaller.PACKAGE_SOURCE_STORE)
+            }
             if (background && Build.VERSION.SDK_INT >= Build.VERSION_CODES.S) {
                 setRequireUserAction(PackageInstaller.SessionParams.USER_ACTION_NOT_REQUIRED)
             }
