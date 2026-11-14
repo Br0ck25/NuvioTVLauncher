@@ -267,10 +267,6 @@ private fun LiveTvHomeRowContent(
     // first channel, so the page doesn't lurch while the row is still growing.
     var catcherFocused by remember { mutableStateOf(false) }
     var rowHasFocus by remember { mutableStateOf(false) }
-    // With an update banner above the page, Up from the Live TV row goes on to the banner: the
-    // spot is skipped while the row has the highlight (it used to catch Up, so the banner could
-    // never be reached while the row was there).
-    val bannerShown by LiveTvHomeReveal.updateBannerShown.collectAsStateWithLifecycle()
     Box(
         modifier = Modifier
             .fillMaxWidth()
