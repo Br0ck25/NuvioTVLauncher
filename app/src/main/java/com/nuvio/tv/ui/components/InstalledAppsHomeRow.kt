@@ -15,6 +15,7 @@ import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.focus.focusRequester
 import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.text.TextStyle
 import androidx.compose.ui.unit.Dp
@@ -44,6 +45,32 @@ fun InstalledAppsHomeRow(
     val move = rememberAppMoveState()
     val context = LocalContext.current
     val tile = rememberHomeTile()
+    val listState = androidx.compose.foundation.lazy.rememberLazyListState()
+    // After each step the carried app gets the focus back and is kept on screen: when it moved to a place that was not
+    // composed (off the row's edge) the highlight was lost and the D-pad did nothing, so moving seemed to freeze.
+    val requesters = remember { mutableMapOf<String, androidx.compose.ui.focus.FocusRequester>() }
+    val carriedIndex = apps.indexOfFirst { it.packageName == move.carrying }
+    androidx.compose.runtime.LaunchedEffect(move.carrying, carriedIndex) {
+        val pkg = move.carrying ?: return@LaunchedEffect
+        if (carriedIndex < 0) return@LaunchedEffect
+        val info = listState.layoutInfo
+        val visible = info.visibleItemsInfo
+        val shown = visible.firstOrNull { it.index == carriedIndex }
+        val fullyVisible = shown != null && shown.offset >= info.viewportStartOffset &&
+            shown.offset + shown.size <= info.viewportEndOffset - info.afterContentPadding
+        if (!fullyVisible) {
+            when {
+                visible.isEmpty() || carriedIndex < visible.first().index -> listState.animateScrollToItem(carriedIndex)
+                else -> listState.animateScrollToItem((carriedIndex - (visible.size - 1)).coerceAtLeast(0))
+            }
+        }
+        repeat(6) {
+            if (runCatching { requesters.getOrPut(pkg) { androidx.compose.ui.focus.FocusRequester() }.requestFocus() }.isSuccess) {
+                return@LaunchedEffect
+            }
+            kotlinx.coroutines.delay(40)
+        }
+    }
     if (apps.isEmpty()) return
 
     Column(Modifier.fillMaxWidth().padding(top = 12.dp, bottom = 12.dp)) {
@@ -54,6 +81,7 @@ fun InstalledAppsHomeRow(
             modifier = Modifier.padding(start = startPadding, bottom = 10.dp)
         )
         LazyRow(
+            state = listState,
             contentPadding = PaddingValues(horizontal = startPadding, vertical = 6.dp),
             horizontalArrangement = Arrangement.spacedBy(14.dp),
             modifier = Modifier.appMoveKeys(move) { delta ->
@@ -68,6 +96,7 @@ fun InstalledAppsHomeRow(
                     loadImage = viewModel::image,
                     onClick = { viewModel.launch(app) },
                     onLongClick = { actionsFor = app },
+                    modifier = Modifier.focusRequester(requesters.getOrPut(app.packageName) { androidx.compose.ui.focus.FocusRequester() }),
                     width = tile?.width ?: 160.dp,
                     showLabel = false,
                     moving = move.carrying == app.packageName
