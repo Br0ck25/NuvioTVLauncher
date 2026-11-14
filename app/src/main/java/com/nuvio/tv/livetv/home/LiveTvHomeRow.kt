@@ -303,14 +303,10 @@ private fun LiveTvHomeRowContent(
     )
     androidx.compose.animation.AnimatedVisibility(
         visible = open,
-        enter = androidx.compose.animation.expandVertically(
-            animationSpec = androidx.compose.animation.core.tween(OPEN_MS, easing = androidx.compose.animation.core.FastOutSlowInEasing),
-            expandFrom = Alignment.Bottom
-        ) + androidx.compose.animation.fadeIn(androidx.compose.animation.core.tween(OPEN_MS)),
-        exit = androidx.compose.animation.shrinkVertically(
-            animationSpec = androidx.compose.animation.core.tween(CLOSE_MS, easing = androidx.compose.animation.core.FastOutSlowInEasing),
-            shrinkTowards = Alignment.Bottom
-        ) + androidx.compose.animation.fadeOut(androidx.compose.animation.core.tween(CLOSE_MS))
+        // Fade only: the row's height changes once, not over several frames. Animating it fought the
+        // list's own scroll to the focused row, and the page bounced going to the row and back.
+        enter = androidx.compose.animation.fadeIn(androidx.compose.animation.core.tween(OPEN_MS)),
+        exit = androidx.compose.animation.fadeOut(androidx.compose.animation.core.tween(CLOSE_MS))
     ) {
         Column(
             modifier = Modifier
@@ -332,9 +328,13 @@ private fun LiveTvHomeRowContent(
                     LiveTvHomeFocus.rowHasFocus = it.hasFocus
                 }
                 .graphicsLayer { this.alpha = alpha }
-                .padding(vertical = 6.dp)
+                // Classic and Grid: no extra padding, so the gaps match Continue Watching's (Modern keeps its own).
+                .padding(vertical = if (hideUnlessFocused) 6.dp else 0.dp)
         ) {
-            Row(modifier = Modifier.padding(start = startPadding, end = startPadding, bottom = 8.dp), verticalAlignment = Alignment.CenterVertically) {
+            Row(
+                modifier = Modifier.padding(start = startPadding, end = startPadding, bottom = if (hideUnlessFocused) 8.dp else NuvioTheme.spacing.lg),
+                verticalAlignment = Alignment.CenterVertically
+            ) {
                 // Your own title wins; otherwise the title says what the row holds.
                 val title = settings.homeRowTitle.ifBlank {
                     when (settings.homeRowSource) {
@@ -495,6 +495,18 @@ private fun HomeCard(
                 else -> entry.channel.group.takeIf { it.isNotBlank() && it != entry.channel.name } ?: ""
             }
             if (sub.isNotBlank()) LiveText(sub, color = NuvioTheme.extendedColors.textSecondary, size = 12.sp, marquee = focused)
+            // How far through the show it is.
+            if (!compact && p != null) {
+                Box(
+                    modifier = Modifier.fillMaxWidth().height(3.dp).clip(RoundedCornerShape(2.dp))
+                        .background(Color.White.copy(alpha = 0.18f))
+                ) {
+                    Box(
+                        modifier = Modifier.fillMaxWidth(p.progress(now)).height(3.dp)
+                            .background(NuvioTheme.colors.Secondary)
+                    )
+                }
+            }
         }
     }
 }
