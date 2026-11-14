@@ -894,10 +894,6 @@ open class MainActivity : ComponentActivity() {
                     val surfaceContentReady = hasSeenAuthQrOnFirstLaunch != null &&
                         authState !is AuthState.Loading
 
-                    // Launcher: shown (on top, with a one-press fix) if the TV's own launcher has been turned off.
-                    com.nuvio.tv.ui.screens.setup.StockLauncherWarning(
-                        modifier = Modifier.align(Alignment.TopCenter).zIndex(100f)
-                    )
                     // Launcher: the first-run setup (Home app, Home button, notifications) comes before sign-in.
                     // An update can quietly switch the Home button override off: if it was on and is off now,
                     // reopen the setup at the checklist with a notice instead of leaving Home on the stock launcher.
