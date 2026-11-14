@@ -491,9 +491,10 @@ private fun HomeCard(
             val sub = when {
                 showNext && next != null -> "${entry.channel.name} · ${formatClock(next.startMs, use24h)}"
                 p != null -> listOfNotNull(entry.channel.name, minutesLeftLabel(p.stopMs, now)).joinToString(" · ")
-                else -> entry.channel.name
+                // No listing: the title is already the channel's name, so the line under it is its group.
+                else -> entry.channel.group.takeIf { it.isNotBlank() && it != entry.channel.name } ?: ""
             }
-            LiveText(sub, color = NuvioTheme.extendedColors.textSecondary, size = 12.sp, marquee = focused)
+            if (sub.isNotBlank()) LiveText(sub, color = NuvioTheme.extendedColors.textSecondary, size = 12.sp, marquee = focused)
         }
     }
 }
