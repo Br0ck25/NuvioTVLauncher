@@ -323,7 +323,12 @@ private fun LiveTvHomeRowContent(
                 }
                 .graphicsLayer { this.alpha = alpha }
                 // Classic and Grid: no extra padding, so the gaps match Continue Watching's (Modern keeps its own).
-                .padding(vertical = if (hideUnlessFocused) 6.dp else 0.dp)
+                // Modern: the row shares a list item with Continue Watching, so it needs the gap the list puts
+                // between its own rows (spacing.xl) below it, or Continue Watching's title sits right under the tiles.
+                .padding(
+                    top = if (hideUnlessFocused) 6.dp else 0.dp,
+                    bottom = if (hideUnlessFocused) NuvioTheme.spacing.xl else 0.dp
+                )
         ) {
             Row(
                 modifier = Modifier.padding(start = startPadding, end = startPadding, bottom = if (hideUnlessFocused) 14.dp else NuvioTheme.spacing.lg), // Modern: its rows use 14.dp (rowTitleBottom)
@@ -346,7 +351,8 @@ private fun LiveTvHomeRowContent(
             LazyRow(
                 state = listState,
                 contentPadding = PaddingValues(start = startPadding, end = maxOf(startPadding, 24.dp)),
-                horizontalArrangement = Arrangement.spacedBy(10.dp)
+                // The same gap as Upcoming and Continue Watching, so the cards line up with the rows around them.
+                horizontalArrangement = Arrangement.spacedBy(com.nuvio.tv.ui.components.rememberHomeTile()?.gap ?: 10.dp)
             ) {
                 itemsIndexed(entries, key = { _, it -> it.channel.key }) { index, e ->
                     val requester = cardFocus.getOrPut(e.channel.key) { androidx.compose.ui.focus.FocusRequester() }
@@ -415,10 +421,10 @@ private fun HomeCard(
     // Two tiles wide, like the Upcoming cards (the height stays 88).
     val homeTile = com.nuvio.tv.ui.components.rememberHomeTile()
     val cardWidth = if (compact) (homeTile?.width ?: 260.dp) else (homeTile?.wideWidth ?: 330.dp)
-    val scale by androidx.compose.animation.core.animateFloatAsState(if (focused) 1.04f else 1f, label = "liveCardScale")
+    // No focus zoom: Upcoming and Continue Watching cards only get the border, and a 4% bigger card looked like a
+    // different size from the Upcoming cards it is meant to match.
     Row(
         modifier = modifier
-            .graphicsLayer { scaleX = scale; scaleY = scale }
             .width(cardWidth)
             .height(cardHeight)
             .clip(shape)
