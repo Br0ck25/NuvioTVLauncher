@@ -70,7 +70,9 @@ object XmltvParser {
         var buf = ArrayList<EpgProgram>()
         fun flush() {
             val id = bufId ?: return
-            if (buf.isNotEmpty()) onPrograms?.invoke(id, buf.sortedBy { it.startMs })
+            // No sort here: the guide path cleans and sorts each channel's listings anyway, and
+            // sorting every channel's run twice was wasted work on big guides.
+            if (buf.isNotEmpty()) onPrograms?.invoke(id, buf)
             buf = ArrayList()
             bufId = null
         }

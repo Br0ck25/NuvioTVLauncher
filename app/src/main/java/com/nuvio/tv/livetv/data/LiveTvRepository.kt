@@ -734,6 +734,12 @@ class LiveTvRepository @Inject constructor(
             outOfTheWay()
             setStatus(loading = true, message = "Matching guide data…")
             buildPrograms(settings, epgTargets)
+        } else if (guideNeedsRebuild) {
+            // The saved guide was shown instead of re-reading every file at startup. Nothing
+            // new was downloaded, so match the existing files again now, out of the way.
+            outOfTheWay()
+            setStatus(loading = true, message = "Refreshing guide…")
+            buildPrograms(settings, epgTargets)
         }
         _status.value = LiveTvStatus(loading = false, loadedOnce = true)
     }
@@ -763,7 +769,7 @@ class LiveTvRepository @Inject constructor(
         // The guide as it was last matched, if nothing it depends on has changed: the guide
         // fills in straight away instead of re-reading every guide file at each start.
         t0 = System.currentTimeMillis()
-        if (!loadGuideFromDb(settings, targets, guidePreRead.await())) {
+        if (!loadGuideFromDb(settings, targets, guidePreRead.await(), allowStale = true)) {
             if (dropRemovedPlaylistsFromGuide(settings, targets)) {
                 LIVE_REPORT.add("Guide kept: turned-off playlists' channels taken out in ${System.currentTimeMillis() - t0} ms")
             } else {
@@ -771,7 +777,10 @@ class LiveTvRepository @Inject constructor(
                 LIVE_REPORT.add("Guide re-read from guide files in ${System.currentTimeMillis() - t0} ms")
             }
         } else {
-            LIVE_REPORT.add("Stored guide used: ${_programs.value.size} channels with listings in ${System.currentTimeMillis() - t0} ms")
+            LIVE_REPORT.add(
+                "Stored guide used: ${_programs.value.size} channels with listings in ${System.currentTimeMillis() - t0} ms" +
+                    if (guideNeedsRebuild) " (out of date; refreshing in the background)" else ""
+            )
         }
         _status.value = LiveTvStatus(loading = false, loadedOnce = true)
     }
@@ -1057,6 +1066,8 @@ class LiveTvRepository @Inject constructor(
     @Volatile private var loadedFrom = Long.MAX_VALUE
     @Volatile private var loadedTo = Long.MIN_VALUE
     @Volatile private var guideInDb = false
+    /** The saved guide is shown but no longer matches: match the guide files again soon. */
+    @Volatile private var guideNeedsRebuild = false
     /** The stored guide turned out to have no listings around now: match the guides again. */
     @Volatile private var storedGuideEmpty = false
 
@@ -1123,14 +1134,28 @@ class LiveTvRepository @Inject constructor(
      * channels you were last looking at straight away (read ahead, short form), then fill in all
      * the others in the background. Instant, however big the guide is.
      */
-    private suspend fun loadGuideFromDb(settings: LiveTvSettings, targets: List<EpgTarget>, pre: GuidePreRead?): Boolean = withContext(Dispatchers.IO) {
+    private suspend fun loadGuideFromDb(
+        settings: LiveTvSettings,
+        targets: List<EpgTarget>,
+        pre: GuidePreRead?,
+        /** Use the saved guide even when it no longer matches: it's better than a blank guide
+         *  while the new one downloads. The caller rebuilds it afterwards. */
+        allowStale: Boolean = false
+    ): Boolean = withContext(Dispatchers.IO) {
         if (_channels.value.isEmpty()) return@withContext false
         runCatching { savedGuideFile.delete() } // the old single-file copy isn't used any more
         val expected = guideFingerprint(settings, targets)
         val stored = pre?.fingerprint ?: runCatching { guideDb.fingerprint() }.getOrNull()
         if (stored != expected) {
-            LIVE_REPORT.add(if (stored == null) "No stored guide yet" else "Stored guide out of date: ${fingerprintDiff(stored, expected)}")
-            return@withContext false
+            val diff = if (stored == null) "No stored guide yet" else "Stored guide out of date: ${fingerprintDiff(stored, expected)}"
+            if (!allowStale || stored == null) {
+                LIVE_REPORT.add(diff)
+                return@withContext false
+            }
+            LIVE_REPORT.add("$diff — showing it while the new guide is prepared")
+            guideNeedsRebuild = true
+        } else {
+            guideNeedsRebuild = false
         }
         val now = System.currentTimeMillis()
         val from = pre?.from ?: (now - 60 * 60 * 1000L)
@@ -1987,6 +2012,7 @@ class LiveTvRepository @Inject constructor(
         val t0 = System.currentTimeMillis()
         BackgroundWork.guideBuilding.value = true
         try { BackgroundWork.heavy { buildProgramsInner(settings, targets) } } finally { BackgroundWork.guideBuilding.value = false }
+        guideNeedsRebuild = false
         LIVE_REPORT.add("Guide matched and stored: ${_programs.value.size} channels in ${System.currentTimeMillis() - t0} ms")
     }
 

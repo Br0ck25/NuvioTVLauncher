@@ -39,7 +39,6 @@ class EpgDatabase @Inject constructor(@ApplicationContext context: Context) :
                 descr TEXT, cat TEXT, ep TEXT, icon TEXT, year INTEGER, people TEXT)"""
         )
         db.execSQL("CREATE INDEX programs_ch_start ON programs(ch, start)")
-        db.execSQL("CREATE INDEX programs_stop ON programs(stop)")
         db.execSQL("CREATE INDEX IF NOT EXISTS programs_start ON programs(start)")
         db.execSQL("CREATE TABLE auto (ch TEXT PRIMARY KEY, source TEXT NOT NULL, xmltv TEXT NOT NULL)")
         db.execSQL("CREATE TABLE meta (k TEXT PRIMARY KEY, v TEXT)")
@@ -96,7 +95,7 @@ class EpgDatabase @Inject constructor(@ApplicationContext context: Context) :
                         p.icon?.let { stmt.bindString(8, it) } ?: stmt.bindNull(8)
                         p.year?.let { stmt.bindLong(9, it.toLong()) } ?: stmt.bindNull(9)
                         if (p.people.isEmpty()) stmt.bindNull(10) else stmt.bindString(10, p.people.joinToString("\u001F"))
-                        stmt.executeInsert()
+                        stmt.execute()
                     }
                 }
                 auto.forEach { (ch, a) ->
@@ -105,7 +104,6 @@ class EpgDatabase @Inject constructor(@ApplicationContext context: Context) :
                     }, SQLiteDatabase.CONFLICT_REPLACE)
                 }
                 db.execSQL("CREATE INDEX IF NOT EXISTS programs_ch_start ON programs(ch, start)")
-                db.execSQL("CREATE INDEX IF NOT EXISTS programs_stop ON programs(stop)")
                 db.execSQL("CREATE INDEX IF NOT EXISTS programs_start ON programs(start)")
                 putFingerprint(db, fingerprint, parts)
                 db.setTransactionSuccessful()
@@ -154,7 +152,7 @@ class EpgDatabase @Inject constructor(@ApplicationContext context: Context) :
                         p.icon?.let { stmt.bindString(8, it) } ?: stmt.bindNull(8)
                         p.year?.let { stmt.bindLong(9, it.toLong()) } ?: stmt.bindNull(9)
                         if (p.people.isEmpty()) stmt.bindNull(10) else stmt.bindString(10, p.people.joinToString("\u001F"))
-                        stmt.executeInsert()
+                        stmt.execute()
                     }
                 }
                 auto.forEach { (ch, a) ->
@@ -421,7 +419,7 @@ class EpgDatabase @Inject constructor(@ApplicationContext context: Context) :
                     stmt.bindString(1, ch); stmt.bindLong(2, p.startMs); stmt.bindLong(3, p.stopMs); stmt.bindString(4, p.title)
                     p.description?.let { stmt.bindString(5, it) } ?: stmt.bindNull(5)
                     stmt.bindNull(6); stmt.bindNull(7); stmt.bindNull(8); stmt.bindNull(9); stmt.bindNull(10)
-                    stmt.executeInsert()
+                    stmt.execute()
                 }
                 putRevision(db)
                 db.setTransactionSuccessful()
@@ -512,7 +510,7 @@ class EpgDatabase @Inject constructor(@ApplicationContext context: Context) :
                 p.icon?.let { stmt.bindString(9, it) } ?: stmt.bindNull(9)
                 p.year?.let { stmt.bindLong(10, it.toLong()) } ?: stmt.bindNull(10)
                 if (p.people.isEmpty()) stmt.bindNull(11) else stmt.bindString(11, p.people.joinToString("\u001F"))
-                stmt.executeInsert()
+                stmt.execute()
                 m[0]++
                 if (p.stopMs > m[1]) m[1] = p.stopMs
                 if (isPlaceholder(p.title)) m[2]++
@@ -728,7 +726,7 @@ class EpgDatabase @Inject constructor(@ApplicationContext context: Context) :
                         p.icon?.let { stmt.bindString(8, it) } ?: stmt.bindNull(8)
                         p.year?.let { stmt.bindLong(9, it.toLong()) } ?: stmt.bindNull(9)
                         if (p.people.isEmpty()) stmt.bindNull(10) else stmt.bindString(10, p.people.joinToString("\u001F"))
-                        stmt.executeInsert()
+                        stmt.execute()
                     }
                 }
                 auto.forEach { (ch, a) ->
@@ -737,7 +735,6 @@ class EpgDatabase @Inject constructor(@ApplicationContext context: Context) :
                     }, SQLiteDatabase.CONFLICT_REPLACE)
                 }
                 db.execSQL("CREATE INDEX IF NOT EXISTS programs_ch_start ON programs(ch, start)")
-                db.execSQL("CREATE INDEX IF NOT EXISTS programs_stop ON programs(stop)")
                 db.execSQL("CREATE INDEX IF NOT EXISTS programs_start ON programs(start)")
                 putFingerprint(db, fingerprint, parts)
                 db.setTransactionSuccessful()
@@ -830,7 +827,7 @@ class EpgDatabase @Inject constructor(@ApplicationContext context: Context) :
                 (r[4] as String?)?.let { stmt.bindString(5, it) } ?: stmt.bindNull(5)
                 (r[5] as String?)?.let { stmt.bindString(6, it) } ?: stmt.bindNull(6)
                 stmt.bindString(7, r[6] as String); stmt.bindString(8, r[7] as String)
-                stmt.executeInsert()
+                stmt.execute()
             }
             stmt.close()
             buffer.clear()
