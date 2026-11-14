@@ -79,7 +79,11 @@ class LiveTvHomeRowViewModel @Inject constructor(
             LiveTvViewModel.HomeRowEntry(ch, moved(cur), moved(nxt))
         }
         if (s.homeRowHidePlaceholders) {
-            entries = entries.filter { e -> e.now != null && !LiveTvRepository.isPlaceholderTitle(e.now.title) }
+            val withListings = entries.filter { e -> e.now != null && !LiveTvRepository.isPlaceholderTitle(e.now.title) }
+            // With no guide at all (or none for these channels) nothing has a listing, and hiding the
+            // channels with none would empty the row: Favorites and Recently watched would never show.
+            // Then the channels are shown as they are.
+            if (withListings.isNotEmpty()) entries = withListings
         }
         entries = when (s.homeRowSort) {
             "number" -> entries.sortedBy { it.channel.number }
