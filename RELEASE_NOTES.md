@@ -48,10 +48,4 @@ Only the selected pane plays sound. A pane that loses its stream reconnects on i
 - Multiview panes failing to start on this Media3 version.
 - OneTube seek previews when YouTube supplies the storyboard late.
 
-## Upgrading
 
-The saved channel list and guide are stored in a new format. The first Live TV start after upgrading rebuilds both once from your playlists and guide files; after that it uses the saved copies.
-
-## Thanks
-
-Multiview, Stalker and Ministra support, the frame-rate work and much of the speed work came from bArKEr (@ghbarker).
