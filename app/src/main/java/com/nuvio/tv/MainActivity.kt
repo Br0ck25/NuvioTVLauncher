@@ -1514,8 +1514,12 @@ open class MainActivity : ComponentActivity() {
                                 LocalNavViewModelStoreOwner provides navViewModelStoreOwner,
                                 com.nuvio.tv.livetv.ui.LocalSideMenuFit provides liveTvSettingsNow.sideMenuFit
                             ) {
+                                val floatingPillShowsProfile by remember(activeProfileId) {
+                                    layoutPreferenceDataStore.floatingPillShowsProfile
+                                }.collectAsState(initial = false)
                                 if (modernSidebarEnabled) {
                                     ModernSidebarScaffold(
+                                        floatingPillShowsProfile = floatingPillShowsProfile,
                                         longPressBackHeld = longPressBackHeld,
                                         navController = navController,
                                         startDestination = startDestination,
@@ -2195,6 +2199,29 @@ private fun LegacySidebarScaffold(
                                 )
                             }
                         }
+                    } else if (showProfileSelector && activeProfileName.isNotEmpty()) {
+                        // Collapsed rail: the profile's picture above Home, so you can see whose Home it is without
+                        // opening the sidebar. Display only (the expanded row is the one that switches profile), so it
+                        // never takes the focus when the rail opens.
+                        Box(
+                            modifier = Modifier
+                                .align(Alignment.TopStart)
+                                .padding(top = 30.dp)
+                                .offset(x = NuvioTheme.spacing.md)
+                                .width(itemWidth)
+                                .height(sidebarTokens.itemHeight)
+                                .focusProperties { canFocus = false }
+                                .semantics { contentDescription = activeProfileName },
+                            contentAlignment = Alignment.Center
+                        ) {
+                            ProfileAvatarCircle(
+                                name = activeProfileName,
+                                colorHex = activeProfileColorHex,
+                                size = NuvioTheme.sizes.sidebar.leadingVisual,
+                                avatarImageUrl = activeProfileAvatarImageUrl,
+                                imageCrossfade = false
+                            )
+                        }
                     }
 
                     // Live TV fork: every page in one menu. Slimmer items, a thin line between
@@ -2540,7 +2567,9 @@ private fun ModernSidebarScaffold(
     onExitApp: () -> Unit,
     launcherMode: () -> Boolean = { false },
     onToggleLiveTvGroup: () -> Unit = {},
-    onSidebarExpandedChange: (Boolean) -> Unit = {}
+    onSidebarExpandedChange: (Boolean) -> Unit = {},
+    /** The floating pill shows the profile (picture and name) instead of the page (Settings → Layout). */
+    floatingPillShowsProfile: Boolean = false
 ) {
     // Live TV fork: full screen now happens inside the Live TV screen (one video view that just
     // grows), which is one of the menu's pages, so the menu has to step aside for it.
@@ -2993,8 +3022,13 @@ private fun ModernSidebarScaffold(
                 sidebarShowCollapsedPill &&
                 selectedDrawerRoute != Screen.Search.route
             ) {
+                // Profile mode needs more than one profile; otherwise the page pill stays.
+                val pillShowsProfile = floatingPillShowsProfile && showProfileSelector && activeProfileName.isNotEmpty()
                 CollapsedSidebarPill(
-                    label = selectedDrawerItem.pillLabel ?: selectedDrawerItem.label,
+                    profileName = if (pillShowsProfile) activeProfileName else null,
+                    profileColorHex = activeProfileColorHex,
+                    profileAvatarImageUrl = activeProfileAvatarImageUrl,
+                    label = if (pillShowsProfile) activeProfileName else selectedDrawerItem.pillLabel ?: selectedDrawerItem.label,
                     iconRes = selectedDrawerItem.iconRes,
                     // Live TV fork: the Guide page shows as "Live TV" in the pill.
                     icon = if (selectedDrawerItem.route == Screen.LiveTv.route) Icons.Default.LiveTv else selectedDrawerItem.icon,
@@ -3037,6 +3071,10 @@ private fun CollapsedSidebarPill(
     blurEnabled: Boolean,
     hazeState: HazeState? = null,
     modifier: Modifier = Modifier,
+    /** Set: the pill shows this profile (its picture, or colour and initial) in place of the page's icon. */
+    profileName: String? = null,
+    profileColorHex: String = "#1E88E5",
+    profileAvatarImageUrl: String? = null,
     onExpand: () -> Unit
 ) {
     val pillShape = RoundedCornerShape(NuvioRadii.tokens.full)
@@ -3092,14 +3130,24 @@ private fun CollapsedSidebarPill(
                         .size(NuvioTheme.sizes.sidebar.leadingVisual),
                     contentAlignment = Alignment.Center
                 ) {
-                    DrawerItemIcon(
-                        iconRes = iconRes,
-                        icon = icon,
-                        tint = NuvioTheme.colors.text.onOverlay,
-                        modifier = Modifier
-                            .size(NuvioTheme.sizes.sidebar.leadingVisual - NuvioTheme.spacing.md)
-                            .offset(y = (-0.5).dp)
-                    )
+                    if (profileName != null) {
+                        ProfileAvatarCircle(
+                            name = profileName,
+                            colorHex = profileColorHex,
+                            size = NuvioTheme.sizes.sidebar.leadingVisual - NuvioTheme.spacing.xs,
+                            avatarImageUrl = profileAvatarImageUrl,
+                            imageCrossfade = false
+                        )
+                    } else {
+                        DrawerItemIcon(
+                            iconRes = iconRes,
+                            icon = icon,
+                            tint = NuvioTheme.colors.text.onOverlay,
+                            modifier = Modifier
+                                .size(NuvioTheme.sizes.sidebar.leadingVisual - NuvioTheme.spacing.md)
+                                .offset(y = (-0.5).dp)
+                        )
+                    }
                 }
 
                 AnimatedVisibility(

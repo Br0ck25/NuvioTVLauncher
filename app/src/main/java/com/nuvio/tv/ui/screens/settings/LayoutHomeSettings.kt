@@ -229,6 +229,13 @@ internal fun LayoutSidebarSection(
             checked = uiState.sidebarCollapsedByDefault,
             onToggle = { onEvent(LayoutSettingsEvent.SetSidebarCollapsed(!uiState.sidebarCollapsedByDefault)) }
         )
+        // One pill, one job: the page's name, or the profile. Needs more than one profile to show anything.
+        SettingsToggleRow(
+            title = stringResource(R.string.layout_pill_shows_profile),
+            subtitle = stringResource(R.string.layout_pill_shows_profile_sub),
+            checked = uiState.floatingPillShowsProfile,
+            onToggle = { onEvent(LayoutSettingsEvent.SetFloatingPillShowsProfile(!uiState.floatingPillShowsProfile)) }
+        )
     } else {
         SettingsToggleRow(
             title = stringResource(R.string.layout_collapse_sidebar),

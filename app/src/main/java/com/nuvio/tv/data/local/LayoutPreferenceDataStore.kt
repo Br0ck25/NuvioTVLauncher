@@ -81,6 +81,7 @@ class LayoutPreferenceDataStore @Inject constructor(
     private val modernSidebarEnabledKey = booleanPreferencesKey("modern_sidebar_enabled")
     private val legacyModernSidebarEnabledKey = booleanPreferencesKey("glass_sidepanel_enabled")
     private val modernSidebarBlurEnabledKey = booleanPreferencesKey("modern_sidebar_blur_enabled")
+    private val floatingPillShowsProfileKey = booleanPreferencesKey("floating_pill_shows_profile")
     private val modernLandscapePostersEnabledKey = booleanPreferencesKey("modern_landscape_posters_enabled")
     private val heroSectionEnabledKey = booleanPreferencesKey("hero_section_enabled")
     private val posterLabelsEnabledKey = booleanPreferencesKey("poster_labels_enabled")
@@ -236,6 +237,11 @@ class LayoutPreferenceDataStore @Inject constructor(
 
     val modernSidebarEnabled: Flow<Boolean> = profileFlow { prefs ->
         prefs[modernSidebarEnabledKey] ?: prefs[legacyModernSidebarEnabledKey] ?: false
+    }
+
+    /** The floating pill (Modern sidebar) shows the profile's picture and name instead of the page's icon and name. */
+    val floatingPillShowsProfile: Flow<Boolean> = profileFlow { prefs ->
+        prefs[floatingPillShowsProfileKey] ?: false
     }
 
     val modernSidebarBlurEnabled: Flow<Boolean> = profileFlow { prefs ->
@@ -596,6 +602,10 @@ class LayoutPreferenceDataStore @Inject constructor(
             prefs[modernSidebarEnabledKey] = enabled
             prefs.remove(legacyModernSidebarEnabledKey)
         }
+    }
+
+    suspend fun setFloatingPillShowsProfile(enabled: Boolean) {
+        store().edit { prefs -> prefs[floatingPillShowsProfileKey] = enabled }
     }
 
     suspend fun setModernSidebarBlurEnabled(enabled: Boolean) {
