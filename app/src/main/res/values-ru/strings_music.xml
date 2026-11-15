@@ -56,4 +56,5 @@
     <string name="music_settings_download_quality">Качество загрузки</string>
     <string name="music_settings_wifi_only">Только Wi-Fi</string>
     <string name="music_settings_sleep_timer">Таймер сна</string>
+    <string name="music_nav_label">Музыка</string>
 </resources>

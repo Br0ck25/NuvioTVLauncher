@@ -63,4 +63,5 @@
     <string name="music_settings_download_quality">Download quality</string>
     <string name="music_settings_wifi_only">Wi-Fi only</string>
     <string name="music_settings_sleep_timer">Sleep timer</string>
+    <string name="music_nav_label">Music</string>
 </resources>

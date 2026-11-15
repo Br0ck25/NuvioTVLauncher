@@ -56,4 +56,5 @@
     <string name="music_settings_download_quality">Qualidade de transferência</string>
     <string name="music_settings_wifi_only">Apenas Wi-Fi</string>
     <string name="music_settings_sleep_timer">Temporizador</string>
+    <string name="music_nav_label">Música</string>
 </resources>

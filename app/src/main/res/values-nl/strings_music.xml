@@ -56,4 +56,5 @@
     <string name="music_settings_download_quality">Downloadkwaliteit</string>
     <string name="music_settings_wifi_only">Alleen Wi-Fi</string>
     <string name="music_settings_sleep_timer">Slaaptimer</string>
+    <string name="music_nav_label">Muziek</string>
 </resources>
