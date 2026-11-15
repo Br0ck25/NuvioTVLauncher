@@ -26,6 +26,8 @@ internal class SportsFeeds {
         .callTimeout(40, TimeUnit.SECONDS)
         .followRedirects(true)
         .retryOnConnectionFailure(true)
+        // Our builds read the sports files through our own service (see ForkService).
+        .addInterceptor(com.nuvio.tv.livetv.data.ForkService.dataInterceptor)
         .build()
 
     private fun get(url: String): String {
@@ -120,6 +122,10 @@ internal class SportsFeeds {
     /** The list of teams that have players (not built by the new data job yet). */
     fun playersIndexRaw(): String =
         if (!SportsCatalog.SHARED_DATA_ENABLED || !PLAYERS_ENABLED) "" else get(DATA_URL + "sportsdb/players/index.json")
+
+    /** Team colours from TheSportsDB for every team-sport league (not built by our data job yet). */
+    fun teamColorsRaw(): String =
+        if (!SportsCatalog.SHARED_DATA_ENABLED || !TEAM_COLORS_ENABLED) "" else get(DATA_URL + "sportsdb/colors.json")
 
     /** One team's players, by team id (not built by the new data job yet). */
     fun playersRaw(teamId: String): String =
@@ -322,6 +328,7 @@ internal class SportsFeeds {
         /** The new data job does not build these files yet. */
         const val TV_LISTINGS_ENABLED = false
         const val PLAYERS_ENABLED = false
+        const val TEAM_COLORS_ENABLED = false
         /** Ready-made compact score files are not built either; the raw espn/ cache is used. */
         const val COMPACT_FILES_ENABLED = false
 
@@ -335,12 +342,15 @@ internal class SportsFeeds {
          */
         class TsdbLeague(val league: League, val teams: List<TeamInfo>, val tsdbId: String = league.id.removePrefix("tsdb/"), val alias: Boolean = false)
 
-        /** Club colours aren't in the data: a steady colour per club, from its name. */
+        /**
+         * Colours missing from the data: a steady stand-in per team, from its name. The app knows a
+         * colour is one of these by working it out again (TeamColors), so never change them.
+         */
         private val CLUB_COLORS = longArrayOf(
             0xFFB71C1C, 0xFF0D47A1, 0xFF1B5E20, 0xFF4A148C, 0xFFE65100, 0xFF006064,
             0xFF880E4F, 0xFF263238, 0xFF33691E, 0xFF1A237E, 0xFFBF360C, 0xFF3E2723
         )
-        private fun clubColor(name: String): Long = CLUB_COLORS[Math.floorMod(name.lowercase(Locale.ROOT).hashCode(), CLUB_COLORS.size)]
+        fun clubColor(name: String): Long = CLUB_COLORS[Math.floorMod(name.lowercase(Locale.ROOT).hashCode(), CLUB_COLORS.size)]
 
         private fun clubAbbr(name: String): String {
             val words = name.split(' ', '-').filter { it.isNotBlank() && it.lowercase(Locale.ROOT) !in setOf("fc", "afc", "town", "city", "united", "the", "and", "&") }
