@@ -56,9 +56,11 @@ Built on Nuvio 1.2.0-beta.1.3, with everything Nuvio One already had.
 - Some recordings saved without their start, so they wouldn't play.
 - **Sports:** channels you fixed by hand now stay after a channel search and when your provider renames the channel, and fight cards with only a date no longer disappear.
 - **Match frame rate:** a 60 fps channel is now recognised after watching a 24 or 50 fps channel.
+- Multiview panes now start reliably on this Media3 version.
+- OneTube seek previews now appear even when YouTube returns the storyboard a moment after playback starts.
 
 ## Upgrading
-- The saved channel list uses a new format. The first time you open Live TV after upgrading, it is rebuilt once from your playlists; after that it starts from the saved list as usual.
+- The saved channel list and guide use a new format. The first time you open Live TV after upgrading, both are rebuilt once from your playlists and guide files; after that they start from the saved copies as usual.
 
 ## Special thanks
 Thank you to **bArKEr** (@ghbarker) for **Multiview**, **Stalker / Ministra portals**, better frame-rate measuring and lots of speed work in this update.
