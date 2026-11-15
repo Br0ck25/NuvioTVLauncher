@@ -562,7 +562,8 @@ private fun LiveTvRowVisibility(
                 val step = (value - done) * total
                 done = value
                 // The rows below move up by what the row gives back; scroll the list back by the same so they stay put.
-                if (step != 0f) pageList.dispatchRawDelta(step)
+                // (Measured on a TiVo: the opposite sign doubled the jump and pushed Continue Watching off the top.)
+                if (step != 0f) pageList.dispatchRawDelta(-step)
             }
             present = false
         }
