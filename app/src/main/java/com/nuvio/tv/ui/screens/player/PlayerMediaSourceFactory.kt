@@ -199,6 +199,7 @@ internal class PlayerMediaSourceFactory(private val context: Context) {
                     useLongReadTimeout = isLoopbackUrl(url),
                 ),
             )
+            if (isHls) HlsParameterSetInitDataSource.Factory(adaptiveFactory) else adaptiveFactory
         } else {
             PlayerPlaybackNetworking.createDataSourceFactory(context, sanitizedHeaders)
         }
