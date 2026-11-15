@@ -496,7 +496,7 @@ data class PlayerSettings(
         const val MAX_PARALLEL_CHUNK_SIZE_KB = 128 * 1024
         const val DEFAULT_ENABLE_HTTP2 = false
         const val DEFAULT_NUVIO_PERFORMANCE_MODE_ENABLED = false
-        const val DEFAULT_SEEK_PREVIEW_ENABLED = false
+        const val DEFAULT_SEEK_PREVIEW_ENABLED = true
     }
 }
 

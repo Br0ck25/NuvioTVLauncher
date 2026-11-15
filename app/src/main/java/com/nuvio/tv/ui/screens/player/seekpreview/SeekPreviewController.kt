@@ -213,6 +213,7 @@ private object SharedSeekPreview {
         val url: String,
         val headers: Map<String, String>,
         val releaseAfterScrub: Boolean,
+        val storyboard: MediaItemStoryboard?,
         val storyboardVideoId: String?,
         val keepAlive: Boolean,
     )
@@ -229,7 +230,7 @@ private object SharedSeekPreview {
         storyboardVideoId: String?,
         keepAlive: Boolean,
     ): SeekPreviewController {
-        val wanted = Key(url, headers, releaseAfterScrub, storyboardVideoId, keepAlive)
+        val wanted = Key(url, headers, releaseAfterScrub, storyboard, storyboardVideoId, keepAlive)
         controller?.takeIf { key == wanted }?.let { return it }
         controller?.dispose()
         return SeekPreviewController(
