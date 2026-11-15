@@ -18,6 +18,7 @@ class SettingsStructureTest {
                 PlaybackSection.UP_NEXT,
                 PlaybackSection.SKIP_SEGMENTS,
                 PlaybackSection.PLAYER_INTERFACE,
+                PlaybackSection.SEEK_THUMBNAILS,
                 PlaybackSection.AUDIO,
                 PlaybackSection.SUBTITLES,
                 PlaybackSection.VIDEO,

@@ -851,7 +851,10 @@ class LiveTvRepository @Inject constructor(
                 val outdated = stored != expected
                 if (outdated) {
                     LIVE_REPORT.add("Saved channel list out of date: ${fingerprintDiff(stored, expected)}")
-                    if (stored.substringBefore('|').toIntOrNull() !in 8..CHANNELS_CACHE_VERSION) return@withContext false
+                    // 11 is the first version with this layout: 10 and below are our older
+                    // caches (the add-on field sat before the shift, no auto-number or portal
+                    // reference), which would be read as a different list. Rebuild once instead.
+                    if (stored.substringBefore('|').toIntOrNull() !in 11..CHANNELS_CACHE_VERSION) return@withContext false
                 }
                 val storedVersion = stored.substringBefore('|').toInt()
                 val epg = HashMap<String, List<String>>()
@@ -3738,7 +3741,7 @@ class LiveTvRepository @Inject constructor(
          * the file itself hasn't changed, so its later days come in (see buildProgramsInner).
          */
         private const val REUSE_MAX_AGE_MS = 20 * HOUR
-        private const val CHANNELS_CACHE_VERSION = 10
+        private const val CHANNELS_CACHE_VERSION = 11
     private const val ADDON_REFRESH_MS = 10 * 60_000L
         private const val MAX_SAVED_LISTINGS = 300_000
         /** Titles guides use when they have no real listing. */
