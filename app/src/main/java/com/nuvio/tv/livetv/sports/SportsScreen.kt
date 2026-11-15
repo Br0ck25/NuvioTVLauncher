@@ -1459,7 +1459,8 @@ private fun GamePage(
         when {
             matches.isNotEmpty() -> LazyColumn(
                 // Two channels showing (the rest scroll), so the panels underneath stay on screen.
-                Modifier.heightIn(max = 126.dp).keepFocusWhileHeld(horizontal = false),
+                // Target the group: row 0 can be recycled after scrolling or returning from playback.
+                Modifier.heightIn(max = 126.dp).focusRequester(first).keepFocusWhileHeld(horizontal = false),
                 verticalArrangement = Arrangement.spacedBy(7.dp),
                 contentPadding = PaddingValues(horizontal = 6.dp, vertical = 4.dp)
             ) {
@@ -1473,7 +1474,7 @@ private fun GamePage(
                         eventStartMs = ev.startMs,
                         use24h = use24h,
                         copies = g.drop(1),
-                        modifier = if (i == 0) Modifier.focusRequester(first).then(if (regionButton) Modifier.focusProperties { up = regionFocus } else Modifier) else Modifier,
+                        modifier = if (i == 0 && regionButton) Modifier.focusProperties { up = regionFocus } else Modifier,
                         onClick = { onChoose(m) }
                     )
                 }
@@ -1533,6 +1534,19 @@ private fun GamePage(
                             LiveTvNotice.show(if (auto) "It'll ask before switching" else "It'll switch to the game a minute before it starts")
                         })
                     }
+                }
+            }
+            // Score alerts for just this game (its scores and the final result), when its teams aren't followed.
+            if ((ev.state == GameState.PRE || ev.state == GameState.LIVE) && sides.size == 2 && !settings.hideScores &&
+                !viewModel.repo.alertsFromFollows(ev, follows)
+            ) {
+                val m = f()
+                item {
+                    val on = follows.alertGames.any { it.eventId == ev.id }
+                    SportsAction(if (on) "📣  Score alerts on" else "📣  Score alerts", modifier = m, selected = on, onClick = {
+                        viewModel.repo.toggleGameAlerts(ev)
+                        LiveTvNotice.show(if (on) "Score alerts off for this game" else "You'll see this game's scores and the final result wherever you are")
+                    })
                 }
             }
             // Record: pick the channel and how long.

@@ -250,6 +250,9 @@ val LocalSidebarExpanded = compositionLocalOf { false }
 /** Opens Nuvio's side menu from a screen (used by Live TV's back button). */
 val LocalOpenSidebar = compositionLocalOf<() -> Unit> { {} }
 val LocalRootContentInset = compositionLocalOf { 0.dp }
+
+/** Live TV fork pages' room for the older side menu (the launcher uses LocalRootContentInset instead). */
+val LocalForkPageInset = compositionLocalOf { 0.dp }
 val LocalContentFocusRequester = compositionLocalOf { FocusRequester.Default }
 
 data class SplashBackground(

@@ -86,8 +86,9 @@ import kotlinx.coroutines.withContext
 
 /**
  * One Multiview for everything. The channel picker (with Groups) and the Sports games are two
- * tabs of the same screen; [startOnSports] opens it on the games (from the Sports section) and
- * Back from there returns to the single screen via [onSingle].
+ * tabs of the same screen; [startOnSports] opens it on the games. Back returns to the single
+ * screen via [onSingle] when [returnToSingle] (opened from Live TV), otherwise [onBack] (e.g. the
+ * Sports hub it was opened from).
  * Selections live only for this screen visit. Navigation and saved state contain no stream links.
  */
 @Composable
@@ -95,6 +96,7 @@ fun MultiviewScreen(
     onBack: () -> Unit,
     startOnSports: Boolean = false,
     onSingle: () -> Unit = onBack,
+    returnToSingle: Boolean = startOnSports,
     /** Opens a game's page in the Sports hub; Back there returns here (see [MultiviewReturn]). */
     onOpenGame: (String) -> Unit = {},
     viewModel: MultiviewViewModel = hiltViewModel()
@@ -129,6 +131,8 @@ fun MultiviewScreen(
     val loadingGames = sportsUsed && !sportsWaited && sportsRows.none { it.games.isNotEmpty() } && (sportsBusy || !sportsSawBusy)
     val hideScores = sports?.settings?.collectAsStateWithLifecycle()?.value?.hideScores ?: false
     val request = remember { if (startOnSports) SportsWatchLaunch.take() else null }
+    // Kept current every composition: the session asks it when a pane's channel won't play.
+    val backupRef = remember { arrayOfNulls<(Int, LiveChannel, Set<String>) -> LiveChannel?>(1) }
     val session = remember {
         // The guide and Sports share one player. Multiview owns independent players and audio.
         viewModel.playback.stop()
@@ -142,7 +146,9 @@ fun MultiviewScreen(
             mayPlayChannel = { channel ->
                 viewModel.activeProfileId.value == openingProfile &&
                     (viewModel.allowedChannels.value.any { it == channel } || sportsRef[0]?.mayPlay(channel) == true)
-            })
+            },
+            autoReconnect = { viewModel.autoReconnect.value },
+            findBackup = { paneId, failed, tried -> backupRef[0]?.invoke(paneId, failed, tried) })
     }
     val state by session.state.collectAsStateWithLifecycle()
     val soundPaused = state.isForeground && state.panes.any { it.channelKey != null } && !state.hasAudioFocus
@@ -218,6 +224,17 @@ fun MultiviewScreen(
         val streams = game.channels.distinctBy { it.channel.key }
         val at = streams.indexOfFirst { it.channel.key == channelKey }
         return eventId to streams.drop(at + 1)
+    }
+
+    // A pane whose channel won't play: the game's next stream (a game pane), else a copy of the
+    // channel from another playlist. Follows the "Backup channel" setting, like the single player.
+    backupRef[0] = { paneId, failed, tried ->
+        if (!viewModel.autoBackup.value) null
+        else nextStreams(paneId)?.let { (eventId, candidates) ->
+            candidates.asSequence().filter { it.channel.key !in tried }
+                .mapNotNull { sports?.resolve(eventId, it.channel.key)?.channel }
+                .firstOrNull { it.key !in tried }
+        } ?: viewModel.backupFor(failed, tried)
     }
 
     /** OK on a pane whose stream failed: play the game's next stream there. */
@@ -339,11 +356,20 @@ fun MultiviewScreen(
             barShown = false
         }
     }
+    // Pane labels follow remote activity independently of control-button focus.
+    var channelLabelsShown by remember { mutableStateOf(true) }
+    LaunchedEffect(barTick, editorOpen, layoutOpen) {
+        channelLabelsShown = true
+        if (!editorOpen && !layoutOpen) {
+            delay(5_000L)
+            channelLabelsShown = false
+        }
+    }
     LaunchedEffect(state.focusedPane) { barTick++ }
     LaunchedEffect(editorOpen) { if (!editorOpen) returnGame = null }
     val barAlpha by animateFloatAsState(if (barShown) 1f else 0f, tween(450), label = "multiviewBar")
     BackHandler {
-        if (editorOpen) editorOpen = false else if (startOnSports) single() else onBack()
+        if (editorOpen) editorOpen = false else if (startOnSports && returnToSingle) single() else onBack()
     }
 
     Box(
@@ -371,6 +397,7 @@ fun MultiviewScreen(
                     val nextUp = if (pane.error != null) nextStreams(pane.id)?.second else null
                     MultiviewPane(
                         pane = pane,
+                        showChannelLabel = channelLabelsShown,
                         audible = pane.id == state.focusedPane && state.hasAudioFocus,
                         logo = logo,
                         show = pane.channelKey?.let { paneShows[it] },

@@ -356,7 +356,8 @@ Have a sports addon installed in Nuvio, like **HighFly** or **StremVerse**? Spor
   - **Up to a team** and OK for its team card
 - **Scores everywhere:**
   - the score shows on Live TV's info bar when you're watching a game
-  - **scoring alerts** pop up in the corner when your team scores, wherever you are in the app
+  - **scoring alerts** pop up in the corner when your team scores, wherever you are in the app, and a **Full time / Final** alert shows the final score
+  - **Score alerts on any game:** turn them on from a game's page, even for teams you don't follow
 - **Spoiler-free:** **Hide Scores** keeps results off the screen until you're ready.
 
 ### Never miss it
