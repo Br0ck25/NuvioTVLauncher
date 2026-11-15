@@ -288,7 +288,12 @@ data class EpgProgram(
     /** Provider archive identifier, retained through guide storage and time shifts. */
     val providerProgramId: String? = null,
     /** Portal identity which issued the archive id; other guides can still provide the text. */
-    val providerSourceIdentity: String? = null
+    val providerSourceIdentity: String? = null,
+    /**
+     * The guide's <sub-title>: for sport, the match-up ("Texas at LSU") that the title
+     * ("College Football") alone doesn't name. Shown beside the title in the guide's header.
+     */
+    val subTitle: String? = null
 ) {
     fun isLive(nowMs: Long): Boolean = nowMs in startMs until stopMs
     fun progress(nowMs: Long): Float {

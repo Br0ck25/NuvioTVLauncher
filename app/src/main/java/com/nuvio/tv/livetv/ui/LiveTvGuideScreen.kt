@@ -2669,7 +2669,7 @@ private fun GuideHeader(
                 val p = rememberShowDetails(channel.key, block?.program)
                 if (GuideInfoPart.TITLE !in hid) {
                     LiveText(
-                        text = p?.title?.let { titleMarks(it).title } ?: channel.name,
+                        text = p?.let { programDisplayTitle(it) } ?: channel.name,
                         modifier = Modifier.fillMaxWidth(),
                         size = if (small) 22.sp else 28.sp,
                         weight = FontWeight.ExtraBold,
@@ -4556,7 +4556,7 @@ private fun ProgramInfoDialog(
     val p = rememberShowDetails(target.channel.key, block?.program)
     val infoBell = com.nuvio.tv.livetv.calendar.rememberLiveBell(p, target.channel)
     LiveDialog(onDismiss = onDismiss, width = 640.dp) {
-        LiveText(p?.title ?: target.channel.name, size = 24.sp, weight = FontWeight.Bold, maxLines = 2)
+        LiveText(p?.let { programDisplayTitle(it) } ?: target.channel.name, size = 24.sp, weight = FontWeight.Bold, maxLines = 2)
         Spacer(Modifier.height(6.dp))
         if (block != null) {
             val meta = listOfNotNull(

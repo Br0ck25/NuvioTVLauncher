@@ -1181,7 +1181,8 @@ class LiveTvViewModel @Inject constructor(
             year = full.year,
             people = full.people,
             episode = program.episode ?: full.episode,
-            icon = program.icon ?: full.icon
+            icon = program.icon ?: full.icon,
+            subTitle = program.subTitle ?: full.subTitle
         )
         detailCache[key] = merged
         return merged
