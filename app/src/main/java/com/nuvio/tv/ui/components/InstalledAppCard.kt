@@ -46,7 +46,9 @@ fun InstalledAppCard(
     /** The Home row shows the banners alone; other screens keep the name under the tile. */
     showLabel: Boolean = true,
     /** This app is being carried to a new place (see AppMoveMode): lifted and ringed in the accent colour. */
-    moving: Boolean = false
+    moving: Boolean = false,
+    /** Another app is being carried: no focus ring or zoom here, so only the carried app is highlighted. */
+    quietFocus: Boolean = false
 ) {
     val image by produceState<Bitmap?>(initialValue = null, app.packageName, app.iconKey) { value = loadImage(app) }
     Column(modifier = Modifier.width(width)) {
@@ -60,12 +62,12 @@ fun InstalledAppCard(
             colors = CardDefaults.colors(containerColor = NuvioTheme.colors.BackgroundCard),
             border = CardDefaults.border(
                 border = if (moving) Border(BorderStroke(4.dp, NuvioTheme.colors.Secondary), shape = RoundedCornerShape(10.dp)) else Border.None,
-                focusedBorder = Border(
+                focusedBorder = if (quietFocus) Border.None else Border(
                     BorderStroke(if (moving) 4.dp else 3.dp, if (moving) NuvioTheme.colors.Secondary else NuvioTheme.colors.FocusRing),
                     shape = RoundedCornerShape(10.dp)
                 )
             ),
-            scale = CardDefaults.scale(focusedScale = if (moving) 1.14f else 1.06f)
+            scale = CardDefaults.scale(focusedScale = if (quietFocus) 1f else if (moving) 1.14f else 1.06f)
         ) {
             Box(Modifier.fillMaxSize(), contentAlignment = Alignment.Center) {
                 image?.let {

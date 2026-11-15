@@ -952,21 +952,24 @@ internal fun ModernRowSection(
             val carriedAppIndex = row.items.list.indexOfFirst {
                 (it.payload as? ModernPayload.InstalledApp)?.app?.packageName == appMove.carrying
             }
+            // The row's own scroll-to-focus then moves the carried app smoothly, exactly like moving the highlight by hand;
+            // only an app that is not on screen at all is jumped to (an animated scroll every step fought that and jerked).
+            var lastCarriedApp by remember { mutableStateOf<String?>(null) }
             LaunchedEffect(appMove.carrying, carriedAppIndex) {
-                if (appMove.carrying == null || carriedAppIndex < 0) return@LaunchedEffect
-                val info = rowListState.layoutInfo
-                val visible = info.visibleItemsInfo
-                val shown = visible.firstOrNull { it.index == carriedAppIndex }
-                val fullyVisible = shown != null && shown.offset >= info.viewportStartOffset &&
-                    shown.offset + shown.size <= info.viewportEndOffset - info.afterContentPadding
-                if (!fullyVisible) {
-                    when {
-                        visible.isEmpty() || carriedAppIndex < visible.first().index -> rowListState.animateScrollToItem(carriedAppIndex)
-                        else -> rowListState.animateScrollToItem((carriedAppIndex - (visible.size - 2)).coerceAtLeast(0))
-                    }
+                val carrying = appMove.carrying
+                if (carrying != null) lastCarriedApp = carrying
+                // After the drop the focus goes back onto the app that was moved, not a neighbour.
+                val target = if (carrying != null) carriedAppIndex else {
+                    val last = lastCarriedApp ?: return@LaunchedEffect
+                    lastCarriedApp = null
+                    row.items.list.indexOfFirst { (it.payload as? ModernPayload.InstalledApp)?.app?.packageName == last }
+                }
+                if (target < 0) return@LaunchedEffect
+                if (rowListState.layoutInfo.visibleItemsInfo.none { it.index == target }) {
+                    rowListState.scrollToItem((target - 1).coerceAtLeast(0))
                 }
                 repeat(6) {
-                    if (runCatching { itemFocusRequesters[carriedAppIndex]?.requestFocus() ?: false }.getOrDefault(false)) {
+                    if (runCatching { itemFocusRequesters[target]?.requestFocus() ?: false }.getOrDefault(false)) {
                         return@LaunchedEffect
                     }
                     kotlinx.coroutines.delay(40)
@@ -1065,7 +1068,8 @@ internal fun ModernRowSection(
                                         .onFocusChanged { if (it.isFocused) onFocused() },
                                     width = com.nuvio.tv.ui.components.rememberHomeTile()?.width ?: 160.dp,
                                     showLabel = false,
-                                    moving = appMove.carrying == payload.app.packageName
+                                    moving = appMove.carrying == payload.app.packageName,
+                                    quietFocus = appMove.carrying != null && appMove.carrying != payload.app.packageName
                                 )
                             }
                         }
