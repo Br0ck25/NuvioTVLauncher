@@ -265,7 +265,10 @@ internal class MultiviewSessionCore(
             player.setPlaying(false)
             player.prepare(channel)
             setupErrors[paneId] = null
-        } catch (_: Exception) {
+        } catch (failure: Exception) {
+            // Kept in the log: the pane only says it couldn't start, and the reason (a stream
+            // format Multiview can't open, a protected stream) is what makes it fixable.
+            android.util.Log.w("Multiview", "Pane $paneId couldn't start \"${channel.name}\"", failure)
             releasePane(paneId)
             setupErrors[paneId] = "This TV couldn't start this stream. Try another channel."
         }

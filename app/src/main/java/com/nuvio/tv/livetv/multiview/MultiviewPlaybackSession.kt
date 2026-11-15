@@ -338,8 +338,10 @@ private class AndroidMultiviewPanePlayer(
             .setAudioCapabilities(AudioCapabilities.DEFAULT_AUDIO_CAPABILITIES)
             .setEnableFloatOutput(enableFloatOutput)
             .setEnableAudioTrackPlaybackParams(enableAudioTrackPlaybackParams)
+            // No offload: DEFAULT_AUDIO_CAPABILITIES advertises none, and the pane's track
+            // selection asks for PCM, so muting a pane always works. (DefaultAudioSink's
+            // setOffloadMode can't be called after build() on this Media3 version.)
             .build()
-            .apply { setOffloadMode(AudioSink.OFFLOAD_MODE_DISABLED) }
     }.setExtensionRendererMode(DefaultRenderersFactory.EXTENSION_RENDERER_MODE_ON)
         .setEnableDecoderFallback(true)
 
