@@ -946,6 +946,33 @@ internal fun ModernRowSection(
                 null
             }
 
+            // Launcher: while an app is carried along the Apps row, keep it on screen and give it the focus after each step.
+            // Without this the focus ring stayed on whichever tile sat in the same place on screen (a neighbour), not on the
+            // app being moved, and the moved app could be partly off the edge.
+            val carriedAppIndex = row.items.list.indexOfFirst {
+                (it.payload as? ModernPayload.InstalledApp)?.app?.packageName == appMove.carrying
+            }
+            LaunchedEffect(appMove.carrying, carriedAppIndex) {
+                if (appMove.carrying == null || carriedAppIndex < 0) return@LaunchedEffect
+                val info = rowListState.layoutInfo
+                val visible = info.visibleItemsInfo
+                val shown = visible.firstOrNull { it.index == carriedAppIndex }
+                val fullyVisible = shown != null && shown.offset >= info.viewportStartOffset &&
+                    shown.offset + shown.size <= info.viewportEndOffset - info.afterContentPadding
+                if (!fullyVisible) {
+                    when {
+                        visible.isEmpty() || carriedAppIndex < visible.first().index -> rowListState.animateScrollToItem(carriedAppIndex)
+                        else -> rowListState.animateScrollToItem((carriedAppIndex - (visible.size - 2)).coerceAtLeast(0))
+                    }
+                }
+                repeat(6) {
+                    if (runCatching { itemFocusRequesters[carriedAppIndex]?.requestFocus() ?: false }.getOrDefault(false)) {
+                        return@LaunchedEffect
+                    }
+                    kotlinx.coroutines.delay(40)
+                }
+            }
+
             LazyRow(
                 state = rowListState,
                 modifier = Modifier
