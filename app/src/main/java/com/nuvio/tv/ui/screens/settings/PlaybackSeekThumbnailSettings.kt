@@ -1,5 +1,6 @@
 package com.nuvio.tv.ui.screens.settings
 
+import android.content.Context
 import android.text.format.DateFormat
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.DeleteSweep
@@ -15,6 +16,7 @@ import androidx.compose.runtime.remember
 import androidx.compose.runtime.rememberCoroutineScope
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.platform.LocalContext
+import com.nuvio.tv.R
 import com.nuvio.tv.livetv.thumbs.SeekThumbSettings
 import com.nuvio.tv.livetv.thumbs.SeekThumbs
 import kotlinx.coroutines.Dispatchers
@@ -38,32 +40,29 @@ internal fun PlaybackSeekThumbnailSection() {
     fun update(change: (SeekThumbSettings.Values) -> SeekThumbSettings.Values) = SeekThumbSettings.update(context, change)
 
     SettingsToggleRow(
-        title = "Seek Thumbnails",
-        subtitle = "Shows a preview picture above the seek bar while you seek. Pictures are made on this TV from the video itself",
+        title = context.getString(R.string.iptv_thumbs_title),
+        subtitle = context.getString(R.string.iptv_thumbs_subtitle),
         checked = s.enabled,
         onToggle = { update { it.copy(enabled = !it.enabled) } }
     )
-    SettingsNote(
-        "Works on: movies and shows in the main player, your recordings, and sports replays and highlights when the add-on sends a regular video file.\n" +
-            "Doesn't work on: Live TV, catch-up, torrents, or streamed links (HLS/DASH), because there's no single file to make pictures from."
-    )
+    SettingsNote(context.getString(R.string.iptv_thumbs_works_on))
     if (lowMemoryBox) {
         SettingsNote(
-            "This device has limited memory. Thumbnails may cause stutter. If they do, they pause by themselves and the seek bar says so.",
+            context.getString(R.string.iptv_thumbs_low_memory_note),
             tone = SettingsNoteTone.Warning
         )
     }
     SettingsToggleRow(
-        title = "Include 4K and HDR",
-        subtitle = "Also makes thumbnails for 4K and HDR videos. Uses more memory and data. May stutter on lower-end devices. Pictures of HDR videos can look washed out",
+        title = context.getString(R.string.iptv_thumbs_include_4k),
+        subtitle = context.getString(R.string.iptv_thumbs_include_4k_desc),
         checked = s.include4k,
         enabled = s.enabled,
         onToggle = { update { it.copy(include4k = !it.include4k) } }
     )
     SettingsActionRow(
-        title = "When to Make Thumbnails",
-        subtitle = s.whenToMake.detail,
-        value = s.whenToMake.label,
+        title = context.getString(R.string.iptv_thumbs_when_to_make),
+        subtitle = context.getString(whenDetailRes(s.whenToMake)),
+        value = context.getString(whenLabelRes(s.whenToMake)),
         enabled = s.enabled,
         leadingIcon = Icons.Default.Schedule,
         onClick = {
@@ -72,9 +71,9 @@ internal fun PlaybackSeekThumbnailSection() {
         }
     )
     SettingsActionRow(
-        title = "Storage Limit",
-        subtitle = "Saved thumbnails take up to this much space; the videos watched longest ago are cleared first",
-        value = "${s.storageMb} MB",
+        title = context.getString(R.string.iptv_thumbs_storage_limit),
+        subtitle = context.getString(R.string.iptv_thumbs_storage_limit_desc),
+        value = context.getString(R.string.iptv_thumbs_size_mb, s.storageMb.toString()),
         enabled = s.enabled,
         leadingIcon = Icons.Default.SdStorage,
         onClick = {
@@ -83,9 +82,9 @@ internal fun PlaybackSeekThumbnailSection() {
         }
     )
     SettingsActionRow(
-        title = "Clear Saved Thumbnails",
-        subtitle = "Deletes every saved thumbnail. They're made again when needed",
-        value = savedBytes?.let { formatSize(it) },
+        title = context.getString(R.string.iptv_thumbs_clear),
+        subtitle = context.getString(R.string.iptv_thumbs_clear_desc),
+        value = savedBytes?.let { formatSize(context, it) },
         leadingIcon = Icons.Default.DeleteSweep,
         onClick = {
             scope.launch {
@@ -97,13 +96,28 @@ internal fun PlaybackSeekThumbnailSection() {
     if (s.lastLowMemoryAt > 0L) {
         val date = Date(s.lastLowMemoryAt)
         SettingsNote(
-            "Last paused for low memory: " + DateFormat.getMediumDateFormat(context).format(date) + ", " +
+            context.getString(
+                R.string.iptv_thumbs_last_paused,
+                DateFormat.getMediumDateFormat(context).format(date),
                 DateFormat.getTimeFormat(context).format(date)
+            )
         )
     }
 }
 
-private fun formatSize(bytes: Long): String = when {
-    bytes < 1024L * 1024L -> "${bytes / 1024L} KB"
-    else -> "%.1f MB".format(bytes / (1024.0 * 1024.0))
+private fun formatSize(context: Context, bytes: Long): String = when {
+    bytes < 1024L * 1024L -> context.getString(R.string.iptv_thumbs_size_kb, (bytes / 1024L).toString())
+    else -> context.getString(R.string.iptv_thumbs_size_mb, "%.1f".format(bytes / (1024.0 * 1024.0)))
+}
+
+private fun whenLabelRes(w: SeekThumbSettings.When): Int = when (w) {
+    SeekThumbSettings.When.SEEKING -> R.string.iptv_thumbs_when_seeking
+    SeekThumbSettings.When.WATCHING -> R.string.iptv_thumbs_when_watching
+    SeekThumbSettings.When.RIGHT_AWAY -> R.string.iptv_thumbs_when_right_away
+}
+
+private fun whenDetailRes(w: SeekThumbSettings.When): Int = when (w) {
+    SeekThumbSettings.When.SEEKING -> R.string.iptv_thumbs_when_seeking_desc
+    SeekThumbSettings.When.WATCHING -> R.string.iptv_thumbs_when_watching_desc
+    SeekThumbSettings.When.RIGHT_AWAY -> R.string.iptv_thumbs_when_right_away_desc
 }

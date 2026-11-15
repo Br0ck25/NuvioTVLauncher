@@ -1,5 +1,7 @@
 package com.nuvio.tv.ui.components
 
+import androidx.compose.ui.Alignment
+import androidx.compose.foundation.layout.Row
 import com.nuvio.tv.ui.screens.home.continueWatchingItemKey
 
 import com.nuvio.tv.ui.theme.NuvioTheme
