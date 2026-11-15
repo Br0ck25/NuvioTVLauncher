@@ -164,7 +164,9 @@ fun AddonManagerScreen(
         }
         return
     }
-    val isEssential = experienceMode == ExperienceMode.ESSENTIAL
+    // Every profile gets the full add-on screen (catalog order, collections, reordering), whatever its experience mode:
+    // each profile sets up its own Home. A profile that uses the first profile's add-ons is still read-only (viewModel.isReadOnly).
+    val isEssential = false
     val webConfigMode = viewModel.webConfigMode(experienceMode ?: ExperienceMode.ADVANCED)
     val keyboardController = LocalSoftwareKeyboardController.current
     val focusManager = LocalFocusManager.current
