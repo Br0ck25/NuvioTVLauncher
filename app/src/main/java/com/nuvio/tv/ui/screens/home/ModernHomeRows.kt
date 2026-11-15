@@ -952,27 +952,33 @@ internal fun ModernRowSection(
             val carriedAppIndex = row.items.list.indexOfFirst {
                 (it.payload as? ModernPayload.InstalledApp)?.app?.packageName == appMove.carrying
             }
-            // The row's own scroll-to-focus then moves the carried app smoothly, exactly like moving the highlight by hand;
-            // only an app that is not on screen at all is jumped to (an animated scroll every step fought that and jerked).
-            var lastCarriedApp by remember { mutableStateOf<String?>(null) }
+            // Moving an app: the carried tile keeps the focus (see isTarget below), the reordered list lands a few frames
+            // after the key press, and the row keeps its scroll position by index when it does. Left alone the row
+            // re-anchors on the moved tile, which made every other tile jump a slot (and the focus used to go to the
+            // neighbour first, scrolling the row one tile, before the reorder arrived: the smooth-then-snap on each step).
+            val moveHolder = remember { object { var seenIndex = -1; var before: Pair<Int, Int>? = null } }
+            androidx.compose.runtime.SideEffect {
+                if (appMove.carrying == null) {
+                    moveHolder.seenIndex = -1
+                    moveHolder.before = null
+                } else if (carriedAppIndex != moveHolder.seenIndex) {
+                    val before = moveHolder.before
+                    if (moveHolder.seenIndex >= 0 && before != null) rowListState.requestScrollToItem(before.first, before.second)
+                    moveHolder.seenIndex = carriedAppIndex
+                }
+            }
             LaunchedEffect(appMove.carrying, carriedAppIndex) {
-                val carrying = appMove.carrying
-                if (carrying != null) lastCarriedApp = carrying
-                // After the drop the focus goes back onto the app that was moved, not a neighbour.
-                val target = if (carrying != null) carriedAppIndex else {
-                    val last = lastCarriedApp ?: return@LaunchedEffect
-                    lastCarriedApp = null
-                    row.items.list.indexOfFirst { (it.payload as? ModernPayload.InstalledApp)?.app?.packageName == last }
-                }
-                if (target < 0) return@LaunchedEffect
-                if (rowListState.layoutInfo.visibleItemsInfo.none { it.index == target }) {
-                    rowListState.scrollToItem((target - 1).coerceAtLeast(0))
-                }
-                repeat(6) {
-                    if (runCatching { itemFocusRequesters[target]?.requestFocus() ?: false }.getOrDefault(false)) {
-                        return@LaunchedEffect
-                    }
-                    kotlinx.coroutines.delay(40)
+                if (appMove.carrying == null || carriedAppIndex < 0) return@LaunchedEffect
+                // The row's focus index follows the app (it is where the carried tile is now).
+                onRowItemFocused(row.key, carriedAppIndex, false)
+                // Keep it on screen with one smooth scroll by however much of it sticks out.
+                val info = rowListState.layoutInfo
+                val item = info.visibleItemsInfo.firstOrNull { it.index == carriedAppIndex }
+                val end = info.viewportEndOffset - info.afterContentPadding
+                when {
+                    item == null -> rowListState.scrollToItem(carriedAppIndex)
+                    item.offset + item.size > end -> rowListState.animateScrollBy((item.offset + item.size - end).toFloat())
+                    item.offset < info.viewportStartOffset -> rowListState.animateScrollBy((item.offset - info.viewportStartOffset).toFloat())
                 }
             }
 
@@ -988,9 +994,9 @@ internal fun ModernRowSection(
                         val from = shownApps.indexOf(carried)
                         val step = clampedStep(from, delta, shownApps.lastIndex)
                         if (step != 0) {
+                            // Remember where the row is scrolled to, to restore it when the reordered list lands.
+                            moveHolder.before = rowListState.firstVisibleItemIndex to rowListState.firstVisibleItemScrollOffset
                             vm.move(carried, step)
-                            // The focus index follows the app, so the ring stays on it where it lands.
-                            onRowItemFocused(row.key, from + step, false)
                         }
                     }
                     .focusRequester(rowFocusRequester)
@@ -1050,8 +1056,12 @@ internal fun ModernRowSection(
                     when (val payload = item.payload) {
                         is ModernPayload.InstalledApp -> {
                             // Launcher: one app in the Apps row.
-                            LaunchedEffect(isTargetItem) {
-                                if (isTargetItem) runCatching { requester.requestFocus() }
+                            // While an app is carried only that app takes the focus: the row's own focus index changes
+                            // before the reordered list arrives, and the neighbour used to be given the focus then.
+                            val carryingNow = appMove.carrying
+                            val wantsFocus = if (carryingNow != null) carryingNow == payload.app.packageName else isTargetItem
+                            LaunchedEffect(wantsFocus) {
+                                if (wantsFocus) runCatching { requester.requestFocus() }
                             }
                             val appsVm = appsViewModel
                             if (appsVm != null) {
@@ -1069,7 +1079,9 @@ internal fun ModernRowSection(
                                     width = com.nuvio.tv.ui.components.rememberHomeTile()?.width ?: 160.dp,
                                     showLabel = false,
                                     moving = appMove.carrying == payload.app.packageName,
-                                    quietFocus = appMove.carrying != null && appMove.carrying != payload.app.packageName
+                                    quietFocus = appMove.carrying != null && appMove.carrying != payload.app.packageName,
+                                    // Tiles slide to their new place when the order changes (no fade in or out).
+                                    rootModifier = Modifier.animateItem(fadeInSpec = null, fadeOutSpec = null)
                                 )
                             }
                         }

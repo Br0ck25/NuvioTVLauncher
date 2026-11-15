@@ -281,7 +281,8 @@ internal fun ModernHomeRowsList(
     CompositionLocalProvider(
         LocalBringIntoViewSpec provides verticalRowBringIntoViewSpec,
         LocalFastScrollActive provides isFastScrolling,
-        LocalVerticalRowsScrolling provides isVerticalRowsScrollingState
+        LocalVerticalRowsScrolling provides isVerticalRowsScrollingState,
+        com.nuvio.tv.livetv.home.LocalLiveTvPageListState provides verticalRowListState
     ) {
         LazyColumn(
             state = verticalRowListState,

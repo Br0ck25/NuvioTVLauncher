@@ -46,6 +46,9 @@ import androidx.compose.ui.focus.onFocusChanged
 import androidx.compose.ui.focus.focusProperties
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.graphicsLayer
+import androidx.compose.ui.draw.clipToBounds
+import androidx.compose.ui.layout.layout
+import androidx.compose.ui.layout.onSizeChanged
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.res.stringResource
 import com.nuvio.tv.R
@@ -300,16 +303,7 @@ private fun LiveTvHomeRowContent(
     val alpha by androidx.compose.animation.core.animateFloatAsState(
         1f, label = "liveRowAlpha"
     )
-    androidx.compose.animation.AnimatedVisibility(
-        visible = open,
-        // Opening fades only: animating the height there fought the list's own scroll to the focused row.
-        // Closing (Down to Continue Watching) shrinks smoothly while it fades: the list has already worked out its
-        // scroll with the row still full height, and the row used to drop out in one step at the end of the fade, so
-        // every row below jumped up and then the scroll bounced back. A continuous shrink lets the scroll follow it.
-        enter = androidx.compose.animation.fadeIn(androidx.compose.animation.core.tween(OPEN_MS)),
-        exit = androidx.compose.animation.fadeOut(androidx.compose.animation.core.tween(CLOSE_MS)) +
-            androidx.compose.animation.shrinkVertically(androidx.compose.animation.core.tween(CLOSE_MS))
-    ) {
+    LiveTvRowVisibility(open = open, pageList = LocalLiveTvPageListState.current) {
         Column(
             modifier = Modifier
                 .fillMaxWidth()
@@ -515,5 +509,82 @@ private fun HomeCard(
 }
 
 /** How long the Live TV row takes to slide open / closed on the home screen. */
+/**
+ * Modern layout: the page's vertical list, so closing the row (the highlight goes down to Continue Watching) can keep the
+ * rows below it still on screen while the row gives its space back. Null in the other layouts.
+ */
+val LocalLiveTvPageListState = androidx.compose.runtime.staticCompositionLocalOf<androidx.compose.foundation.lazy.LazyListState?> { null }
+
+/**
+ * Shows [content] while [open]. Opening fades in at full height. Closing used to fade and then drop the row's height in
+ * one step: the page had already scrolled to the new highlight with the row at full height, so everything below jumped up
+ * and then scrolled back. With the page's list available, the row now fades out at full height (the page scrolls to the
+ * new highlight meanwhile), then gives its height back gradually while the list is scrolled the other way by the same
+ * amount each frame, so nothing on screen moves.
+ */
+@Composable
+private fun LiveTvRowVisibility(
+    open: Boolean,
+    pageList: androidx.compose.foundation.lazy.LazyListState?,
+    content: @Composable () -> Unit
+) {
+    if (pageList == null) {
+        androidx.compose.animation.AnimatedVisibility(
+            visible = open,
+            enter = androidx.compose.animation.fadeIn(androidx.compose.animation.core.tween(OPEN_MS)),
+            exit = androidx.compose.animation.fadeOut(androidx.compose.animation.core.tween(CLOSE_MS))
+        ) { content() }
+        return
+    }
+    var present by remember { mutableStateOf(open) }
+    var fullHeightPx by remember { androidx.compose.runtime.mutableIntStateOf(0) }
+    var shrink by remember { androidx.compose.runtime.mutableFloatStateOf(0f) }
+    val fade by androidx.compose.animation.core.animateFloatAsState(
+        targetValue = if (open) 1f else 0f,
+        animationSpec = androidx.compose.animation.core.tween(if (open) OPEN_MS else CLOSE_MS),
+        label = "liveRowFade"
+    )
+    androidx.compose.runtime.LaunchedEffect(open) {
+        if (open) {
+            shrink = 0f
+            present = true
+        } else if (present) {
+            // Faded out; the page scrolls to the new highlight meanwhile with the row still at full height.
+            kotlinx.coroutines.delay(CLOSE_MS.toLong())
+            val total = fullHeightPx.toFloat()
+            var done = 0f
+            androidx.compose.animation.core.animate(
+                initialValue = 0f,
+                targetValue = 1f,
+                animationSpec = androidx.compose.animation.core.tween(CLOSE_MS)
+            ) { value, _ ->
+                shrink = value
+                val step = (value - done) * total
+                done = value
+                // The rows below move up by what the row gives back; scroll the list back by the same so they stay put.
+                if (step != 0f) pageList.dispatchRawDelta(step)
+            }
+            present = false
+        }
+    }
+    if (present) {
+        Box(
+            modifier = Modifier
+                .clipToBounds()
+                .layout { measurable, constraints ->
+                    val placeable = measurable.measure(constraints)
+                    val h = (placeable.height * (1f - shrink)).toInt()
+                    layout(placeable.width, h) { placeable.place(0, 0) }
+                }
+        ) {
+            Box(
+                modifier = Modifier
+                    .onSizeChanged { if (shrink == 0f) fullHeightPx = it.height }
+                    .graphicsLayer { alpha = fade }
+            ) { content() }
+        }
+    }
+}
+
 private const val OPEN_MS = 280
 private const val CLOSE_MS = 220
