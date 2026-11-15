@@ -23,8 +23,6 @@ import java.net.UnknownHostException;
 import java.util.List;
 import java.util.concurrent.Callable;
 import java.util.concurrent.Executors;
-import java.util.concurrent.LinkedBlockingQueue;
-import java.util.concurrent.ThreadPoolExecutor;
 import java.util.concurrent.TimeUnit;
 
 /**
@@ -36,26 +34,35 @@ public class RxHelper {
 
     private static Scheduler getCachedScheduler() {
         if (sCachedScheduler == null) {
-            // OLD CODE
-            // sCachedScheduler = Schedulers.from(Executors.newCachedThreadPool());
-            int cores = Runtime.getRuntime().availableProcessors();
-            int corePoolSize = Math.max(2, Math.min(4, cores));
-            int maxPoolSize = Math.max(4, Math.min(8, cores * 2));
+            // Don't replace with a bounded ThreadPoolExecutor + CallerRunsPolicy:
+            // when the pool is full, tasks run on the caller thread (often main)
+            // and cause NetworkOnMainThreadException.
+            sCachedScheduler = Schedulers.from(Executors.newCachedThreadPool());
 
-            // Bounded so maxPoolSize is actually reachable under load —
-            // an unbounded queue starves pool growth entirely.
-            int queueCapacity = corePoolSize * 4;
-
-            ThreadPoolExecutor executor = new ThreadPoolExecutor(
-                    corePoolSize,
-                    maxPoolSize,
-                    60L,
-                    TimeUnit.SECONDS,
-                    new LinkedBlockingQueue<>(queueCapacity),
-                    new ThreadPoolExecutor.CallerRunsPolicy()
-            );
-            executor.allowCoreThreadTimeOut(true);
-            sCachedScheduler = Schedulers.from(executor);
+            /*
+             * DON'T DO THIS: bounded pool + CallerRunsPolicy.
+             * When all threads are busy and the queue is full, the task runs on the
+             * submitting thread (often main) -> NetworkOnMainThreadException.
+             *
+             * int cores = Runtime.getRuntime().availableProcessors();
+             * int corePoolSize = Math.max(2, Math.min(4, cores));
+             * int maxPoolSize = Math.max(4, Math.min(8, cores * 2));
+             *
+             * // Bounded so maxPoolSize is actually reachable under load — an
+             * // unbounded queue starves pool growth entirely.
+             * int queueCapacity = corePoolSize * 4;
+             *
+             * ThreadPoolExecutor executor = new ThreadPoolExecutor(
+             *         corePoolSize,
+             *         maxPoolSize,
+             *         60L,
+             *         TimeUnit.SECONDS,
+             *         new LinkedBlockingQueue<>(queueCapacity),
+             *         new ThreadPoolExecutor.CallerRunsPolicy()
+             * );
+             * executor.allowCoreThreadTimeOut(true);
+             * sCachedScheduler = Schedulers.from(executor);
+             */
         }
 
         return sCachedScheduler;

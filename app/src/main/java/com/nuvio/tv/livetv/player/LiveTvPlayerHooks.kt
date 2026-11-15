@@ -7,8 +7,10 @@ import com.nuvio.tv.livetv.ui.backupName
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.SupervisorJob
+import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.SharingStarted
 import kotlinx.coroutines.flow.StateFlow
+import kotlinx.coroutines.flow.asStateFlow
 import kotlinx.coroutines.flow.collectLatest
 import kotlinx.coroutines.flow.map
 import kotlinx.coroutines.flow.stateIn
@@ -44,6 +46,10 @@ class LiveTvPlayerHooks @Inject constructor(
     /** Channels by backup name (see [backupName]), worked out once for every screen; null until first worked out. */
     @Volatile var backupIndex: Map<String, List<LiveChannel>>? = null
         private set
+
+    private val _backupIndexVersion = MutableStateFlow(0)
+    /** Bumped when [backupIndex] is rebuilt, so an open player stops hiding the backup button. */
+    val backupIndexVersion: StateFlow<Int> = _backupIndexVersion.asStateFlow()
 
     /** Playlist id -> the kind of catch-up link that last worked there (this session only). */
     val catchupForms = java.util.concurrent.ConcurrentHashMap<String, String>()
@@ -98,6 +104,7 @@ class LiveTvPlayerHooks @Inject constructor(
                     val byKey = shown.associateBy { it.key }
                     backupIndex = raw.groupBy { backupName(it.name) }
                         .mapValues { (_, list) -> list.map { byKey[it.key] ?: it } }
+                    _backupIndexVersion.value++
                 }
         }
         scope.launch { prefs.userState.collect { playback.channelAudio = it.channelAudio; playback.channelCaptions = it.channelCaptions } }

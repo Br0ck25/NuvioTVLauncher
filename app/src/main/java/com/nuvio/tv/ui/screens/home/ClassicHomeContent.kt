@@ -830,6 +830,17 @@ fun ClassicHomeContent(
                 is HomeRow.Catalog -> {
                     val catalogRow = homeRow.row
                     val catalogKey = catalogRow.stableKey()
+                    // A placeholder row that is being composed is on (or near) the screen:
+                    // request its catalog here too. The scroll-trigger further up misses the
+                    // first layout sometimes, which left rows as gray cards even though their
+                    // catalog had already been requested nowhere else.
+                    if (catalogRow.isLoading &&
+                        catalogRow.items.firstOrNull()?.id?.startsWith("__placeholder_") == true
+                    ) {
+                        androidx.compose.runtime.LaunchedEffect(catalogKey) {
+                            onRequestLazyCatalogLoad(catalogRow.legacyKey())
+                        }
+                    }
                     val currentItemKeys = catalogRow.stableItemKeys()
                     rowFocusedItemIndex[catalogKey]?.let { storedIdx ->
                         previousRowItemKeys[catalogKey]

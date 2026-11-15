@@ -7,9 +7,23 @@ import dagger.hilt.android.qualifiers.ApplicationContext
 import java.io.File
 import javax.inject.Inject
 import javax.inject.Singleton
+import kotlinx.coroutines.flow.MutableStateFlow
+import kotlinx.coroutines.flow.StateFlow
+import kotlinx.coroutines.flow.asStateFlow
 import kotlinx.coroutines.flow.first
 import kotlinx.coroutines.sync.Mutex
 import kotlinx.coroutines.sync.withLock
+
+/** One in-flight update download, wherever it was started (the card or the background job). */
+data class UpdateDownloadProgress(
+    val tag: String,
+    val downloadedBytes: Long,
+    val totalBytes: Long?
+) {
+    val fraction: Float?
+        get() = totalBytes?.takeIf { it > 0 }
+            ?.let { (downloadedBytes.toFloat() / it).coerceIn(0f, 1f) }
+}
 
 /**
  * Keeps the downloaded update APK in app storage and remembers which release it belongs to, so a download made in the
@@ -26,6 +40,10 @@ class UpdateDownloadStore @Inject constructor(
 
     // The banner and the background job can ask for the same download; the second one waits and reuses the file.
     private val downloadMutex = Mutex()
+
+    private val _progress = MutableStateFlow<UpdateDownloadProgress?>(null)
+    /** Shared so the card shows the background job's progress instead of sitting at 0%. */
+    val progress: StateFlow<UpdateDownloadProgress?> = _progress.asStateFlow()
 
     fun destinationFor(update: AppUpdate): File {
         val safeName = update.assetName.replace(Regex("[^a-zA-Z0-9._-]"), "_")
@@ -55,11 +73,22 @@ class UpdateDownloadStore @Inject constructor(
     ): Result<File> = downloadMutex.withLock {
         downloadedFileFor(update)?.let { return@withLock Result.success(it) }
         val destination = destinationFor(update)
-        apkDownloader.download(update.assetUrl, destination, update.assetSha256, update.assetSizeBytes, onProgress)
-            .onSuccess { file ->
+        _progress.value = UpdateDownloadProgress(update.tag, 0L, update.assetSizeBytes)
+        try {
+            apkDownloader.download(update.assetUrl, destination, update.assetSha256, update.assetSizeBytes) { downloaded, total ->
+                _progress.value = UpdateDownloadProgress(
+                    tag = update.tag,
+                    downloadedBytes = downloaded,
+                    totalBytes = total ?: update.assetSizeBytes
+                )
+                onProgress(downloaded, total)
+            }.onSuccess { file ->
                 updatesDir.listFiles()?.filter { it != file }?.forEach { it.delete() }
                 updatePreferences.setDownloadedUpdate(update.tag, file.absolutePath)
             }
+        } finally {
+            _progress.value = null
+        }
     }
 
     /** Drops the downloaded APK once it is installed, outdated, or no longer wanted. */

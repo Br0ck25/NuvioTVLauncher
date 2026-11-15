@@ -102,6 +102,12 @@ object BackgroundWork {
     /** The guide is being built from the guide files right now. */
     val guideBuilding = MutableStateFlow(false)
 
+    /**
+     * The Live TV guide (or its player) is on screen. Sports' channel matching is heavy (it
+     * reads the whole guide), so it only runs while this is true or the Sports page is open.
+     */
+    val guideVisible = MutableStateFlow(false)
+
     /** One heavy job at a time: the next one waits for the one under way, instead of both running together. */
     private val oneAtATime = kotlinx.coroutines.sync.Mutex()
 

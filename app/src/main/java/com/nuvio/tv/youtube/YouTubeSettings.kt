@@ -17,6 +17,7 @@ object YouTubeSettings {
     private const val KEY_TAB_ORDER = "tab_order"
     private const val KEY_REMEMBER_TAB = "remember_last_tab"
     private const val KEY_SPEED = "playback_speed"
+    private const val KEY_VOLUME_OFFSET_DB = "volume_offset_db"
     private const val KEY_SPONSOR_NOTICE = "sponsorblock_notice"
     private const val KEY_SPONSOR_ASK = "sponsorblock_ask"
     private const val KEY_DEARROW_TITLES = "dearrow_titles"
@@ -165,6 +166,20 @@ object YouTubeSettings {
     /** The playback speed you last picked on a YouTube video, used to start the next one. */
     fun playbackSpeed(context: Context) = prefs(context).getFloat(KEY_SPEED, 1f)
     fun setPlaybackSpeed(context: Context, speed: Float) = prefs(context).edit().putFloat(KEY_SPEED, speed).apply()
+
+    /** How much louder or quieter OneTube sounds than the rest of the app, in dB. */
+    val volumeOffsetChoices = listOf(0, -3, -6, -9, -12, 3, 6)
+
+    fun volumeOffsetDb(context: Context): Int =
+        prefs(context).getInt(KEY_VOLUME_OFFSET_DB, 0).coerceIn(-12, 6)
+
+    fun setVolumeOffsetDb(context: Context, db: Int) =
+        prefs(context).edit().putInt(KEY_VOLUME_OFFSET_DB, db.coerceIn(-12, 6)).apply()
+
+    fun volumeOffsetLabel(db: Int): String = when {
+        db > 0 -> "+$db dB"
+        else -> "$db dB"
+    }
 
     fun setLastTab(context: Context, tab: YtTab) = prefs(context).edit().putString(KEY_LAST_TAB, tab.name).apply()
 

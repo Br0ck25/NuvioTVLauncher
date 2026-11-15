@@ -17,7 +17,7 @@ internal class GainAudioProcessor : BaseAudioProcessor() {
     private var gainScale: Float = 1f
 
     fun setGainDb(db: Int) {
-        val clampedDb = db.coerceIn(AUDIO_AMPLIFICATION_MIN_DB, AUDIO_AMPLIFICATION_MAX_DB)
+        val clampedDb = db.coerceIn(AUDIO_GAIN_MIN_DB, AUDIO_GAIN_MAX_DB)
         gainDb = clampedDb
         gainScale = gainToLinearScale(clampedDb)
     }

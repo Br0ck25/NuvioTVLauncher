@@ -53,7 +53,6 @@ import com.music.bitchord.data.model.ShelfItem
 internal fun MusicHomeScreen(
     state: MusicHomeState,
     onShelfItemClick: (HomeShelf, Int) -> Unit,
-    onPlayShelfItem: (HomeShelf, Int) -> Unit,
     onHeroDetails: (ShelfItem) -> Unit,
     onLoadMore: () -> Unit,
     onRetry: () -> Unit,
@@ -71,7 +70,6 @@ internal fun MusicHomeScreen(
         else -> MusicHomeFeed(
             state = state,
             onShelfItemClick = onShelfItemClick,
-            onPlayShelfItem = onPlayShelfItem,
             onHeroDetails = onHeroDetails,
             onLoadMore = onLoadMore,
             modifier = modifier
@@ -83,7 +81,6 @@ internal fun MusicHomeScreen(
 private fun MusicHomeFeed(
     state: MusicHomeState,
     onShelfItemClick: (HomeShelf, Int) -> Unit,
-    onPlayShelfItem: (HomeShelf, Int) -> Unit,
     onHeroDetails: (ShelfItem) -> Unit,
     onLoadMore: () -> Unit,
     modifier: Modifier = Modifier
@@ -115,8 +112,9 @@ private fun MusicHomeFeed(
                     item = heroItem,
                     onClick = { onHeroDetails(heroItem) },
                     onPlay = {
-                        if (heroItem.videoId != null) onPlayShelfItem(heroShelf, 0)
-                        else onShelfItemClick(heroShelf, 0)
+                        // A card that carries a playlist/mix id opens as that full queue;
+                        // [onShelfItemClick] also plays a plain track card directly.
+                        onShelfItemClick(heroShelf, 0)
                     }
                 )
             }

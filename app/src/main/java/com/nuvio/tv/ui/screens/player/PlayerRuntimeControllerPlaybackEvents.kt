@@ -15,7 +15,6 @@ import com.nuvio.tv.core.tracking.buildTrackingMediaReference
 import com.nuvio.tv.core.tracking.scrobbleDiagnosticIdentity
 import com.nuvio.tv.data.local.InternalPlayerEngine
 import com.nuvio.tv.data.local.NightMode
-import com.nuvio.tv.data.local.SubtitleStyleSettings
 import com.nuvio.tv.data.mediaserver.ServerItemRef
 import com.nuvio.tv.data.repository.PlaybackIssueErrorInput
 import com.nuvio.tv.data.repository.PlaybackIssuePlaybackSettingsInput
@@ -30,6 +29,9 @@ import kotlinx.coroutines.launch
 
 internal const val AUDIO_AMPLIFICATION_MIN_DB = 0
 internal const val AUDIO_AMPLIFICATION_MAX_DB = 10
+/** The gain processor also accepts the OneTube offset, which can go below normal. */
+internal const val AUDIO_GAIN_MIN_DB = -12
+internal const val AUDIO_GAIN_MAX_DB = 16
 internal const val CENTER_MIX_LEVEL_MIN_DB = -10
 internal const val CENTER_MIX_LEVEL_MAX_DB = 30
 internal const val AUDIO_DELAY_MIN_MS = com.nuvio.tv.domain.model.AUDIO_DELAY_MIN_MS
@@ -229,11 +231,25 @@ internal fun PlayerRuntimeController.skipInterval(interval: SkipInterval): Boole
     return true
 }
 
+internal fun PlayerRuntimeController.effectiveAudioGainDb(baseDb: Int): Int {
+    val isOneTube = contentType?.equals("youtube", ignoreCase = true) == true ||
+        (contentId?.let { com.nuvio.tv.youtube.YouTubeProgress.isYouTubeId(it) } == true)
+    val offset = if (isOneTube) com.nuvio.tv.youtube.YouTubeSettings.volumeOffsetDb(context) else 0
+    return (baseDb + offset).coerceIn(AUDIO_GAIN_MIN_DB, AUDIO_GAIN_MAX_DB)
+}
+
 internal fun PlayerRuntimeController.applyAudioAmplification(db: Int) {
     val clampedDb = db.coerceIn(AUDIO_AMPLIFICATION_MIN_DB, AUDIO_AMPLIFICATION_MAX_DB)
+    val effectiveDb = effectiveAudioGainDb(clampedDb)
+    if (effectiveDb != clampedDb) {
+        android.util.Log.d(
+            PlayerRuntimeController.TAG,
+            "AUDIO_GAIN base=$clampedDb effective=$effectiveDb offset=${effectiveDb - clampedDb}"
+        )
+    }
     val isAudioAmplificationAvailable = isUsingMpvEngine() || _exoPlayer != null
     val wasActive = gainAudioProcessor.isGainEnabled()
-    gainAudioProcessor.setGainDb(if (isAudioAmplificationAvailable) clampedDb else AUDIO_AMPLIFICATION_MIN_DB)
+    gainAudioProcessor.setGainDb(if (isAudioAmplificationAvailable) effectiveDb else AUDIO_AMPLIFICATION_MIN_DB)
     val isActiveNow = gainAudioProcessor.isGainEnabled()
 
     if (wasActive != isActiveNow && !isUsingMpvEngine()) {
@@ -244,7 +260,7 @@ internal fun PlayerRuntimeController.applyAudioAmplification(db: Int) {
     }
 
     if (isUsingMpvEngine()) {
-        mpvView?.applyAudioAmplificationDb(clampedDb)
+        mpvView?.applyAudioAmplificationDb(effectiveDb)
     }
     _uiState.update {
         it.copy(
@@ -287,7 +303,7 @@ internal fun PlayerRuntimeController.updateAudioControlAvailability(
     val clampedDb = _uiState.value.audioAmplificationDb
         .coerceIn(AUDIO_AMPLIFICATION_MIN_DB, AUDIO_AMPLIFICATION_MAX_DB)
     gainAudioProcessor.setGainDb(
-        if (isAudioAmplificationAvailable) clampedDb else AUDIO_AMPLIFICATION_MIN_DB
+        if (isAudioAmplificationAvailable) effectiveAudioGainDb(clampedDb) else AUDIO_AMPLIFICATION_MIN_DB
     )
     _uiState.update { state ->
         state.copy(
@@ -739,13 +755,16 @@ internal fun PlayerRuntimeController.submitPlaybackIssueReport() {
         state.playbackIssueReportStatus == PlaybackIssueReportStatus.Sent
     ) return
     val timeline = _playbackTimeline.value
-    val diagnostics = lastPlaybackDiagnosticsForReport.takeIf { it.timestampMs > 0L }
+    val isStalker = com.nuvio.tv.core.player.isStalkerPlaybackAddress(currentStreamUrl) || mediaSourceFactory.stalkerMediaPolicy != null
+    val diagnosticSnapshot = lastPlaybackDiagnosticsForReport.takeIf { it.timestampMs > 0L }
         ?: LastPlaybackDiagnostics(
             timestampMs = System.currentTimeMillis(),
             host = currentStreamUrl.reportSafeHost(),
             result = state.error?.let { "Error: $it" } ?: "Pending"
         )
-    val reportError = lastPlaybackIssueError
+    val diagnostics = if (isStalker) diagnosticSnapshot.copy(host = "stalker", streamUrl = null, headersJson = null,
+        result = diagnosticSnapshot.result.takeIf { it in setOf("Pending", "Played") } ?: "Stalker playback failed") else diagnosticSnapshot
+    val rawReportError = lastPlaybackIssueError
         ?: PlaybackIssueErrorInput(
             displayMessage = state.error,
             errorCode = null,
@@ -755,6 +774,10 @@ internal fun PlayerRuntimeController.submitPlaybackIssueReport() {
             causeMessage = null,
             httpStatus = null
         )
+    val reportError = if (isStalker) rawReportError.copy(
+        displayMessage = if (state.error == null) null else "Stalker playback failed",
+        causeMessage = null
+    ) else rawReportError
     val audioTrack = state.audioTracks.reportTrackLabel(state.selectedAudioTrackIndex)
     val subtitleTrack = state.subtitleTracks.reportTrackLabel(state.selectedSubtitleTrackIndex)
     val reportReason = PlayerStartupLoadingPolicy.loadingStallReportReason(
@@ -782,21 +805,21 @@ internal fun PlayerRuntimeController.submitPlaybackIssueReport() {
         episode = currentEpisode,
         episodeTitle = currentEpisodeTitle,
         releaseYear = year,
-        streamUrl = currentStreamUrl,
+        streamUrl = if (isStalker) "" else currentStreamUrl,
         streamMimeType = currentStreamMimeType,
         streamName = state.currentStreamName,
         addonName = currentAddonName,
         videoHash = currentVideoHash,
         videoSize = currentVideoSize,
-        requestHeaders = currentHeaders,
-        responseHeaders = currentStreamResponseHeaders,
+        requestHeaders = if (isStalker) emptyMap() else currentHeaders,
+        responseHeaders = if (isStalker) emptyMap() else currentStreamResponseHeaders,
         playerEngine = currentInternalPlayerEngine.name,
         loading = loadingInput,
         positionMs = timeline.currentPosition.takeIf { it > 0L },
         durationMs = timeline.duration.takeIf { it > 0L },
         bufferedPositionMs = timeline.bufferedPosition.takeIf { it > 0L },
-        selectedAudioTrack = audioTrack,
-        selectedSubtitleTrack = subtitleTrack,
+        selectedAudioTrack = if (isStalker) null else audioTrack,
+        selectedSubtitleTrack = if (isStalker) null else subtitleTrack,
         isTorrentStream = isTorrentStream,
         playbackSettings = buildPlaybackIssuePlaybackSettingsInput(),
         playbackAnalytics = playbackAnalyticsInput
@@ -942,6 +965,7 @@ private fun List<TrackInfo>.reportTrackLabel(selectedIndex: Int): String? {
 }
 
 private fun String.reportSafeHost(): String {
+    if (com.nuvio.tv.core.player.isStalkerPlaybackAddress(this)) return "stalker"
     return runCatching { Uri.parse(this).host ?: "unknown" }.getOrDefault("unknown")
 }
 
@@ -1560,6 +1584,8 @@ fun PlayerRuntimeController.onEvent(
                     stopProgressUpdates()
                     stopWatchProgressSaving()
                     emitPauseScrobbleForCurrentProgress()
+                    // Same as Exo's pause: a paused player left alone can be killed by the system.
+                    saveWatchProgress()
                     schedulePauseOverlay()
                 } else {
                     userPausedManually = false
@@ -2241,24 +2267,27 @@ fun PlayerRuntimeController.onEvent(
         is PlayerEvent.OnSetSubtitleVerticalOffset -> {
             scope.launch { playerSettingsDataStore.setSubtitleVerticalOffset(event.offset) }
         }
+        is PlayerEvent.OnSetSubtitleFont -> {
+            scope.launch { playerSettingsDataStore.setSubtitleFontId(event.fontId) }
+        }
+        is PlayerEvent.OnSetSubtitleBackgroundColor -> {
+            scope.launch { playerSettingsDataStore.setSubtitleBackgroundColor(event.color) }
+        }
+        is PlayerEvent.OnSetSubtitleBackgroundRadius -> {
+            scope.launch { playerSettingsDataStore.setSubtitleBackgroundRadius(event.radius) }
+        }
+        is PlayerEvent.OnSetSubtitleShadowEnabled -> {
+            scope.launch { playerSettingsDataStore.setSubtitleShadowEnabled(event.enabled) }
+        }
+        is PlayerEvent.OnSetSubtitleShadowOpacity -> {
+            scope.launch { playerSettingsDataStore.setSubtitleShadowOpacity(event.opacity) }
+        }
+        is PlayerEvent.OnSetSubtitleShadowSize -> {
+            scope.launch { playerSettingsDataStore.setSubtitleShadowSize(event.size) }
+        }
         PlayerEvent.OnResetSubtitleDefaults -> {
             val editingHdr = _uiState.value.isEditingHdrSubtitleStyle
-            scope.launch {
-                val defaults = SubtitleStyleSettings()
-                playerSettingsDataStore.setSubtitleSize(defaults.size)
-                if (editingHdr) {
-                    playerSettingsDataStore.setSubtitleHdrTextColor(defaults.hdrTextColor)
-                    playerSettingsDataStore.setSubtitleHdrBrightness(defaults.hdrBrightness)
-                } else {
-                    playerSettingsDataStore.setSubtitleTextColor(defaults.textColor)
-                }
-                playerSettingsDataStore.setSubtitleBold(defaults.bold)
-                playerSettingsDataStore.setSubtitleOutlineEnabled(defaults.outlineEnabled)
-                playerSettingsDataStore.setSubtitleOutlineColor(defaults.outlineColor)
-                playerSettingsDataStore.setSubtitleOutlineWidth(defaults.outlineWidth)
-                playerSettingsDataStore.setSubtitleVerticalOffset(defaults.verticalOffset)
-                playerSettingsDataStore.setSubtitleBackgroundColor(defaults.backgroundColor)
-            }
+            scope.launch { playerSettingsDataStore.resetSubtitleAppearance(resetHdrText = editingHdr) }
         }
         PlayerEvent.OnToggleAspectRatio -> {
             val state = _uiState.value

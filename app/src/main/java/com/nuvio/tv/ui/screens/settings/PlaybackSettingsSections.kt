@@ -112,7 +112,8 @@ private fun PlaybackSectionContent(
         PlaybackSection.STREAM_SELECTION -> PlaybackStreamSelectionSection(playerSettings, onUpdate, onOpenDialog)
         PlaybackSection.UP_NEXT -> PlaybackUpNextSection(playerSettings, onUpdate, onOpenDialog)
         PlaybackSection.SKIP_SEGMENTS -> PlaybackSkipSegmentsSection(playerSettings, onUpdate)
-        PlaybackSection.PLAYER_INTERFACE -> PlaybackPlayerInterfaceSection(playerSettings, onUpdate)
+        PlaybackSection.PLAYER_INTERFACE -> PlaybackPlayerInterfaceSection(playerSettings, onUpdate, onOpenDialog)
+        PlaybackSection.SEEK_THUMBNAILS -> PlaybackSeekThumbnailSection()
         PlaybackSection.AUDIO -> PlaybackAudioSection(playerSettings, onUpdate, onOpenDialog)
         PlaybackSection.SUBTITLES -> PlaybackSubtitlesSection(playerSettings, onUpdate, onOpenDialog)
         PlaybackSection.VIDEO -> PlaybackVideoSection(playerSettings, transparentLetterbox, onUpdate, onOpenDialog)
@@ -155,6 +156,11 @@ internal fun PlaybackSettingsDialogs(
                 onUpdate { setP2pEnabled(true) }
                 onDismiss()
             },
+            onDismiss = onDismiss
+        )
+        PlaybackDialog.PLAYER_BUTTONS -> PlayerButtonsDialog(
+            settings = settings,
+            onUpdate = onUpdate,
             onDismiss = onDismiss
         )
         else -> {

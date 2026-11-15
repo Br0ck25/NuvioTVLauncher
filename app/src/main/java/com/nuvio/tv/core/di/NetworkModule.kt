@@ -161,6 +161,10 @@ object NetworkModule {
             .cache(Cache(File(context.cacheDir, "addon_http_cache"), 50L * 1024 * 1024))
             .sslSocketFactory(sslContext.socketFactory, trustAllManager)
             .hostnameVerifier { _, _ -> true }
+            // A catalog that never answers used to hold one of Home's three catalog slots
+            // forever, leaving its row as gray loading placeholders. Cover DNS and the whole
+            // call, which connect/read timeouts alone don't.
+            .callTimeout(75, TimeUnit.SECONDS)
             .build()
     }
 

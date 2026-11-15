@@ -61,7 +61,12 @@ object MusicLibrary {
     private const val KEY_LIKED = "liked_songs"
     private const val KEY_RECENTS = "recent_songs"
     private const val KEY_PLAYLISTS = "playlists"
-    private const val MAX_RECENTS = 60
+    /**
+     * Recently played is kept effectively unlimited for a TV listener: one entry per track and
+     * old rows age out only once this many distinct songs have been played. Stored as a single
+     * JSON string, so it stays bounded rather than growing with every play.
+     */
+    private const val MAX_RECENTS = 500
 
     private val json = Json {
         ignoreUnknownKeys = true

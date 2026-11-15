@@ -27,13 +27,23 @@ import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.automirrored.filled.ArrowBack
 import androidx.compose.material.icons.filled.Forward10
+import androidx.compose.material.icons.filled.Headphones
 import androidx.compose.material.icons.filled.Pause
 import androidx.compose.material.icons.filled.PlayArrow
+import androidx.compose.material.icons.filled.QueueMusic
+import androidx.compose.material.icons.filled.Repeat
+import androidx.compose.material.icons.filled.RepeatOne
 import androidx.compose.material.icons.filled.Replay10
+import androidx.compose.material.icons.filled.Shuffle
+import androidx.compose.material.icons.filled.SkipNext
+import androidx.compose.material.icons.filled.SkipPrevious
 import androidx.compose.material3.CircularProgressIndicator
+import androidx.compose.foundation.lazy.LazyColumn
+import androidx.compose.foundation.lazy.itemsIndexed
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.DisposableEffect
 import androidx.compose.runtime.LaunchedEffect
+import androidx.compose.runtime.collectAsState
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableIntStateOf
 import androidx.compose.runtime.mutableLongStateOf
@@ -94,11 +104,14 @@ import kotlinx.coroutines.withContext
 internal fun MusicVideoPlayerScreen(
     video: Song,
     startPositionMs: Long,
-    onClose: () -> Unit
+    onClose: (videoPositionMs: Long) -> Unit,
+    onSkip: (direction: Int) -> Unit = {},
+    onSelectQueue: (index: Int) -> Unit = {}
 ) {
     val context = LocalContext.current
     val view = LocalView.current
     val lifecycleOwner = LocalLifecycleOwner.current
+    val musicState by MusicPlayer.state.collectAsState()
     var player by remember { mutableStateOf<ExoPlayer?>(null) }
     var loading by remember { mutableStateOf(true) }
     var error by remember { mutableStateOf<String?>(null) }
@@ -106,7 +119,9 @@ internal fun MusicVideoPlayerScreen(
     var positionMs by remember { mutableLongStateOf(startPositionMs.coerceAtLeast(0L)) }
     var durationMs by remember { mutableLongStateOf(0L) }
     var ended by remember { mutableStateOf(false) }
+    var showQueue by remember { mutableStateOf(false) }
     val playFocus = remember { FocusRequester() }
+    val queueFocus = remember { FocusRequester() }
     val rootFocus = remember { FocusRequester() }
     var controlsVisible by remember { mutableStateOf(true) }
     var controlsTick by remember { mutableIntStateOf(0) }
@@ -115,13 +130,15 @@ internal fun MusicVideoPlayerScreen(
         controlsTick++
     }
 
-    LaunchedEffect(controlsTick, controlsVisible, loading, error, isPlaying) {
+    LaunchedEffect(controlsTick, controlsVisible, loading, error, isPlaying, showQueue) {
+        if (showQueue) return@LaunchedEffect
         if (!controlsVisible || loading || error != null || !isPlaying) return@LaunchedEffect
         delay(3_000L)
         controlsVisible = false
     }
 
-    BackHandler(onBack = onClose)
+    BackHandler(enabled = !showQueue) { onClose(positionMs) }
+    BackHandler(enabled = showQueue) { showQueue = false }
 
     DisposableEffect(Unit) {
         view.keepScreenOn = true
@@ -143,6 +160,13 @@ internal fun MusicVideoPlayerScreen(
     LaunchedEffect(video.videoId) {
         loading = true
         error = null
+        ended = false
+        isPlaying = false
+        durationMs = 0L
+        positionMs = startPositionMs.coerceAtLeast(0L)
+        val previous = player
+        player = null
+        previous?.release()
         val stream = withContext(Dispatchers.IO) {
             runCatching { MusicStreamResolver.resolve(video.videoId) }.getOrNull()
         }
@@ -215,7 +239,8 @@ internal fun MusicVideoPlayerScreen(
         }
     }
 
-    LaunchedEffect(controlsVisible) {
+    LaunchedEffect(controlsVisible, showQueue) {
+        if (showQueue) return@LaunchedEffect
         if (controlsVisible) {
             // A couple of frames: the controls are only attached once the enter animation
             // starts. Retrying also avoids leaving the remote on the bare surface.
@@ -239,8 +264,9 @@ internal fun MusicVideoPlayerScreen(
             .focusable()
             .onPreviewKeyEvent { event ->
                 // Back belongs to the BackHandler: it leaves the video and resumes the song,
-                // even while the controls are hidden.
+                // even while the controls are hidden. The queue overlay owns its own keys.
                 if (event.key == Key.Back) return@onPreviewKeyEvent false
+                if (showQueue) return@onPreviewKeyEvent false
                 if (event.type == KeyEventType.KeyDown && !controlsVisible) {
                     // First press only wakes the controls; consuming it stops the same press
                     // from also toggling play on the focused button behind the overlay.
@@ -319,7 +345,7 @@ internal fun MusicVideoPlayerScreen(
             VideoCircleButton(
                 icon = Icons.AutoMirrored.Filled.ArrowBack,
                 label = "Back to Now Playing",
-                onClick = onClose
+                onClick = { onClose(positionMs) }
             )
             Column(Modifier.weight(1f)) {
                 Text(
@@ -386,7 +412,7 @@ internal fun MusicVideoPlayerScreen(
                 LibraryActionButton(
                     icon = Icons.AutoMirrored.Filled.ArrowBack,
                     label = "Back to song",
-                    onClick = onClose
+                    onClick = { onClose(positionMs) }
                 )
             }
         }
@@ -437,8 +463,13 @@ internal fun MusicVideoPlayerScreen(
             Spacer(Modifier.height(16.dp))
             Row(
                 verticalAlignment = Alignment.CenterVertically,
-                horizontalArrangement = Arrangement.spacedBy(18.dp)
+                horizontalArrangement = Arrangement.spacedBy(14.dp)
             ) {
+                VideoCircleButton(
+                    icon = Icons.Default.SkipPrevious,
+                    label = "Previous track",
+                    onClick = { onSkip(-1) }
+                )
                 VideoCircleButton(
                     icon = Icons.Default.Replay10,
                     label = "Back 10 seconds",
@@ -475,6 +506,43 @@ internal fun MusicVideoPlayerScreen(
                         }
                     }
                 )
+                VideoCircleButton(
+                    icon = Icons.Default.SkipNext,
+                    label = "Next track",
+                    onClick = { onSkip(1) }
+                )
+                VideoCircleButton(
+                    icon = Icons.Default.Shuffle,
+                    label = if (musicState.shuffle) "Shuffle on" else "Shuffle",
+                    active = musicState.shuffle,
+                    onClick = { MusicPlayer.setShuffle(!musicState.shuffle) }
+                )
+                VideoCircleButton(
+                    icon = if (musicState.repeatMode == RepeatMode.ONE) {
+                        Icons.Default.RepeatOne
+                    } else {
+                        Icons.Default.Repeat
+                    },
+                    label = when (musicState.repeatMode) {
+                        RepeatMode.OFF -> "Repeat"
+                        RepeatMode.ALL -> "Repeat all"
+                        RepeatMode.ONE -> "Repeat one"
+                    },
+                    active = musicState.repeatMode != RepeatMode.OFF,
+                    onClick = { MusicPlayer.cycleRepeat() }
+                )
+                if (musicState.queue.isNotEmpty()) {
+                    VideoCircleButton(
+                        icon = Icons.Default.QueueMusic,
+                        label = "Up next",
+                        onClick = { showQueue = true }
+                    )
+                }
+                VideoCircleButton(
+                    icon = Icons.Default.Headphones,
+                    label = "Switch to audio",
+                    onClick = { onClose(positionMs) }
+                )
             }
             Spacer(Modifier.height(10.dp))
             Text(
@@ -484,6 +552,84 @@ internal fun MusicVideoPlayerScreen(
             )
         }
         }
+
+        if (showQueue) {
+            LaunchedEffect(Unit) { runCatching { queueFocus.requestFocus() } }
+            Box(
+                Modifier
+                    .fillMaxSize()
+                    .background(Color.Black.copy(alpha = 0.9f))
+                    .padding(horizontal = 56.dp, vertical = 36.dp)
+            ) {
+                Column(Modifier.fillMaxSize()) {
+                    Row(
+                        Modifier.fillMaxWidth(),
+                        horizontalArrangement = Arrangement.SpaceBetween,
+                        verticalAlignment = Alignment.CenterVertically
+                    ) {
+                        Text(
+                            text = "Up next",
+                            color = Color.White,
+                            fontFamily = MusicDisplay,
+                            fontSize = 26.sp,
+                            fontWeight = FontWeight.Bold
+                        )
+                        Text(
+                            text = "Close",
+                            color = Color.White.copy(alpha = 0.7f),
+                            fontSize = 13.sp,
+                            modifier = Modifier
+                                .clip(RoundedCornerShape(8.dp))
+                                .clickable { showQueue = false }
+                                .padding(horizontal = 10.dp, vertical = 6.dp)
+                        )
+                    }
+                    Spacer(Modifier.height(12.dp))
+                    LazyColumn(
+                        Modifier.fillMaxSize(),
+                        verticalArrangement = Arrangement.spacedBy(4.dp)
+                    ) {
+                        itemsIndexed(musicState.queue) { index, song ->
+                            Row(
+                                Modifier
+                                    .fillMaxWidth()
+                                    .then(if (index == 0) Modifier.focusRequester(queueFocus) else Modifier)
+                                    .background(
+                                        if (index == musicState.index) MusicPalette.accent.copy(alpha = 0.18f)
+                                        else Color.Transparent
+                                    )
+                                    .clip(RoundedCornerShape(8.dp))
+                                    .clickable {
+                                        onSelectQueue(index)
+                                        showQueue = false
+                                    }
+                                    .padding(horizontal = 12.dp, vertical = 9.dp),
+                                verticalAlignment = Alignment.CenterVertically
+                            ) {
+                                Text(
+                                    text = "${index + 1}",
+                                    color = Color.White.copy(alpha = 0.4f),
+                                    fontSize = 11.sp,
+                                    modifier = Modifier.width(28.dp)
+                                )
+                                Text(
+                                    text = song.title,
+                                    color = if (index == musicState.index) MusicPalette.accent else Color.White,
+                                    fontSize = 13.sp,
+                                    maxLines = 1,
+                                    overflow = TextOverflow.Ellipsis,
+                                    modifier = Modifier.weight(1f)
+                                )
+                                song.durationText?.let {
+                                    Spacer(Modifier.width(10.dp))
+                                    Text(text = it, color = Color.White.copy(alpha = 0.45f), fontSize = 11.sp)
+                                }
+                            }
+                        }
+                    }
+                }
+            }
+        }
     }
 }
 
@@ -492,6 +638,7 @@ private fun VideoCircleButton(
     icon: ImageVector,
     label: String,
     modifier: Modifier = Modifier,
+    active: Boolean = false,
     onClick: () -> Unit
 ) {
     var focused by remember { mutableStateOf(false) }
@@ -500,11 +647,19 @@ private fun VideoCircleButton(
             .size(50.dp)
             .clip(CircleShape)
             .background(
-                if (focused) Color.White else Color.White.copy(alpha = 0.14f)
+                when {
+                    focused -> Color.White
+                    active -> MusicPalette.accent.copy(alpha = 0.24f)
+                    else -> Color.White.copy(alpha = 0.14f)
+                }
             )
             .border(
                 2.dp,
-                if (focused) Color.White else Color.White.copy(alpha = 0.22f),
+                when {
+                    focused -> Color.White
+                    active -> MusicPalette.accent.copy(alpha = 0.75f)
+                    else -> Color.White.copy(alpha = 0.22f)
+                },
                 CircleShape
             )
             .onFocusChanged { focused = it.isFocused }
@@ -514,7 +669,11 @@ private fun VideoCircleButton(
         Icon(
             icon,
             contentDescription = label,
-            tint = if (focused) MusicPalette.background else Color.White,
+            tint = when {
+                focused -> MusicPalette.background
+                active -> MusicPalette.accent
+                else -> Color.White
+            },
             modifier = Modifier.size(23.dp)
         )
     }

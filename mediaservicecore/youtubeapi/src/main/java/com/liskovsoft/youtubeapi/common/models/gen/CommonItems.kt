@@ -226,6 +226,7 @@ internal data class ItemWrapper(
     val pivotRadioRenderer: RadioItem? = null,
     val compactRadioRenderer: RadioItem? = null,
     val gridChannelRenderer: ChannelItem? = null,
+    val channelRenderer: ChannelItem? = null,
     val pivotChannelRenderer: ChannelItem? = null,
     val compactChannelRenderer: ChannelItem? = null,
     val gridPlaylistRenderer: PlaylistItem? = null,
@@ -474,7 +475,8 @@ internal data class LockupItem(
     val contentImage: ContentImage?, // thumbnail
     val metadata: MetadataItem?, // title, subtitle, channelId
     val rendererContext: RendererContext?, // videoId
-    val contentId: String?
+    val contentId: String?,
+    val contentType: String? = null // LOCKUP_CONTENT_TYPE_CHANNEL / VIDEO / SHORT / PLAYLIST
 ) {
     data class ContentImage(
         val thumbnailViewModel: ThumbnailViewModel?,

@@ -10,6 +10,7 @@ import androidx.compose.animation.expandVertically
 import androidx.compose.animation.shrinkVertically
 import androidx.compose.foundation.Image
 import androidx.compose.foundation.background
+import androidx.compose.foundation.basicMarquee
 import androidx.compose.foundation.border
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.ExperimentalFoundationApi
@@ -66,9 +67,11 @@ import androidx.compose.material3.OutlinedTextFieldDefaults
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.CompositionLocalProvider
+import androidx.compose.runtime.DisposableEffect
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.collectAsState
 import androidx.compose.runtime.getValue
+import androidx.compose.runtime.mutableIntStateOf
 import androidx.compose.runtime.mutableLongStateOf
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
@@ -109,6 +112,9 @@ import androidx.compose.ui.unit.Density
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import androidx.hilt.navigation.compose.hiltViewModel
+import androidx.lifecycle.Lifecycle
+import androidx.lifecycle.LifecycleEventObserver
+import androidx.lifecycle.compose.LocalLifecycleOwner
 import com.nuvio.tv.R
 import com.nuvio.tv.ui.components.NuvioDialog
 import com.nuvio.tv.ui.screens.settings.DebugReportDialog
@@ -137,6 +143,20 @@ fun YouTubeScreen(
     val state by viewModel.state.collectAsState()
     val error by viewModel.error.collectAsState()
     val cardMenu by viewModel.menu.collectAsState()
+
+    // YouTube changes its recommendations over time. A TV app can stay in memory for days, so
+    // reload a stale feed when the app comes back instead of showing the same rows forever.
+    val lifecycleOwner = LocalLifecycleOwner.current
+    DisposableEffect(lifecycleOwner) {
+        val observer = LifecycleEventObserver { _, event ->
+            if (event == Lifecycle.Event.ON_RESUME) viewModel.refreshIfStale()
+        }
+        lifecycleOwner.lifecycle.addObserver(observer)
+        onDispose { lifecycleOwner.lifecycle.removeObserver(observer) }
+    }
+    // Coming back to OneTube from another tab should refresh it too, if it has gone stale.
+    LaunchedEffect(Unit) { viewModel.refreshIfStale() }
+
     var query by remember { mutableStateOf("") }
     // OneTube sits slightly smaller than the rest of the app, so a 1080p TV shows more cards
     // and the header/tabs stop feeling oversized. Everything inside the page scales together.
@@ -167,6 +187,10 @@ fun YouTubeScreen(
     // Down from any tab should land on the first video card, not whichever card happens
     // to sit underneath that tab.
     val firstCardFocus = remember { FocusRequester() }
+    var feedScrollToTopTick by remember { mutableIntStateOf(0) }
+    val focusFeedFromTabs = {
+        if (state.rows.isNotEmpty() || state.grid.isNotEmpty()) feedScrollToTopTick++
+    }
     val tabsDownFocus = if (state.rows.isNotEmpty() || state.grid.isNotEmpty()) firstCardFocus else null
     // Down from the header should land on the tab you're actually on, not whichever tab
     // happens to sit underneath the search icon.
@@ -240,7 +264,7 @@ fun YouTubeScreen(
     val keyboard = LocalSoftwareKeyboardController.current
     val focusManager = LocalFocusManager.current
     val sidebarExpanded = com.nuvio.tv.LocalSidebarExpanded.current
-    val openSidebar = com.nuvio.tv.LocalOpenSidebar.current
+    val openNuvioSidebar = com.nuvio.tv.LocalOpenSidebar.current
 
     // Leaving the search behind (another tab, a card, settings) should put the magnifier back,
     // not leave a text box sitting in the header of the next page.
@@ -261,7 +285,7 @@ fun YouTubeScreen(
     }
 
     // Back goes up from a channel, playlist or search before it leaves the page.
-    BackHandler(enabled = state.subTitle == null && !showAccounts && !suggestionsOpen && !sidebarExpanded) { openSidebar() }
+    BackHandler(enabled = state.subTitle == null && !showAccounts && !suggestionsOpen && !sidebarExpanded) { openNuvioSidebar() }
     BackHandler(enabled = state.subTitle != null) {
         viewModel.back()
         // Put focus back on the tab strip so Down can enter the restored feed. Without this,
@@ -566,7 +590,8 @@ fun YouTubeScreen(
                                     tab.title,
                                     selected = state.tab == tab && state.subTitle == null,
                                     focusRequester = if (state.tab == tab) selectedTabFocus else null,
-                                    downFocusRequester = tabsDownFocus
+                                    downFocusRequester = tabsDownFocus,
+                                    onDownKey = focusFeedFromTabs
                                 ) {
                                     query = ""
                                     collapseSearch()
@@ -603,7 +628,8 @@ fun YouTubeScreen(
                         title,
                         selected = false,
                         upFocusRequester = if (!headerHidden) selectedTabFocus else null,
-                        downFocusRequester = tabsDownFocus
+                        downFocusRequester = tabsDownFocus,
+                        onDownKey = focusFeedFromTabs
                     ) {
                         query = ""
                         collapseSearch()
@@ -674,6 +700,7 @@ fun YouTubeScreen(
             // has no selected tab, so there is nothing to point at then.
             tabsFocus = if (!headerHidden && state.subTitle == null) selectedTabFocus else null,
             firstCardFocus = firstCardFocus,
+            feedScrollToTopTick = feedScrollToTopTick,
             onScrollPosition = { index, offset ->
                 val now = android.os.SystemClock.elapsedRealtime()
                 if (index == 0 && offset <= 24) {
@@ -707,6 +734,8 @@ fun YouTubeScreen(
             onTogglePlaylist = { viewModel.menuTogglePlaylist(it) },
             onNewPlaylist = { viewModel.menuCreatePlaylist(it) },
             onTogglePinned = { viewModel.menuTogglePinned() },
+            onDeletePlaylist = { viewModel.menuDeletePlaylist() },
+            onNotInterested = { viewModel.menuNotInterested() },
             onBlockChannel = { viewModel.menuBlockChannel() }
         )
     }
@@ -730,6 +759,7 @@ private fun Content(
     onSignOut: () -> Unit,
     tabsFocus: FocusRequester? = null,
     firstCardFocus: FocusRequester? = null,
+    feedScrollToTopTick: Int = 0,
     onScrollPosition: (Int, Int) -> Unit = { _, _ -> }
 ) {
     val context = androidx.compose.ui.platform.LocalContext.current
@@ -820,8 +850,18 @@ private fun Content(
         state.rows.isNotEmpty() -> {
           val rowsState = rememberLazyListState()
           val rowsScope = rememberCoroutineScope()
+          LaunchedEffect(state.subTitle) {
+              if (state.subTitle != null && state.rows.isNotEmpty()) rowsState.scrollToItem(0)
+          }
           LaunchedEffect(needsInitialFocus, targetRow) {
               if (needsInitialFocus && targetRow >= 0) rowsState.scrollToItem(targetRow)
+          }
+          LaunchedEffect(feedScrollToTopTick) {
+              if (feedScrollToTopTick > 0) {
+                  rowsState.scrollToItem(0)
+                  delay(80)
+                  firstCardFocus?.let { runCatching { it.requestFocus() } }
+              }
           }
           LaunchedEffect(rowsState) {
               snapshotFlow {
@@ -875,12 +915,22 @@ private fun Content(
           }
         }
 
-        state.tab == YtTab.CHANNELS && state.subTitle == null -> ChannelsSplit(state, viewModel, onPlay, canRequestInitialFocus, firstCardFocus) { needsInitialFocus = false }
+        state.tab == YtTab.CHANNELS && state.subTitle == null -> ChannelsSplit(state, viewModel, onPlay, canRequestInitialFocus, firstCardFocus, feedScrollToTopTick) { needsInitialFocus = false }
 
         else -> {
             val gridState = rememberLazyGridState()
+            LaunchedEffect(state.subTitle) {
+                if (state.subTitle != null && state.grid.isNotEmpty()) gridState.scrollToItem(0)
+            }
             LaunchedEffect(needsInitialFocus, targetGridIndex) {
                 if (needsInitialFocus && targetGridIndex >= 0) gridState.scrollToItem(targetGridIndex)
+            }
+            LaunchedEffect(feedScrollToTopTick) {
+                if (feedScrollToTopTick > 0) {
+                    gridState.scrollToItem(0)
+                    delay(80)
+                    firstCardFocus?.let { runCatching { it.requestFocus() } }
+                }
             }
             // Keep loading as you near the end, like an endless feed.
             LaunchedEffect(gridState, state.canLoadMore) {
@@ -914,12 +964,36 @@ private fun Content(
 
 /** Your subscribed channels as a list; the highlighted one's videos show beside it, like SmartTube. */
 @Composable
-private fun ChannelsSplit(state: YtUiState, viewModel: YouTubeViewModel, onPlay: (YtPlayable) -> Unit, needsInitialFocus: Boolean, firstFocus: FocusRequester? = null, onInitialFocus: () -> Unit) {
+private fun ChannelsSplit(state: YtUiState, viewModel: YouTubeViewModel, onPlay: (YtPlayable) -> Unit, needsInitialFocus: Boolean, firstFocus: FocusRequester? = null, scrollToTopTick: Int = 0, onInitialFocus: () -> Unit) {
     val preview by viewModel.preview.collectAsState()
     // Only OK loads a channel's videos; moving the focus just highlights the name.
     var selectedChannel by remember { mutableStateOf<String?>(null) }
+    // Picking a channel gives its videos the full width. Back brings the list back.
+    var showChannelList by remember { mutableStateOf(true) }
+    val firstVideoFocus = remember { FocusRequester() }
+    val channelListState = rememberLazyListState()
+    BackHandler(enabled = !showChannelList) { showChannelList = true }
+    LaunchedEffect(scrollToTopTick) {
+        if (scrollToTopTick > 0 && showChannelList) {
+            channelListState.scrollToItem(0)
+            delay(80)
+            firstFocus?.let { runCatching { it.requestFocus() } }
+        }
+    }
+    LaunchedEffect(showChannelList, preview.items) {
+        if (showChannelList) {
+            if (firstFocus != null) {
+                delay(80)
+                runCatching { firstFocus.requestFocus() }
+            }
+        } else if (preview.items.isNotEmpty()) {
+            delay(80)
+            runCatching { firstVideoFocus.requestFocus() }
+        }
+    }
     Row(Modifier.fillMaxSize(), horizontalArrangement = Arrangement.spacedBy(16.dp)) {
-        LazyColumn(Modifier.width(300.dp).fillMaxHeight(), verticalArrangement = Arrangement.spacedBy(6.dp)) {
+        if (showChannelList) {
+        LazyColumn(state = channelListState, modifier = Modifier.width(300.dp).fillMaxHeight(), verticalArrangement = Arrangement.spacedBy(6.dp)) {
             itemsIndexed(state.grid) { i, channel ->
                 var focused by remember { mutableStateOf(false) }
                 var held by remember(channel.channelId) { mutableStateOf(false) }
@@ -961,6 +1035,7 @@ private fun ChannelsSplit(state: YtUiState, viewModel: YouTubeViewModel, onPlay:
                                 KeyEventType.KeyUp -> {
                                     if (held && !longFired) {
                                         selectedChannel = channel.title
+                                        showChannelList = false
                                         viewModel.previewChannel(channel)
                                     }
                                     held = false
@@ -971,6 +1046,7 @@ private fun ChannelsSplit(state: YtUiState, viewModel: YouTubeViewModel, onPlay:
                         }
                         .clickable {
                             selectedChannel = channel.title
+                            showChannelList = false
                             viewModel.previewChannel(channel)
                         }
                         .background(if (selectedChannel == channel.title) Color(0xFF2A2A2E) else CardBg)
@@ -994,7 +1070,22 @@ private fun ChannelsSplit(state: YtUiState, viewModel: YouTubeViewModel, onPlay:
                 }
             }
         }
-        Box(Modifier.weight(1f).fillMaxHeight()) {
+        }
+        Column(Modifier.weight(1f).fillMaxHeight()) {
+            if (!showChannelList) {
+                Row(
+                    modifier = Modifier
+                        .padding(bottom = 10.dp)
+                        .clip(RoundedCornerShape(20.dp))
+                        .background(CardBg)
+                        .clickable { showChannelList = true }
+                        .padding(horizontal = 14.dp, vertical = 8.dp),
+                    verticalAlignment = Alignment.CenterVertically
+                ) {
+                    Text("←  Channels", color = Color.White, fontSize = 14.sp, fontWeight = FontWeight.SemiBold)
+                }
+            }
+            Box(Modifier.weight(1f).fillMaxWidth()) {
             val gridState = rememberLazyGridState()
             val restoredIndex = preview.items.indexOfFirst { it.kind == YtKind.VIDEO && it.videoId == viewModel.lastPlayedVideoId }
             val initialIndex = if (restoredIndex >= 0) restoredIndex else preview.items.indexOfFirst { it.kind == YtKind.VIDEO }
@@ -1017,7 +1108,7 @@ private fun ChannelsSplit(state: YtUiState, viewModel: YouTubeViewModel, onPlay:
                 verticalArrangement = Arrangement.spacedBy(16.dp)
             ) {
                 gridItemsIndexed(preview.items) { index, v ->
-                    ItemCard(v, viewModel, Modifier, requestInitialFocus = needsInitialFocus && index == initialIndex, onInitialFocus = onInitialFocus, onFocused = { viewModel.prefetch(v) }, onLongClick = { viewModel.openMenu(v) }) { viewModel.activate(v, preview.items, onPlay) }
+                    ItemCard(v, viewModel, Modifier, requestInitialFocus = needsInitialFocus && index == initialIndex, externalFocusRequester = if (index == initialIndex) firstVideoFocus else null, onInitialFocus = onInitialFocus, onFocused = { viewModel.prefetch(v) }, onLongClick = { viewModel.openMenu(v) }) { viewModel.activate(v, preview.items, onPlay) }
                 }
             }
             if (preview.loading && preview.items.isEmpty()) {
@@ -1031,6 +1122,7 @@ private fun ChannelsSplit(state: YtUiState, viewModel: YouTubeViewModel, onPlay:
                     modifier = Modifier.align(Alignment.Center)
                 )
             }
+        }
         }
     }
 }
@@ -1169,6 +1261,7 @@ private fun TabChip(
     focusRequester: FocusRequester? = null,
     upFocusRequester: FocusRequester? = null,
     downFocusRequester: FocusRequester? = null,
+    onDownKey: (() -> Unit)? = null,
     onClick: () -> Unit
 ) {
     var focused by remember { mutableStateOf(false) }
@@ -1185,6 +1278,14 @@ private fun TabChip(
             .focusProperties {
                 if (upFocusRequester != null) up = upFocusRequester
                 if (downFocusRequester != null) down = downFocusRequester
+            }
+            .onPreviewKeyEvent { event ->
+                if (onDownKey != null && event.type == KeyEventType.KeyDown && event.key == Key.DirectionDown) {
+                    onDownKey()
+                    true
+                } else {
+                    false
+                }
             }
             .onFocusChanged { focused = it.isFocused }
             .clickable(onClick = onClick)
@@ -1298,11 +1399,14 @@ private fun YouTubeItemMenuDialog(
     onTogglePlaylist: (YtPlaylistRow) -> Unit,
     onNewPlaylist: (String) -> Unit,
     onTogglePinned: () -> Unit,
+    onDeletePlaylist: () -> Unit,
+    onNotInterested: () -> Unit,
     onBlockChannel: () -> Unit
 ) {
     val menuKey = menu.item.videoId ?: menu.item.channelId ?: menu.item.title
     var showPlaylists by remember(menuKey) { mutableStateOf(false) }
     var creatingPlaylist by remember(menuKey) { mutableStateOf(false) }
+    var confirmingDelete by remember(menuKey) { mutableStateOf(false) }
     var newPlaylistName by remember(menuKey) { mutableStateOf("") }
     val firstRow = remember { FocusRequester() }
     val nameFocus = remember { FocusRequester() }
@@ -1326,6 +1430,9 @@ private fun YouTubeItemMenuDialog(
             newPlaylistName = ""
             keyboard?.hide()
         }
+    }
+    if (confirmingDelete) {
+        BackHandler { confirmingDelete = false }
     }
 
     fun create() {
@@ -1373,6 +1480,19 @@ private fun YouTubeItemMenuDialog(
                 newPlaylistName = ""
                 keyboard?.hide()
             }
+        } else if (confirmingDelete) {
+            Column(
+                modifier = Modifier.fillMaxWidth(),
+                verticalArrangement = Arrangement.spacedBy(8.dp)
+            ) {
+                Text(
+                    "Delete \"${menu.item.title}\" from your YouTube account? This can't be undone.",
+                    color = Color.White,
+                    fontSize = 14.sp
+                )
+                MenuRow("Delete playlist", firstRow, enabled = !menu.busy, onClick = onDeletePlaylist)
+                MenuRow("Cancel") { confirmingDelete = false }
+            }
         } else {
             Column(
                 modifier = Modifier.fillMaxWidth(),
@@ -1394,6 +1514,7 @@ private fun YouTubeItemMenuDialog(
                         enabled = !menu.busy,
                         onClick = onTogglePinned
                     )
+                    MenuRow("Delete playlist", enabled = !menu.busy) { confirmingDelete = true }
                 }
                 if ((isVideo || isChannel) && hasChannel && menu.subscribed != null) {
                     MenuRow(
@@ -1426,6 +1547,9 @@ private fun YouTubeItemMenuDialog(
                 }
                 if ((isVideo || isChannel) && hasChannel) {
                     MenuRow("Block this channel", enabled = !menu.busy, onClick = onBlockChannel)
+                }
+                if (isVideo) {
+                    MenuRow("Not interested", enabled = !menu.busy, onClick = onNotInterested)
                 }
             }
         }
@@ -1601,6 +1725,12 @@ private fun ItemCard(item: YtItem, viewModel: YouTubeViewModel, modifier: Modifi
                 if (!isOk) return@onPreviewKeyEvent false
                 when (e.type) {
                     KeyEventType.KeyDown -> {
+                        if (e.nativeKeyEvent.flags and android.view.KeyEvent.FLAG_LONG_PRESS != 0) {
+                            held = true
+                            longFired = true
+                            onLongClick?.invoke()
+                            return@onPreviewKeyEvent true
+                        }
                         if (e.nativeKeyEvent.repeatCount == 0) {
                             held = true
                             longFired = false
@@ -1698,17 +1828,22 @@ private fun ItemCard(item: YtItem, viewModel: YouTubeViewModel, modifier: Modifi
             }
         }
         Column(Modifier.padding(horizontal = 11.dp, vertical = 10.dp)) {
-            // Two lines reserved, so the info below has room and sits at the same height on every card.
-            Text(
-                item.title,
-                color = Color.White,
-                fontSize = 14.5.sp,
-                lineHeight = 19.sp,
-                fontWeight = FontWeight.Medium,
-                minLines = 2,
-                maxLines = 2,
-                overflow = TextOverflow.Ellipsis
-            )
+            // Keep the two-line title area reserved, but scroll a long title on one line while
+            // the card has focus, like the TV YouTube app.
+            Box(Modifier.height(40.dp)) {
+                Text(
+                    item.title,
+                    color = Color.White,
+                    fontSize = 14.5.sp,
+                    lineHeight = 19.sp,
+                    fontWeight = FontWeight.Medium,
+                    minLines = if (focused) 1 else 2,
+                    maxLines = if (focused) 1 else 2,
+                    softWrap = !focused,
+                    overflow = if (focused) TextOverflow.Clip else TextOverflow.Ellipsis,
+                    modifier = if (focused) Modifier.basicMarquee() else Modifier
+                )
+            }
             // Two info lines: the channel, then views and post time. Some feeds put the whole
             // "channel . @handle . channel . views" string in one field and add invisible bidi
             // marks around the parts, so clean and split both fields together.

@@ -224,11 +224,12 @@ class AddonChannelRepository @Inject constructor(
         else CatalogResult.Failed(lastError ?: "The addon returned no channels.")
     }
 
-    private fun addonSourceId(baseUrl: String): String =
-        "addon_${baseUrl.trimEnd('/').hashCode()}_${baseUrl.trimEnd('/').length}"
-
     private companion object {
         const val PAGE_SIZE = 100
         const val MAX_PAGES = 5
     }
 }
+
+/** The source id its channels carry, so a saved list can tell them from a turned-off playlist's. */
+internal fun addonSourceId(baseUrl: String): String =
+    "addon_${baseUrl.trimEnd('/').hashCode()}_${baseUrl.trimEnd('/').length}"

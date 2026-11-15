@@ -1057,7 +1057,8 @@ internal fun <T> SettingsMultiChoiceDialog(
     subtitle: String? = null,
     width: Dp = 520.dp,
     maxHeight: Dp = 420.dp,
-    maxSelections: Int? = null
+    maxSelections: Int? = null,
+    showSelectAll: Boolean = false
 ) {
     val focusRequester = remember { FocusRequester() }
     val selected = remember(selectedValues) { mutableStateListOf<T>().also { it.addAll(selectedValues) } }
@@ -1156,6 +1157,15 @@ internal fun <T> SettingsMultiChoiceDialog(
                 }
             }
             SettingsDialogActionRow {
+                if (showSelectAll) {
+                    SettingsDialogActionButton(
+                        text = stringResource(R.string.action_select_all),
+                        onClick = {
+                            selected.clear()
+                            selected.addAll(options.map { it.value })
+                        }
+                    )
+                }
                 SettingsDialogActionButton(
                     text = stringResource(R.string.action_clear),
                     onClick = { selected.clear() }

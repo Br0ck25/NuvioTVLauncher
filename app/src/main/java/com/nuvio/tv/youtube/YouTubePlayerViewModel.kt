@@ -34,6 +34,11 @@ data class YtVideoInfo(
     val authorImage: String?,
     val subscribers: String?,
     val likeCount: String?,
+    val dislikeCount: String?,
+    /** "1.2M views", when YouTube provides it. */
+    val viewCount: String?,
+    /** The upload date as YouTube displays it. */
+    val publishedDate: String?,
     val liked: Boolean,
     val disliked: Boolean,
     val subscribed: Boolean,
@@ -179,6 +184,9 @@ class YouTubePlayerViewModel @Inject constructor(
         authorImage = m.authorImageUrl?.takeIf { it.isNotBlank() },
         subscribers = m.subscriberCount,
         likeCount = m.likeCount,
+        dislikeCount = m.dislikeCount?.takeIf { it.isNotBlank() },
+        viewCount = m.viewCount?.takeIf { it.isNotBlank() },
+        publishedDate = m.publishedDate?.takeIf { it.isNotBlank() },
         liked = m.likeStatus == MediaItemMetadata.LIKE_STATUS_LIKE,
         disliked = m.likeStatus == MediaItemMetadata.LIKE_STATUS_DISLIKE,
         subscribed = m.isSubscribed,

@@ -17,6 +17,7 @@ import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
+import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.itemsIndexed
 import androidx.compose.foundation.lazy.rememberLazyListState
@@ -138,6 +139,32 @@ internal fun MusicDetailScreen(
                 }
             )
         }
+        if (state.type == BrowseType.ARTIST &&
+            !state.loading && state.error == null && state.songs.isNotEmpty()
+        ) {
+            item(key = "detail-popular") {
+                Row(
+                    Modifier
+                        .fillMaxWidth()
+                        .padding(horizontal = 26.dp, vertical = 4.dp),
+                    verticalAlignment = Alignment.CenterVertically
+                ) {
+                    Text(
+                        text = "Popular",
+                        color = MusicPalette.text,
+                        fontFamily = MusicDisplay,
+                        fontSize = 21.sp,
+                        fontWeight = FontWeight.Bold
+                    )
+                    Spacer(Modifier.width(8.dp))
+                    Text(
+                        text = state.songs.size.toString(),
+                        color = MusicPalette.textMuted,
+                        fontSize = 11.5.sp
+                    )
+                }
+            }
+        }
         when {
             state.loading -> item(key = "detail-loading") {
                 MusicLoading(Modifier.fillMaxWidth().height(240.dp))
@@ -149,13 +176,14 @@ internal fun MusicDetailScreen(
                     modifier = Modifier.fillMaxWidth().height(260.dp)
                 )
             }
-            state.songs.isEmpty() -> item(key = "detail-empty") {
+            state.songs.isEmpty() && state.sections.isEmpty() -> item(key = "detail-empty") {
                 MusicEmptyState(
                     title = "Nothing to play",
                     message = "This page didn't list any tracks.",
                     modifier = Modifier.fillMaxWidth().height(300.dp)
                 )
             }
+            state.songs.isEmpty() -> Unit
             else -> {
                 itemsIndexed(
                     items = state.songs,
@@ -189,21 +217,22 @@ internal fun MusicDetailScreen(
                         }
                     }
                 }
-                if (state.sections.isNotEmpty()) {
-                    item(key = "detail-sections") {
-                        Spacer(Modifier.height(18.dp))
-                    }
-                    itemsIndexed(
-                        items = state.sections,
-                        key = { index, shelf -> "s:${shelf.title}#$index" }
-                    ) { _, shelf ->
-                        MusicShelfRow(
-                            shelf = shelf,
-                            onItemClick = { _, index -> onShelfItemClick(shelf, index) },
-                            modifier = Modifier.padding(vertical = 8.dp)
-                        )
-                    }
-                }
+            }
+        }
+        // An artist can have no top songs but still list releases and playlists.
+        if (!state.loading && state.error == null && state.sections.isNotEmpty()) {
+            item(key = "detail-sections") {
+                Spacer(Modifier.height(18.dp))
+            }
+            itemsIndexed(
+                items = state.sections,
+                key = { index, shelf -> "s:${shelf.title}#$index" }
+            ) { _, shelf ->
+                MusicShelfRow(
+                    shelf = shelf,
+                    onItemClick = { _, index -> onShelfItemClick(shelf, index) },
+                    modifier = Modifier.padding(vertical = 8.dp)
+                )
             }
         }
     }
@@ -307,6 +336,19 @@ private fun MusicDetailHeader(
                         text = "${state.songs.size} track" + if (state.songs.size == 1) "" else "s",
                         color = MusicPalette.textMuted,
                         fontSize = 13.sp
+                    )
+                }
+                if ((state.type == BrowseType.ARTIST || state.type == BrowseType.ALBUM) &&
+                    state.description.isNotBlank()
+                ) {
+                    Spacer(Modifier.height(8.dp))
+                    Text(
+                        text = state.description,
+                        color = MusicPalette.textSecondary,
+                        fontSize = 12.5.sp,
+                        lineHeight = 17.sp,
+                        maxLines = 3,
+                        overflow = TextOverflow.Ellipsis
                     )
                 }
                 Spacer(Modifier.height(22.dp))

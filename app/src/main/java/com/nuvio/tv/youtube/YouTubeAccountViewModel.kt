@@ -88,6 +88,8 @@ class YouTubeAccountViewModel @Inject constructor(
                 return@scheduleDirect
             }
             val list = runCatching { YouTubeAccountScopes.accounts(context, scope) }.getOrDefault(emptyList())
+            // Keep the saved copy current after a token refresh or a name/avatar sync.
+            if (signed) runCatching { YouTubeAccountScopes.save(context, scope) }
             Log.i(TAG, "check $scope signed=$signed: ${YouTubeAccountScopes.describe(context)}")
             keyById = list.associateBy({ YouTubeAccountScopes.keyOf(it).hashCode() }, { YouTubeAccountScopes.keyOf(it) })
             val items = list.map {

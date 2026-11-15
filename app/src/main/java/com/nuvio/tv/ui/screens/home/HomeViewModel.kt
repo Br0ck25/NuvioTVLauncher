@@ -298,6 +298,14 @@ class HomeViewModel @Inject constructor(
     internal val cwLastProcessedNextUpContentIds: MutableSet<String> = ConcurrentHashMap.newKeySet()
     internal val cwProcessedOlderSeedContentIds: MutableSet<String> = ConcurrentHashMap.newKeySet()
     internal val cwEnrichedNextUpOverlay = ConcurrentHashMap<String, NextUpInfo>()
+    /** Next-up overlay entries restored from the disk snapshot and not enriched yet in this session. */
+    internal val cwDiskSeededNextUpOverlayIds: MutableSet<String> = ConcurrentHashMap.newKeySet()
+    /** Next-up seed keys an earlier launch found without a next episode, with their recheck time. */
+    internal val cwNoNextUpSeeds = ConcurrentHashMap<String, Long>()
+    /** Profile whose [cwNoNextUpSeeds] are loaded; null loads them again from disk. */
+    @Volatile internal var cwNoNextUpSeedsProfileId: Int? = null
+    /** Wall clock time the last Continue Watching cycle started, to spot releases passed since. */
+    @Volatile internal var cwLastCycleStartedAtMs: Long = System.currentTimeMillis()
     /** In-memory cache of enriched InProgress items per contentId+episode key. */
     internal val cwEnrichedInProgressOverlay = ConcurrentHashMap<String, ContinueWatchingItem.InProgress>()
     /** Bumped to force the CW pipeline to re-run (e.g. after cache clear). */
@@ -382,6 +390,7 @@ class HomeViewModel @Inject constructor(
             observeLayoutPreferences()
             observeModernHomePresentation()
             loadContinueWatching()
+            observeContinueWatchingReleases()
             watchedSeriesStateHolder.loadFromDisk()
             observeExternalMetaPrefetchPreference()
             observeContinueWatchingSortMode()
@@ -415,10 +424,13 @@ class HomeViewModel @Inject constructor(
                     cwTmdbIdCache.clear()
                     cwNextUpResolutionCache.clear()
                     cwNextUpNegativeCacheTimestamps.clear()
+                    cwNoNextUpSeeds.clear()
+                    cwNoNextUpSeedsProfileId = null
                     discoveredOlderNextUpItems.clear()
                     cwLastProcessedNextUpContentIds.clear()
                     cwProcessedOlderSeedContentIds.clear()
                     cwEnrichedNextUpOverlay.clear()
+                    cwDiskSeededNextUpOverlayIds.clear()
                     cwEnrichedInProgressOverlay.clear()
                     cwLastBadgeEpisodeKeys = emptySet()
                     cwLastShowIdSiblings = emptyMap()
@@ -470,10 +482,13 @@ class HomeViewModel @Inject constructor(
         cwTmdbIdCache.clear()
         cwNextUpResolutionCache.clear()
         cwNextUpNegativeCacheTimestamps.clear()
+        cwNoNextUpSeeds.clear()
+        cwNoNextUpSeedsProfileId = null
         discoveredOlderNextUpItems.clear()
         cwLastProcessedNextUpContentIds.clear()
         cwProcessedOlderSeedContentIds.clear()
         cwEnrichedNextUpOverlay.clear()
+        cwDiskSeededNextUpOverlayIds.clear()
         cwEnrichedInProgressOverlay.clear()
         cwLastBadgeEpisodeKeys = emptySet()
         cwLastShowIdSiblings = emptyMap()
@@ -553,6 +568,13 @@ class HomeViewModel @Inject constructor(
                 .distinctUntilChanged()
                 .collect { style ->
                     _uiState.update { it.copy(continueWatchingCardStyle = style) }
+                }
+        }
+        viewModelScope.launch {
+            layoutPreferenceDataStore.continueWatchingClickAction
+                .distinctUntilChanged()
+                .collect { action ->
+                    _uiState.update { it.copy(continueWatchingClickAction = action) }
                 }
         }
         viewModelScope.launch {
@@ -669,6 +691,7 @@ class HomeViewModel @Inject constructor(
                         // Genuine in-profile source change — clear CW caches to prevent mixing.
                         cwMetaCache.clear()
                         cwEnrichedNextUpOverlay.clear()
+                        cwDiskSeededNextUpOverlayIds.clear()
                         cwEnrichedInProgressOverlay.clear()
                         discoveredOlderNextUpItems.clear()
                         cwLastProcessedNextUpContentIds.clear()
@@ -766,7 +789,8 @@ class HomeViewModel @Inject constructor(
                         episodeDescription = cached.episodeDescription,
                         episodeImdbRating = if (cached.ratingVisible) cached.episodeImdbRating else null,
                         genres = cached.genres,
-                        releaseInfo = cached.releaseInfo
+                        releaseInfo = cached.releaseInfo,
+                        remainingEpisodes = cached.remainingEpisodes
                     )
                 }
             val nextUpItems = cachedNextUp
@@ -800,7 +824,8 @@ class HomeViewModel @Inject constructor(
                         isNewSeasonRelease = cached.isNewSeasonRelease,
                         seedSeason = cached.seedSeason,
                         seedEpisode = cached.seedEpisode,
-                        contentLanguage = cached.contentLanguage
+                        contentLanguage = cached.contentLanguage,
+                        remainingEpisodes = cached.remainingEpisodes
                     )
                 )
             }
@@ -934,12 +959,16 @@ class HomeViewModel @Inject constructor(
         if (catalogKey in lazyLoadRequestedKeys) {
             return
         }
+        // A lazy catalog is waiting in pendingLazyCatalogs. A row whose eager load was
+        // cancelled by a reload is in neither queue, so find its catalog again; otherwise
+        // that row stayed as gray loading cards forever.
         val pair = synchronized(catalogStateLock) {
             pendingLazyCatalogs.remove(catalogKey)
-        }
-        if (pair == null) {
-            return
-        }
+        } ?: addonsCache.firstNotNullOfOrNull { addon ->
+            addon.catalogs.firstOrNull { catalog ->
+                catalogKey(addon.id, catalog.apiType, catalog.id) == catalogKey
+            }?.let { catalog -> addon to catalog }
+        } ?: return
         if (!lazyLoadRequestedKeys.add(catalogKey)) {
             return
         }

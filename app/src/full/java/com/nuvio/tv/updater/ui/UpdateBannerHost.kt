@@ -1,16 +1,8 @@
 package com.nuvio.tv.updater.ui
 
 import android.widget.Toast
-import androidx.compose.animation.AnimatedVisibility
-import androidx.compose.animation.expandVertically
-import androidx.compose.animation.fadeIn
-import androidx.compose.animation.fadeOut
-import androidx.compose.animation.shrinkVertically
-import androidx.compose.animation.core.tween
 import androidx.compose.foundation.layout.Box
-import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.fillMaxSize
-import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.DisposableEffect
 import androidx.compose.runtime.LaunchedEffect
@@ -18,7 +10,6 @@ import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
 import androidx.compose.runtime.setValue
-import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.platform.LocalContext
 import androidx.lifecycle.Lifecycle
@@ -61,43 +52,23 @@ fun UpdateBannerHost(
         onDispose { lifecycleOwner.lifecycle.removeObserver(observer) }
     }
 
-    // A newer release takes the banner; otherwise it can report the release that was just installed automatically.
+    // A newer release takes the card; otherwise it can report the release that was just installed automatically.
     val update = state.update ?: state.installedUpdate
-    val showBanner = state.showBanner && update != null
 
-    Column(modifier = Modifier.fillMaxSize()) {
-        AnimatedVisibility(
-            visible = showBanner,
-            enter = expandVertically(
-                expandFrom = Alignment.Top,
-                animationSpec = tween(durationMillis = 300)
-            ) + fadeIn(animationSpec = tween(durationMillis = 180)),
-            exit = shrinkVertically(
-                shrinkTowards = Alignment.Top,
-                animationSpec = tween(durationMillis = 240)
-            ) + fadeOut(animationSpec = tween(durationMillis = 150))
-        ) {
-            update?.let {
-                UpdateBanner(
-                    state = state,
-                    update = it,
-                    isInstalledUpdate = state.update == null,
-                    autoDismissPaused = showReleaseNotes,
-                    onDownload = onDownload,
-                    onInstall = onInstall,
-                    onShowReleaseNotes = { showReleaseNotes = true },
-                    onDismiss = onDismissBanner
-                )
-            }
-        }
+    Box(modifier = Modifier.fillMaxSize()) {
+        content()
+    }
 
-        Box(
-            modifier = Modifier
-                .fillMaxWidth()
-                .weight(1f)
-        ) {
-            content()
-        }
+    if (state.showBanner && update != null) {
+        UpdateBanner(
+            state = state,
+            update = update,
+            isInstalledUpdate = state.update == null,
+            onDownload = onDownload,
+            onInstall = onInstall,
+            onShowReleaseNotes = { showReleaseNotes = true },
+            onDismiss = onDismissBanner
+        )
     }
 
     if (showReleaseNotes && update != null) {

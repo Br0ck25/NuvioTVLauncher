@@ -1,7 +1,11 @@
 package com.nuvio.tv.livetv.sync
 
 import android.content.Context
+import androidx.annotation.StringRes
+import com.nuvio.tv.R
+import com.nuvio.tv.core.util.withAppLocale
 import android.os.Build
+import com.nuvio.tv.BuildConfig
 import com.nuvio.tv.core.auth.AuthManager
 import com.nuvio.tv.domain.model.AuthState
 import com.nuvio.tv.domain.model.ServerConfiguration
@@ -74,7 +78,7 @@ enum class CloudChoice { UseSaved, Combine, Later }
  *  - signed in on a TV with no setup, and a saved copy exists: restored, no question;
  *  - an account with no saved copy and a TV with a setup: asks once whether to back it up;
  *  - an account with a saved copy and a TV with a different setup: asks once what to do;
- *  - after that: syncs by itself (when Live TV settings change, every 15 minutes, and at start).
+ *  - after that: syncs by itself (when Live TV settings change, every hour, and at start).
  */
 @Singleton
 class LiveTvCloudSync @Inject constructor(
@@ -85,6 +89,8 @@ class LiveTvCloudSync @Inject constructor(
     private val auth: Auth,
     private val serverConfiguration: ServerConfiguration
 ) {
+    private fun text(@StringRes id: Int, vararg args: Any): String = context.withAppLocale().getString(id, *args)
+
     private val scope = CoroutineScope(SupervisorJob() + Dispatchers.IO)
     private val store = context.applicationContext.getSharedPreferences("livetv_cloud_sync", Context.MODE_PRIVATE)
     private val parts = SyncParts(store)
@@ -135,7 +141,7 @@ class LiveTvCloudSync @Inject constructor(
         }
         scope.launch {
             while (isActive) {
-                delay(15 * 60_000L)
+                delay(60 * 60_000L)
                 com.nuvio.tv.livetv.data.BackgroundWork.awaitLiveHold()
                 if (isOn()) syncNow()
             }
@@ -169,7 +175,7 @@ class LiveTvCloudSync @Inject constructor(
         scope.launch {
             mutex.withLock {
                 val uid = userId ?: return@withLock
-                if (isEnabled(uid)) reconcileAndReport(uid, doneMessage = "Up to date.")
+                if (isEnabled(uid)) reconcileAndReport(uid, doneMessage = text(R.string.iptv_status_sync_up_to_date))
             }
         }
     }
@@ -192,7 +198,7 @@ class LiveTvCloudSync @Inject constructor(
         val uid = userId ?: return
         setEnabled(uid, false)
         store.edit().putBoolean(KEY_DECLINED + uid, true).apply()
-        _state.value = _state.value.copy(enabled = false, prompt = null, message = "Off. Your saved copy stays saved.")
+        _state.value = _state.value.copy(enabled = false, prompt = null, message = text(R.string.iptv_status_sync_off))
     }
 
     /** Removes the saved copy from the cloud and stops syncing here. This TV keeps its setup. */
@@ -207,9 +213,9 @@ class LiveTvCloudSync @Inject constructor(
                         setEnabled(uid, false)
                         store.edit().putBoolean(KEY_DECLINED + uid, true).apply()
                         baseFile().delete()
-                        "Deleted your saved Live TV setup from the cloud. This TV keeps its own setup."
+                        text(R.string.iptv_status_sync_deleted)
                     } else failText(reply.code)
-                }.getOrElse { NETWORK_TEXT }
+                }.getOrElse { text(R.string.iptv_status_sync_unreachable) }
                 _state.value = _state.value.copy(busy = false, enabled = isEnabled(uid), message = message)
             }
         }
@@ -225,17 +231,17 @@ class LiveTvCloudSync @Inject constructor(
                     val reply = call("GET", "/v1/setup/previous")
                     val data = reply.json?.optJSONObject("data")
                     when {
-                        reply.code == 404 -> "There is no earlier copy yet."
+                        reply.code == 404 -> text(R.string.iptv_status_sync_no_earlier_copy)
                         reply.code != 200 || data == null -> failText(reply.code)
                         else -> {
                             applyShared(data)
                             when (val outcome = put(reply.json?.optInt("currentRevision") ?: 0, data)) {
-                                is Put.Saved -> { saved(uid, data, emptySet()); "Restored the earlier copy." }
+                                is Put.Saved -> { saved(uid, data, emptySet()); text(R.string.iptv_status_sync_restored_earlier_copy) }
                                 else -> putText(outcome)
                             }
                         }
                     }
-                }.getOrElse { NETWORK_TEXT }
+                }.getOrElse { text(R.string.iptv_status_sync_unreachable) }
                 _state.value = _state.value.copy(busy = false, lastSyncMs = store.getLong(KEY_LAST_SYNC, 0L), message = message)
             }
         }
@@ -272,8 +278,8 @@ class LiveTvCloudSync @Inject constructor(
                 val driveData = drive.backupData()
                 if (!driveWasConnected) drive.disconnect()
                 when {
-                    driveData == null -> "Couldn't find a Live TV backup in your Google Drive."
-                    !prefs.syncHasSources(driveData) -> "The backup in your Google Drive has no playlists or guides to bring over."
+                    driveData == null -> text(R.string.iptv_status_sync_drive_no_backup)
+                    !prefs.syncHasSources(driveData) -> text(R.string.iptv_status_sync_drive_empty)
                     else -> {
                         val local = prefs.exportForSync()
                         val removedHere = prefs.removedSourceIds()
@@ -282,12 +288,13 @@ class LiveTvCloudSync @Inject constructor(
                         if (imported.toString() != local.toString()) apply(imported)
                         store.edit().putBoolean(KEY_DECLINED + uid, false).apply()
                         setEnabled(uid, true)
-                        val note = reconcile(uid)
-                        if (note == null || note == UPDATED_TEXT) "Brought your Live TV setup over from Google Drive and saved it."
+                        val updatedText = text(R.string.iptv_status_updated_other_tv)
+                        val note = reconcile(uid, updatedText)
+                        if (note == null || note == updatedText) text(R.string.iptv_status_sync_drive_imported)
                         else note
                     }
                 }
-            }.getOrElse { NETWORK_TEXT }
+            }.getOrElse { text(R.string.iptv_status_sync_unreachable) }
             _state.value = _state.value.copy(
                 busy = false,
                 enabled = isEnabled(uid),
@@ -326,32 +333,34 @@ class LiveTvCloudSync @Inject constructor(
                 }
                 _state.value = _state.value.copy(busy = true, message = null)
                 val message = runCatching {
-                    val remote = fetch() as? Remote.Found ?: return@runCatching "Couldn't reach your saved setup. Try again."
+                    val remote = fetch() as? Remote.Found ?: return@runCatching text(R.string.iptv_status_sync_saved_unreachable)
                     val removedHere = prefs.removedSourceIds()
                     if (choice == CloudChoice.UseSaved) {
                         applyShared(remote.data)
                         saved(uid, remote.data, emptySet())
                         setEnabled(uid, true)
-                        "Using your saved Live TV setup."
+                        text(R.string.iptv_status_sync_using_saved)
                     } else {
                         val local = localView()
                         val remoteView = parts.strip(remote.data)
-                        val merged = drive.merge(null, local, remoteView, false, removedHere)
+                        // Like Google Drive: this TV's favorites, hidden channels and order
+                        // win the first combine; playlists and guides from both are kept.
+                        val merged = drive.merge(null, local, remoteView, true, removedHere)
                         if (merged.toString() != local.toString()) applyShared(merged)
                         if (merged.toString() == remoteView.toString()) {
                             saved(uid, remote.data, emptySet())
                             setEnabled(uid, true)
-                            "Combined with your saved setup."
+                            text(R.string.iptv_status_sync_combined)
                         } else when (val result = put(remote.revision, parts.keep(merged, remote.data))) {
                             is Put.Saved -> {
                                 saved(uid, merged, removedHere)
                                 setEnabled(uid, true)
-                                "Combined with your saved setup."
+                                text(R.string.iptv_status_sync_combined)
                             }
                             else -> putText(result)
                         }
                     }
-                }.getOrElse { NETWORK_TEXT }
+                }.getOrElse { text(R.string.iptv_status_sync_unreachable) }
                 _state.value = _state.value.copy(
                     busy = false,
                     enabled = isEnabled(uid),
@@ -397,7 +406,7 @@ class LiveTvCloudSync @Inject constructor(
                         setEnabled(uid, true)
                         _state.value = _state.value.copy(
                             lastSyncMs = store.getLong(KEY_LAST_SYNC, 0L),
-                            message = "Restored your Live TV setup."
+                            message = text(R.string.iptv_status_sync_restored)
                         )
                     } else {
                         _state.value = _state.value.copy(prompt = CloudPrompt.Choose)
@@ -415,7 +424,7 @@ class LiveTvCloudSync @Inject constructor(
             }
             Unit
         }.onFailure {
-            if (explicit) _state.value = _state.value.copy(message = NETWORK_TEXT)
+            if (explicit) _state.value = _state.value.copy(message = text(R.string.iptv_status_sync_unreachable))
         }
     }
 
@@ -427,7 +436,7 @@ class LiveTvCloudSync @Inject constructor(
                 setEnabled(uid, true)
                 _state.value = _state.value.copy(
                     lastSyncMs = store.getLong(KEY_LAST_SYNC, 0L),
-                    message = "Your Live TV setup is saved."
+                    message = text(R.string.iptv_status_sync_saved)
                 )
             }
             else -> _state.value = _state.value.copy(message = putText(result))
@@ -449,7 +458,7 @@ class LiveTvCloudSync @Inject constructor(
         _state.value = _state.value.copy(
             busy = false,
             lastSyncMs = store.getLong(KEY_LAST_SYNC, 0L),
-            message = result.fold(onSuccess = { it ?: doneMessage }, onFailure = { NETWORK_TEXT })
+            message = result.fold(onSuccess = { it ?: doneMessage }, onFailure = { text(R.string.iptv_status_sync_unreachable) })
         )
     }
 
@@ -458,7 +467,7 @@ class LiveTvCloudSync @Inject constructor(
      * save what's new there. Tries again if another TV saved in between. Returns a message to
      * show, or null when there is nothing to say.
      */
-    private suspend fun reconcile(uid: String): String? {
+    private suspend fun reconcile(uid: String, updatedText: String = text(R.string.iptv_status_updated_other_tv)): String? {
         repeat(3) {
             val remote = fetch()
             val localFull = prefs.exportForSync()
@@ -468,10 +477,12 @@ class LiveTvCloudSync @Inject constructor(
                 remote is Remote.Failed -> return failText(remote.code)
                 remote is Remote.Found && usable(remote.data) -> {
                     val remoteView = parts.strip(remote.data)
-                    val merged = drive.merge(readBase(uid), parts.freshen(local, remoteView), remoteView, false, removedHere)
+                    // First sync with no base: keep this TV's personal choices (favorites,
+                    // hidden channels, group order) exactly like the Google Drive sync does.
+                    val merged = drive.merge(readBase(uid), parts.freshen(local, remoteView), remoteView, true, removedHere)
                     val changedHere = merged.toString() != local.toString()
                     if (changedHere) apply(parts.keep(merged, localFull))
-                    val news = if (changedHere) UPDATED_TEXT else null
+                    val news = if (changedHere) updatedText else null
                     val mergedFull = parts.keep(merged, remote.data)
                     if (merged.toString() == remoteView.toString() || !usable(mergedFull)) {
                         saved(uid, remote.data, emptySet())
@@ -495,7 +506,7 @@ class LiveTvCloudSync @Inject constructor(
                 }
             }
         }
-        return "Couldn't finish syncing. Will try again."
+        return text(R.string.iptv_status_sync_incomplete)
     }
 
     /** This TV's setup without the parts Setup Sync is switched off for. */
@@ -620,14 +631,14 @@ class LiveTvCloudSync @Inject constructor(
     }
 
     private fun failText(code: Int) = when (code) {
-        401 -> "Sign in to Nuvio again to sync."
-        else -> NETWORK_TEXT
+        401 -> text(R.string.iptv_status_sync_sign_in_again)
+        else -> text(R.string.iptv_status_sync_unreachable)
     }
 
     private fun putText(result: Put) = when (result) {
-        Put.Conflict -> "Your saved setup changed on another TV. Try again."
-        Put.TooBig -> "Your Live TV setup is too big to save to the cloud."
-        Put.Limit -> "Too many saves today. Syncing continues tomorrow."
+        Put.Conflict -> text(R.string.iptv_status_sync_conflict)
+        Put.TooBig -> text(R.string.iptv_status_sync_too_big)
+        Put.Limit -> text(R.string.iptv_status_sync_limit)
         is Put.Failed -> failText(result.code)
         is Put.Saved -> ""
     }
@@ -636,8 +647,8 @@ class LiveTvCloudSync @Inject constructor(
         MessageDigest.getInstance("SHA-256").digest(text.toByteArray()).joinToString("") { "%02x".format(it) }
 
     companion object {
-        /** Our own small service (the livetv-cloud Worker). */
-        const val CLOUD_URL = "https://livetv-cloud.nuvioplusiptv.workers.dev"
+        /** Nuvio One's own sync service (see the livetv-cloud Worker). */
+        val CLOUD_URL: String = BuildConfig.LIVETV_SYNC_URL
         private const val UPDATED_TEXT = "Updated from your other TV."
         private const val NETWORK_TEXT = "Couldn't reach sync. Will try again."
         private const val KEY_ENABLED = "enabled_"

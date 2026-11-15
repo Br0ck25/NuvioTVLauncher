@@ -21,6 +21,7 @@ public class ItemWrapper {
     private RadioItem mRadioItem;
 
     @JsonPath({"$.gridChannelRenderer",
+               "$.channelRenderer",
                "$.pivotChannelRenderer",
                "$.compactChannelRenderer"})
     private ChannelItem mChannelItem;

@@ -51,7 +51,8 @@ internal suspend fun PlayerRuntimeController.fetchAddonSubtitlesNow(
     _uiState.update { it.copy(installedSubtitleAddonOrder = installedAddonOrder) }
 
     // Compute hash lazily for providers that support OpenSubtitles-style matching.
-    if (currentVideoHash == null && currentStreamUrl.isNotBlank()) {
+    if (currentVideoHash == null && currentStreamUrl.isNotBlank() &&
+        !com.nuvio.tv.core.player.isStalkerPlaybackAddress(currentStreamUrl)) {
         val result = OpenSubtitlesHasher.compute(currentStreamUrl, currentHeaders)
         if (result != null) {
             currentVideoHash = result.hash
@@ -354,6 +355,8 @@ internal fun PlayerRuntimeController.observeSubtitleSettings() {
                     subtitleStyle = settings.subtitleStyle,
                     loadingOverlayEnabled = settings.loadingOverlayEnabled,
                     showPlayerLoadingStatus = settings.showPlayerLoadingStatus,
+                    showPlaybackInfo = settings.showPlaybackInfo,
+                    hiddenPlayerControls = settings.hiddenPlayerControls,
                     seekPreviewEnabled = settings.seekPreviewEnabled,
                     playbackIssueReportsEnabled = settings.playbackIssueReportsEnabled,
                     showLoadingOverlay = shouldShowOverlay,
@@ -364,6 +367,11 @@ internal fun PlayerRuntimeController.observeSubtitleSettings() {
                     },
                     pauseOverlayEnabled = settings.pauseOverlayEnabled,
                     osdClockEnabled = settings.osdClockEnabled,
+                    chaptersEnabled = settings.exoChaptersEnabled,
+                    showChapterTitle = settings.chapterTitleEnabled,
+                    // Turning chapters off hides them at once; skip intro keeps its own copy.
+                    chapters = if (settings.exoChaptersEnabled) state.chapters else emptyList(),
+                    showChaptersPanel = state.showChaptersPanel && settings.exoChaptersEnabled,
                     internalPlayerEngine = resolvedInternalPlayerEngine,
                     frameRateMatchingMode = settings.frameRateMatchingMode,
                     tunnelingEnabled = settings.effectiveTunnelingEnabled &&
@@ -375,6 +383,9 @@ internal fun PlayerRuntimeController.observeSubtitleSettings() {
                 )
             }
 
+            if (settings.subtitleStyle.usesStyledRenderer != currentState.subtitleStyle.usesStyledRenderer) {
+                refreshStyledSubtitles()
+            }
             if (resolvedAudioAmplificationDb != currentState.audioAmplificationDb) {
                 applyAudioAmplification(resolvedAudioAmplificationDb)
             }
@@ -409,6 +420,9 @@ internal fun PlayerRuntimeController.observeSubtitleSettings() {
             autoSwitchInternalPlayerOnErrorEnabled = settings.autoSwitchInternalPlayerOnError
             currentInternalPlayerEngine = resolvedInternalPlayerEngine
             streamAutoPlayModeSetting = settings.streamAutoPlayMode
+            streamAutoPlayFallbackActive = settings.streamAutoPlayFallbackActive
+            streamAutoPlayFallbackMaxSources = settings.streamAutoPlayFallbackMaxSources
+            streamAutoPlayFallbackStartupTimeoutSeconds = settings.streamAutoPlayFallbackStartupTimeoutSeconds
             streamAutoPlayNextEpisodeEnabledSetting = settings.streamAutoPlayNextEpisodeEnabled
             streamAutoPlayTimeoutSecondsSetting = settings.streamAutoPlayTimeoutSeconds
             preloadNextEpisodeSourcesSetting = settings.preloadNextEpisodeSources

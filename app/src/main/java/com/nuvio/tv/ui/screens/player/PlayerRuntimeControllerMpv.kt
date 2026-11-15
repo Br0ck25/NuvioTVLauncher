@@ -29,7 +29,7 @@ internal fun PlayerRuntimeController.attachMpvView(view: NuvioMpvSurfaceView?) {
         registerMpvEventRelay(view)
         view.setMedia(currentStreamUrl, currentHeaders)
         view.setPlaybackSpeed(_uiState.value.playbackSpeed)
-        view.applyAudioAmplificationDb(_uiState.value.audioAmplificationDb)
+        view.applyAudioAmplificationDb(effectiveAudioGainDb(_uiState.value.audioAmplificationDb))
         view.applyAudioLanguagePreferences(mpvPreferredAudioLanguages)
         view.applySubtitleLanguagePreferences(
             preferred = _uiState.value.subtitleStyle.preferredLanguage,
@@ -145,7 +145,7 @@ internal fun PlayerRuntimeController.initializeMpvPlayer(
             updatePlaybackTimeline(currentPosition = initialResumePosition)
         }
         view.setPlaybackSpeed(_uiState.value.playbackSpeed)
-        view.applyAudioAmplificationDb(_uiState.value.audioAmplificationDb)
+        view.applyAudioAmplificationDb(effectiveAudioGainDb(_uiState.value.audioAmplificationDb))
         view.applyAudioLanguagePreferences(mpvPreferredAudioLanguages)
         view.applySubtitleLanguagePreferences(
             preferred = _uiState.value.subtitleStyle.preferredLanguage,
@@ -242,6 +242,8 @@ internal fun PlayerRuntimeController.pauseForLifecycle() {
     if (isUsingMpvEngine()) {
         mpvView?.setPaused(true)
         emitPauseScrobbleForCurrentProgress()
+        // The process may be killed while backgrounded; Exo saves on its pause, MPV has to here.
+        saveWatchProgress()
         stopWatchProgressSaving()
         stopProgressUpdates()
         _uiState.update { it.copy(isPlaying = false) }

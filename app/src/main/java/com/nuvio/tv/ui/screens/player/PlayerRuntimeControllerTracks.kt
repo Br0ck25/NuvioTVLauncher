@@ -78,6 +78,9 @@ internal fun PlayerRuntimeController.updateAvailableTracks(tracks: Tracks) {
     )
     val audioTracks = mutableListOf<TrackInfo>()
     val subtitleTracks = mutableListOf<TrackInfo>()
+    // Keyed lookup for the written/automatic duplicate check below. The old linear scan
+    // became quadratic when YouTube handed us 150+ caption tracks.
+    val subtitleTrackIndexes = HashMap<String, Int>()
     var selectedAudioIndex = -1
     var selectedSubtitleIndex = -1
 
@@ -194,11 +197,14 @@ internal fun PlayerRuntimeController.updateAvailableTracks(tracks: Tracks) {
                     val forced = hasForcedFlag || nameHintForced || isSongsAndSigns
                     // YouTube can expose the same language twice (written and automatic captions).
                     // Keep the first, and let it carry the selection if the later one was selected.
-                    val duplicate = subtitleTracks.indexOfFirst {
-                        it.name.equals(name, ignoreCase = true) &&
-                            it.language.equals(format.language, ignoreCase = true) &&
-                            it.isForced == forced
+                    val duplicateKey = buildString {
+                        append(name.lowercase(Locale.US))
+                        append('\u0000')
+                        append((format.language ?: "").lowercase(Locale.US))
+                        append('\u0000')
+                        append(forced)
                     }
+                    val duplicate = subtitleTrackIndexes[duplicateKey] ?: -1
                     if (duplicate >= 0) {
                         if (isSelected) {
                             subtitleTracks[duplicate] = subtitleTracks[duplicate].copy(isSelected = true)
@@ -207,6 +213,7 @@ internal fun PlayerRuntimeController.updateAvailableTracks(tracks: Tracks) {
                         continue
                     }
 
+                    subtitleTrackIndexes[duplicateKey] = subtitleTracks.size
                     if (isSelected) selectedSubtitleIndex = subtitleTracks.size
                     subtitleTracks.add(
                         TrackInfo(

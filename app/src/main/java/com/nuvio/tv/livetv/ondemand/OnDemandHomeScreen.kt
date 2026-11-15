@@ -79,7 +79,7 @@ import kotlin.math.roundToInt
 fun OnDemandHomeScreen(
     homeSettings: HomeUiState?,
     onOpenDetail: (itemId: String, itemType: String, addonBaseUrl: String?, onDemandUid: String) -> Unit,
-    onPlay: (url: String, title: String, type: String, poster: String?) -> Unit,
+    onPlay: (url: String, title: String, type: String, poster: String?, contentId: String, contentName: String, season: Int?, episode: Int?, episodeName: String?) -> Unit,
     /** The search button: Nuvio's own search. */
     onOpenSearch: () -> Unit,
     /** Home's own trailer lookup and results (trailers follow Nuvio's trailer settings). */
@@ -89,7 +89,12 @@ fun OnDemandHomeScreen(
     val context = LocalContext.current
     val scope = rememberCoroutineScope()
     val state by viewModel.home.collectAsStateWithLifecycle()
-    LaunchedEffect(Unit) { viewModel.loadHome() }
+    LaunchedEffect(Unit) {
+        // Opening a title and pressing Back rebuilds this screen over the same ViewModel.
+        // Rebuilding the page would reset every group to its first page and pull the saved
+        // position out from under the list, so keep it unless the catalog actually changed.
+        if (!viewModel.homeIsCurrent()) viewModel.loadHome()
+    }
 
     var showManage by remember { mutableStateOf(false) }
     // The card last highlighted, for the Menu button's "Fix poster".
@@ -310,11 +315,11 @@ fun OnDemandHomeScreen(
     // went to the page underneath (Home) on this one. The layouts' own Back handling (scroll a
     // row back to its start, close a full screen trailer) and any open dialog still come first,
     // and with the menu open Back is left to the app (exit).
-    val openSidebar = com.nuvio.tv.LocalOpenSidebar.current
+    val openNuvioSidebar = com.nuvio.tv.LocalOpenSidebar.current
     val sidebarOpen = com.nuvio.tv.LocalSidebarExpanded.current
     val topFocusManager = androidx.compose.ui.platform.LocalFocusManager.current
     val topContentFocus = com.nuvio.tv.LocalContentFocusRequester.current
-    androidx.activity.compose.BackHandler(enabled = !sidebarOpen) { openSidebar() }
+    androidx.activity.compose.BackHandler(enabled = !sidebarOpen) { openNuvioSidebar() }
 
     androidx.compose.runtime.CompositionLocalProvider(com.nuvio.tv.core.player.LocalTrailerPlayerPool provides ownPool) {
     Box(
@@ -555,9 +560,13 @@ fun OnDemandHomeScreen(
             item = item,
             viewModel = viewModel,
             onDismiss = { providerItem = null },
-            onPlay = { url, title, poster ->
+            onPlay = { url, title, poster, season, episode, episodeName ->
                 providerItem = null
-                onPlay(url, title, if (item.kind == VodKind.SERIES) "series" else "movie", poster)
+                // Played with the title's id, so Nuvio tracks progress: resumes, and Continue Watching.
+                onPlay(
+                    url, title, if (item.kind == VodKind.SERIES) "series" else "movie", poster,
+                    VodHomeIds.metaId(item.uid), OnDemandDatabase.displayTitle(item.name), season, episode, episodeName
+                )
             }
         )
     }

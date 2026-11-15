@@ -292,9 +292,9 @@ data class Standings(
             )
         }
 
-        // ------------------------------------------------------------------ TheSportsDB (nuvio-data)
+        // ------------------------------------------------------------------ extra leagues (FotMob data)
 
-        /** The "table" a nuvio-data league file carries (written once a day), or null. */
+        /** The "table" an extra-league file carries (rebuilt every few hours), or null. */
         fun parseTsdb(league: League, raw: String, now: Long = System.currentTimeMillis()): Standings? {
             val root = JSONObject(raw)
             val arr = root.optJSONArray("table") ?: return null
@@ -322,7 +322,7 @@ data class Standings(
             val sorted = rows.sortedBy { if (it.pos > 0) it.pos else Int.MAX_VALUE }.mapIndexed { i, r -> if (r.pos > 0) r else r.copy(pos = i + 1) }
             val columns = listOf(c("gamesPlayed", "P"), c("wins", "W"), c("ties", "D"), c("losses", "L"), c("pointDifferential", "GD"), c("points", "PTS"))
                 .filter { col -> sorted.any { !it.values[col.key].isNullOrBlank() } }
-            return Standings(league.id, root.str("season"), StandingsKind.TABLE, columns, listOf(StandingsGroup(league.name, null, sorted)), "TheSportsDB", now)
+            return Standings(league.id, root.str("season"), StandingsKind.TABLE, columns, listOf(StandingsGroup(league.name, null, sorted)), "FotMob", now)
         }
 
         // ------------------------------------------------------------------ form and place changes

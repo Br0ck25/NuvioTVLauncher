@@ -226,11 +226,11 @@ fun CalendarScreen(
     var inContent by remember { mutableStateOf(false) }
     // Anything on this page has the highlight (false: it was lost, e.g. its card went away).
     var screenFocused by remember { mutableStateOf(false) }
-    val openSidebar = com.nuvio.tv.LocalOpenSidebar.current
+    val openNuvioSidebar = com.nuvio.tv.LocalOpenSidebar.current
     val sidebarOpen = com.nuvio.tv.LocalSidebarExpanded.current
     val sidebarOpenNow by androidx.compose.runtime.rememberUpdatedState(sidebarOpen)
     BackHandler(enabled = !sidebarOpen) {
-        if (inContent && !atHome) { resetKey++; atHome = true } else openSidebar()
+        if (inContent && !atHome) { resetKey++; atHome = true } else openNuvioSidebar()
     }
 
     LaunchedEffect(tab) { if (tab == CalTab.AIRING) viewModel.loadAiring() }

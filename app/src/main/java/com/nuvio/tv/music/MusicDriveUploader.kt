@@ -61,6 +61,7 @@ object MusicDriveUploader {
     private const val TAG = "MusicDrive"
     private const val PREFS = "nuvio_music_drive"
     private const val KEY_REFRESH = "refresh_token"
+    private const val KEY_CLIENT_ID = "client_id"
     private const val KEY_EMAIL = "email"
     private const val KEY_FOLDER = "folder_id"
     private const val KEY_UPLOADED = "uploaded"
@@ -89,6 +90,18 @@ object MusicDriveUploader {
         val app = context.applicationContext
         appContext = app
         val prefs = prefs(app)
+        // The refresh token, folder and uploaded-file IDs all belong to the OAuth client that
+        // created them. Moving to our own Google Cloud project makes the old ones unreadable.
+        val clientId = BuildConfig.GOOGLE_DRIVE_CLIENT_ID
+        if (prefs.getString(KEY_CLIENT_ID, null) != clientId) {
+            prefs.edit()
+                .putString(KEY_CLIENT_ID, clientId)
+                .remove(KEY_REFRESH)
+                .remove(KEY_EMAIL)
+                .remove(KEY_FOLDER)
+                .remove(KEY_UPLOADED)
+                .apply()
+        }
         val refresh = prefs.getString(KEY_REFRESH, null)
         val folderId = prefs.getString(KEY_FOLDER, null)
         _state.value = MusicDriveState(

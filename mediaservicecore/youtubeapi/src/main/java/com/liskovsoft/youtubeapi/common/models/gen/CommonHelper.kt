@@ -174,6 +174,10 @@ private const val TILE_CONTENT_TYPE_CHANNEL = "TILE_CONTENT_TYPE_CHANNEL"
 private const val TILE_CONTENT_TYPE_PLAYLIST = "TILE_CONTENT_TYPE_PLAYLIST"
 private const val TILE_CONTENT_TYPE_VIDEO = "TILE_CONTENT_TYPE_VIDEO"
 private const val TILE_CONTENT_TYPE_EDU = "TILE_CONTENT_TYPE_EDU" // a search query tile in Home section
+private const val LOCKUP_CONTENT_TYPE_CHANNEL = "LOCKUP_CONTENT_TYPE_CHANNEL"
+private const val LOCKUP_CONTENT_TYPE_PLAYLIST = "LOCKUP_CONTENT_TYPE_PLAYLIST"
+private const val LOCKUP_CONTENT_TYPE_VIDEO = "LOCKUP_CONTENT_TYPE_VIDEO"
+private const val LOCKUP_CONTENT_TYPE_SHORT = "LOCKUP_CONTENT_TYPE_SHORT"
 
 // 'tileRenderer.contentType' values:
 private const val TILE_STYLE_DEFAULT = "TILE_STYLE_YTLR_DEFAULT"
@@ -267,7 +271,9 @@ internal fun LockupItem.getPercentWatched() = getOverlays()?.firstNotNullOfOrNul
 internal fun LockupItem.isEmpty() = getPercentWatched() == 100 && getBadgeText() == null
 internal fun LockupItem.getFeedbackTokens() =
     metadata?.lockupMetadataViewModel?.menuButton?.buttonViewModel?.onTap?.innertubeCommand?.getFeedbackTokens()
-internal fun LockupItem.getChannelId() = rendererContext?.getBrowseId()
+internal fun LockupItem.getChannelId() =
+    if (contentType == LOCKUP_CONTENT_TYPE_CHANNEL) rendererContext?.getBrowseId() ?: contentId
+    else rendererContext?.getBrowseId()
 private fun LockupItem.getBadge() = getOverlays()?.firstNotNullOfOrNull { it?.thumbnailOverlayBadgeViewModel?.thumbnailBadges
     ?: it?.thumbnailBottomOverlayViewModel?.badges }?.firstNotNullOfOrNull { it?.thumbnailBadgeViewModel }
 private fun LockupItem.getOverlays() = getThumbnailView()?.overlays
@@ -277,7 +283,7 @@ private fun LockupItem.getThumbnailView() = contentImage?.thumbnailViewModel ?: 
 
 private fun ItemWrapper.getVideoItem() = gridVideoRenderer ?: videoRenderer ?: pivotVideoRenderer ?: compactVideoRenderer ?: reelItemRenderer ?: playlistVideoRenderer
 private fun ItemWrapper.getMusicItem() = tvMusicVideoRenderer
-private fun ItemWrapper.getChannelItem() = gridChannelRenderer ?: pivotChannelRenderer ?: compactChannelRenderer
+private fun ItemWrapper.getChannelItem() = channelRenderer ?: gridChannelRenderer ?: pivotChannelRenderer ?: compactChannelRenderer
 private fun ItemWrapper.getPlaylistItem() = gridPlaylistRenderer ?: pivotPlaylistRenderer ?: compactPlaylistRenderer ?: playlistRenderer
 private fun ItemWrapper.getRadioItem() = gridRadioRenderer ?: pivotRadioRenderer ?: compactRadioRenderer ?: musicTwoRowItemRenderer
 private fun ItemWrapper.getTileItem() = tileRenderer
@@ -301,6 +307,14 @@ internal fun ItemWrapper.getType(): Int {
             TILE_CONTENT_TYPE_CHANNEL -> MediaItem.TYPE_CHANNEL
             TILE_CONTENT_TYPE_PLAYLIST -> MediaItem.TYPE_PLAYLIST
             TILE_CONTENT_TYPE_VIDEO -> MediaItem.TYPE_VIDEO
+            else -> MediaItem.TYPE_UNDEFINED
+        }
+
+    if (getLockupItem() != null)
+        return when (getLockupItem()?.contentType) {
+            LOCKUP_CONTENT_TYPE_CHANNEL -> MediaItem.TYPE_CHANNEL
+            LOCKUP_CONTENT_TYPE_PLAYLIST -> MediaItem.TYPE_PLAYLIST
+            LOCKUP_CONTENT_TYPE_VIDEO, LOCKUP_CONTENT_TYPE_SHORT -> MediaItem.TYPE_VIDEO
             else -> MediaItem.TYPE_UNDEFINED
         }
 

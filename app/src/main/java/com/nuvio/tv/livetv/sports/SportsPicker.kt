@@ -140,7 +140,7 @@ fun SportsPicker(viewModel: SportsViewModel, onClose: () -> Unit) {
         fun teamLeague(l: League) = l.espnPath != null && l.kind == LeagueKind.TEAMS && !l.national
         val searchIn = (viewModel.repo.activeLeagues().filter(::teamLeague) +
             SportsCatalog.ordered(settings).filter(::teamLeague) +
-            SportsCatalog.leagues.filter { it.national }.distinctBy { it.nationalGroup } + SportsCatalog.extra).distinctBy { it.id }
+            SportsCatalog.all.filter { it.national }.distinctBy { it.nationalGroup }).distinctBy { it.id }
         // Filtering and duplicate removal stay on a worker after teams() returns from I/O.
         teamPickerSearchResults(searchIn, q, viewModel::teams).collect { value = it }
     }
@@ -282,7 +282,7 @@ fun SportsPicker(viewModel: SportsViewModel, onClose: () -> Unit) {
                         when {
                             league.sport == Sport.WRESTLING || league.id == "guide/boxing" -> LiveText(
                                 "${league.name}'s schedule (" + (if (league.id == "guide/boxing") "fight cards" else "weekly shows and big events") +
-                                    ", with times and venues) comes from TheSportsDB, updated every day. " +
+                                    ", with times and venues) comes from our sports data service, updated through the day. " +
                                     "Your own TV guide is checked too, to find the channel it's on. Follow it to see every show on My Sports.",
                                 color = colors.TextSecondary, size = 13.sp, maxLines = 4
                             )
@@ -309,7 +309,7 @@ fun SportsPicker(viewModel: SportsViewModel, onClose: () -> Unit) {
                             }
                             league.id.startsWith("tsdb/") && teams.orEmpty().isNotEmpty() -> Column(Modifier.weight(1f)) {
                                 LiveText(
-                                    "Fixtures and results from TheSportsDB. On match days, scores update about every 15 minutes.",
+                                    "Fixtures, results and tables from FotMob through our sports data service. On match days, scores update every few minutes.",
                                     color = colors.TextSecondary, size = 12.sp, maxLines = 2
                                 )
                                 Spacer(Modifier.height(8.dp))

@@ -43,14 +43,23 @@ object YouTubeMpdServer {
 
     /** Stores [mpd] and returns the URL to play it from. */
     @Synchronized
-    fun publish(videoId: String, mpd: ByteArray, visitorCookie: String? = null): String {
+    fun publish(
+        videoId: String,
+        mpd: ByteArray,
+        visitorCookie: String? = null,
+        keepCaptionLanguages: Set<String> = YouTubeCaptionTracks.keepLanguages(null, null)
+    ): String {
         // Kept at least as long as the view model keeps its cached lookups.
         if (manifests.size > 64) {
             manifests.clear()
             captionCookies.clear()
         }
         if (visitorCookie.isNullOrBlank()) captionCookies.remove(videoId) else captionCookies[videoId] = visitorCookie
-        manifests[videoId] = rewriteTranslatedCaptions(videoId, YouTubeAudioTracks.tidy(mpd))
+        manifests[videoId] = rewriteTranslatedCaptions(
+            videoId,
+            YouTubeAudioTracks.tidy(mpd),
+            keepCaptionLanguages
+        )
         return "http://127.0.0.1:${ensureStarted().localPort}/yt/$videoId.mpd"
     }
 
@@ -83,11 +92,18 @@ object YouTubeMpdServer {
     private val segmentLock = Any()
     private val http by lazy { OkHttpClient.Builder().followRedirects(true).build() }
 
-    private fun rewriteTranslatedCaptions(videoId: String, mpd: ByteArray): ByteArray {
+    private fun rewriteTranslatedCaptions(
+        videoId: String,
+        mpd: ByteArray,
+        keepCaptionLanguages: Set<String>
+    ): ByteArray {
         val port = ensureStarted().localPort
         val urls = ArrayList<String>()
-        val xml = String(mpd, Charsets.UTF_8)
-        captionLanguages[videoId] = subtitleLanguage(xml).orEmpty()
+        val fullXml = String(mpd, Charsets.UTF_8)
+        captionLanguages[videoId] = subtitleLanguage(fullXml).orEmpty()
+        // Drop the auto-translated languages nobody on this device is likely to pick before the
+        // player builds a text track for each one. Real/manual tracks are always kept.
+        val xml = YouTubeCaptionTracks.limitTranslated(fullXml, keepCaptionLanguages)
         val rewritten = Regex("<BaseURL>([^<]*timedtext[^<]*)</BaseURL>").replace(xml) { m ->
             val url = m.groupValues[1].replace("&amp;", "&")
             // Translated captions are fetched and translated here; automatic ones (their lines roll up, the old

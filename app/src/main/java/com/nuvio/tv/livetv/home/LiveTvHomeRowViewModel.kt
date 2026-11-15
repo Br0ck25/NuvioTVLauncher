@@ -62,6 +62,9 @@ class LiveTvHomeRowViewModel @Inject constructor(
         channelStore.displayChannels, userState, settings, viewModelScope
     )
 
+    /** The row's channel keys, kept so the periodic refresh loads only these channels. */
+    private val rowChannelKeys = MutableStateFlow<List<String>>(emptyList())
+
     val homeRow: StateFlow<List<LiveTvViewModel.HomeRowEntry>> = combine(
         rowChannels,
         repository.programs,
@@ -99,8 +102,10 @@ class LiveTvHomeRowViewModel @Inject constructor(
                 // Nothing to keep up to date while a movie or episode plays in Nuvio's player.
                 com.nuvio.tv.livetv.data.BackgroundWork.awaitIdle()
                 _now.value = System.currentTimeMillis()
-                // Keep the hours around now loaded from the guide database as time passes.
-                repository.ensureRange(_now.value - 3 * 3_600_000L, _now.value + 12 * 3_600_000L)
+                // Only this row's channels: reading every channel here made Home wait behind
+                // the whole guide on a large playlist. The full guide is read when Live TV opens.
+                val keys = rowChannelKeys.value
+                if (keys.isNotEmpty()) repository.loadChannelsNow(keys)
                 delay(30_000)
             }
         }
@@ -108,7 +113,10 @@ class LiveTvHomeRowViewModel @Inject constructor(
         viewModelScope.launch {
             rowChannels.map { (list, s) -> list.take(if (s.homeRowLimit > 0) s.homeRowLimit * 3 else 200).map { it.key } }
                 .distinctUntilChanged()
-                .collectLatest { keys -> if (keys.isNotEmpty()) { delay(1_500); repository.loadChannelsNow(keys) } }
+                .collectLatest { keys ->
+                    rowChannelKeys.value = keys
+                    if (keys.isNotEmpty()) { delay(1_500); repository.loadChannelsNow(keys) }
+                }
         }
     }
 

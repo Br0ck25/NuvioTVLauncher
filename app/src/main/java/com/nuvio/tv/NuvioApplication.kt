@@ -132,6 +132,9 @@ class NuvioApplication : Application(), SingletonImageLoader.Factory {
         return ImageLoader.Builder(this)
             .components {
                 add(CustomPosterFallbackInterceptor())
+                // A custom WebP decoder was tried for Fire OS 9's stream-decoder crash, but it
+                // intercepted every static WebP (most addon posters) and left them blank on the
+                // Fire TV. Coil's normal decoder is the path that showed posters before.
                 if (Build.VERSION.SDK_INT >= 28) {
                     add(AnimatedImageDecoder.Factory())
                 } else {

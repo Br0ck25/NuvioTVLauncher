@@ -200,6 +200,35 @@ class ContinueWatchingAiringRulesTest {
         )
     }
 
+    @Test
+    fun `remainingEpisodeCount ignores future episodes`() {
+        val nextWeek = LocalDate.now(ZoneId.systemDefault()).plusDays(7).toString()
+        val yesterday = LocalDate.now(ZoneId.systemDefault()).minusDays(1).toString()
+        val meta = CwMetaSummary(
+            id = "tt-count",
+            name = "Airing",
+            poster = null,
+            backdropUrl = null,
+            logo = null,
+            description = null,
+            genres = emptyList(),
+            releaseInfo = null,
+            imdbRating = null,
+            language = null,
+            country = null,
+            videos = listOf(
+                episode(1, 1, yesterday),
+                episode(1, 2, yesterday),
+                episode(1, 3, yesterday),
+                episode(1, 4, nextWeek),
+            ),
+        )
+
+        assertEquals(3, meta.remainingEpisodeCount(emptySet()))
+        assertEquals(2, meta.remainingEpisodeCount(setOf(1 to 1)))
+        assertEquals(0, meta.remainingEpisodeCount(setOf(1 to 3)))
+    }
+
     private fun episode(season: Int, ep: Int, released: String) = CwVideoSummary(
         id = "tt-test:$season:$ep",
         title = "E$ep",

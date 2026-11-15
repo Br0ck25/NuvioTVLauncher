@@ -103,6 +103,8 @@ object MusicPlayer {
     /** Playhead to restore when the persisted queue is started again. */
     private var resumeVideoId: String? = null
     private var resumePositionMs: Long = 0L
+    /** Prepare the next track without starting audio (used while its music video is open). */
+    private var startPaused = false
 
     /** Headers for the track currently being resolved, read when each data source is opened. */
     @Volatile
@@ -327,12 +329,45 @@ object MusicPlayer {
         }
     }
 
-    /** Jumps to a track already in the queue. */
-    fun jumpTo(index: Int) {
+    /**
+     * Jumps to a track already in the queue. [startPositionMs] is where playback begins;
+     * [play] false prepares the track without starting its audio (used while its video plays).
+     */
+    fun jumpTo(index: Int, startPositionMs: Long = 0L, play: Boolean = true) {
         val current = _state.value
         if (index !in current.queue.indices) return
+        val song = current.queue[index]
+        val target = startPositionMs.coerceAtLeast(0L)
+        // Already prepared: seek in place. This is the video-to-audio hand-back, where
+        // re-resolving the stream would leave a gap between the two players.
+        val p = player
+        if (p != null && index == current.index && current.song?.videoId == song.videoId &&
+            current.error == null && p.mediaItemCount > 0
+        ) {
+            runCatching { p.seekTo(target) }
+            if (play) {
+                if (!p.isPlaying) {
+                    p.play()
+                    startFadeIn()
+                }
+            } else if (p.isPlaying) {
+                p.pause()
+            }
+            return
+        }
         _state.update { it.copy(index = index) }
+        resumeVideoId = song.videoId
+        resumePositionMs = target
+        startPaused = !play
         playCurrent()
+    }
+
+    /** Maps a moment in [videoId] back to the current audio track for a seamless switch. */
+    fun audioPositionForVideo(videoId: String, videoPositionMs: Long): Long {
+        val audio = _state.value.song ?: return videoPositionMs.coerceAtLeast(0L)
+        val map = YtMusicRepository.versionTimeMap(videoId, audio.videoId)
+            ?: return videoPositionMs.coerceAtLeast(0L)
+        return map.map(videoPositionMs.coerceAtLeast(0L))
     }
 
     /**
@@ -590,6 +625,8 @@ object MusicPlayer {
     private fun playCurrent() {
         val song = _state.value.queue.getOrNull(_state.value.index) ?: return
         val p = player ?: return
+        val paused = startPaused
+        startPaused = false
         videoJob?.cancel()
         resolvedVideoSong = null
         videoPreparedFor = null
@@ -625,9 +662,11 @@ object MusicPlayer {
                 p.setMediaItem(song.toMediaItem(localUri))
                 p.prepare()
                 applyResumePosition(p, song)
-                p.play()
-                startFadeIn()
-                MusicLibrary.recordPlayed(song)
+                if (paused) p.playWhenReady = false else {
+                    p.play()
+                    startFadeIn()
+                    MusicLibrary.recordPlayed(song)
+                }
                 _state.update { it.copy(isBuffering = false) }
                 prefetchNext()
                 return@launch
@@ -640,9 +679,11 @@ object MusicPlayer {
                 p.setMediaItem(downloaded)
                 p.prepare()
                 applyResumePosition(p, song)
-                p.play()
-                startFadeIn()
-                MusicLibrary.recordPlayed(song)
+                if (paused) p.playWhenReady = false else {
+                    p.play()
+                    startFadeIn()
+                    MusicLibrary.recordPlayed(song)
+                }
                 _state.update { it.copy(isBuffering = false) }
                 prefetchNext()
                 return@launch
@@ -655,9 +696,11 @@ object MusicPlayer {
                     p.setMediaItem(song.toMediaItem(stream.url, stream.mimeType))
                     p.prepare()
                     applyResumePosition(p, song)
-                    p.play()
-                    startFadeIn()
-                    MusicLibrary.recordPlayed(song)
+                    if (paused) p.playWhenReady = false else {
+                        p.play()
+                        startFadeIn()
+                        MusicLibrary.recordPlayed(song)
+                    }
                     _state.update { it.copy(isBuffering = false) }
                     prefetchNext()
                 },

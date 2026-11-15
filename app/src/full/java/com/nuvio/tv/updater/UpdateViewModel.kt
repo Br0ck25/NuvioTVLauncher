@@ -18,6 +18,7 @@ import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.asStateFlow
+import kotlinx.coroutines.flow.collect
 import kotlinx.coroutines.flow.first
 import kotlinx.coroutines.flow.update
 import kotlinx.coroutines.Job
@@ -75,6 +76,34 @@ class UpdateViewModel @Inject constructor(
             downloadStore.clearIfInstalled()
             consumeAutoInstalledUpdate()
             syncBackgroundJobs()
+            // A background job or the card may own the download. Share one progress source so the
+            // card never sits at 0% while the APK is actually arriving.
+            viewModelScope.launch {
+                downloadStore.progress.collect { progress ->
+                    val state = _uiState.value
+                    val update = state.update ?: return@collect
+                    if (progress == null) {
+                        val file = downloadStore.downloadedFileFor(update)
+                        if (file != null || state.isDownloading) {
+                            _uiState.update {
+                                it.copy(
+                                    isDownloading = false,
+                                    downloadProgress = null,
+                                    downloadedApkPath = file?.absolutePath ?: it.downloadedApkPath
+                                )
+                            }
+                        }
+                    } else if (progress.tag == update.tag) {
+                        _uiState.update {
+                            it.copy(
+                                isDownloading = true,
+                                downloadProgress = progress.fraction ?: 0f,
+                                errorMessage = null
+                            )
+                        }
+                    }
+                }
+            }
             if (enabled && !BuildConfig.IS_DEBUG_BUILD) {
                 checkForUpdates(force = false, showNoUpdateFeedback = false)
             }
@@ -123,14 +152,15 @@ class UpdateViewModel @Inject constructor(
                         dismissedTag = dismissedTag,
                         updateTag = update.tag
                     )
+                    val activeDownload = downloadStore.progress.value?.takeIf { it.tag == update.tag }
 
                     _uiState.update { state ->
                         state.copy(
                             isChecking = false,
                             update = update.takeIf { remoteNewer },
                             isUpdateAvailable = remoteNewer,
-                            isDownloading = false,
-                            downloadProgress = null,
+                            isDownloading = activeDownload != null,
+                            downloadProgress = activeDownload?.fraction,
                             downloadedApkPath = downloadedFile?.absolutePath
                                 ?: state.downloadedApkPath.takeIf { remoteNewer && state.update?.tag == update.tag },
                             showBanner = shouldShow || installedUpdate != null,
@@ -180,7 +210,6 @@ class UpdateViewModel @Inject constructor(
         }
 
     fun dismissBanner() {
-        val state = _uiState.value
         _uiState.update {
             it.copy(
                 showBanner = false,
@@ -189,12 +218,8 @@ class UpdateViewModel @Inject constructor(
                 installedUpdate = null
             )
         }
-        val tag = state.update?.tag
-        if (tag != null) {
-            viewModelScope.launch {
-                updatePreferences.setIgnoredTag(tag)
-            }
-        }
+        // "Later" only closes the card for this session. Do not set the ignored tag: that also
+        // stopped the background download job from fetching this release.
     }
 
     fun dismissUnknownSourcesDialog() {
@@ -266,14 +291,7 @@ class UpdateViewModel @Inject constructor(
             }
 
             val result = withContext(Dispatchers.IO) {
-                downloadStore.download(update) { downloaded, total ->
-                    val progress = if (total != null && total > 0) {
-                        (downloaded.toFloat() / total.toFloat()).coerceIn(0f, 1f)
-                    } else {
-                        null
-                    }
-                    _uiState.update { it.copy(downloadProgress = progress) }
-                }
+                downloadStore.download(update)
             }
 
             result

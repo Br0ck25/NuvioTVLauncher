@@ -54,6 +54,7 @@ internal fun YouTubeSettingsContent(
     var sponsorOn by remember { mutableStateOf(YouTubeSettings.sponsorBlockEnabled(context)) }
     var categories by remember { mutableStateOf(YouTubeSettings.sponsorCategoriesOn(context)) }
     var quality by remember { mutableStateOf(YouTubeSettings.preferredHeight(context)) }
+    var volumeOffset by remember { mutableStateOf(YouTubeSettings.volumeOffsetDb(context)) }
     var hiddenTabs by remember { mutableStateOf(YouTubeSettings.hiddenTabs(context)) }
     var autoplay by remember { mutableStateOf(YouTubeSettings.autoplayNext(context)) }
     var autoSubtitles by remember { mutableStateOf(YouTubeSettings.autoSubtitles(context)) }
@@ -256,6 +257,16 @@ internal fun YouTubeSettingsContent(
                                 Toast.LENGTH_SHORT,
                             ).show()
                     }
+                }
+            )
+            SettingsActionRow(
+                title = "Volume offset",
+                subtitle = "Makes OneTube quieter or louder than the other sections. Negative is quieter.",
+                value = YouTubeSettings.volumeOffsetLabel(volumeOffset),
+                onClick = {
+                    val choices = YouTubeSettings.volumeOffsetChoices
+                    volumeOffset = choices[(choices.indexOf(volumeOffset).coerceAtLeast(0) + 1) % choices.size]
+                    YouTubeSettings.setVolumeOffsetDb(context, volumeOffset)
                 }
             )
         }

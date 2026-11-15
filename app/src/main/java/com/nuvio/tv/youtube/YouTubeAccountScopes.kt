@@ -144,7 +144,50 @@ object YouTubeAccountScopes {
             Log.w(TAG, "not overwriting $scope's saved accounts with an empty export")
             return
         }
+        // Refreshed tokens and account details arrive while a part is in use; keep its saved
+        // copy current too, so the next launch doesn't restore an older token.
+        if (prefs(context).getString(blobKey(scope), null) == exported) return
         prefs(context).edit().putString(blobKey(scope), exported).apply()
+    }
+
+    /**
+     * Renews [scope]'s access token, restoring its saved account copy first if the engine has
+     * none. Returns true when an Authorization header is available afterwards.
+     *
+     * Called when account data fails to load: the engine can still contain an account object
+     * with a token that can no longer be refreshed, so "signed in" alone isn't enough.
+     */
+    fun recover(context: Context, scope: AccountScope): Boolean {
+        synchronized(lock) {
+            ensure(context, scope)
+            val svc = signIn() ?: return false
+
+            fun authorized(): Boolean {
+                svc.invalidateCache()
+                runCatching { svc.checkAuth() }
+                // printDebugInfo() reports header=ok only after an access token was obtained.
+                val info = runCatching { svc.printDebugInfo() }.getOrDefault("")
+                return info.contains("header=ok")
+            }
+
+            if (authorized()) {
+                saveLocked(context, scope)
+                Log.i(TAG, "recover $scope: token refreshed")
+                return true
+            }
+
+            val savedBlob = prefs(context).getString(blobKey(scope), null)
+            if (savedBlob.isNullOrEmpty()) return false
+            Log.i(TAG, "recover $scope: restoring saved accounts")
+            svc.importAccounts(savedBlob)
+            selectFirstIfNoneLocked(svc)
+            if (authorized()) {
+                saveLocked(context, scope)
+                Log.i(TAG, "recover $scope: restored and refreshed")
+                return true
+            }
+            return false
+        }
     }
 
     private fun selectFirstIfNoneLocked(svc: YouTubeSignInService) {

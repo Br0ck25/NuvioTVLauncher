@@ -66,7 +66,9 @@ class ProfileDataStore @Inject constructor(
     }
 
     val confirmExitEnabled: Flow<Boolean> = dataStore.data.map { prefs ->
-        prefs[confirmExitEnabledKey] ?: false
+        // Live TV fork: a TV remote's Back button is easy to hit by accident; ask once
+        // before closing the app. The setting still lets anyone turn the prompt off.
+        prefs[confirmExitEnabledKey] ?: true
     }
 
     val startupSplashEnabled: Flow<Boolean> = dataStore.data.map { prefs ->

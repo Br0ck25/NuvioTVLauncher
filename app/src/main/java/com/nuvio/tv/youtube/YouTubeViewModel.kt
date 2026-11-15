@@ -12,6 +12,7 @@ import com.liskovsoft.mediaserviceinterfaces.data.SearchOptions
 import com.liskovsoft.sharedutils.prefs.GlobalPreferences
 import com.liskovsoft.youtubeapi.service.YouTubeServiceManager
 import com.liskovsoft.youtubeapi.service.internal.MediaServiceData
+import com.nuvio.tv.data.local.PlayerSettingsDataStore
 import com.nuvio.tv.ui.screens.player.seekpreview.YouTubeStoryboardCache
 import dagger.hilt.android.lifecycle.HiltViewModel
 import dagger.hilt.android.qualifiers.ApplicationContext
@@ -24,6 +25,7 @@ import kotlinx.coroutines.delay
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.asStateFlow
+import kotlinx.coroutines.flow.collect
 import kotlinx.coroutines.flow.update
 import kotlinx.coroutines.launch
 import kotlinx.coroutines.withContext
@@ -129,7 +131,8 @@ data class YtPlayable(
  */
 @HiltViewModel
 class YouTubeViewModel @Inject constructor(
-    @ApplicationContext private val context: Context
+    @ApplicationContext private val context: Context,
+    private val playerSettingsDataStore: PlayerSettingsDataStore
 ) : ViewModel() {
     private companion object {
         const val TAG = "YouTubeVM"
@@ -139,6 +142,8 @@ class YouTubeViewModel @Inject constructor(
         const val MAX_HISTORY = 50
         /** How much of a video counts as watched for hiding it. */
         const val WATCHED_PERCENT = 90
+        /** A feed older than this is reloaded when the app comes back to OneTube. */
+        const val FEED_MAX_AGE_MS = 5 * 60 * 1000L
 
         /**
          * Clients the engine marks as needing a proof-of-origin token. Their plain stream URLs come
@@ -174,6 +179,16 @@ class YouTubeViewModel @Inject constructor(
     private val backStack = ArrayDeque<Page>()
     private var currentGroup: MediaGroup? = null
     private var loadJob: Job? = null
+    /** When the feed last finished loading, used to refresh after the app has been away. */
+    private var lastFeedLoadedAt = 0L
+
+    /**
+     * Caption languages kept in YouTube's generated manifest. YouTube offers a translation for
+     * every language it knows (often 150+), which ExoPlayer turns into a separate text track.
+     * Only the subtitle preference, the device languages and English are kept; see
+     * [YouTubeCaptionTracks]. Starts with the device languages so playback works before settings load.
+     */
+    private val captionKeepLanguages = MutableStateFlow(YouTubeCaptionTracks.keepLanguages(null, null))
 
     val canGoBack: Boolean get() = backStack.isNotEmpty()
 
@@ -188,6 +203,19 @@ class YouTubeViewModel @Inject constructor(
         // A killed process can leave sprite sheets behind; they are only useful while a
         // player is open, so sweep them before a new one starts.
         YouTubeStoryboardCache.cleanup(context)
+        // Keep the caption keep-list in step with Playback > Subtitles. Reading the whole
+        // settings flow is cheap here and avoids a DataStore read for every video lookup.
+        viewModelScope.launch {
+            runCatching {
+                playerSettingsDataStore.playerSettings.collect { settings ->
+                    val subtitle = settings.subtitleStyle
+                    captionKeepLanguages.value = YouTubeCaptionTracks.keepLanguages(
+                        preferred = subtitle.preferredLanguage,
+                        secondary = subtitle.secondaryPreferredLanguage
+                    )
+                }
+            }
+        }
     }
 
     // ---- feeds ----
@@ -235,6 +263,19 @@ class YouTubeViewModel @Inject constructor(
         }
     }
 
+    /**
+     * Reloads the current feed when it is older than [maxAgeMs]. Used when the app comes back to
+     * OneTube: YouTube's recommendations change over time, but a long-lived process would otherwise
+     * keep the rows it loaded days ago. Channel, playlist and search pages are left alone.
+     */
+    fun refreshIfStale(maxAgeMs: Long = FEED_MAX_AGE_MS) {
+        val current = _state.value
+        if (current.subTitle != null || backStack.isNotEmpty() || current.loading) return
+        val now = android.os.SystemClock.elapsedRealtime()
+        if (lastFeedLoadedAt > 0L && now - lastFeedLoadedAt < maxAgeMs) return
+        selectTab(current.tab)
+    }
+
     fun search(query: String) {
         if (query.isBlank()) return
         filtersOn = true
@@ -247,19 +288,14 @@ class YouTubeViewModel @Inject constructor(
         loadRows(query) {
             io.reactivex.Observable.fromCallable {
                 val mixed = content.getSearchObserve(query).blockingFirst()
-                val hasChannel = mixed.any { group ->
-                    group.mediaItems.orEmpty().any { it.type == MediaItem.TYPE_CHANNEL }
-                }
-                if (hasChannel) {
-                    mixed
-                } else {
-                    // YouTube's default search answer often contains only videos. Ask the
-                    // channel filter as well so an unsubscribed channel still gets a card.
-                    val channels = runCatching {
-                        content.getSearchObserve(query, SearchOptions.TYPE_CHANNEL).blockingFirst()
-                    }.getOrDefault(emptyList())
-                    channels + mixed
-                }
+                // Always ask for the channel-filtered answer. YouTube's default search often
+                // returns video rows even when a channel card is expected, and the default
+                // answer can contain an empty channel section that would otherwise hide it.
+                val channels = runCatching {
+                    content.getSearchObserve(query, SearchOptions.TYPE_CHANNEL).blockingFirst()
+                }.getOrDefault(emptyList())
+                Log.i(TAG, "search channels query=$query groups=${channels.size} items=${channels.sumOf { it.mediaItems?.size ?: 0 }}")
+                if (channels.isEmpty()) mixed else channels + mixed
             }
         }
     }
@@ -531,6 +567,7 @@ class YouTubeViewModel @Inject constructor(
                     lastError?.let { if (!got) throw it }
                 }
             }
+            if (result.isSuccess) lastFeedLoadedAt = android.os.SystemClock.elapsedRealtime()
             result.onFailure { e ->
                 Log.e(TAG, "couldn't load $label", e)
                 _state.update {
@@ -576,6 +613,7 @@ class YouTubeViewModel @Inject constructor(
             val result = withContext(Dispatchers.IO) { runCatching { fetch() } }
             result.fold(
                 onSuccess = { feed ->
+                    lastFeedLoadedAt = android.os.SystemClock.elapsedRealtime()
                     when (feed) {
                         Feed.Nothing -> _state.update { it.copy(loading = false) }
                         is Feed.Rows -> {
@@ -765,6 +803,38 @@ class YouTubeViewModel @Inject constructor(
         }
     }
 
+    /** Deletes a playlist card from your YouTube account. */
+    fun menuDeletePlaylist() {
+        val menu = _menu.value ?: return
+        if (menu.item.kind != YtKind.PLAYLIST) return
+        val playlistId = menu.item.source.playlistId
+        if (playlistId.isNullOrBlank()) {
+            _menu.update { it?.copy(message = "This playlist can't be deleted from here.") }
+            return
+        }
+        if (!_state.value.signedIn) {
+            _menu.update { it?.copy(message = "Sign in to OneTube first, with the account button on the OneTube page.") }
+            return
+        }
+        _menu.update { it?.copy(busy = true, message = null) }
+        viewModelScope.launch {
+            val ok = withContext(Dispatchers.IO) {
+                runCatching {
+                    service.mediaItemService.removePlaylistObserve(playlistId)
+                        .ignoreElements().blockingAwait()
+                }.isSuccess
+            }
+            if (ok) {
+                YouTubeSettings.unpinPlaylist(context, playlistId)
+                _menu.value = null
+                // Reload the feed so the deleted card disappears.
+                selectTab(_state.value.tab)
+            } else {
+                _menu.update { it?.copy(busy = false, message = "Couldn't delete the playlist.") }
+            }
+        }
+    }
+
     fun closeMenu() {
         _menu.value = null
     }
@@ -878,6 +948,39 @@ class YouTubeViewModel @Inject constructor(
                     .filter { it.items.isNotEmpty() },
                 grid = st.grid.filter { it.channelId != channelId }
             )
+        }
+    }
+
+    /** Removes a video card from the feed using YouTube's "Not interested" feedback. */
+    fun menuNotInterested() {
+        val menu = _menu.value ?: return
+        val token = menu.item.source.feedbackToken?.takeIf { it.isNotBlank() }
+        if (token == null) {
+            _menu.update { it?.copy(message = "This card can't be removed.") }
+            return
+        }
+        _menu.update { it?.copy(busy = true) }
+        viewModelScope.launch {
+            val ok = withContext(Dispatchers.IO) {
+                runCatching {
+                    service.mediaItemService.markAsNotInterestedObserve(token)
+                        .ignoreElements().blockingAwait()
+                }.isSuccess
+            }
+            if (ok) {
+                val key = menu.item.uniqueKey()
+                _menu.value = null
+                _state.update { st ->
+                    st.copy(
+                        rows = st.rows
+                            .map { row -> row.copy(items = row.items.filterNot { it.uniqueKey() == key }) }
+                            .filter { it.items.isNotEmpty() },
+                        grid = st.grid.filterNot { it.uniqueKey() == key }
+                    )
+                }
+            } else {
+                _menu.update { it?.copy(busy = false, message = "Couldn't remove this card.") }
+            }
         }
     }
 
@@ -1277,7 +1380,7 @@ class YouTubeViewModel @Inject constructor(
             Log.i(TAG, "mpd is dynamic; not using it")
             return null
         }
-        return YouTubeMpdServer.publish(videoId, mpd, info.visitorCookie)
+        return YouTubeMpdServer.publish(videoId, mpd, info.visitorCookie, captionKeepLanguages.value)
     }
 
     // ---- search suggestions and recent searches ----

@@ -43,6 +43,8 @@ object MusicAccountRepository {
 
     private val scope = CoroutineScope(SupervisorJob() + Dispatchers.IO)
     private val groupItems = ConcurrentHashMap<String, MediaItem>()
+    /** The playlist-list cards, so a private playlist can also be opened by its own group key. */
+    private val playlistItems = ConcurrentHashMap<String, MediaItem>()
 
     @Volatile
     private var cachedGroups: List<MediaGroup> = emptyList()
@@ -70,29 +72,92 @@ object MusicAccountRepository {
             .getOrDefault(false)
 
     /** The account's personalised Music home, without the Liked Music row (Library shows it). */
-    fun home(): Result<List<HomeShelf>> = runCatching {
-        loadGroups()
-            .filterNot { it.isLikedGroup() }
-            .mapNotNull { it.toHomeShelf() }
-            .filter { it.items.isNotEmpty() }
+    fun home(): Result<List<HomeShelf>> {
+        val first = runCatching { loadHomeData() }
+        if (first.isSuccess) {
+            persistSession()
+            return first
+        }
+        if (recoverSession()) {
+            val retry = runCatching { loadHomeData() }
+            if (retry.isSuccess) {
+                persistSession()
+                return retry
+            }
+        }
+        return first
     }
 
+    private fun loadHomeData(): List<HomeShelf> = loadGroups()
+        .filterNot { it.isLikedGroup() }
+        .mapNotNull { it.toHomeShelf() }
+        .filter { it.items.isNotEmpty() }
+
     /** The account's Liked Music and playlists. */
-    fun library(): Result<Library> = runCatching {
+    fun library(): Result<Library> {
+        val first = runCatching { loadLibraryData() }
+        if (first.isSuccess) {
+            persistSession()
+            return first
+        }
+        if (recoverSession()) {
+            val retry = runCatching { loadLibraryData() }
+            if (retry.isSuccess) {
+                persistSession()
+                return retry
+            }
+        }
+        return first
+    }
+
+    private fun loadLibraryData(): Library {
         val groups = loadGroups()
         val likedGroup = groups.firstOrNull { it.isLikedGroup() }
         // The first Music row only carries the first page of liked songs. Read the rest too,
         // otherwise likes added on another device never appear after the first connection.
         val liked = loadAllGroupItems(likedGroup)
             .mapNotNull { it.toSong() }
-        // A playlist-list failure shouldn't hide the liked songs that did load.
-        val playlists = runCatching { loadPlaylists() }.getOrDefault(emptyList())
-        Library(liked = liked, playlists = playlists)
+        // A playlist-list failure shouldn't hide the liked songs that did load, but it can be
+        // a stale token: try one renewal before giving up on the list.
+        val playlists = runCatching { loadPlaylists() }.getOrElse {
+            if (recoverSession()) runCatching { loadPlaylists() }.getOrDefault(emptyList())
+            else emptyList()
+        }
+        return Library(liked = liked, playlists = playlists)
     }
 
-    fun playlistSongs(playlistId: String): Result<List<Song>> = runCatching {
-        val group = service().contentService.getPlaylist(normalizePlaylistId(playlistId))
-            ?: error("This playlist couldn't be opened.")
+    fun playlistSongs(playlistId: String): Result<List<Song>> {
+        val first = loadPlaylistSongs(playlistId)
+        if (first.isSuccess && !first.getOrNull().isNullOrEmpty()) {
+            persistSession()
+            return first
+        }
+        if (recoverSession()) {
+            val retry = loadPlaylistSongs(playlistId)
+            if (retry.isSuccess && !retry.getOrNull().isNullOrEmpty()) {
+                persistSession()
+                return retry
+            }
+        }
+        return first
+    }
+
+    private fun loadPlaylistSongs(playlistId: String): Result<List<Song>> = runCatching {
+        val raw = normalizePlaylistId(playlistId)
+        // Some private playlists parse empty from the generic playlist page. The card that
+        // listed the playlist still knows its own group key, so try that before giving up.
+        val fromId = runCatching { service().contentService.getPlaylist(raw) }
+            .getOrNull()
+            ?.takeIf { !it.mediaItems.isNullOrEmpty() || !it.nextPageKey.isNullOrBlank() }
+        val stored = playlistItems[playlistId]
+            ?: playlistItems[raw]
+            ?: groupItems["account:playlist:$raw"]
+            ?: groupItems["account:playlist:$playlistId"]
+        val fromGroup = stored
+            ?.takeIf { it.reloadPageKey != null }
+            ?.let { runCatching { service().contentService.getGroup(it) }.getOrNull() }
+            ?.takeIf { !it.mediaItems.isNullOrEmpty() || !it.nextPageKey.isNullOrBlank() }
+        val group = fromId ?: fromGroup ?: error("This playlist couldn't be opened.")
         loadAllGroupItems(group).mapNotNull { it.toSong() }
     }
 
@@ -154,6 +219,17 @@ object MusicAccountRepository {
         return YouTubeAccountScopes.engine(context, AccountScope.MUSIC)
     }
 
+    /** Writes the refreshed account/token copy for Music (cheap when nothing changed). */
+    private fun persistSession() {
+        appContext?.let { runCatching { YouTubeAccountScopes.save(it, AccountScope.MUSIC) } }
+    }
+
+    /** Tries to renew Music's token after an account-data failure. */
+    private fun recoverSession(): Boolean =
+        appContext?.let {
+            runCatching { YouTubeAccountScopes.recover(it, AccountScope.MUSIC) }.getOrDefault(false)
+        } ?: false
+
     private fun loadGroups(): List<MediaGroup> {
         val now = System.currentTimeMillis()
         if (cachedGroups.isNotEmpty() && now - cachedAt < CACHE_MS) return cachedGroups
@@ -165,6 +241,7 @@ object MusicAccountRepository {
         val groups = batches.flatten()
         cachedGroups = groups
         cachedAt = now
+        persistSession()
         return groups
     }
 
@@ -185,6 +262,7 @@ object MusicAccountRepository {
                 if (item.title.orEmpty().contains("liked", ignoreCase = true)) {
                     return@mapNotNull null
                 }
+                playlistItems[id] = item
                 MusicAccountPlaylist(
                     id = id,
                     title = item.title.orEmpty().ifBlank { "Playlist" },
@@ -231,17 +309,26 @@ object MusicAccountRepository {
     private fun MediaItem.toShelfItem(): ShelfItem? {
         val label = title?.takeIf { it.isNotBlank() } ?: return null
         val id = videoId?.takeIf { it.isNotBlank() }
-        val browseKey = if (id != null) {
-            null
-        } else {
-            val playlist = accountPlaylistId()
-            val key = if (playlist != null) {
-                "account:playlist:$playlist"
-            } else {
-                "account:group:${reloadPageKey ?: channelId ?: label}"
+        val playlist = accountPlaylistId()
+        // A playlist card can also carry the first track as a preview. Prefer the playlist
+        // browse key for it, otherwise tapping a mix/personal playlist played one track.
+        val browseKey = when {
+            type == MediaItem.TYPE_PLAYLIST && playlist != null -> {
+                val key = "account:playlist:$playlist"
+                groupItems[key] = this
+                key
             }
-            groupItems[key] = this
-            key
+            id != null -> null
+            playlist != null -> {
+                val key = "account:playlist:$playlist"
+                groupItems[key] = this
+                key
+            }
+            else -> {
+                val key = "account:group:${reloadPageKey ?: channelId ?: label}"
+                groupItems[key] = this
+                key
+            }
         }
         return ShelfItem(
             title = label,

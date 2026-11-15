@@ -163,7 +163,7 @@ private val playbackEntries = listOf(
     ),
     PlaybackSearchEntry(
         PlaybackSection.PLAYER_INTERFACE, "Player Interface",
-        "Overlays, clock and details during playback", "overlay osd clock controls"
+        "Overlays, clock, playback info and player buttons", "overlay osd clock controls buttons playback info resolution codec speed hide clean minimal"
     ),
     PlaybackSearchEntry(
         PlaybackSection.AUDIO, "Audio",

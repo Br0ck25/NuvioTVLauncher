@@ -104,9 +104,11 @@ import androidx.compose.ui.unit.sp
 import androidx.hilt.navigation.compose.hiltViewModel
 import androidx.tv.material3.Icon
 import androidx.tv.material3.Text
+import com.music.bitchord.data.YtMusicRepository
 import com.music.bitchord.data.model.Song
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.launch
+import kotlinx.coroutines.withContext
 
 private enum class NowPlayingTab(val label: String) {
     LYRICS("Lyrics"),
@@ -120,6 +122,7 @@ internal fun MusicNowPlayingScreen(
     onOpenSettings: () -> Unit,
     onOpenMusicVideo: (Song, Long) -> Unit,
     onOpenArtist: (Song) -> Unit,
+    onOpenAlbum: (Song) -> Unit,
     modifier: Modifier = Modifier
 ) {
     val state by MusicPlayer.state.collectAsState()
@@ -153,6 +156,27 @@ internal fun MusicNowPlayingScreen(
     val likeFocus = remember { FocusRequester() }
     val canOpenArtist = song?.artist?.isNotBlank() == true
     var artistFocused by remember { mutableStateOf(false) }
+    // Account/home rows don't always carry the album; the watch queue entry does.
+    var albumInfo by remember(song?.videoId) { mutableStateOf<Pair<String?, String?>?>(null) }
+    LaunchedEffect(song?.videoId, song?.albumId, song?.albumName) {
+        val current = song ?: return@LaunchedEffect
+        if ((!current.albumId.isNullOrBlank() && !current.albumName.isNullOrBlank()) ||
+            current.localUri != null
+        ) {
+            return@LaunchedEffect
+        }
+        albumInfo = withContext(Dispatchers.IO) {
+            YtMusicRepository.trackLinks(current.videoId).getOrNull()
+                ?.let { it.albumId to it.albumName }
+        }
+    }
+    val albumId = song?.albumId?.takeIf { it.isNotBlank() } ?: albumInfo?.first
+    val albumName = song?.albumName?.takeIf { it.isNotBlank() } ?: albumInfo?.second
+    val canOpenAlbum = albumId != null && song?.localUri == null
+    val albumLabel = albumName?.takeIf { it.isNotBlank() }
+        ?: if (canOpenAlbum) "Album" else null
+    val albumFocus = remember { FocusRequester() }
+    var albumFocused by remember { mutableStateOf(false) }
     val windowInfo = LocalWindowInfo.current
     val colors = musicAuroraColors(song?.thumbnailUrl ?: song?.title)
     val playInteraction = remember { MutableInteractionSource() }
@@ -370,7 +394,8 @@ internal fun MusicNowPlayingScreen(
                                     if (event.type == KeyEventType.KeyDown &&
                                         event.key == Key.DirectionDown
                                     ) {
-                                        runCatching { likeFocus.requestFocus() }
+                                        val next = if (canOpenAlbum) albumFocus else likeFocus
+                                        runCatching { next.requestFocus() }
                                         true
                                     } else {
                                         false
@@ -402,15 +427,66 @@ internal fun MusicNowPlayingScreen(
                                 )
                             }
                         }
-                        if (!song?.albumName.isNullOrBlank()) {
+                        albumLabel?.let { name ->
                             Spacer(Modifier.height(3.dp))
-                            Text(
-                                text = song?.albumName.orEmpty(),
-                                color = Color.White.copy(alpha = 0.44f),
-                                fontSize = 11.5.sp,
-                                maxLines = 1,
-                                overflow = TextOverflow.Ellipsis
-                            )
+                            val albumModifier = if (canOpenAlbum) {
+                                Modifier
+                                    .clip(RoundedCornerShape(8.dp))
+                                    .background(
+                                        if (albumFocused) Color.White.copy(alpha = 0.10f)
+                                        else Color.Transparent
+                                    )
+                                    .focusRequester(albumFocus)
+                                    .onFocusChanged { albumFocused = it.isFocused }
+                                    .onPreviewKeyEvent { event ->
+                                        if (event.type != KeyEventType.KeyDown) {
+                                            return@onPreviewKeyEvent false
+                                        }
+                                        when (event.key) {
+                                            Key.DirectionUp -> {
+                                                val target = if (canOpenArtist) artistFocus else playFocus
+                                                runCatching { target.requestFocus() }
+                                                true
+                                            }
+                                            Key.DirectionDown -> {
+                                                runCatching { likeFocus.requestFocus() }
+                                                true
+                                            }
+                                            else -> false
+                                        }
+                                    }
+                                    .clickable {
+                                        song?.let {
+                                            onOpenAlbum(it.copy(albumId = albumId, albumName = name))
+                                        }
+                                    }
+                                    .padding(horizontal = 6.dp, vertical = 2.dp)
+                            } else {
+                                Modifier
+                            }
+                            Box(albumModifier) {
+                                Row(verticalAlignment = Alignment.CenterVertically) {
+                                    Text(
+                                        text = name,
+                                        color = if (albumFocused) MusicPalette.accent
+                                        else Color.White.copy(alpha = 0.44f),
+                                        fontSize = 11.5.sp,
+                                        maxLines = 1,
+                                        overflow = TextOverflow.Ellipsis,
+                                        modifier = Modifier.weight(1f, fill = false)
+                                    )
+                                    if (canOpenAlbum) {
+                                        Spacer(Modifier.width(4.dp))
+                                        Icon(
+                                            Icons.Default.KeyboardArrowRight,
+                                            contentDescription = "Open album",
+                                            tint = if (albumFocused) MusicPalette.accent
+                                            else Color.White.copy(alpha = 0.30f),
+                                            modifier = Modifier.size(16.dp)
+                                        )
+                                    }
+                                }
+                            }
                         }
                         Spacer(Modifier.height(10.dp))
                         Row(

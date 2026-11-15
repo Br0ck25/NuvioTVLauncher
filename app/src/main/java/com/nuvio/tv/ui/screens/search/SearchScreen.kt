@@ -77,6 +77,7 @@ import androidx.compose.ui.focus.focusProperties
 import androidx.compose.ui.focus.onFocusChanged
 import androidx.compose.ui.input.key.onPreviewKeyEvent
 import androidx.compose.ui.platform.LocalContext
+import androidx.compose.ui.platform.LocalFocusManager
 import com.nuvio.tv.ui.util.recompositionHighlighter
 import com.nuvio.tv.ui.util.dpadRepeatThrottle
 import androidx.lifecycle.compose.LocalLifecycleOwner
@@ -142,7 +143,7 @@ fun SearchScreen(
     onOpenLiveTv: () -> Unit = {},
     // Live TV fork: your provider's On Demand titles (the On Demand row).
     onOpenOnDemand: (itemId: String, itemType: String, addonBaseUrl: String?, onDemandUid: String) -> Unit = { _, _, _, _ -> },
-    onPlayOnDemand: (url: String, title: String, type: String, poster: String?) -> Unit = { _, _, _, _ -> }
+    onPlayOnDemand: (url: String, title: String, type: String, poster: String?, contentId: String, contentName: String, season: Int?, episode: Int?, episodeName: String?) -> Unit = { _, _, _, _, _, _, _, _, _ -> }
 ) {
     val uiState by viewModel.uiState.collectAsState()
     val watchedMovieIds by viewModel.watchedMovieIds.collectAsState()
@@ -150,6 +151,15 @@ fun SearchScreen(
     val context = LocalContext.current
     val view = LocalView.current
     val keyboardController = LocalSoftwareKeyboardController.current
+    val focusManager = LocalFocusManager.current
+    // Leaving Search for a detail page or the player: a keyboard left open used to follow
+    // the user and sit over the video, where Back went to the player instead of closing it.
+    fun hideSearchKeyboard() {
+        focusManager.clearFocus(force = true)
+        keyboardController?.hide()
+        (context.getSystemService(android.content.Context.INPUT_METHOD_SERVICE) as? InputMethodManager)
+            ?.hideSoftInputFromWindow(view.windowToken, 0)
+    }
     val strVoiceNoSpeech = stringResource(R.string.search_voice_no_speech)
     val strVoiceMicPermission = stringResource(R.string.search_voice_mic_permission)
     val strVoiceFailed = stringResource(R.string.search_voice_failed)
@@ -199,6 +209,10 @@ fun SearchScreen(
     val topInputFocusRequester = remember(isVoiceSearchAvailable) {
         if (isVoiceSearchAvailable) voiceFocusRequester else searchFocusRequester
     }
+    // Whichever of voice/text field was focused last is where Up or Back from results returns to.
+    var lastInputWasVoice by remember { mutableStateOf(isVoiceSearchAvailable) }
+    val lastInputFocusRequester =
+        if (isVoiceSearchAvailable && lastInputWasVoice) voiceFocusRequester else searchFocusRequester
     val speechRecognizer = remember(context, isVoiceSearchAvailable) {
         if (isVoiceSearchAvailable) {
             runCatching { SpeechRecognizer.createSpeechRecognizer(context) }.getOrNull()
@@ -410,7 +424,7 @@ fun SearchScreen(
     /** What Up from a section's first row goes to: the section above it, or the search field. */
     fun sectionUp(kind: String): FocusRequester? {
         val i = presentSections.indexOf(kind)
-        if (i <= 0) return searchFocusRequester
+        if (i <= 0) return lastInputFocusRequester
         // Below the addon rows: plain Up reaches their last row.
         return sectionEntry(presentSections[i - 1])
     }
@@ -665,7 +679,7 @@ fun SearchScreen(
                 backToFieldLatched = true
                 coroutineScope.launch {
                     listState.scrollToItem(0)
-                    runCatching { searchFocusRequester.requestFocus() }
+                    runCatching { lastInputFocusRequester.requestFocus() }
                     // The focus request can start an input session and show the keyboard.
                     keyboardController?.hide()
                 }
@@ -706,7 +720,11 @@ fun SearchScreen(
                     canMoveToResults = (canMoveToResults && searchScope.catalog) || hasForkResults,
                     voiceFocusRequester = if (isVoiceSearchAvailable) voiceFocusRequester else null,
                     searchFocusRequester = searchFocusRequester,
-                    onSearchFieldFocusChanged = { focused -> isSearchFieldFocused = focused },
+                    onSearchFieldFocusChanged = { focused ->
+                        isSearchFieldFocused = focused
+                        if (focused) lastInputWasVoice = false
+                    },
+                    onVoiceFocusChanged = { focused -> if (focused) lastInputWasVoice = true },
                     onQueryChanged = handleQueryChanged,
                     onSubmit = {
                         submitCurrentQuery(uiState.query.trim())
@@ -794,8 +812,14 @@ fun SearchScreen(
                                     results = onDemandResults,
                                     entryFocusRequester = onDemandRowFocusRequester,
                                     upFocusRequester = sectionUp("ondemand"),
-                                    onOpenDetail = onOpenOnDemand,
-                                    onPlay = onPlayOnDemand,
+                                    onOpenDetail = { id, type, addonBaseUrl, uid ->
+                                        hideSearchKeyboard()
+                                        onOpenOnDemand(id, type, addonBaseUrl, uid)
+                                    },
+                                    onPlay = { url, title, type, poster, contentId, contentName, season, episode, episodeName ->
+                                        hideSearchKeyboard()
+                                        onPlayOnDemand(url, title, type, poster, contentId, contentName, season, episode, episodeName)
+                                    },
                                     posterCardStyle = posterCardStyle
                                 )
                             }
@@ -1002,6 +1026,7 @@ fun SearchScreen(
                                     val backdrop = viewModel.getCachedBackdrop(id, type)
                                         ?: clickedItem?.backdropUrl
                                     HeroBackdropState.update(backdrop)
+                                    hideSearchKeyboard()
                                     onNavigateToDetail(id, type, addonBaseUrl)
                                 },
                                 onItemLongPress = { item, addonBaseUrl ->
@@ -1078,6 +1103,7 @@ fun SearchScreen(
                 .firstOrNull { it.id == id }
                 ?: uiState.discoverResults.firstOrNull { it.id == id }
             HeroBackdropState.update(clickedItem?.backdropUrl)
+            hideSearchKeyboard()
             onNavigateToDetail(id, type, addonBaseUrl)
         }
     )
@@ -1298,6 +1324,7 @@ private fun SearchInputField(
     voiceFocusRequester: FocusRequester?,
     searchFocusRequester: FocusRequester,
     onSearchFieldFocusChanged: (Boolean) -> Unit,
+    onVoiceFocusChanged: (Boolean) -> Unit,
     onQueryChanged: (String) -> Unit,
     onSubmit: () -> Unit,
     showVoiceSearch: Boolean,
@@ -1423,7 +1450,10 @@ private fun SearchInputField(
                                 Modifier
                             }
                         )
-                        .onFocusChanged { isVoiceButtonFocused = it.isFocused }
+                        .onFocusChanged {
+                            isVoiceButtonFocused = it.isFocused
+                            onVoiceFocusChanged(it.isFocused)
+                        }
                         .size(NuvioTheme.spacing.huge)
                         .border(
                             width = if (isVoiceButtonFocused || isVoiceListening) NuvioTheme.spacing.xxs else NuvioTheme.spacing.hairline,
