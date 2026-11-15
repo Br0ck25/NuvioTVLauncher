@@ -15,8 +15,10 @@ class InstalledAppsViewModel @Inject constructor(
     private val repository: InstalledAppsRepository,
     private val iconPackManager: IconPackManager
 ) : ViewModel() {
+    // Eagerly: the Home row moves apps through this list too, but only collects [homeApps]. With WhileSubscribed this was
+    // still empty on Home, so Move there did nothing at all (the row looked frozen).
     val apps: StateFlow<List<InstalledApp>> = repository.apps
-        .stateIn(viewModelScope, SharingStarted.WhileSubscribed(5_000), emptyList())
+        .stateIn(viewModelScope, SharingStarted.Eagerly, emptyList())
 
     /** The apps the Home row shows (the Apps page uses [apps], which has the hidden ones too). */
     val homeApps: StateFlow<List<InstalledApp>> = repository.homeApps
