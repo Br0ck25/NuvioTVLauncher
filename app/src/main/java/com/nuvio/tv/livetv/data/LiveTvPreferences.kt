@@ -822,6 +822,10 @@ class LiveTvPreferences @Inject constructor(
                     if (k.name in sharedSettingKeyNames) p[typedKey(k.name, v) ?: continue] = v
                     else typedKey(ownName(k.name, me), v)?.let { p[it] = v }
                 }
+                // Which pages are off: this profile's own copy, saved when it differs from what it sees now
+                // (its own choice, or else the first profile's). Even an empty list (everything on) is a choice.
+                val seen = p[my(Keys.sideMenuHidden, me)] ?: p[Keys.sideMenuHidden] ?: ""
+                if (next.sideMenuHidden != seen) p[my(Keys.sideMenuHidden, me)] = next.sideMenuHidden
             }
         }
     }
@@ -891,13 +895,9 @@ class LiveTvPreferences @Inject constructor(
         p[Keys.onDemandEnabled] = s.onDemandEnabled
         p[Keys.recordingsInSidebar] = s.recordingsInSidebar
         p[Keys.sideMenuOrder] = s.sideMenuOrder
-        val me = currentProfile
-        if (me <= 1) {
-            p[Keys.sideMenuHidden] = s.sideMenuHidden
-        } else {
-            val seen = p[my(Keys.sideMenuHidden, me)] ?: p[Keys.sideMenuHidden] ?: ""
-            if (s.sideMenuHidden != seen) p[my(Keys.sideMenuHidden, me)] = s.sideMenuHidden
-        }
+        // The first profile owns this key. Another profile's copy is written by updateSettings (it needs the
+        // stored value to compare with), so it is not written here.
+        if (currentProfile <= 1) p[Keys.sideMenuHidden] = s.sideMenuHidden
         p[Keys.calendarInMenu] = s.calendarInMenu
         p[Keys.sideMenuLine] = s.sideMenuLine
         p[Keys.sideMenuFit] = s.sideMenuFit
