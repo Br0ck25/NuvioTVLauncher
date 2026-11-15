@@ -1,0 +1,32 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <string name="onetube_tab_home">Home</string>
+    <string name="onetube_tab_subscriptions">Iscrizioni</string>
+    <string name="onetube_tab_history">Cronologia</string>
+    <string name="onetube_tab_playlists">Playlist</string>
+    <string name="onetube_tab_live">In diretta</string>
+    <string name="onetube_tab_music">Musica</string>
+    <string name="onetube_tab_gaming">Giochi</string>
+    <string name="onetube_tab_news">Notizie</string>
+    <string name="onetube_tab_sports">Sport</string>
+    <string name="onetube_tab_shorts">Shorts</string>
+    <string name="onetube_tab_channels">Canali</string>
+    <string name="onetube_tab_hidden">%1$s (nascosto)</string>
+    <string name="onetube_search">Cerca</string>
+    <string name="onetube_search_hint">Cerca su OneTube</string>
+    <string name="onetube_clear_search">Cancella ricerca</string>
+    <string name="onetube_account">Account</string>
+    <string name="onetube_sign_in">Accedi</string>
+    <string name="onetube_sign_in_title">Accedi a OneTube</string>
+    <string name="onetube_sign_out_of">Esci da %1$s</string>
+    <string name="onetube_this_account">questo account</string>
+    <string name="onetube_sign_in_to_see">Accedi per vedere i tuoi %1$s</string>
+    <string name="onetube_add_account">Aggiungi un altro account</string>
+    <string name="onetube_qr_sign_in">Codice QR per accedere</string>
+    <string name="onetube_settings_account">Account</string>
+    <string name="onetube_settings_header">Intestazione</string>
+    <string name="onetube_settings_playback">Riproduzione</string>
+    <string name="onetube_settings_feeds">Feed</string>
+    <string name="onetube_settings_tabs">Schede</string>
+    <string name="onetube_settings_sponsorblock">SponsorBlock</string>
+</resources>

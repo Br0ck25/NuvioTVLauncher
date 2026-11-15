@@ -1,0 +1,32 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <string name="onetube_tab_home">Inicio</string>
+    <string name="onetube_tab_subscriptions">Suscripciones</string>
+    <string name="onetube_tab_history">Historial</string>
+    <string name="onetube_tab_playlists">Listas de reproducción</string>
+    <string name="onetube_tab_live">En directo</string>
+    <string name="onetube_tab_music">Música</string>
+    <string name="onetube_tab_gaming">Juegos</string>
+    <string name="onetube_tab_news">Noticias</string>
+    <string name="onetube_tab_sports">Deportes</string>
+    <string name="onetube_tab_shorts">Shorts</string>
+    <string name="onetube_tab_channels">Canales</string>
+    <string name="onetube_tab_hidden">%1$s (oculto)</string>
+    <string name="onetube_search">Buscar</string>
+    <string name="onetube_search_hint">Buscar en OneTube</string>
+    <string name="onetube_clear_search">Borrar búsqueda</string>
+    <string name="onetube_account">Cuenta</string>
+    <string name="onetube_sign_in">Iniciar sesión</string>
+    <string name="onetube_sign_in_title">Iniciar sesión en OneTube</string>
+    <string name="onetube_sign_out_of">Cerrar sesión de %1$s</string>
+    <string name="onetube_this_account">esta cuenta</string>
+    <string name="onetube_sign_in_to_see">Inicia sesión para ver tus %1$s</string>
+    <string name="onetube_add_account">Añadir otra cuenta</string>
+    <string name="onetube_qr_sign_in">Código QR para iniciar sesión</string>
+    <string name="onetube_settings_account">Cuenta</string>
+    <string name="onetube_settings_header">Encabezado</string>
+    <string name="onetube_settings_playback">Reproducción</string>
+    <string name="onetube_settings_feeds">Fuentes</string>
+    <string name="onetube_settings_tabs">Pestañas</string>
+    <string name="onetube_settings_sponsorblock">SponsorBlock</string>
+</resources>

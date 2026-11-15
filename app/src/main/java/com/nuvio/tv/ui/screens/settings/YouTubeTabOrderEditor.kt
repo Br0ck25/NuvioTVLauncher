@@ -29,7 +29,9 @@ import androidx.compose.ui.input.key.key
 import androidx.compose.ui.input.key.onPreviewKeyEvent
 import androidx.compose.ui.input.key.type
 import androidx.compose.ui.text.font.FontWeight
+import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.unit.dp
+import com.nuvio.tv.R
 import androidx.tv.material3.MaterialTheme
 import androidx.tv.material3.Text
 import com.nuvio.tv.ui.theme.NuvioTheme
@@ -105,7 +107,11 @@ internal fun TabOrderEditor(
             ) {
                 Text("${index + 1}", color = Color.Gray, style = MaterialTheme.typography.bodyMedium)
                 Text(
-                    tab.title + if (tab.name in hidden) "  (hidden)" else "",
+                    if (tab.name in hidden) {
+                        stringResource(R.string.onetube_tab_hidden, stringResource(tab.titleRes))
+                    } else {
+                        stringResource(tab.titleRes)
+                    },
                     color = if (tab.name in hidden) Color.Gray else NuvioTheme.colors.TextPrimary,
                     style = MaterialTheme.typography.bodyLarge,
                     fontWeight = if (isGrabbed) FontWeight.Bold else FontWeight.Normal,

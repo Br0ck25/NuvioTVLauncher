@@ -57,7 +57,9 @@ import androidx.compose.ui.input.key.type
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextOverflow
+import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.unit.dp
+import com.nuvio.tv.R
 import androidx.compose.ui.unit.sp
 import androidx.tv.material3.Icon
 import androidx.tv.material3.Text
@@ -107,7 +109,7 @@ internal fun MusicDownloadsScreen(
             ) {
                 DownloadsCircleButton(
                     icon = Icons.AutoMirrored.Filled.ArrowBack,
-                    label = "Back",
+                    label = stringResource(R.string.action_back),
                     modifier = Modifier.focusRequester(closeFocus),
                     onDown = { runCatching { firstRowFocus.requestFocus() } },
                     onClick = onClose
@@ -152,7 +154,7 @@ internal fun MusicDownloadsScreen(
                 if (completed.isNotEmpty() || failed.isNotEmpty()) {
                     DownloadsPillButton(
                         icon = Icons.Default.Delete,
-                        label = "Clear finished",
+                        label = stringResource(R.string.music_action_clear_finished),
                         onClick = { MusicDownloads.clearCompleted() }
                     )
                 }
@@ -194,7 +196,7 @@ internal fun MusicDownloadsScreen(
                         item(key = "downloads-active-header") {
                             DownloadsSectionHeader(
                                 icon = Icons.Default.Download,
-                                title = "Downloading"
+                                title = stringResource(R.string.music_downloads_downloading)
                             )
                         }
                         items(
@@ -221,7 +223,7 @@ internal fun MusicDownloadsScreen(
                         item(key = "downloads-failed-header") {
                             DownloadsSectionHeader(
                                 icon = Icons.Default.Refresh,
-                                title = "Needs attention"
+                                title = stringResource(R.string.music_downloads_needs_attention)
                             )
                         }
                         items(
@@ -248,7 +250,7 @@ internal fun MusicDownloadsScreen(
                         item(key = "downloads-complete-header") {
                             DownloadsSectionHeader(
                                 icon = Icons.Default.DownloadDone,
-                                title = "On this device"
+                                title = stringResource(R.string.music_section_on_this_device)
                             )
                         }
                         itemsIndexed(
@@ -373,7 +375,7 @@ private fun DownloadRow(
         if (onDelete != null) {
             DownloadsRowAction(
                 icon = Icons.Default.Delete,
-                label = "Remove download",
+                label = stringResource(R.string.music_action_remove_download),
                 onClick = onDelete
             )
         }

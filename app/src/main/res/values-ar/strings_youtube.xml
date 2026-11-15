@@ -1,0 +1,32 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <string name="onetube_tab_home">الرئيسية</string>
+    <string name="onetube_tab_subscriptions">الاشتراكات</string>
+    <string name="onetube_tab_history">السجل</string>
+    <string name="onetube_tab_playlists">قوائم التشغيل</string>
+    <string name="onetube_tab_live">مباشر</string>
+    <string name="onetube_tab_music">الموسيقى</string>
+    <string name="onetube_tab_gaming">الألعاب</string>
+    <string name="onetube_tab_news">الأخبار</string>
+    <string name="onetube_tab_sports">الرياضة</string>
+    <string name="onetube_tab_shorts">Shorts</string>
+    <string name="onetube_tab_channels">القنوات</string>
+    <string name="onetube_tab_hidden">%1$s (مخفي)</string>
+    <string name="onetube_search">بحث</string>
+    <string name="onetube_search_hint">البحث في OneTube</string>
+    <string name="onetube_clear_search">مسح البحث</string>
+    <string name="onetube_account">الحساب</string>
+    <string name="onetube_sign_in">تسجيل الدخول</string>
+    <string name="onetube_sign_in_title">تسجيل الدخول إلى OneTube</string>
+    <string name="onetube_sign_out_of">تسجيل الخروج من %1$s</string>
+    <string name="onetube_this_account">هذا الحساب</string>
+    <string name="onetube_sign_in_to_see">سجّل الدخول لرؤية %1$s</string>
+    <string name="onetube_add_account">إضافة حساب آخر</string>
+    <string name="onetube_qr_sign_in">رمز QR لتسجيل الدخول</string>
+    <string name="onetube_settings_account">الحساب</string>
+    <string name="onetube_settings_header">الرأس</string>
+    <string name="onetube_settings_playback">التشغيل</string>
+    <string name="onetube_settings_feeds">الخلاصات</string>
+    <string name="onetube_settings_tabs">علامات التبويب</string>
+    <string name="onetube_settings_sponsorblock">SponsorBlock</string>
+</resources>

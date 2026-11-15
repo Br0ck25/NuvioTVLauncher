@@ -49,7 +49,9 @@ import androidx.compose.ui.platform.LocalFocusManager
 import androidx.compose.ui.platform.LocalWindowInfo
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextOverflow
+import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.unit.dp
+import com.nuvio.tv.R
 import androidx.compose.ui.unit.sp
 import androidx.tv.material3.Icon
 import androidx.tv.material3.Text
@@ -99,7 +101,7 @@ internal fun MusicSettingsScreen(onClose: () -> Unit) {
                 )
                 Column {
                     Text(
-                        text = "Music settings",
+                        text = stringResource(R.string.music_settings_screen_title),
                         color = MusicPalette.text,
                         fontFamily = MusicDisplay,
                         fontSize = 34.sp,
@@ -108,14 +110,14 @@ internal fun MusicSettingsScreen(onClose: () -> Unit) {
                     )
                     Spacer(Modifier.height(2.dp))
                     Text(
-                        text = "Playback, sound, downloads and timers",
+                        text = stringResource(R.string.music_settings_subtitle),
                         color = MusicPalette.textMuted,
                         fontSize = 13.sp
                     )
                 }
                 Spacer(Modifier.weight(1f))
                 Text(
-                    text = "LEFT / RIGHT TO CHANGE",
+                    text = stringResource(R.string.music_settings_hint),
                     color = MusicPalette.textMuted,
                     fontSize = 9.5.sp,
                     letterSpacing = 1.2.sp,
@@ -135,7 +137,7 @@ internal fun MusicSettingsScreen(onClose: () -> Unit) {
                 item(key = "playback-label") { SettingsSection("Playback") }
                 item(key = "audio-quality") {
                     SettingsSelector(
-                        title = "Audio quality",
+                        title = stringResource(R.string.music_settings_audio_quality),
                         detail = audioQuality.detail,
                         options = MusicAudioQuality.entries.map { it.label },
                         selectedIndex = MusicAudioQuality.entries.indexOf(audioQuality),
@@ -145,7 +147,7 @@ internal fun MusicSettingsScreen(onClose: () -> Unit) {
                 }
                 item(key = "autoplay") {
                     SettingsSelector(
-                        title = "Autoplay",
+                        title = stringResource(R.string.music_settings_autoplay),
                         detail = "Starts a radio mix when the queue ends.",
                         options = listOf("Off", "On"),
                         selectedIndex = if (autoplay) 1 else 0,
@@ -154,7 +156,7 @@ internal fun MusicSettingsScreen(onClose: () -> Unit) {
                 }
                 item(key = "keep-playing") {
                     SettingsToggle(
-                        title = "Keep music playing",
+                        title = stringResource(R.string.music_settings_keep_playing),
                         detail = "Music continues while you browse movies, Live TV and your libraries. It pauses when a video starts.",
                         checked = keepPlayingWhileBrowsing,
                         onToggle = MusicSettings::setKeepPlayingWhileBrowsing
@@ -162,7 +164,7 @@ internal fun MusicSettingsScreen(onClose: () -> Unit) {
                 }
                 item(key = "track-transition") {
                     SettingsSelector(
-                        title = "Track transition",
+                        title = stringResource(R.string.music_settings_track_transition),
                         detail = "Gapless uses the prefetched next stream; a fade softens the join.",
                         options = listOf("Gapless", "Fade 2s", "Fade 4s"),
                         selectedIndex = when (fadeSeconds) {
@@ -177,7 +179,7 @@ internal fun MusicSettingsScreen(onClose: () -> Unit) {
                 }
                 item(key = "skip-silence") {
                     SettingsSelector(
-                        title = "Skip silence",
+                        title = stringResource(R.string.music_settings_skip_silence),
                         detail = "Skips long silent passages inside a track.",
                         options = listOf("Off", "On"),
                         selectedIndex = if (skipSilence) 1 else 0,
@@ -189,7 +191,7 @@ internal fun MusicSettingsScreen(onClose: () -> Unit) {
                 val speeds = listOf(0.75f, 1f, 1.25f, 1.5f, 2f)
                 item(key = "playback-speed") {
                     SettingsSelector(
-                        title = "Playback speed",
+                        title = stringResource(R.string.music_settings_playback_speed),
                         detail = "Lyrics and progress follow the speed.",
                         options = speeds.map(::speedLabel),
                         selectedIndex = speeds.indexOf(playbackSpeed).coerceAtLeast(0),
@@ -198,7 +200,7 @@ internal fun MusicSettingsScreen(onClose: () -> Unit) {
                 }
                 item(key = "equalizer") {
                     SettingsSelector(
-                        title = "Equalizer",
+                        title = stringResource(R.string.music_settings_equalizer),
                         detail = if (equalizerAvailable) {
                             "Applied to the music player."
                         } else {
@@ -213,7 +215,7 @@ internal fun MusicSettingsScreen(onClose: () -> Unit) {
                 item(key = "downloads-label") { SettingsSection("Downloads") }
                 item(key = "download-quality") {
                     SettingsSelector(
-                        title = "Download quality",
+                        title = stringResource(R.string.music_settings_download_quality),
                         detail = "${downloadQuality.detail} · applies to new downloads.",
                         options = MusicAudioQuality.entries.map { it.label },
                         selectedIndex = MusicAudioQuality.entries.indexOf(downloadQuality),
@@ -222,7 +224,7 @@ internal fun MusicSettingsScreen(onClose: () -> Unit) {
                 }
                 item(key = "wifi-only") {
                     SettingsSelector(
-                        title = "Wi-Fi only",
+                        title = stringResource(R.string.music_settings_wifi_only),
                         detail = if (wifiOnlyDownloads) {
                             "Downloads wait for an unmetered network."
                         } else {
@@ -239,7 +241,7 @@ internal fun MusicSettingsScreen(onClose: () -> Unit) {
                 val remaining = playback.sleepTimerRemainingMs
                 item(key = "sleep-timer") {
                     SettingsSelector(
-                        title = "Sleep timer",
+                        title = stringResource(R.string.music_settings_sleep_timer),
                         detail = if (playback.sleepTimerMinutes != null && remaining != null) {
                             "Pauses in ${formatMusicTime(remaining)}."
                         } else {

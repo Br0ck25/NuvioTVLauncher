@@ -2,7 +2,9 @@ package com.nuvio.tv.youtube
 
 import android.content.Context
 import android.util.Log
+import androidx.annotation.StringRes
 import androidx.lifecycle.ViewModel
+import com.nuvio.tv.R
 import androidx.lifecycle.viewModelScope
 import com.liskovsoft.mediaserviceinterfaces.ContentService
 import com.liskovsoft.mediaserviceinterfaces.data.MediaGroup
@@ -63,19 +65,25 @@ data class YtRow(
 )
 
 /** The feeds along the top. Grid feeds are one long list; the others are rows of videos. */
-enum class YtTab(val title: String, val needsSignIn: Boolean = false, val grid: Boolean = false) {
+enum class YtTab(
+    /** The English label the YouTube engine expects for this feed. */
+    val title: String,
+    @StringRes val titleRes: Int,
+    val needsSignIn: Boolean = false,
+    val grid: Boolean = false
+) {
     // No Trending: YouTube retired that page, and its requests are now refused.
-    HOME("Home"),
-    SUBSCRIPTIONS("Subscriptions", needsSignIn = true, grid = true),
-    HISTORY("History", needsSignIn = true, grid = true),
-    PLAYLISTS("Playlists", needsSignIn = true, grid = true),
-    LIVE("Live"),
-    MUSIC("Music"),
-    GAMING("Gaming"),
-    NEWS("News"),
-    SPORTS("Sports"),
-    SHORTS("Shorts", grid = true),
-    CHANNELS("Channels", needsSignIn = true, grid = true)
+    HOME("Home", R.string.onetube_tab_home),
+    SUBSCRIPTIONS("Subscriptions", R.string.onetube_tab_subscriptions, needsSignIn = true, grid = true),
+    HISTORY("History", R.string.onetube_tab_history, needsSignIn = true, grid = true),
+    PLAYLISTS("Playlists", R.string.onetube_tab_playlists, needsSignIn = true, grid = true),
+    LIVE("Live", R.string.onetube_tab_live),
+    MUSIC("Music", R.string.onetube_tab_music),
+    GAMING("Gaming", R.string.onetube_tab_gaming),
+    NEWS("News", R.string.onetube_tab_news),
+    SPORTS("Sports", R.string.onetube_tab_sports),
+    SHORTS("Shorts", R.string.onetube_tab_shorts, grid = true),
+    CHANNELS("Channels", R.string.onetube_tab_channels, needsSignIn = true, grid = true)
 }
 
 data class YtUiState(

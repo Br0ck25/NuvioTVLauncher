@@ -72,6 +72,7 @@ import androidx.tv.material3.Text
 import coil3.compose.AsyncImage
 import com.music.bitchord.data.model.BrowseType
 import com.music.bitchord.data.YtMusicRepository
+import androidx.compose.ui.res.stringResource
 import com.nuvio.tv.R
 import com.music.bitchord.data.model.HomeShelf
 import com.music.bitchord.data.model.ShelfItem
@@ -751,7 +752,7 @@ private fun MusicNavigationPill(
         horizontalArrangement = Arrangement.spacedBy(2.dp)
     ) {
         MusicTopNavItem(
-            label = "Home",
+            label = stringResource(R.string.music_tab_home),
             selected = selectedTab == MusicTab.HOME,
             modifier = if (selectedTab == MusicTab.HOME) {
                 Modifier.focusRequester(initialFocus)
@@ -762,7 +763,7 @@ private fun MusicNavigationPill(
             onClick = { onTabSelected(MusicTab.HOME) }
         )
         MusicTopNavItem(
-            label = "Explore",
+            label = stringResource(R.string.music_tab_explore),
             selected = selectedTab == MusicTab.EXPLORE,
             modifier = if (selectedTab == MusicTab.EXPLORE) {
                 Modifier.focusRequester(initialFocus)
@@ -772,7 +773,7 @@ private fun MusicNavigationPill(
             onClick = { onTabSelected(MusicTab.EXPLORE) }
         )
         MusicTopNavItem(
-            label = "Library",
+            label = stringResource(R.string.music_tab_library),
             selected = selectedTab == MusicTab.LIBRARY,
             modifier = if (selectedTab == MusicTab.LIBRARY) {
                 Modifier.focusRequester(initialFocus)
@@ -782,7 +783,7 @@ private fun MusicNavigationPill(
             onClick = { onTabSelected(MusicTab.LIBRARY) }
         )
         MusicTopNavItem(
-            label = "Local",
+            label = stringResource(R.string.music_tab_local),
             selected = selectedTab == MusicTab.LOCAL,
             modifier = if (selectedTab == MusicTab.LOCAL) {
                 Modifier.focusRequester(initialFocus)
@@ -792,7 +793,7 @@ private fun MusicNavigationPill(
             onClick = { onTabSelected(MusicTab.LOCAL) }
         )
         MusicTopNavItem(
-            label = "Search",
+            label = stringResource(R.string.music_tab_search),
             selected = selectedTab == MusicTab.SEARCH,
             modifier = if (selectedTab == MusicTab.SEARCH) {
                 Modifier.focusRequester(initialFocus)
@@ -802,13 +803,13 @@ private fun MusicNavigationPill(
             onClick = { onTabSelected(MusicTab.SEARCH) }
         )
         MusicTopNavItem(
-            label = "Party",
+            label = stringResource(R.string.music_sidebar_party),
             selected = false,
             live = partyRunning,
             onClick = onOpenParty
         )
         MusicTopNavItem(
-            label = "Integrations",
+            label = stringResource(R.string.music_sidebar_integrations),
             selected = false,
             onClick = onOpenIntegrations
         )

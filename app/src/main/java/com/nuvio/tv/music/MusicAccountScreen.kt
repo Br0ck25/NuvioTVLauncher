@@ -52,7 +52,9 @@ import androidx.compose.ui.input.key.type
 import androidx.compose.ui.platform.LocalFocusManager
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextOverflow
+import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.unit.dp
+import com.nuvio.tv.R
 import androidx.compose.ui.unit.sp
 import androidx.tv.material3.Icon
 import androidx.tv.material3.Text
@@ -155,7 +157,7 @@ private fun SignInCodePanel(
         qr?.let {
             Image(
                 bitmap = it,
-                contentDescription = "QR code to sign in",
+                contentDescription = stringResource(R.string.music_account_qr),
                 modifier = Modifier.size(260.dp).clip(RoundedCornerShape(12.dp))
             )
         }
@@ -188,7 +190,7 @@ private fun SignInCodePanel(
             )
             AccountAction(
                 icon = Icons.Default.Close,
-                label = "Cancel",
+                label = stringResource(R.string.action_cancel),
                 firstFocus = firstActionFocus,
                 onClick = onCancel
             )
@@ -226,13 +228,13 @@ private fun AccountsPanel(
         Spacer(Modifier.height(8.dp))
         AccountAction(
             icon = Icons.Default.Add,
-            label = "Add another account",
+            label = stringResource(R.string.music_account_add),
             firstFocus = if (account.accounts.isEmpty()) firstActionFocus else null,
             onClick = onAddAccount
         )
         AccountAction(
             icon = Icons.Default.Logout,
-            label = "Sign out of YouTube Music",
+            label = stringResource(R.string.music_account_sign_out_youtube),
             onClick = onSignOut
         )
     }
@@ -271,7 +273,7 @@ private fun SignedOutPanel(
         Spacer(Modifier.height(4.dp))
         AccountAction(
             icon = Icons.Default.AccountCircle,
-            label = "Sign in with a TV code",
+            label = stringResource(R.string.music_account_tv_code),
             firstFocus = firstActionFocus,
             onClick = onSignIn
         )
@@ -402,7 +404,7 @@ private fun AccountCloseButton(onClick: () -> Unit, onDown: () -> Unit) {
     ) {
         Icon(
             Icons.Default.KeyboardArrowDown,
-            contentDescription = "Close account panel",
+            contentDescription = stringResource(R.string.music_account_close),
             tint = if (focused) MusicPalette.background else Color.White,
             modifier = Modifier.size(26.dp)
         )

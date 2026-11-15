@@ -108,6 +108,7 @@ import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.input.ImeAction
 import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.text.style.TextOverflow
+import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.unit.Density
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
@@ -494,7 +495,7 @@ fun YouTubeScreen(
                                                 }
                                             },
                                         decorationBox = { inner ->
-                                            if (query.isEmpty()) Text("Search OneTube", color = Color.Gray, fontSize = 18.sp)
+                                            if (query.isEmpty()) Text(stringResource(R.string.onetube_search_hint), color = Color.Gray, fontSize = 18.sp)
                                             inner()
                                         }
                                     )
@@ -553,9 +554,9 @@ fun YouTubeScreen(
                         if (!searchExpanded) {
                             AccountChip(
                                 label = when {
-                                    account.signedIn -> account.accountName ?: "Account"
-                                    !account.checked -> "Account"
-                                    else -> "Sign in"
+                                    account.signedIn -> account.accountName ?: stringResource(R.string.onetube_account)
+                                    !account.checked -> stringResource(R.string.onetube_account)
+                                    else -> stringResource(R.string.onetube_sign_in)
                                 },
                                 signedIn = account.signedIn,
                                 downFocusRequester = headerDownFocus
@@ -587,7 +588,7 @@ fun YouTubeScreen(
                         ) {
                             tabs.forEach { tab ->
                                 TabChip(
-                                    tab.title,
+                                    stringResource(tab.titleRes),
                                     selected = state.tab == tab && state.subTitle == null,
                                     focusRequester = if (state.tab == tab) selectedTabFocus else null,
                                     downFocusRequester = tabsDownFocus,
@@ -810,9 +811,9 @@ private fun Content(
             Box(Modifier.fillMaxSize(), Alignment.Center) { CircularProgressIndicator(color = YtRed) }
 
         state.tab.needsSignIn && !state.signedIn && state.subTitle == null -> Message(
-            "Sign in to see your ${state.tab.title.lowercase()}",
+            stringResource(R.string.onetube_sign_in_to_see, stringResource(state.tab.titleRes)),
             account.error ?: "You'll get a code to enter at ${account.url}.",
-            "Sign in",
+            stringResource(R.string.onetube_sign_in),
             upFocusRequester = tabsFocus,
             onAction = onSignIn
         )
@@ -1137,10 +1138,10 @@ private fun SignInPanel(account: YouTubeAccountState, onCancel: () -> Unit) {
     Box(Modifier.fillMaxSize(), Alignment.Center) {
         Row(horizontalArrangement = Arrangement.spacedBy(48.dp), verticalAlignment = Alignment.CenterVertically) {
             qr?.let {
-                Image(it, contentDescription = "QR code to sign in", modifier = Modifier.size(260.dp).clip(RoundedCornerShape(12.dp)))
+                Image(it, contentDescription = stringResource(R.string.onetube_qr_sign_in), modifier = Modifier.size(260.dp).clip(RoundedCornerShape(12.dp)))
             }
             Column(verticalArrangement = Arrangement.spacedBy(14.dp)) {
-                Text("Sign in to OneTube", color = Color.White, fontSize = 22.sp, fontWeight = FontWeight.SemiBold)
+                Text(stringResource(R.string.onetube_sign_in_title), color = Color.White, fontSize = 22.sp, fontWeight = FontWeight.SemiBold)
                 Text(
                     if (qr != null) "Scan the code with your phone, or go to ${account.url} and enter:"
                     else "On your phone or computer, go to ${account.url} and enter:",
@@ -1201,8 +1202,14 @@ private fun AccountsPanel(
                     modifier = if (i == 0) Modifier.focusRequester(first) else Modifier
                 ) { onSelect(a.id) }
             }
-            AccountRow("Add another account", null, null, Modifier) { onAdd() }
-            AccountRow("Sign out of ${account.accountName ?: "this account"}", null, null, Modifier) { onSignOut() }
+            AccountRow(stringResource(R.string.onetube_add_account), null, null, Modifier) { onAdd() }
+            AccountRow(
+                stringResource(
+                    R.string.onetube_sign_out_of,
+                    account.accountName ?: stringResource(R.string.onetube_this_account)
+                ),
+                null, null, Modifier
+            ) { onSignOut() }
         }
     }
 }
