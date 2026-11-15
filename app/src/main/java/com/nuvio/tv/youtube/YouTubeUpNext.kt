@@ -24,8 +24,10 @@ import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
+import androidx.compose.ui.res.stringResource
 import coil3.compose.AsyncImage
 import com.nuvio.tv.ui.screens.player.PlaybackTimelineState
+import com.nuvio.tv.R
 
 /** When the card appears, and when the next video is picked so it's ready in time. */
 private const val SHOW_WITHIN_MS = 12_000L
@@ -40,7 +42,7 @@ fun BoxScope.YouTubeUpNext(
     videoId: String,
     viewModel: YouTubeViewModel,
     timeline: PlaybackTimelineState,
-    /** The video playing right now is a live stream: nothing is "up next". */
+    /** The video playing right now is a live stream: nothing is stringResource(R.string.onetube_up_next_lower). */
     isLiveStream: Boolean = false,
     /** While the video is repeating, nothing is coming up next. */
     looping: Boolean = false
@@ -77,7 +79,7 @@ fun BoxScope.YouTubeUpNext(
             )
         }
         Column(Modifier.padding(horizontal = 7.dp, vertical = 5.dp)) {
-            Text("Up next in $seconds", color = Color(0xFFBBBBBB), fontSize = 9.sp, fontWeight = FontWeight.SemiBold)
+            Text(stringResource(R.string.onetube_up_next_seconds, seconds), color = Color(0xFFBBBBBB), fontSize = 9.sp, fontWeight = FontWeight.SemiBold)
             Text(
                 item.title,
                 color = Color.White,
