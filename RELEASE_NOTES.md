@@ -33,15 +33,6 @@ Only the selected pane plays sound. A pane that loses its stream reconnects on i
 - Seek previews now work in OneTube, as well as movies, series, catch-up, recordings, sports replays and live TV rewind. They are on by default unless the device is low on memory, and can be switched off under Settings → Playback.
 - Nuvio 1.2.0 adds subtitle font and style choices, chapters, a setting for what Continue Watching opens, and automatic fallback to the next source when one fails.
 
-## Nuvio One keeps
-
-- Cloud sync and Google Drive backup on the existing Nuvio One accounts.
-- Add-on Live TV channels, with their event details in the guide.
-- Nuvio One's sports data, team pages, leagues and game pages.
-- OneTube, Music, Calendar and the Nuvio One menu.
-- Our player, search and Live TV Back behaviour.
-- No VPN modules.
-
 ## Fixes
 
 - Guide reloads and guide matching getting stuck.
