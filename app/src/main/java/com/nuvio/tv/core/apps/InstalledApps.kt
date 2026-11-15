@@ -43,7 +43,9 @@ data class InstalledApp(
     /** Changes whenever the icon pack or this app's chosen icon changes, so cards load the new image. */
     val iconKey: String = "",
     /** The user hid this app from the Home row. It still shows (dimmed) on the Apps page so it can be shown again. */
-    val hidden: Boolean = false
+    val hidden: Boolean = false,
+    /** The user hid this app from the Apps page (this profile). The gear panel's Apps still lists it. */
+    val hiddenOnPage: Boolean = false
 )
 
 /**
@@ -78,6 +80,8 @@ class InstalledAppsRepository @Inject constructor(
     private val savedIcons = MutableStateFlow(AppLabels.decode(prefs.getString(KEY_ICONS, null)))
     // Apps the user hid from the Home row (package names).
     private val savedHidden = MutableStateFlow(AppHidden.decode(prefs.getString(KEY_HIDDEN, null)))
+    // Apps the user hid from the Apps page (package names).
+    private val savedHiddenPage = MutableStateFlow(AppHidden.decode(prefs.getString(KEY_HIDDEN_PAGE, null)))
 
     init {
         // Switching profile loads that profile's arrangement.
@@ -93,6 +97,7 @@ class InstalledAppsRepository @Inject constructor(
                 savedPack.value = next.getString(KEY_ICON_PACK, null)?.takeIf { it.isNotBlank() }
                 savedIcons.value = AppLabels.decode(next.getString(KEY_ICONS, null))
                 savedHidden.value = AppHidden.decode(next.getString(KEY_HIDDEN, null))
+                savedHiddenPage.value = AppHidden.decode(next.getString(KEY_HIDDEN_PAGE, null))
             }
         }
     }
@@ -100,7 +105,7 @@ class InstalledAppsRepository @Inject constructor(
     val selectedIconPack: StateFlow<String?> = savedPack.asStateFlow()
 
     /** Emits the current list at once, then again whenever the set of apps or their order changes. */
-    val apps: Flow<List<InstalledApp>> = combine(installed(), savedOrder, savedLabels, savedPack, savedIcons, savedHidden) { values ->
+    val apps: Flow<List<InstalledApp>> = combine(installed(), savedOrder, savedLabels, savedPack, savedIcons, savedHidden, savedHiddenPage) { values ->
         @Suppress("UNCHECKED_CAST")
         val list = values[0] as List<InstalledApp>
         @Suppress("UNCHECKED_CAST")
@@ -112,10 +117,12 @@ class InstalledAppsRepository @Inject constructor(
         val icons = values[4] as Map<String, String>
         @Suppress("UNCHECKED_CAST")
         val hidden = values[5] as Set<String>
+        @Suppress("UNCHECKED_CAST")
+        val hiddenPage = values[6] as Set<String>
         AppOrder.apply(
             list.map { app ->
                 val named = labels[app.packageName]?.let { app.copy(label = it) } ?: app
-                named.copy(iconKey = IconChoice.key(pack, icons[app.packageName]), hidden = app.packageName in hidden)
+                named.copy(iconKey = IconChoice.key(pack, icons[app.packageName]), hidden = app.packageName in hidden, hiddenOnPage = app.packageName in hiddenPage)
             },
             order
         )
@@ -129,6 +136,13 @@ class InstalledAppsRepository @Inject constructor(
         val updated = AppHidden.set(savedHidden.value, app.packageName, hidden)
         prefs.edit().putString(KEY_HIDDEN, AppHidden.encode(updated)).apply()
         savedHidden.value = updated
+    }
+
+    /** Hides [app] from the Apps page ([hidden] true) or shows it there again, for the active profile. Nothing is uninstalled. */
+    fun setHiddenOnPage(app: InstalledApp, hidden: Boolean) {
+        val updated = AppHidden.set(savedHiddenPage.value, app.packageName, hidden)
+        prefs.edit().putString(KEY_HIDDEN_PAGE, AppHidden.encode(updated)).apply()
+        savedHiddenPage.value = updated
     }
 
     /** Uses the icon pack [packageName] for every app; null goes back to each app's own icon. Per-app picks are kept. */
@@ -164,8 +178,8 @@ class InstalledAppsRepository @Inject constructor(
      * Moves [app] one place earlier (-1) or later (+1) in the list as it is shown now. With [skipHidden] (the Home
      * row) the app swaps places with the next app that is shown there, not with a hidden one in between.
      */
-    fun move(shown: List<InstalledApp>, app: InstalledApp, delta: Int, skipHidden: Boolean = false) {
-        val hidden = if (skipHidden) shown.filter { it.hidden }.map { it.packageName }.toSet() else emptySet()
+    fun move(shown: List<InstalledApp>, app: InstalledApp, delta: Int, skipHidden: Boolean = false, skipHiddenOnPage: Boolean = false) {
+        val hidden = shown.filter { (skipHidden && it.hidden) || (skipHiddenOnPage && it.hiddenOnPage) }.map { it.packageName }.toSet()
         val updated = AppOrder.move(shown.map { it.packageName }, app.packageName, delta, hidden) ?: return
         prefs.edit().putString(KEY_ORDER, AppOrder.encode(updated)).apply()
         savedOrder.value = updated
@@ -198,6 +212,7 @@ class InstalledAppsRepository @Inject constructor(
         const val KEY_ICON_PACK = "icon_pack"
         const val KEY_ICONS = "icons"
         const val KEY_HIDDEN = "hidden"
+        const val KEY_HIDDEN_PAGE = "hidden_page"
     }
 
     private fun query(): List<InstalledApp> {

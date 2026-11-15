@@ -3017,13 +3017,15 @@ private fun ModernSidebarScaffold(
                 }
             }
 
+            // Profile mode needs more than one profile; otherwise the page pill stays.
+            val pillShowsProfile = floatingPillShowsProfile && showProfileSelector && activeProfileName.isNotEmpty()
             if (
                 !sidebarCollapsed &&
                 sidebarShowCollapsedPill &&
-                selectedDrawerRoute != Screen.Search.route
+                selectedDrawerRoute != Screen.Search.route &&
+                // The profile picture only floats over Home: on other pages it sat on top of the page's title.
+                (!pillShowsProfile || selectedDrawerRoute == Screen.Home.route)
             ) {
-                // Profile mode needs more than one profile; otherwise the page pill stays.
-                val pillShowsProfile = floatingPillShowsProfile && showProfileSelector && activeProfileName.isNotEmpty()
                 CollapsedSidebarPill(
                     profileName = if (pillShowsProfile) activeProfileName else null,
                     profileColorHex = activeProfileColorHex,

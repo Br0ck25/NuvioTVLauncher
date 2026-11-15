@@ -37,7 +37,8 @@ internal fun visibleLayoutSections(
     focusedPosterHasOptions: Boolean
 ): List<LayoutSection> =
     if (essentialMode) {
-        listOf(LayoutSection.HOME_LAYOUT)
+        // Sidebar style belongs to every profile, so Essential keeps it too.
+        listOf(LayoutSection.HOME_LAYOUT, LayoutSection.SIDEBAR)
     } else {
         LayoutSection.entries.filter { section ->
             section != LayoutSection.FOCUSED_POSTER || focusedPosterHasOptions
