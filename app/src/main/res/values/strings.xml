@@ -1176,7 +1176,7 @@
     <string name="layout_hide_floating_pill">Hide Floating Pill</string>
     <string name="layout_hide_floating_pill_sub">Hide the floating navigation indicator on the home screen.</string>
     <string name="layout_pill_shows_profile">Floating Pill Shows Profile</string>
-    <string name="layout_pill_shows_profile_sub">Show your profile picture and name in the floating pill instead of the page name. Only one shows at a time, and it needs more than one profile.</string>
+    <string name="layout_pill_shows_profile_sub">Show your profile picture and name in the floating pill instead of the page name, on Home only (other pages show no pill, so it never covers a title). It needs more than one profile.</string>
     <string name="layout_modern_sidebar">Modern Sidebar</string>
     <string name="layout_modern_sidebar_sub">Enable floating sidebar navigation.</string>
     <string name="layout_modern_sidebar_blur">Modern Sidebar Blur</string>
