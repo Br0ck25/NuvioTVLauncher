@@ -46,6 +46,8 @@ import androidx.tv.material3.Icon
 import androidx.tv.material3.Text
 import com.music.bitchord.data.model.HomeShelf
 import com.music.bitchord.data.model.MoodGenre
+import androidx.compose.ui.res.stringResource
+import com.nuvio.tv.R
 
 @Composable
 internal fun MusicExploreScreen(
@@ -64,8 +66,8 @@ internal fun MusicExploreScreen(
             state.error != null && state.sections.isEmpty() ->
                 MusicErrorState(state.error, onRetry, modifier)
             state.sections.isEmpty() -> MusicEmptyState(
-                title = "Nothing to explore",
-                message = "The music service didn't send any moods or genres.",
+                title = stringResource(R.string.music_p2_nothing_to_explore),
+                message = stringResource(R.string.music_p2_service_no_moods),
                 modifier = modifier
             )
             else -> MoodList(state, onMoodClick, modifier)
@@ -145,7 +147,7 @@ private fun MoodList(
 private fun ExploreHeader() {
     Column(Modifier.fillMaxWidth().padding(horizontal = 26.dp)) {
         Text(
-            text = "Explore",
+            text = stringResource(R.string.music_tab_explore),
             color = MusicPalette.text,
             fontFamily = MusicDisplay,
             fontSize = 40.sp,
@@ -154,7 +156,7 @@ private fun ExploreHeader() {
         )
         Spacer(Modifier.height(5.dp))
         Text(
-            text = "Moods, moments and genres for every listening room.",
+            text = stringResource(R.string.music_p2_moods_moments_and_genres_for),
             color = MusicPalette.textSecondary,
             fontSize = 14.sp
         )
@@ -219,7 +221,7 @@ private fun MoodTile(
             modifier = Modifier.align(Alignment.TopStart)
         )
         Text(
-            text = "BROWSE",
+            text = stringResource(R.string.music_p2_browse),
             color = Color.White.copy(alpha = 0.68f),
             fontSize = 10.5.sp,
             fontWeight = FontWeight.Bold,
@@ -272,7 +274,7 @@ private fun MoodDetail(
                 ) {
                     Icon(
                         Icons.AutoMirrored.Filled.ArrowBack,
-                        contentDescription = "Back",
+                        contentDescription = stringResource(R.string.music_p2_back),
                         tint = if (focused) MusicPalette.background else MusicPalette.text,
                         modifier = Modifier.size(18.dp)
                     )

@@ -48,6 +48,8 @@ import androidx.tv.material3.Icon
 import androidx.tv.material3.Text
 import com.music.bitchord.data.model.HomeShelf
 import com.music.bitchord.data.model.ShelfItem
+import androidx.compose.ui.res.stringResource
+import com.nuvio.tv.R
 
 @Composable
 internal fun MusicHomeScreen(
@@ -63,8 +65,8 @@ internal fun MusicHomeScreen(
         state.error != null && state.shelves.isEmpty() ->
             MusicErrorState(state.error, onRetry, modifier)
         state.shelves.isEmpty() -> MusicEmptyState(
-            title = "No music yet",
-            message = "The music service didn't send anything back. Check the connection and try again.",
+            title = stringResource(R.string.music_p2_no_music_yet),
+            message = stringResource(R.string.music_p2_the_music_service_didn_t),
             modifier = modifier
         )
         else -> MusicHomeFeed(
@@ -207,7 +209,7 @@ private fun MusicHero(
                     horizontalArrangement = Arrangement.spacedBy(8.dp)
                 ) {
                     MusicTag(
-                        text = if (item.isVideo) "Video" else "Featured",
+                        text = if (item.isVideo) stringResource(R.string.music_p2_video) else stringResource(R.string.music_p2_featured),
                         color = MusicPalette.accentTeal
                     )
                     if (shelfSubtitle.isNotBlank()) {
@@ -242,14 +244,14 @@ private fun MusicHero(
                 ) {
                     HeroAction(
                         icon = Icons.Default.PlayArrow,
-                        label = if (item.videoId != null) "Play" else "Open",
+                        label = if (item.videoId != null) stringResource(R.string.music_action_play) else stringResource(R.string.music_p2_open),
                         primary = true,
                         onClick = onPlay
                     )
                     if (item.browseId != null) {
                         HeroAction(
                             icon = Icons.Default.ChevronRight,
-                            label = "Details",
+                            label = stringResource(R.string.music_p2_details),
                             primary = false,
                             onClick = onClick
                         )
