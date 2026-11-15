@@ -1,7 +1,5 @@
 # Nuvio One 1.2.0-beta.1.4
 
-This is Nuvio One's first release on the Nuvio 1.2.0 codebase. It brings the Live TV work that came with it, while keeping the things that make this fork ours: Nuvio One sync, add-on channels, our sports data, OneTube, Music, and our own player and Back behaviour.
-
 ## Four channels at once
 
 Multiview is new. Open it from the guide's top bar, from the Multiview button in the player, or from a channel's menu, then fill up to four panes. Pick a simple layout for one, two, three or four streams, or one large pane with smaller ones beside it. The picker uses your own channel groups and has a Sports tab for games that are on now.
