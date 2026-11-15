@@ -204,6 +204,7 @@ fun HomeSettingsDrawer(
             onRename = { appsViewModel.rename(app, it) },
                 iconChooser = appsViewModel.iconChooser(app),
                 onSetHidden = { appsViewModel.setHidden(app, it) },
+                onSetHiddenOnPage = { appsViewModel.setHiddenOnPage(app, it) },
                 onDismiss = { actionsFor = null },
                 onHome = onDismiss
             )

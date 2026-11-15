@@ -49,6 +49,8 @@ fun InstalledAppActionsDialog(
     iconChooser: com.nuvio.tv.core.apps.AppIconChooser? = null,
     /** When given, a button hides this app from the Home row (or shows it there again, when it is hidden). */
     onSetHidden: ((Boolean) -> Unit)? = null,
+    /** When given, a button hides this app from the Apps page (or shows it there again). It stays in the gear panel's Apps. */
+    onSetHiddenOnPage: ((Boolean) -> Unit)? = null,
     onDismiss: () -> Unit,
     /** Home was pressed: close this and whatever opened it. */
     onHome: () -> Unit = onDismiss
@@ -85,6 +87,12 @@ fun InstalledAppActionsDialog(
                 AppMenuButton(
                     stringResource(if (app.hidden) R.string.app_action_show_on_home else R.string.app_action_hide_from_home),
                     onClick = { onDismiss(); onSetHidden(!app.hidden) }
+                )
+            }
+            if (onSetHiddenOnPage != null) {
+                AppMenuButton(
+                    stringResource(if (app.hiddenOnPage) R.string.app_action_show_on_page else R.string.app_action_hide_from_page),
+                    onClick = { onDismiss(); onSetHiddenOnPage(!app.hiddenOnPage) }
                 )
             }
             AppMenuButton(stringResource(R.string.app_action_info), onClick = { onDismiss(); onAppInfo() })

@@ -6,6 +6,7 @@ import androidx.lifecycle.viewModelScope
 import dagger.hilt.android.lifecycle.HiltViewModel
 import kotlinx.coroutines.flow.SharingStarted
 import kotlinx.coroutines.flow.StateFlow
+import kotlinx.coroutines.flow.map
 import kotlinx.coroutines.flow.stateIn
 import javax.inject.Inject
 
@@ -24,13 +25,21 @@ class InstalledAppsViewModel @Inject constructor(
     val homeApps: StateFlow<List<InstalledApp>> = repository.homeApps
         .stateIn(viewModelScope, SharingStarted.WhileSubscribed(5_000), emptyList())
 
+    /** The apps the Apps page shows (apps hidden from the Home row are there, dimmed). */
+    val pageApps: StateFlow<List<InstalledApp>> = apps
+        .map { list -> list.filterNot { it.hiddenOnPage } }
+        .stateIn(viewModelScope, SharingStarted.WhileSubscribed(5_000), emptyList())
+
     suspend fun image(app: InstalledApp): Bitmap? = repository.image(app)
     fun launch(app: InstalledApp) = repository.launch(app)
     /** Moves [app] within the Home row: hidden apps are stepped over. */
     fun move(app: InstalledApp, delta: Int) = repository.move(apps.value, app, delta, skipHidden = true)
-    /** Moves [app] within the Apps page, where every app is shown. */
+    /** Moves [app] within the Apps page: apps hidden from it are stepped over. */
+    fun moveOnPage(app: InstalledApp, delta: Int) = repository.move(apps.value, app, delta, skipHiddenOnPage = true)
+    /** Moves [app] among every app (the gear panel's Apps). */
     fun moveAmongAll(app: InstalledApp, delta: Int) = repository.move(apps.value, app, delta)
     fun setHidden(app: InstalledApp, hidden: Boolean) = repository.setHidden(app, hidden)
+    fun setHiddenOnPage(app: InstalledApp, hidden: Boolean) = repository.setHiddenOnPage(app, hidden)
     fun openAppInfo(app: InstalledApp) = repository.openAppInfo(app)
     fun rename(app: InstalledApp, name: String?) = repository.rename(app, name)
 

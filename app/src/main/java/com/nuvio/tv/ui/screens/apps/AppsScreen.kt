@@ -40,7 +40,7 @@ import com.nuvio.tv.ui.theme.NuvioTheme
 /** The Apps page: every app on the device, in a grid. OK opens one; long-press opens its system page. */
 @Composable
 fun AppsScreen(viewModel: InstalledAppsViewModel = hiltViewModel()) {
-    val apps by viewModel.apps.collectAsStateWithLifecycle()
+    val apps by viewModel.pageApps.collectAsStateWithLifecycle()
     val first = remember { FocusRequester() }
     var actionsFor by remember { mutableStateOf<com.nuvio.tv.core.apps.InstalledApp?>(null) }
     val move = rememberAppMoveState()
@@ -115,7 +115,7 @@ fun AppsScreen(viewModel: InstalledAppsViewModel = hiltViewModel()) {
                     ) { delta ->
                         val carried = apps.firstOrNull { it.packageName == move.carrying } ?: return@appMoveKeys
                         val step = clampedStep(apps.indexOf(carried), delta, apps.lastIndex)
-                        if (step != 0) viewModel.moveAmongAll(carried, step)
+                        if (step != 0) viewModel.moveOnPage(carried, step)
                     }
             ) {
                 items(apps, key = { it.packageName }) { app ->
@@ -148,6 +148,7 @@ fun AppsScreen(viewModel: InstalledAppsViewModel = hiltViewModel()) {
             onRename = { viewModel.rename(app, it) },
             iconChooser = viewModel.iconChooser(app),
             onSetHidden = { viewModel.setHidden(app, it) },
+            onSetHiddenOnPage = { viewModel.setHiddenOnPage(app, it) },
             onDismiss = { actionsFor = null }
         )
     }
