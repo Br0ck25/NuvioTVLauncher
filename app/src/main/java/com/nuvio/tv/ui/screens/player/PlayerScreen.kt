@@ -3738,7 +3738,11 @@ private fun rememberScrubPreview(viewModel: PlayerViewModel, durationMs: Long, i
     val streamUrl = viewModel.getCurrentStreamUrl().takeIf { enabled && it.isNotBlank() && !isLive }
     val isYouTube = viewModel.isYouTubePlayback()
     val youtubeVideoId = if (isYouTube) viewModel.youtubeVideoId() else null
-    val storyboard = remember(youtubeVideoId) {
+    // OneTube's storyboard is fetched a moment after playback starts (the playback client
+    // doesn't always return it), so follow the store: without this the preview only worked
+    // when the storyboard happened to be ready before the player first composed.
+    val storyboardVersion by com.nuvio.tv.youtube.YouTubeStoryboards.version.collectAsState()
+    val storyboard = remember(youtubeVideoId, storyboardVersion) {
         youtubeVideoId?.let(com.nuvio.tv.youtube.YouTubeStoryboards::get)
     }
     val controller = com.nuvio.tv.ui.screens.player.seekpreview.rememberSeekPreviewController(

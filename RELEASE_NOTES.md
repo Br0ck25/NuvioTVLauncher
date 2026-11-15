@@ -24,7 +24,7 @@ Built on Nuvio 1.2.0-beta.1.3, with everything Nuvio One already had.
 - Live TV is now in German, French, Spanish, Portuguese, Italian, Dutch, Polish, Turkish and Russian.
 
 ### Seek thumbnails
-- Preview pictures above the seek bar in movies, shows, catch-up, recordings, sports replays and when rewinding live TV.
+- Preview pictures above the seek bar in movies, shows, OneTube videos, catch-up, recordings, sports replays and when rewinding live TV.
 - On by default, up to 4K, except on low-memory boxes. Switch them on or off under **Settings → Playback**.
 
 ### Sports
