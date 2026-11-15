@@ -1,7 +1,5 @@
 # Nuvio One 1.2.0-beta.1.4
 
-Built on Nuvio 1.2.0-beta.1.3, with everything Nuvio One already had.
-
 ## What's new
 
 ### Multiview
