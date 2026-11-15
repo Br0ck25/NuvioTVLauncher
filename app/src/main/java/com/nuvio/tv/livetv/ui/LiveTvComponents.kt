@@ -511,6 +511,16 @@ private val titleMarksMemo = LiveMemo<String, TitleMarks>(4096)
 
 internal fun titleMarks(title: String): TitleMarks = titleMarksMemo.get(title) { workOutTitleMarks(it) }
 
+/**
+ * The title as the guide's header shows it. Guides often put the match-up in the sub-title
+ * ("College Football" + "Texas at LSU"), which TiviMate shows as "College Football : Texas at LSU".
+ */
+internal fun programDisplayTitle(program: EpgProgram): String {
+    val title = titleMarks(program.title).title
+    val sub = program.subTitle?.trim().orEmpty()
+    return if (sub.isEmpty() || title.contains(sub, ignoreCase = true)) title else "$title : $sub"
+}
+
 private fun workOutTitleMarks(title: String): TitleMarks {
     var t = title
     // Small raised "ᴸᴵⱽᴱ" / "ᴺᴱᵂ" in the title: the same LIVE / NEW tags as "LIVE:" / "(NEW)".

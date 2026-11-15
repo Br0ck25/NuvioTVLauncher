@@ -17,6 +17,7 @@ Built on Nuvio 1.2.0-beta.1.3, with everything Nuvio One already had.
 - Playlists load much faster, and the app uses less memory.
 - **Record options** in the player: until you stop it, until the show ends, or until a set time. Record and Record series are in overlay mode too (hold OK).
 - **Two-Line Channel Names** option for the guide, and the group name can show on the play bar.
+- The program header shows the guide's sub-title, so a game reads **College Football : Texas at LSU** instead of just "College Football".
 - Search puts the best matches first, A to Z, with the best quality copy of each channel first.
 - Select all and Clear when managing channel and On Demand groups.
 - Time shifts go up to ±24 hours.

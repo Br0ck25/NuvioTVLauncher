@@ -213,11 +213,11 @@ object XmltvParser {
         // air date here instead ("20260929"), which would make every poster look "wrong year".
         val year = date?.trim()?.takeIf { it.length == 4 }?.toIntOrNull()?.takeIf { it in 1900..2100 }
             ?: yearIn(title) ?: yearIn(desc)
-        val fullDesc = when {
-            subTitle.isNullOrBlank() -> desc?.takeIf { it.isNotBlank() }
-            desc.isNullOrBlank() -> subTitle
-            else -> "$subTitle\n$desc"
-        }
+        // The sub-title is kept on its own (the header shows it beside the title, TiviMate
+        // style: "College Football : Texas at LSU"). It only doubles as the description when
+        // the guide has no description at all.
+        val cleanSubTitle = subTitle?.trim()?.takeIf { it.isNotBlank() }
+        val fullDesc = desc?.takeIf { it.isNotBlank() } ?: cleanSubTitle
         return EpgProgram(
             startMs = start,
             stopMs = stop,
@@ -232,7 +232,8 @@ object XmltvParser {
             year = year,
             people = people?.take(12) ?: emptyList(),
             providerProgramId = providerProgramId,
-            providerSourceIdentity = providerSourceIdentity
+            providerSourceIdentity = providerSourceIdentity,
+            subTitle = cleanSubTitle?.let { if (it.length > 120) it.take(120).trimEnd() else it }
         )
     }
 
