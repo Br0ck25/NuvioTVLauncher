@@ -302,10 +302,13 @@ private fun LiveTvHomeRowContent(
     )
     androidx.compose.animation.AnimatedVisibility(
         visible = open,
-        // Fade only: the row's height changes once, not over several frames. Animating it fought the
-        // list's own scroll to the focused row, and the page bounced going to the row and back.
+        // Opening fades only: animating the height there fought the list's own scroll to the focused row.
+        // Closing (Down to Continue Watching) shrinks smoothly while it fades: the list has already worked out its
+        // scroll with the row still full height, and the row used to drop out in one step at the end of the fade, so
+        // every row below jumped up and then the scroll bounced back. A continuous shrink lets the scroll follow it.
         enter = androidx.compose.animation.fadeIn(androidx.compose.animation.core.tween(OPEN_MS)),
-        exit = androidx.compose.animation.fadeOut(androidx.compose.animation.core.tween(CLOSE_MS))
+        exit = androidx.compose.animation.fadeOut(androidx.compose.animation.core.tween(CLOSE_MS)) +
+            androidx.compose.animation.shrinkVertically(androidx.compose.animation.core.tween(CLOSE_MS))
     ) {
         Column(
             modifier = Modifier
