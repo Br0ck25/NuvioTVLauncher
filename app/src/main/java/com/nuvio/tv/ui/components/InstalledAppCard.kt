@@ -48,10 +48,12 @@ fun InstalledAppCard(
     /** This app is being carried to a new place (see AppMoveMode): lifted and ringed in the accent colour. */
     moving: Boolean = false,
     /** Another app is being carried: no focus ring or zoom here, so only the carried app is highlighted. */
-    quietFocus: Boolean = false
+    quietFocus: Boolean = false,
+    /** Applied to the whole tile (e.g. Modifier.animateItem() so a reorder slides it), not just its card. */
+    rootModifier: Modifier = Modifier
 ) {
     val image by produceState<Bitmap?>(initialValue = null, app.packageName, app.iconKey) { value = loadImage(app) }
-    Column(modifier = Modifier.width(width)) {
+    Column(modifier = rootModifier.width(width)) {
         Card(
             onClick = onClick,
             onLongClick = onLongClick,
