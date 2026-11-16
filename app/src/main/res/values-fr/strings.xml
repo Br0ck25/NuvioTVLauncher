@@ -418,7 +418,6 @@
     <string name="about_update_auto_install_notice_title">Notifier après les mises à jour automatiques</string>
     <string name="about_update_auto_install_notice_subtitle">Afficher une bannière au prochain lancement, une fois que l’application s’est mise à jour d’elle-même</string>
     <string name="about_update_optimize_install_title">Optimiser les mises à jour lors de l’installation</string>
-    <string name="about_update_optimize_install_subtitle">Premier lancement plus rapide après une mise à jour, mais l’application se ferme environ une minute le temps de l’installation. Désactivez pour utiliser l’écran d’installation d’Android à la place</string>
     <string name="about_update_channel_title">Canal de mise à jour</string>
     <string name="about_update_channel_subtitle">Choisissez le type de mises à jour à recevoir</string>
     <string name="about_check_updates">Rechercher des mises à jour</string>

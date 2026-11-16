@@ -117,6 +117,7 @@ fun RemoteButtonsEditor(startScreen: String, onClose: () -> Unit) {
     val listState = rememberLazyListState()
     val scope = rememberCoroutineScope()
     val colors = NuvioTheme.colors
+    val mapperTakes = rememberButtonMapperTaken()
 
     Dialog(onDismissRequest = onClose, properties = DialogProperties(usePlatformDefaultWidth = false)) {
         Column(
@@ -173,7 +174,9 @@ fun RemoteButtonsEditor(startScreen: String, onClose: () -> Unit) {
                         val over = state.of(sc.id, b.id)
                         val seen = isSeen(b, state)
                         val focus = rowFocus.getOrPut(b.id) { FocusRequester() }
+                        val taken = mapperTakes(b)
                         val line = when {
+                            taken -> "Set in the Button Mapper, which takes priority"
                             !seen -> "Press it on your remote to check it"
                             else -> (over[RemotePress.PRESS.id]?.let { sc.action(it)?.label } ?: standardLabel(sc, slot, RemotePress.PRESS)) +
                                 (over[RemotePress.HOLD.id]?.let { sc.action(it)?.label }?.let { " · Hold: $it" } ?: "") +
@@ -207,6 +210,7 @@ fun RemoteButtonsEditor(startScreen: String, onClose: () -> Unit) {
                 Column(Modifier.weight(1f).fillMaxHeight()) {
                     if (button != null) ButtonCard(
                         sc = sc, button = button, state = state, cardFocus = cardFocus,
+                        mapperTakes = mapperTakes(button),
                         backFocus = rowFocus[button.id],
                         onPick = { picking = it }
                     )
@@ -321,7 +325,7 @@ private fun ButtonRow(
 @Composable
 private fun ButtonCard(
     sc: RemoteScreen, button: RemoteButton, state: RemoteState, cardFocus: FocusRequester,
-    backFocus: FocusRequester?, onPick: (RemotePress) -> Unit
+    mapperTakes: Boolean, backFocus: FocusRequester?, onPick: (RemotePress) -> Unit
 ) {
     val colors = NuvioTheme.colors
     val slot = sc.slot(button) ?: return
@@ -342,7 +346,14 @@ private fun ButtonCard(
                 size = 9.sp, color = colors.TextTertiary
             )
         }
-        if (!seen) {
+        if (mapperTakes) {
+            LiveText(
+                "Also set in the Button Mapper (Settings, Remote Buttons). The Button Mapper takes priority, so what you set here " +
+                    "won't run until that button is removed there.",
+                size = 11.sp, color = colors.Warning, maxLines = 4
+            )
+        }
+        if (!seen && !mapperTakes) {
             LiveText(
                 "This TV hasn't received this button yet. Press it on your remote now: if it lights up here, it can be changed. " +
                     "If nothing happens, your remote doesn't have it or the TV keeps it for itself.",

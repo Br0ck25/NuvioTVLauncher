@@ -22,7 +22,6 @@ class SettingsCatalogTest {
                 SettingsCategory.APPEARANCE,
                 SettingsCategory.LAYOUT,
                 SettingsCategory.SIDE_MENU,
-                SettingsCategory.LIVE_TV_REMOTE,
                 SettingsCategory.CONTENT_DISCOVERY,
                 SettingsCategory.PLAYBACK,
                 SettingsCategory.LIVE_TV,

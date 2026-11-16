@@ -418,7 +418,7 @@
     <string name="about_update_auto_install_notice_title">Notify after automatic updates</string>
     <string name="about_update_auto_install_notice_subtitle">Show a banner on the next launch after the app updates itself</string>
     <string name="about_update_optimize_install_title">Optimize updates during install</string>
-    <string name="about_update_optimize_install_subtitle">Faster first launch after an update, but the app closes for about a minute while it installs. Turn off to use Android\'s installer screen instead</string>
+    <string name="about_update_optimize_install_subtitle">Faster first launch after an update, but the app closes for about a minute while it installs. Turn off for a shorter wait: the update still installs from inside the app, so your Home button keeps working, but the first launch is slower</string>
     <string name="about_update_channel_title">Update channel</string>
     <string name="about_update_channel_subtitle">Choose the type of app updates to receive</string>
     <string name="about_check_updates">Check for updates</string>
