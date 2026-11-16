@@ -160,6 +160,18 @@ class MusicViewModel @Inject constructor(
         }
     }
 
+    private fun friendlyMusicError(error: Throwable?, fallback: String): String {
+        val raw = error?.message.orEmpty()
+        val lower = raw.lowercase()
+        return when {
+            raw.contains("403") || lower.contains("automated queries") ||
+                raw.contains("<html", ignoreCase = true) || lower.contains("unusual traffic") ->
+                "YouTube Music is temporarily limiting requests. Wait a few minutes, then try again."
+            raw.isBlank() -> fallback
+            else -> raw
+        }
+    }
+
     // ---- tabs ----
 
     fun selectTab(tab: MusicTab) {
@@ -232,7 +244,7 @@ class MusicViewModel @Inject constructor(
                         it.copy(
                             home = it.home.copy(
                                 loading = false,
-                                error = error.message ?: "Couldn't load your music.",
+                                error = friendlyMusicError(error, "Couldn't load your music."),
                                 account = false
                             )
                         )
@@ -332,7 +344,7 @@ class MusicViewModel @Inject constructor(
                         it.copy(
                             accountLibrary = it.accountLibrary.copy(
                                 loading = false,
-                                error = error.message ?: "Couldn't load your music library."
+                                error = friendlyMusicError(error, "Couldn't load your music library.")
                             )
                         )
                     }
@@ -407,7 +419,7 @@ class MusicViewModel @Inject constructor(
                         else it.copy(
                             search = it.search.copy(
                                 loading = false,
-                                error = error.message ?: "Search failed."
+                                error = friendlyMusicError(error, "Search failed.")
                             )
                         )
                     }
@@ -580,7 +592,7 @@ class MusicViewModel @Inject constructor(
                         else it.copy(
                             detail = it.detail.copy(
                                 loading = false,
-                                error = error.message ?: "Couldn't open this page."
+                                error = friendlyMusicError(error, "Couldn't open this page.")
                             )
                         )
                     }
@@ -711,7 +723,7 @@ class MusicViewModel @Inject constructor(
                         else it.copy(
                             detail = it.detail.copy(
                                 loading = false,
-                                error = error.message ?: "Couldn't open this page."
+                                error = friendlyMusicError(error, "Couldn't open this page.")
                             )
                         )
                     }
@@ -779,7 +791,7 @@ class MusicViewModel @Inject constructor(
                         it.copy(
                             explore = it.explore.copy(
                                 loading = false,
-                                error = error.message ?: "Couldn't load Explore."
+                                error = friendlyMusicError(error, "Couldn't load Explore.")
                             )
                         )
                     }
@@ -822,7 +834,7 @@ class MusicViewModel @Inject constructor(
                         else it.copy(
                             explore = it.explore.copy(
                                 selectedLoading = false,
-                                selectedError = error.message ?: "Couldn't open this category."
+                                selectedError = friendlyMusicError(error, "Couldn't open this category.")
                             )
                         )
                     }

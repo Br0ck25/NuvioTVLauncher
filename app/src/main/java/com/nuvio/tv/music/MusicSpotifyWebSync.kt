@@ -12,6 +12,7 @@ import com.nuvio.tv.music.spotifyweb.SpotifyWebClient
 import java.util.Collections
 import java.util.concurrent.ConcurrentHashMap
 import kotlinx.coroutines.CoroutineScope
+import kotlinx.coroutines.delay
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.SupervisorJob
 import kotlinx.coroutines.async
@@ -44,8 +45,9 @@ object MusicSpotifyWebSync {
     private const val KEY_PLAYLIST_COUNTS = "playlist_counts"
     private const val KEY_LAST_SYNC = "last_sync"
     private const val SOURCE_PREFIX = "web:"
-    private const val MATCH_CONCURRENCY = 4
+    private const val MATCH_CONCURRENCY = 2
     private const val SEARCH_TIMEOUT_MS = 8_000L
+    private const val MATCH_PAUSE_MS = 300L
 
     private val scope = CoroutineScope(SupervisorJob() + Dispatchers.IO)
     private val _state = MutableStateFlow(SpotifyWebSyncState())
@@ -202,6 +204,7 @@ object MusicSpotifyWebSync {
                         _state.value = _state.value.copy(
                             progress = "$name: ${handled.coerceAtMost(playlist.tracks.size)} of ${playlist.tracks.size}…"
                         )
+                        delay(MATCH_PAUSE_MS)
                     }
 
                     tracksAdded += addedHere
@@ -242,13 +245,25 @@ object MusicSpotifyWebSync {
     }
 
     private suspend fun searchSong(query: String): Song? {
-        val found = runCatching {
+        val result = runCatching {
             withTimeoutOrNull(SEARCH_TIMEOUT_MS) {
                 YtMusicRepository.search(query, SearchFilter.SONGS)
             }
-        }.getOrNull()?.getOrNull()
-        return found.orEmpty()
-            .asSequence()
+        }.getOrNull() ?: return null
+        val found = result.getOrElse { error ->
+            val message = error.message.orEmpty()
+            val lower = message.lowercase()
+            if (message.contains("403") || lower.contains("automated queries") ||
+                message.contains("<html", ignoreCase = true) || lower.contains("unusual traffic")
+            ) {
+                throw IllegalStateException(
+                    "YouTube Music is temporarily limiting requests. Wait a few minutes, then " +
+                        "sync again. The tracks already added are safe."
+                )
+            }
+            return null
+        }
+        return found.asSequence()
             .mapNotNull { item ->
                 when (item) {
                     is SearchResult.TopTrack -> item.song
