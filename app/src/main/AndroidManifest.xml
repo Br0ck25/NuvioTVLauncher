@@ -168,6 +168,13 @@
         </activity>
 
         <activity
+            android:name=".music.SpotifyLoginActivity"
+            android:exported="false"
+            android:configChanges="orientation|screenSize|smallestScreenSize|screenLayout|density|uiMode|keyboard|keyboardHidden|navigation|layoutDirection|fontScale|locale"
+            android:screenOrientation="landscape"
+            android:theme="@style/Theme.MyApplication" />
+
+        <activity
             android:name=".launcher.AppIconDefault"
             android:banner="@mipmap/banner"
             android:configChanges="orientation|screenSize|smallestScreenSize|screenLayout|density|uiMode|keyboard|keyboardHidden|navigation|layoutDirection|fontScale|locale"
