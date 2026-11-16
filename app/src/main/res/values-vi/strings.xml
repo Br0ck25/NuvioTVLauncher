@@ -418,7 +418,6 @@
     <string name="about_update_auto_install_notice_title">Thông báo sau khi tự động cập nhật</string>
     <string name="about_update_auto_install_notice_subtitle">Hiển thị bảng thông báo vào lần khởi chạy tiếp theo sau khi ứng dụng tự cập nhật</string>
     <string name="about_update_optimize_install_title">Tối ưu hóa bản cập nhật khi cài đặt</string>
-    <string name="about_update_optimize_install_subtitle">Khởi chạy lần đầu nhanh hơn sau khi cập nhật, nhưng ứng dụng sẽ đóng trong khoảng một phút khi cài đặt. Tắt tùy chọn này để sử dụng màn hình cài đặt của Android.</string>
     <string name="about_update_channel_title">Kênh cập nhật</string>
     <string name="about_update_channel_subtitle">Chọn loại cập nhật ứng dụng bạn muốn nhận</string>
     <string name="about_check_updates">Kiểm tra cập nhật</string>

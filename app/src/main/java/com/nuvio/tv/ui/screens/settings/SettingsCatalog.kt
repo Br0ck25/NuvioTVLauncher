@@ -16,7 +16,6 @@ internal enum class SettingsCategory(val group: SettingsRailGroup) {
     APPEARANCE(SettingsRailGroup.LOOK),
     LAYOUT(SettingsRailGroup.LOOK),
     SIDE_MENU(SettingsRailGroup.LOOK), // Live TV fork
-    LIVE_TV_REMOTE(SettingsRailGroup.LOOK), // Live TV fork: its own Remote Buttons page (Nuvio's Button Mapper is REMOTE_BUTTONS)
     CONTENT_DISCOVERY(SettingsRailGroup.WATCH),
     PLAYBACK(SettingsRailGroup.WATCH),
     LIVE_TV(SettingsRailGroup.EXTRAS), // Live TV fork

@@ -2935,7 +2935,6 @@
     <string name="about_update_auto_install_notice_title">الإشعار بعد التحديثات التلقائية</string>
     <string name="about_update_auto_install_notice_subtitle">إظهار بانر عند التشغيل التالي بعد أن يحدِّث التطبيق نفسه</string>
     <string name="about_update_optimize_install_title">تحسين التحديثات أثناء التثبيت</string>
-    <string name="about_update_optimize_install_subtitle">بدء تشغيل أسرع بعد التحديث، لكن التطبيق يُغلق نحو دقيقة أثناء التثبيت. أوقف هذا الخيار لاستخدام شاشة مثبّت Android بدلًا من ذلك</string>
     <string name="about_update_channel_title">قناة التحديث</string>
     <string name="about_update_channel_subtitle">اختر نوع تحديثات التطبيق التي تتلقاها</string>
     <string name="about_update_banner_title">بانر التحديث التلقائي</string>
