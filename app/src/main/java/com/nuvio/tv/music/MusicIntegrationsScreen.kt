@@ -79,15 +79,13 @@ internal fun MusicIntegrationsScreen(
     val navidrome by MusicNavidrome.config.collectAsState()
     val addons by MusicAddonRegistry.configs.collectAsState()
     val spotifyWeb by MusicSpotifyWebSession.state.collectAsState()
-    var spotifyWebChecking by remember { mutableStateOf(false) }
+    val webSync by MusicSpotifyWebSync.state.collectAsState()
     var spotifyWebMessage by remember { mutableStateOf<String?>(null) }
-    var spotifyWebError by remember { mutableStateOf<String?>(null) }
     val spotifyLoginLauncher = androidx.activity.compose.rememberLauncherForActivityResult(
         androidx.activity.result.contract.ActivityResultContracts.StartActivityForResult()
     ) { result ->
         if (result.resultCode == android.app.Activity.RESULT_OK) {
             spotifyWebMessage = "Spotify connected."
-            spotifyWebError = null
         }
     }
     val closeFocus = remember { FocusRequester() }
@@ -182,6 +180,144 @@ internal fun MusicIntegrationsScreen(
                     tint = MusicPalette.accentCoral,
                     title = "Last.fm",
                     subtitle = when {
+                        lastFm.configured && lastFm.enabled -> "Scrobbling as ${lastFm.username}."
+                        lastFm.configured -> "Signed in as ${lastFm.username}, currently off."
+                        !lastFm.available -> "Last.fm sign-in isn't configured in this build."
+                        else -> "Log in with your Last.fm account to scrobble."
+                    }
+                ) {
+                    if (lastFm.configured) {
+                        Text(
+                            text = "Signed in as ${lastFm.username}.",
+                            color = MusicPalette.textSecondary,
+                            fontSize = 12.sp
+                        )
+                        Spacer(Modifier.height(12.dp))
+                        Row(horizontalArrangement = Arrangement.spacedBy(9.dp)) {
+                            IntegrationPill(
+                                icon = Icons.Default.Favorite,
+                                label = if (lastFm.enabled) "Turn scrobbling off" else "Turn scrobbling on",
+                                primary = !lastFm.enabled,
+                                onClick = {
+                                    MusicScrobbler.setEnabled(context, !lastFm.enabled)
+                                    lastFmMessage = if (lastFm.enabled) {
+                                        "Scrobbling paused."
+                                    } else {
+                                        "Scrobbling is on."
+                                    }
+                                }
+                            )
+                            IntegrationPill(
+                                icon = Icons.Default.Favorite,
+                                label = "Sign out",
+                                onClick = {
+                                    MusicScrobbler.logout(context)
+                                    lastFmUsername = ""
+                                    lastFmPassword = ""
+                                    lastFmMessage = "Signed out of Last.fm."
+                                    lastFmError = null
+                                }
+                            )
+                        }
+                    } else {
+                        Row(horizontalArrangement = Arrangement.spacedBy(12.dp)) {
+                            IntegrationField(
+                                label = "Username",
+                                value = lastFmUsername,
+                                placeholder = "Last.fm username",
+                                onValueChange = { lastFmUsername = it },
+                                modifier = Modifier.weight(1f),
+                                downFocus = lastFmLoginFocus
+                            )
+                            IntegrationField(
+                                label = "Password",
+                                value = lastFmPassword,
+                                placeholder = "Last.fm password",
+                                onValueChange = { lastFmPassword = it },
+                                password = true,
+                                modifier = Modifier.weight(1f),
+                                downFocus = lastFmLoginFocus
+                            )
+                        }
+                        Spacer(Modifier.height(8.dp))
+                        Text(
+                            text = "Your password is sent once to Last.fm and never stored. " +
+                                "Only the session key stays on this TV.",
+                            color = MusicPalette.textMuted,
+                            fontSize = 10.sp,
+                            lineHeight = 14.sp
+                        )
+                        Spacer(Modifier.height(12.dp))
+                        Row(horizontalArrangement = Arrangement.spacedBy(9.dp)) {
+                            IntegrationPill(
+                                icon = Icons.Default.Favorite,
+                                label = if (lastFmSigningIn) "Signing in..." else "Log in",
+                                modifier = Modifier.focusRequester(lastFmLoginFocus),
+                                primary = true,
+                                enabled = !lastFmSigningIn && lastFm.available,
+                                onClick = {
+                                    if (!lastFmSigningIn) {
+                                        lastFmSigningIn = true
+                                        lastFmError = null
+                                        lastFmMessage = null
+                                        scope.launch {
+                                            MusicScrobbler.login(context, lastFmUsername, lastFmPassword)
+                                                .fold(
+                                                    onSuccess = { account ->
+                                                        lastFmPassword = ""
+                                                        lastFmMessage = "Signed in as $account. Scrobbling is on."
+                                                        lastFmSigningIn = false
+                                                    },
+                                                    onFailure = { error ->
+                                                        lastFmError = error.message
+                                                            ?: "Last.fm rejected the sign-in."
+                                                        lastFmSigningIn = false
+                                                    }
+                                                )
+                                        }
+                                    }
+                                }
+                            )
+                            IntegrationPill(
+                                icon = Icons.Default.QrCode2,
+                                label = "Link with phone",
+                                onClick = { phoneTarget = MusicPhoneTarget.LASTFM }
+                            )
+                        }
+                    }
+                    lastFmMessage?.let {
+                        Spacer(Modifier.height(8.dp))
+                        Text(text = it, color = MusicPalette.accentTeal, fontSize = 11.sp)
+                    }
+                    lastFmError?.let {
+                        Spacer(Modifier.height(8.dp))
+                        Text(text = it, color = MusicPalette.error, fontSize = 11.sp)
+                    }
+                }
+
+                IntegrationCard(
+                    icon = Icons.Default.Cloud,
+                    tint = MusicPalette.accent,
+                    title = "Music sources",
+                    subtitle = when {
+                        addons.isEmpty() -> "Add BitChord-style addons to search their catalogues."
+                        addons.count { it.enabled } == 0 -> "${addons.size} addon(s), all turned off."
+                        else -> "${addons.count { it.enabled }} addon(s) connected."
+                    }
+                ) {
+                    IntegrationPill(
+                        icon = Icons.Default.Cloud,
+                        label = if (addons.isEmpty()) "Add a source" else "Manage sources",
+                        primary = addons.isEmpty(),
+                        onClick = onOpenSources
+                    )
+                }
+
+                IntegrationCard(
+                    icon = Icons.Default.MusicNote,
+                    tint = MusicPalette.accentTeal,
+                    title = "Spotify",
+                    subtitle = when {
                         spotifyWeb.connected ->
                             "Connected as ${spotifyWeb.accountName ?: "your Spotify account"}."
                         else -> "Sign in on this TV, or import a public playlist."
@@ -191,40 +327,15 @@ internal fun MusicIntegrationsScreen(
                         Row(horizontalArrangement = Arrangement.spacedBy(9.dp)) {
                             IntegrationPill(
                                 icon = Icons.Default.Sync,
-                                label = if (spotifyWebChecking) "Checking…" else "Check Spotify connection",
+                                label = if (webSync.busy) "Syncing…" else "Sync playlists & Liked Songs",
                                 primary = true,
-                                enabled = !spotifyWebChecking,
-                                onClick = {
-                                    scope.launch {
-                                        spotifyWebChecking = true
-                                        spotifyWebError = null
-                                        spotifyWebMessage = "Checking Spotify…"
-                                        val cookie = MusicSpotifyWebSession.cookie(context)
-                                        val result = withContext(Dispatchers.IO) {
-                                            runCatching {
-                                                val client = com.nuvio.tv.music.spotifyweb.SpotifyWebClient
-                                                    .connect(cookie, requireSignedIn = true)
-                                                    .getOrThrow()
-                                                val account = client.account().getOrThrow()
-                                                account.name to account.library.size
-                                            }
-                                        }
-                                        result.fold(
-                                            onSuccess = { (name, count) ->
-                                                spotifyWebMessage = "Connected as $name · $count playlists / Liked Songs."
-                                            },
-                                            onFailure = { error ->
-                                                spotifyWebError = error.message ?: "Spotify didn't accept the session."
-                                            }
-                                        )
-                                        spotifyWebChecking = false
-                                    }
-                                }
+                                enabled = !webSync.busy,
+                                onClick = { MusicSpotifyWebSync.sync(context) }
                             )
                             IntegrationPill(
                                 icon = Icons.Default.Login,
                                 label = "Re-link",
-                                enabled = !spotifyWebChecking,
+                                enabled = !webSync.busy,
                                 onClick = {
                                     spotifyLoginLauncher.launch(
                                         android.content.Intent(context, SpotifyLoginActivity::class.java)
@@ -234,11 +345,11 @@ internal fun MusicIntegrationsScreen(
                             IntegrationPill(
                                 icon = Icons.Default.Logout,
                                 label = "Disconnect",
-                                enabled = !spotifyWebChecking,
+                                enabled = !webSync.busy,
                                 onClick = {
                                     MusicSpotifyWebSession.clear(context)
+                                    MusicSpotifyWebSync.reset()
                                     spotifyWebMessage = "Spotify disconnected."
-                                    spotifyWebError = null
                                 }
                             )
                         }
@@ -267,7 +378,15 @@ internal fun MusicIntegrationsScreen(
                         Spacer(Modifier.height(8.dp))
                         Text(text = it, color = MusicPalette.accentTeal, fontSize = 11.sp)
                     }
-                    spotifyWebError?.let {
+                    webSync.progress?.let {
+                        Spacer(Modifier.height(8.dp))
+                        Text(text = it, color = MusicPalette.textSecondary, fontSize = 11.sp)
+                    }
+                    webSync.result?.let {
+                        Spacer(Modifier.height(8.dp))
+                        Text(text = it, color = MusicPalette.accentTeal, fontSize = 11.sp)
+                    }
+                    webSync.error?.let {
                         Spacer(Modifier.height(8.dp))
                         Text(text = it, color = MusicPalette.error, fontSize = 11.sp)
                     }
