@@ -42,6 +42,9 @@ data class UpdateUiState(
     val autoInstallEnabled: Boolean = false,
     val autoInstallSupported: Boolean = Build.VERSION.SDK_INT >= Build.VERSION_CODES.S,
     val autoInstallNoticeEnabled: Boolean = true,
+    /** Updates the user installs carry dex metadata; off sends them through the system installer screen. */
+    val optimizeDuringInstall: Boolean = true,
+    val optimizeDuringInstallSupported: Boolean = ApkInstaller.supportsDexMetadata,
     /** Release installed automatically since the last launch, shown in the banner until dismissed. */
     val installedUpdate: AppUpdate? = null
 )
@@ -64,12 +67,14 @@ class UpdateViewModel @Inject constructor(
             val channel = updatePreferences.getOrInitializeUpdateChannel()
             val autoInstallEnabled = updatePreferences.autoInstallEnabled.first()
             val autoInstallNoticeEnabled = updatePreferences.autoInstallNoticeEnabled.first()
+            val optimizeDuringInstall = updatePreferences.optimizeDuringInstall.first()
             _uiState.update {
                 it.copy(
                     updateBannerEnabled = enabled,
                     updateChannel = channel,
                     autoInstallEnabled = autoInstallEnabled,
-                    autoInstallNoticeEnabled = autoInstallNoticeEnabled
+                    autoInstallNoticeEnabled = autoInstallNoticeEnabled,
+                    optimizeDuringInstall = optimizeDuringInstall
                 )
             }
             downloadStore.clearIfInstalled()
@@ -319,13 +324,14 @@ class UpdateViewModel @Inject constructor(
         _uiState.update { it.copy(showUnknownSourcesDialog = false) }
         // A session install keeps this app the installer of the update, so Android does not put its restricted-settings
         // block back on the app (which switched the Home-button override off after every update from the system
-        // installer screen). It still shows the system confirmation; a failed session falls back to the system
-        // installer screen in UpdateInstallResultReceiver.
+        // installer screen), so it is used even when the dex metadata is off or unsupported. It still shows the system
+        // confirmation; a failed session falls back to the system installer screen in UpdateInstallResultReceiver.
+        val withDexMetadata = ApkInstaller.supportsDexMetadata && _uiState.value.optimizeDuringInstall
         viewModelScope.launch(Dispatchers.IO) {
             // With the dex metadata, ART compiles the baseline profile during the install. Without it the app stays
             // "verify"-only until background dexopt runs, which on a Chromecast made cold start about 70% slower and
             // scrolling visibly janky. A failed session is retried without it (UpdateInstallResultReceiver).
-            runCatching { ApkInstaller.install(context, apkFile, background = false, withDexMetadata = true) }
+            runCatching { ApkInstaller.install(context, apkFile, background = false, withDexMetadata = withDexMetadata) }
                 .onFailure { e ->
                     Log.w(TAG, "Session install failed, opening the system installer", e)
                     runCatching { ApkInstaller.launchSystemInstaller(context, apkFile) }
@@ -357,6 +363,11 @@ class UpdateViewModel @Inject constructor(
     fun setAutoInstallNoticeEnabled(enabled: Boolean) {
         _uiState.update { it.copy(autoInstallNoticeEnabled = enabled) }
         viewModelScope.launch { updatePreferences.setAutoInstallNoticeEnabled(enabled) }
+    }
+
+    fun setOptimizeDuringInstall(enabled: Boolean) {
+        _uiState.update { it.copy(optimizeDuringInstall = enabled) }
+        viewModelScope.launch { updatePreferences.setOptimizeDuringInstall(enabled) }
     }
 
     fun setAutoInstallEnabled(enabled: Boolean) {
