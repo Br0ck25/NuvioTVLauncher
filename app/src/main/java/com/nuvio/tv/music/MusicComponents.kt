@@ -934,9 +934,9 @@ internal fun MusicTextField(
                                 true
                             }
                             !editing && event.key == Key.DirectionDown -> {
-                                if (downFocus != null) {
-                                    runCatching { downFocus.requestFocus() }
-                                } else {
+                                val moved = downFocus != null &&
+                                    runCatching { downFocus.requestFocus() }.getOrDefault(false)
+                                if (!moved) {
                                     focusManager.moveFocus(FocusDirection.Down)
                                 }
                                 true

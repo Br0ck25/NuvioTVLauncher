@@ -226,8 +226,7 @@ internal fun MusicIntegrationsScreen(
                                 value = lastFmUsername,
                                 placeholder = "Last.fm username",
                                 onValueChange = { lastFmUsername = it },
-                                modifier = Modifier.weight(1f),
-                                downFocus = lastFmLoginFocus
+                                modifier = Modifier.weight(1f)
                             )
                             IntegrationField(
                                 label = "Password",
