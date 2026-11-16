@@ -942,7 +942,14 @@ internal fun PlayerRuntimeController.initializePlayer(
             isMapDv7ToHevcActiveForCurrentPlayback = mapDv7ToHevcEnabled
             val convertToDv81Active = !mapDv7ToHevcEnabled &&
                     dv7AutoResult?.decision == DolbyVisionBaseLayerPolicy.Decision.CONVERT_TO_DV81
-            val codecSelector = createDolbyVisionFallbackCodecSelector(convertToDv81Active = convertToDv81Active)
+            val forceSoftwareVideo = forceSoftwareVideoDecoderForStreamUrl == currentStreamUrl
+            if (forceSoftwareVideo) {
+                Log.i(PlayerRuntimeController.TAG, "VIDEO_DECODER: retrying this stream with a software decoder")
+            }
+            val codecSelector = createDolbyVisionFallbackCodecSelector(
+                convertToDv81Active = convertToDv81Active,
+                forceSoftwareVideo = forceSoftwareVideo
+            )
             scope.launch(kotlinx.coroutines.Dispatchers.Default) { softwareOnlyDecoderNames }
             // Bluetooth media sink (A2DP / LE Audio): Media3 only advertises PCM. Do not attempt
             // optical/HDMI passthrough — decode to PCM and let the BT stack encode SBC/AAC/aptX/LDAC.
@@ -1567,6 +1574,7 @@ internal fun PlayerRuntimeController.initializePlayer(
                         cancelFirstFrameWatchdog()
                         val detailedError = if (isStalker) "Stalker playback failed (${error.errorCodeName}). Retry playback to refresh the stream link."
                             else error.toDisplayMessage(context)
+                        val userFacingError = error.toUserFacingMessage(context, detailedError)
                         cancelStableProgressReset()
 
                         if (Vc1VideoFormatHeuristics.isVc1PlaybackFailure(
@@ -1734,6 +1742,18 @@ internal fun PlayerRuntimeController.initializePlayer(
                             return
                         }
 
+                        // A hardware video decoder that failed (or lost its resources) gets one
+                        // software-decoder rebuild before the error screen. Resource reclaim is
+                        // first given a normal retry, since another app may have taken the codec
+                        // for a moment.
+                        val mayTrySoftwareVideo = error.errorCode != PlaybackException.ERROR_CODE_DECODING_RESOURCES_RECLAIMED ||
+                            errorRetryCount > 0 || startupRetryCount > 0
+                        if (mayTrySoftwareVideo &&
+                            trySoftwareVideoDecoderFallback(error, currentPosition, userPausedManually)
+                        ) {
+                            return
+                        }
+
                         // ── Main Engine Failover ──
                         if (!isStalker && maybeAutoSwitchInternalPlayerOnStartupError(detailedError = detailedError, allowEngineFailover = allowEngineFailover)) {
                             return
@@ -1781,11 +1801,12 @@ internal fun PlayerRuntimeController.initializePlayer(
                              error.errorCode == PlaybackException.ERROR_CODE_DECODING_FAILED ||
                              error.errorCode == PlaybackException.ERROR_CODE_DECODING_FORMAT_UNSUPPORTED ||
                              error.errorCode == PlaybackException.ERROR_CODE_DECODING_FORMAT_EXCEEDS_CAPABILITIES ||
+                             error.errorCode == PlaybackException.ERROR_CODE_DECODING_RESOURCES_RECLAIMED ||
                              error.errorCode == PlaybackException.ERROR_CODE_PARSING_CONTAINER_UNSUPPORTED ||
                              error.errorCode == PlaybackException.ERROR_CODE_PARSING_MANIFEST_UNSUPPORTED)
                         _uiState.update {
                             it.copy(
-                                error = detailedError,
+                                error = userFacingError,
                                 showSwitchToMpvErrorAction = canSwitchToMpvOnFatal,
                                 showLoadingOverlay = false,
                                 showPauseOverlay = false,
@@ -2723,8 +2744,21 @@ private fun friendlyVideoHdrType(
 }
 
 private fun createDolbyVisionFallbackCodecSelector(
-    convertToDv81Active: Boolean = false
+    convertToDv81Active: Boolean = false,
+    forceSoftwareVideo: Boolean = false
 ): MediaCodecSelector {
+    // After a hardware decoder failure, keep the platform's software decoder only. This is the
+    // last ExoPlayer step before the error screen offers MPV; it fixes TVs whose hardware
+    // decoder advertises support for a profile it cannot actually decode.
+    if (forceSoftwareVideo) {
+        return MediaCodecSelector { mimeType, requiresSecureDecoder, requiresTunnelingDecoder ->
+            val defaults = MediaCodecSelector.DEFAULT.getDecoderInfos(
+                mimeType, requiresSecureDecoder, requiresTunnelingDecoder
+            )
+            if (!MimeTypes.isVideo(mimeType)) return@MediaCodecSelector defaults
+            defaults.filter { isSoftwareDecoder(it) }
+        }
+    }
     // Stripping DV7 to its HEVC base layer is handled by the renderer (setMapDV7ToHevc),
     // which only touches profile 7. We must NOT force video/dolby-vision to the HEVC
     // decoder here: that also catches DV5, which has no HDR10 base layer and ends up

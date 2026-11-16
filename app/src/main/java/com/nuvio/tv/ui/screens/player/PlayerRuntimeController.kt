@@ -789,6 +789,11 @@ class PlayerRuntimeController(
         }
 
     internal var currentStreamHasVideoTrack: Boolean = false
+    /**
+     * The stream URL whose hardware video decoder failed and should be retried with a
+     * software decoder. Keyed by URL so a different stream starts on hardware again.
+     */
+    @Volatile internal var forceSoftwareVideoDecoderForStreamUrl: String? = null
     internal var currentVideoTrackIsLikelyVc1: Boolean = false
     internal var currentVideoTrackMimeType: String? = null
     internal var currentVideoTrackCodecs: String? = null

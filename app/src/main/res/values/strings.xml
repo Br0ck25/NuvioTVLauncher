@@ -3063,6 +3063,7 @@
     <string name="player_error_stream_unavailable">\n\nThe stream server is currently unavailable. Try a different source.</string>
     <string name="player_error_source_invalid_content">Source error: The stream source returned invalid or unplayable content. The link may have expired or the server returned an error page instead of video.\n\nTry a different source. [%1$s]</string>
     <string name="player_error_decoder">Decoder error</string>
+    <string name="player_error_decoder_message">This TV\'s video decoder couldn\'t play this stream (%1$s). Try another source, or use MPV Player if available.</string>
     <string name="player_error_unsupported_format">This stream uses a format your device may not support. Try a different source. [%1$s]</string>
     <string name="player_error_initialize_failed">Failed to initialize player</string>
     <string name="player_error_mpv_surface_failed">Failed to initialize libmpv surface</string>

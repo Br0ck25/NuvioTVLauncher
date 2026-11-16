@@ -2946,6 +2946,7 @@ Utilizas esta función bajo tu entera responsabilidad. P2P se puede desactivar e
     <string name="player_error_stream_unavailable">\n\nEl servidor de la transmisión no está disponible en este momento. Prueba con otra fuente.</string>
     <string name="player_error_source_invalid_content">Error de fuente: la fuente de la transmisión devolvió contenido inválido o no reproducible. Es posible que el enlace haya caducado o que el servidor haya devuelto una página de error en lugar de vídeo.\n\nPrueba con otra fuente. [%1$s]</string>
     <string name="player_error_decoder">Error del decodificador</string>
+    <string name="player_error_decoder_message">El decodificador de vídeo de este televisor no pudo reproducir esta transmisión (%1$s). Prueba otra fuente o usa MPV Player si está disponible.</string>
     <string name="player_error_unsupported_format">Esta transmisión usa un formato que tu dispositivo podría no admitir. Prueba con otra fuente. [%1$s]</string>
     <string name="player_error_initialize_failed">Error al inicializar el reproductor</string>
     <string name="player_error_mpv_surface_failed">Error al inicializar la superficie de libmpv</string>
