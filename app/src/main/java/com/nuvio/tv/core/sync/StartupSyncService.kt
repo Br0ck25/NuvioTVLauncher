@@ -13,6 +13,7 @@ import com.nuvio.tv.data.repository.LibraryRepositoryImpl
 import com.nuvio.tv.data.repository.WatchProgressRepositoryImpl
 import com.nuvio.tv.domain.model.AuthState
 import com.nuvio.tv.domain.model.LibrarySourceMode
+import com.nuvio.tv.livetv.data.BackgroundWork
 import kotlinx.coroutines.CancellationException
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Dispatchers
@@ -300,6 +301,9 @@ class StartupSyncService @Inject constructor(
 
         activityPullJob = scope.launch {
             if (delayMs > 0L) delay(delayMs)
+            // One activityPullJob owns this wait, so periodic/navigation requests coalesce.
+            // Playback progress saves and pushes use their separate services and keep running.
+            BackgroundWork.awaitOnDemandIdle()
             val currentState = authManager.authState.value as? AuthState.FullAccount ?: return@launch
             if (pullKey(currentState.userId) != key || startupPullJob?.isActive == true) return@launch
             val profileId = profileManager.activeProfileId.value
@@ -332,6 +336,8 @@ class StartupSyncService @Inject constructor(
 
         if (shouldUseSupabaseWatchProgressSync) {
             val watchedItemsSucceeded = pullWatchedItemsDelta(profileId)
+            BackgroundWork.awaitOnDemandIdle()
+            if (authManager.authState.value !is AuthState.FullAccount || profileManager.activeProfileId.value != profileId) return false
             val watchProgressSucceeded = syncWatchProgressDelta(
                 profileId = profileId,
                 pushUnsynced = true,
@@ -347,6 +353,7 @@ class StartupSyncService @Inject constructor(
     }
 
     private suspend fun pullPeriodicLibrary(): Boolean {
+        BackgroundWork.awaitOnDemandIdle()
         if (authManager.authState.value !is AuthState.FullAccount) return false
 
         val profileId = profileManager.activeProfileId.value
@@ -704,6 +711,8 @@ class StartupSyncService @Inject constructor(
                     "upserts=${result.appliedUpserts} deletes=${result.appliedDeletes}"
             )
             true
+        } catch (e: CancellationException) {
+            throw e
         } catch (e: Exception) {
             libraryRepository.hasCompletedInitialPull = true
             Log.e(TAG, "Periodic Nuvio library pull failed profile=$profileId", e)
@@ -746,6 +755,8 @@ class StartupSyncService @Inject constructor(
                 watchedItemsSyncService.pushToRemote(profileId)
             }
             true
+        } catch (e: CancellationException) {
+            throw e
         } catch (e: Exception) {
             Log.e(TAG, "Failed to pull watched items, continuing with other syncs", e)
             false
@@ -835,6 +846,8 @@ class StartupSyncService @Inject constructor(
                 watchProgressSyncService.pushToRemote(profileId)
             }
             return Result.success(Unit)
+        } catch (e: CancellationException) {
+            throw e
         } catch (e: Exception) {
             Log.e(TAG, failureMessage, e)
             return Result.failure(e)
