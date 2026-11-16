@@ -88,6 +88,16 @@ internal object YouTubeCaptionTracks {
     private fun normalize(raw: String?): String? {
         val code = raw?.trim()?.lowercase(Locale.US)?.takeIf { it.isNotEmpty() } ?: return null
         if (code == "none" || code == "forced" || code == "device") return null
-        return code.substringBefore('-').substringBefore('_')
+        return when (code) {
+            "hbs-hrv", "hbs-hr" -> "hr"
+            "hbs-srp", "hbs-sr" -> "sr"
+            "hbs-bos", "hbs-bs" -> "bs"
+            "iw" -> "he"
+            "in" -> "id"
+            "ji" -> "yi"
+            "fil" -> "tl"
+            "nb" -> "no"
+            else -> code.substringBefore('-').substringBefore('_')
+        }
     }
 }

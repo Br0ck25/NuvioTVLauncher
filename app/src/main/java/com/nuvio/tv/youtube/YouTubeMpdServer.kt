@@ -76,10 +76,40 @@ object YouTubeMpdServer {
         return "http://127.0.0.1:$port/yt/cap/$videoId/$index/$number.vtt"
     }
 
-    private fun trackIndex(videoId: String, language: String): Int =
-        captionUrls[videoId]?.indexOfFirst { address ->
-            Regex("[?&]tlang=([^&]+)").find(address)?.groupValues?.get(1) == language
-        } ?: -1
+    private fun trackIndex(videoId: String, language: String): Int {
+        val urls = captionUrls[videoId] ?: return -1
+        val wanted = captionLanguageCode(language)
+        val exact = urls.indexOfFirst { address ->
+            tlang(address)?.let { captionLanguageCode(it) == wanted } == true
+        }
+        if (exact >= 0) return exact
+        val base = wanted.substringBefore('-')
+        return urls.indexOfFirst { address ->
+            tlang(address)?.let { captionLanguageCode(it).substringBefore('-') == base } == true
+        }
+    }
+
+    private fun tlang(address: String): String? =
+        Regex("[?&]tlang=([^&]+)").find(address)?.groupValues?.get(1)
+
+    /**
+     * Media3 reports Croatian as "hbs-hrv" while YouTube's caption URL says "hr"; the same
+     * happens with the other Serbo-Croatian variants. Normalize those before comparing.
+     */
+    internal fun captionLanguageCode(raw: String): String {
+        val code = raw.trim().lowercase().replace('_', '-')
+        return when (code) {
+            "hbs-hrv", "hbs-hr" -> "hr"
+            "hbs-srp", "hbs-sr" -> "sr"
+            "hbs-bos", "hbs-bs" -> "bs"
+            "iw" -> "he"
+            "in" -> "id"
+            "ji" -> "yi"
+            "fil" -> "tl"
+            "nb" -> "no"
+            else -> code
+        }
+    }
 
     // ---- translated captions ----
 
@@ -130,9 +160,8 @@ object YouTubeMpdServer {
      * rather than an anonymous automated query.
      */
     fun translatedCaptionFile(videoId: String, language: String): String? {
-        val address = captionUrls[videoId]?.firstOrNull { address ->
-            Regex("[?&]tlang=([^&]+)").find(address)?.groupValues?.get(1) == language
-        } ?: return null
+        val index = trackIndex(videoId, language).takeIf { it >= 0 } ?: return null
+        val address = captionUrls[videoId]?.getOrNull(index) ?: return null
         return get(videoId, address)
     }
 
