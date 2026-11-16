@@ -3429,4 +3429,8 @@ Utilizas esta función bajo tu entera responsabilidad. P2P se puede desactivar e
     <string name="stream_resume_from_time">Reanudar desde %1$s</string>
     <string name="stream_resume_from_percent">Reanudar desde %1$d%%</string>
 
+    <string name="on_demand_continue_watching">Continuar viendo · On Demand</string>
+    <string name="iptv_settings_continue_watching_on_home">Continuar viendo en Inicio</string>
+    <string name="iptv_settings_show_on_demand_titles_you_started">Muestra en una fila de la pantalla de Inicio de Nuvio los títulos On Demand que empezaste.</string>
+    <string name="on_demand_continue_unavailable">Este título ya no está en el catálogo On Demand de tu proveedor.</string>
 </resources>

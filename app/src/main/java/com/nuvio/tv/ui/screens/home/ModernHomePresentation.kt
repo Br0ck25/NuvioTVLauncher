@@ -18,6 +18,7 @@ internal data class ModernHomePresentationInput(
     val homeRows: List<HomeRow>,
     val catalogRows: List<CatalogRow>,
     val continueWatchingItems: List<ContinueWatchingItem>,
+    val onDemandItems: List<ContinueWatchingItem> = emptyList(),
     val upcomingItems: List<ContinueWatchingItem>,
     val useLandscapePosters: Boolean,
     val showCatalogTypeSuffix: Boolean,
@@ -88,6 +89,46 @@ internal fun buildModernHomePresentation(
         } else {
             cache.continueWatchingItems = emptyList()
             cache.continueWatchingRow = null
+        }
+
+        // Live TV fork: the On Demand titles you started, in their own row.
+        val strOnDemandContinueWatching = localizedContext.getString(R.string.on_demand_continue_watching)
+        if (input.onDemandItems.isNotEmpty()) {
+            val reuseOnDemandRow =
+                cache.onDemandRow != null &&
+                    cache.onDemandItems == input.onDemandItems &&
+                    cache.onDemandTitle == strOnDemandContinueWatching &&
+                    cache.onDemandUseLandscapePosters == input.useLandscapePosters &&
+                    cache.onDemandShowImdbRatings == input.showImdbRatings
+            val onDemandRow = if (reuseOnDemandRow) {
+                checkNotNull(cache.onDemandRow)
+            } else {
+                HeroCarouselRow(
+                    key = MODERN_ON_DEMAND_ROW_KEY,
+                    title = strOnDemandContinueWatching,
+                    globalRowIndex = -1,
+                    items = input.onDemandItems.map { item ->
+                        buildContinueWatchingItem(
+                            item = item,
+                            useLandscapePosters = input.useLandscapePosters,
+                            showImdbRatings = input.showImdbRatings,
+                            detailImdbRatingsVisibility = input.detailImdbRatingsVisibility,
+                            airsDateTemplate = strAirsDate,
+                            upcomingLabel = strUpcoming,
+                            context = localizedContext
+                        )
+                    }.asStable()
+                )
+            }
+            cache.onDemandItems = input.onDemandItems
+            cache.onDemandTitle = strOnDemandContinueWatching
+            cache.onDemandUseLandscapePosters = input.useLandscapePosters
+            cache.onDemandShowImdbRatings = input.showImdbRatings
+            cache.onDemandRow = onDemandRow
+            add(onDemandRow)
+        } else {
+            cache.onDemandItems = emptyList()
+            cache.onDemandRow = null
         }
 
         // Upcoming row (SPLIT_UPCOMING mode)

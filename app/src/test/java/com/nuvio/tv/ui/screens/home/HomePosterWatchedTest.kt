@@ -134,7 +134,9 @@ class HomePosterWatchedTest {
             cwEnrichmentCache = cwEnrichmentCache,
             profileManager = profileManager,
             tvRecommendationManager = mockk(relaxed = true),
-            serverCatalog = mockk(relaxed = true)
+            serverCatalog = mockk(relaxed = true),
+            onDemandRepository = mockk(relaxed = true),
+            liveTvPreferences = mockk(relaxed = true)
         )
         viewModel.startupGracePeriodActive = false
         viewModel.currentTmdbSettings = TmdbSettings(enabled = false)

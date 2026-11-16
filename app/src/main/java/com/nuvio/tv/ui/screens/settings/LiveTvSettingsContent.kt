@@ -817,6 +817,12 @@ internal fun LiveTvSettingsContent(
                         s.onDemandAddonPosters,
                         { update { it.copy(onDemandAddonPosters = !it.onDemandAddonPosters) } }
                     )
+                    SettingsToggleRow(
+                        context.getString(R.string.iptv_settings_continue_watching_on_home),
+                        context.getString(R.string.iptv_settings_show_on_demand_titles_you_started),
+                        s.onDemandHomeRowEnabled,
+                        { update { it.copy(onDemandHomeRowEnabled = !it.onDemandHomeRowEnabled) } }
+                    )
                     SettingsActionRow(
                         context.getString(R.string.iptv_settings_show_hidden_categories), context.getString(R.string.iptv_settings_brings_back_every_on_demand_category_you_hid),
                         "${user.vodHiddenCategories.size}", onClick = {

@@ -212,7 +212,9 @@ fun GridHomeContent(
             emptyList()
         }
     }
-    val continueWatchingOffset = if (continueWatchingItems.isNotEmpty()) 1 else 0
+    val continueWatchingOffset =
+        (if (continueWatchingItems.isNotEmpty()) 1 else 0) +
+            (if (uiState.onDemandContinueWatchingItems.isNotEmpty()) 1 else 0)
 
     LaunchedEffect(gridItems, gridFocusState.hasSavedFocus, gridFocusState.focusedItemKey) {
         // Restore once per screen entry, not again when background catalog loads finish.
@@ -262,7 +264,8 @@ fun GridHomeContent(
     val shouldRestoreHeroFocus = gridFocusState.hasSavedFocus &&
         gridFocusState.focusedItemKey == "hero"
     val firstGridItemFocusRequester = remember { FocusRequester() }
-    val hasContinueWatching = continueWatchingItems.isNotEmpty()
+    val hasContinueWatching = continueWatchingItems.isNotEmpty() ||
+        uiState.onDemandContinueWatchingItems.isNotEmpty()
     val hasStandaloneFocusableGridItem = remember(gridItems) {
         gridItems.any { it is GridItem.Content || it is GridItem.SeeAll }
     }
@@ -610,6 +613,38 @@ fun GridHomeContent(
             // Live TV fork: the Live TV row, below Continue watching (the default).
             if (liveTvRowAbove == false) item(key = "live_tv_home_below", span = { GridItemSpan(maxLineSpan) }, contentType = "live_tv_home") {
                 com.nuvio.tv.livetv.home.LiveTvHomeRow(above = false, startPadding = 0.dp, titleStyle = MaterialTheme.typography.headlineMedium)
+            }
+            // Live TV fork: the On Demand titles you started, in their own row.
+            if (uiState.onDemandContinueWatchingItems.isNotEmpty()) {
+                item(
+                    key = "on_demand_continue_watching",
+                    span = { GridItemSpan(maxLineSpan) },
+                    contentType = "on_demand_continue_watching"
+                ) {
+                    GridContinueWatchingSection(
+                        modifier = Modifier.fillMaxWidth(),
+                        fullWidth = gridWidth,
+                        items = uiState.onDemandContinueWatchingItems,
+                        title = stringResource(R.string.on_demand_continue_watching),
+                        showLiveTvHint = false,
+                        showOptionsMenu = false,
+                        focusedItemIndex = if (
+                            shouldRequestInitialFocus && !hasHero && continueWatchingItems.isEmpty()
+                        ) 0 else -1,
+                        onItemClick = onContinueWatchingClick,
+                        onStartFromBeginning = onContinueWatchingStartFromBeginning,
+                        showManualPlayOption = showContinueWatchingManualPlayOption,
+                        onPlayManually = onContinueWatchingPlayManually,
+                        onDetailsClick = {},
+                        onRemoveItem = {},
+                        blurUnwatchedEpisodes = uiState.blurUnwatchedEpisodes,
+                        useEpisodeThumbnails = uiState.useEpisodeThumbnailsInCw,
+                        cardStyle = uiState.continueWatchingCardStyle,
+                        cornerRadius = posterCardStyle.cornerRadius,
+                        posterCardWidth = posterCardStyle.width,
+                        posterCardHeight = posterCardStyle.height
+                    )
+                }
             }
             if (uiState.continueWatchingEnabled && uiState.upcomingItems.isNotEmpty()) {
                 item(

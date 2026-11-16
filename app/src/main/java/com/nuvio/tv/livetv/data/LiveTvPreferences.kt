@@ -142,6 +142,7 @@ class LiveTvPreferences @Inject constructor(
         val frameRateMode = stringPreferencesKey("frame_rate_mode")
         val onDemandInSidebar = booleanPreferencesKey("on_demand_in_sidebar")
         val onDemandEnabled = booleanPreferencesKey("on_demand_enabled")
+        val onDemandHomeRowEnabled = booleanPreferencesKey("on_demand_home_row_enabled")
         val recordingsInSidebar = booleanPreferencesKey("recordings_in_sidebar")
         val sideMenuOrder = stringPreferencesKey("side_menu_order")
         val sideMenuHidden = stringPreferencesKey("side_menu_hidden")
@@ -469,6 +470,7 @@ class LiveTvPreferences @Inject constructor(
             onDemandInSidebar = p[Keys.onDemandInSidebar] ?: d.onDemandInSidebar,
             // Missing on older setups: On, so "off" from before becomes "Off the menu only" (stream list and Search come back).
             onDemandEnabled = p[Keys.onDemandEnabled] ?: d.onDemandEnabled,
+            onDemandHomeRowEnabled = p[Keys.onDemandHomeRowEnabled] ?: d.onDemandHomeRowEnabled,
             recordingsInSidebar = p[Keys.recordingsInSidebar] ?: d.recordingsInSidebar,
             sideMenuOrder = p[Keys.sideMenuOrder] ?: d.sideMenuOrder,
             sideMenuHidden = p[Keys.sideMenuHidden] ?: d.sideMenuHidden,
@@ -809,6 +811,7 @@ class LiveTvPreferences @Inject constructor(
         p[Keys.matchFrameRate] = s.matchFrameRate
         p[Keys.onDemandInSidebar] = s.onDemandInSidebar
         p[Keys.onDemandEnabled] = s.onDemandEnabled
+        p[Keys.onDemandHomeRowEnabled] = s.onDemandHomeRowEnabled
         p[Keys.recordingsInSidebar] = s.recordingsInSidebar
         p[Keys.sideMenuOrder] = s.sideMenuOrder
         val me = currentProfile

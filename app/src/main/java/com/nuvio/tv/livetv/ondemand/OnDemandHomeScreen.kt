@@ -229,6 +229,7 @@ fun OnDemandHomeScreen(
         homeRows = homeRows,
         gridItems = gridItems,
         continueWatchingItems = emptyList(),
+        onDemandContinueWatchingItems = emptyList(),
         upcomingItems = emptyList(),
         heroItems = emptyList(),
         heroSectionEnabled = false,

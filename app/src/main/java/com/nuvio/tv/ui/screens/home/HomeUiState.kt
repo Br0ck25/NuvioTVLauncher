@@ -20,6 +20,12 @@ import com.nuvio.tv.domain.model.WatchProgress
 data class HomeUiState(
     val catalogRows: List<CatalogRow> = emptyList(),
     val continueWatchingItems: List<ContinueWatchingItem> = emptyList(),
+    /**
+     * Live TV fork: On Demand titles you started, for their own Continue Watching row.
+     * Nuvio's normal pipeline can't resolve `nuviovod:` ids through addons, so these are
+     * mapped back to the provider's items instead.
+     */
+    val onDemandContinueWatchingItems: List<ContinueWatchingItem> = emptyList(),
     val upcomingItems: List<ContinueWatchingItem> = emptyList(),
     val isLoading: Boolean = true,
     val layoutPreferencesReady: Boolean = false,

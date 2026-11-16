@@ -138,6 +138,8 @@ fun ContinueWatchingSection(
     onMarkWatched: (ContinueWatchingItem) -> Unit = {},
     modifier: Modifier = Modifier,
     title: String? = null,
+    showLiveTvHint: Boolean = true,
+    showOptionsMenu: Boolean = true,
     focusedItemIndex: Int = -1,
     onItemFocused: (itemIndex: Int) -> Unit = {},
     blurUnwatchedEpisodes: Boolean = false,
@@ -197,7 +199,7 @@ fun ContinueWatchingSection(
                     color = NuvioTheme.colors.TextPrimary
                 )
                 // Live TV fork: "Live TV ▲" hint when this is the top row.
-                com.nuvio.tv.livetv.home.LiveTvHomeHint()
+                if (showLiveTvHint) com.nuvio.tv.livetv.home.LiveTvHomeHint()
             }
         }
 
@@ -259,7 +261,9 @@ fun ContinueWatchingSection(
                 val requester = focusRequesters.getOrPut(index) { FocusRequester() }
                 val focusModifier = Modifier.focusRequester(requester)
                 val stableOnClick = remember(progress) { { onItemClick(progress) } }
-                val stableOnLongPress = remember(progress) { { optionsItem = progress } }
+                val stableOnLongPress = remember(progress, showOptionsMenu) {
+                    { if (showOptionsMenu) optionsItem = progress }
+                }
                 var isCardFocused by remember { mutableStateOf(false) }
 
                     ContinueWatchingCard(

@@ -444,10 +444,15 @@ fun ClassicHomeContent(
             // Only fires when visible indices stabilize for 240ms.
             delay(240)
             val rows = latestVisibleHomeRows.value
-            // Offset for hero + CW sections that precede homeRows in LazyColumn
+            // Offset for hero + Live TV + Continue Watching + On Demand + Upcoming sections
+            // that precede homeRows in LazyColumn
             val heroOffset = if (uiState.heroSectionEnabled && uiState.heroItems.isNotEmpty()) 1 else 0
             val cwOffset = if (uiState.continueWatchingEnabled && uiState.continueWatchingItems.isNotEmpty()) 1 else 0
-            val rowsOffset = heroOffset + cwOffset
+            val liveTvOffset = if (liveTvRowAbove != null) 1 else 0
+            val onDemandOffset = if (uiState.onDemandContinueWatchingItems.isNotEmpty()) 1 else 0
+            val upcomingOffset =
+                if (uiState.continueWatchingEnabled && uiState.upcomingItems.isNotEmpty()) 1 else 0
+            val rowsOffset = heroOffset + cwOffset + liveTvOffset + onDemandOffset + upcomingOffset
             for (idx in firstVisible.coerceAtLeast(0)..(lastVisible + prefetchAhead)) {
                 val rowIdx = idx - rowsOffset
                 val row = rows.getOrNull(rowIdx) ?: continue
@@ -723,6 +728,35 @@ fun ClassicHomeContent(
         if (liveTvRowAbove == false) item(key = "live_tv_home_below", contentType = "live_tv_home") {
             com.nuvio.tv.livetv.home.LiveTvHomeRow(above = false, startPadding = NuvioTheme.spacing.xxxl, titleStyle = MaterialTheme.typography.headlineMedium)
         }
+        // Live TV fork: the On Demand titles you started, in their own row.
+        if (uiState.onDemandContinueWatchingItems.isNotEmpty()) {
+            item(key = "on_demand_continue_watching", contentType = "on_demand_continue_watching") {
+                ContinueWatchingSection(
+                    items = uiState.onDemandContinueWatchingItems,
+                    title = stringResource(R.string.on_demand_continue_watching),
+                    showLiveTvHint = false,
+                    showOptionsMenu = false,
+                    onItemClick = { item -> onContinueWatchingClick(item) },
+                    onStartFromBeginning = onContinueWatchingStartFromBeginning,
+                    showManualPlayOption = showContinueWatchingManualPlayOption,
+                    onPlayManually = onContinueWatchingPlayManually,
+                    onDetailsClick = {},
+                    onRemoveItem = {},
+                    blurUnwatchedEpisodes = uiState.blurUnwatchedEpisodes,
+                    useEpisodeThumbnails = uiState.useEpisodeThumbnailsInCw,
+                    focusedItemIndex = if (
+                        shouldRequestInitialFocus &&
+                        !heroVisible &&
+                        (!uiState.continueWatchingEnabled || uiState.continueWatchingItems.isEmpty())
+                    ) 0 else -1,
+                    cardWidth = classicContinueWatchingCardWidth,
+                    imageHeight = classicContinueWatchingImageHeight,
+                    cardStyle = uiState.continueWatchingCardStyle,
+                    cornerRadius = posterCardStyle.cornerRadius,
+                    posterTitleOverride = classicPosterTitleStyle
+                )
+            }
+        }
         if (uiState.continueWatchingEnabled && uiState.upcomingItems.isNotEmpty()) {
             item(key = "upcoming_section", contentType = "upcoming_section") {
                 LaunchedEffect(upcomingPendingScrollToStart.intValue) {
@@ -857,6 +891,7 @@ fun ClassicHomeContent(
                         shouldRequestInitialFocus &&
                             !heroVisible &&
                             (!uiState.continueWatchingEnabled || uiState.continueWatchingItems.isEmpty()) &&
+                            uiState.onDemandContinueWatchingItems.isEmpty() &&
                             index == 0
                     val focusedItemIndex = when {
                         shouldRestoreFocus -> focusState.focusedItemIndex

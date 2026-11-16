@@ -349,6 +349,58 @@ private fun PlaybackNavHost(
                 }
             }
 
+            // Live TV fork: an On Demand card resumes the provider's own copy, like Play does.
+            val onDemandPlayScope = androidx.compose.runtime.rememberCoroutineScope()
+            fun playOnDemandContinueWatching(
+                item: ContinueWatchingItem,
+                startFromBeginning: Boolean,
+                fallback: () -> Unit
+            ) {
+                val progress = (item as? ContinueWatchingItem.InProgress)?.progress
+                val uid = progress?.contentId
+                    ?.let { com.nuvio.tv.livetv.ondemand.VodHomeIds.uidOfProgress(it) }
+                if (progress == null || uid == null) {
+                    fallback()
+                    return
+                }
+                onDemandPlayScope.launch {
+                    val resolved = runCatching {
+                        com.nuvio.tv.livetv.ondemand.OnDemandPlay.resolve(
+                            context, uid, progress.season, progress.episode
+                        )
+                    }.getOrNull()
+                    if (resolved == null) {
+                        // Gone from the provider's catalog (the row drops it on the next update).
+                        Toast.makeText(
+                            context,
+                            R.string.on_demand_continue_unavailable,
+                            Toast.LENGTH_SHORT
+                        ).show()
+                        return@launch
+                    }
+                    navController.navigate(
+                        Screen.Player.createRoute(
+                            streamUrl = resolved.url,
+                            title = resolved.title,
+                            contentId = progress.contentId,
+                            contentType = progress.contentType,
+                            contentName = progress.name,
+                            poster = progress.poster ?: resolved.poster,
+                            backdrop = progress.backdrop,
+                            logo = progress.logo,
+                            videoId = progress.videoId,
+                            season = progress.season,
+                            episode = progress.episode,
+                            episodeTitle = progress.episodeTitle,
+                            addonName = com.nuvio.tv.livetv.ondemand.OnDemandStreams.GROUP_NAME,
+                            bingeGroup = com.nuvio.tv.livetv.ondemand.OnDemandStreams.BINGE_GROUP,
+                            returnToHomeOnBack = true,
+                            startFromBeginning = startFromBeginning
+                        )
+                    )
+                }
+            }
+
             // Live TV fork: get Live TV ready in the background, so the guide is there when opened.
             androidx.compose.runtime.LaunchedEffect(Unit) {
                 runCatching { com.nuvio.tv.livetv.startup.LiveTvPreload.start(context) }
@@ -384,6 +436,15 @@ private fun PlaybackNavHost(
                     )
                 },
                 onContinueWatchingClick = onContinueWatchingClick@{ item ->
+                    if (com.nuvio.tv.livetv.ondemand.VodHomeIds.isOnDemandContentId(
+                            (item as? ContinueWatchingItem.InProgress)?.progress?.contentId
+                        )
+                    ) {
+                        playOnDemandContinueWatching(item, startFromBeginning = false) {
+                            navController.navigate(createContinueWatchingRoute(item))
+                        }
+                        return@onContinueWatchingClick
+                    }
                     if (!playbackAvailability.canStream(item)) {
                         Toast.makeText(context, R.string.playback_unavailable_message, Toast.LENGTH_SHORT).show()
                         return@onContinueWatchingClick
@@ -391,6 +452,17 @@ private fun PlaybackNavHost(
                     navController.navigate(createContinueWatchingRoute(item))
                 },
                 onContinueWatchingStartFromBeginning = onContinueWatchingStartFromBeginning@{ item ->
+                    if (com.nuvio.tv.livetv.ondemand.VodHomeIds.isOnDemandContentId(
+                            (item as? ContinueWatchingItem.InProgress)?.progress?.contentId
+                        )
+                    ) {
+                        playOnDemandContinueWatching(item, startFromBeginning = true) {
+                            navController.navigate(
+                                createContinueWatchingRoute(item, startFromBeginning = true)
+                            )
+                        }
+                        return@onContinueWatchingStartFromBeginning
+                    }
                     if (!playbackAvailability.canStream(item)) {
                         Toast.makeText(context, R.string.playback_unavailable_message, Toast.LENGTH_SHORT).show()
                         return@onContinueWatchingStartFromBeginning

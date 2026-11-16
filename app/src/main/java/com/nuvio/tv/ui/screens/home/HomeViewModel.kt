@@ -89,6 +89,9 @@ class HomeViewModel @Inject constructor(
     internal val profileManager: com.nuvio.tv.core.profile.ProfileManager,
     internal val tvRecommendationManager: TvRecommendationManager,
     internal val serverCatalog: ServerCatalog,
+    // Live TV fork: On Demand's own Continue Watching row on Home.
+    internal val onDemandRepository: com.nuvio.tv.livetv.ondemand.OnDemandRepository,
+    internal val liveTvPreferences: com.nuvio.tv.livetv.data.LiveTvPreferences,
     internal val metaPreviewEnricher: MetaPreviewEnricher = MetaPreviewEnricher(
         tmdbService,
         tmdbMetadataService,
@@ -357,6 +360,9 @@ class HomeViewModel @Inject constructor(
         get() = trailerPreviewAudioUrlsState
 
     init {
+        // Live TV fork: On Demand's progress lives in the same watch-progress store; make sure
+        // its database is open so the Home row can map those entries back to provider items.
+        runCatching { onDemandRepository.start() }
         // Accumulates individual watched status changes and flushes them as a single
         // update after 150ms of inactivity, preventing N separate recompositions.
         viewModelScope.launch {
@@ -391,6 +397,7 @@ class HomeViewModel @Inject constructor(
             observeModernHomePresentation()
             loadContinueWatching()
             observeContinueWatchingReleases()
+            observeOnDemandContinueWatching()
             watchedSeriesStateHolder.loadFromDisk()
             observeExternalMetaPrefetchPreference()
             observeContinueWatchingSortMode()
@@ -494,7 +501,7 @@ class HomeViewModel @Inject constructor(
         cwLastShowIdSiblings = emptyMap()
         cwLastWatchedEpisodeCounts = emptyMap()
         watchedSeriesStateHolder.clearValidationState()
-        _uiState.update { it.copy(continueWatchingItems = emptyList(), upcomingItems = emptyList()) }
+        _uiState.update { it.copy(continueWatchingItems = emptyList(), onDemandContinueWatchingItems = emptyList(), upcomingItems = emptyList()) }
         // Bump trigger so the pipeline's collectLatest restarts with fresh state.
         cwPipelineRefreshTrigger.value++
     }

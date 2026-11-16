@@ -380,8 +380,12 @@ internal fun ModernHomeRowsList(
                 // Live TV fork: the Live TV row sits with Continue watching (above or below it),
                 // or above the first row when there's no Continue watching.
                 val hasContinueWatching = carouselRows.list.any { it.key == MODERN_CONTINUE_WATCHING_ROW_KEY }
-                val liveTvHere = liveTvRowAbove != null &&
-                    (if (hasContinueWatching) row.key == MODERN_CONTINUE_WATCHING_ROW_KEY else rowIndex == 0)
+                val hasOnDemandRow = carouselRows.list.any { it.key == MODERN_ON_DEMAND_ROW_KEY }
+                val liveTvHere = liveTvRowAbove != null && when {
+                    hasContinueWatching -> row.key == MODERN_CONTINUE_WATCHING_ROW_KEY
+                    hasOnDemandRow -> row.key == MODERN_ON_DEMAND_ROW_KEY
+                    else -> rowIndex == 0
+                }
                 val stableOnContinueWatchingOptions = remember(onContinueWatchingOptions) {
                     { item: ContinueWatchingItem -> onContinueWatchingOptions(item) }
                 }

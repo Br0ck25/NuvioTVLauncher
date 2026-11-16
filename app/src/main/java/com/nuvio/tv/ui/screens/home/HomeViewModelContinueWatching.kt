@@ -72,7 +72,9 @@ private data class ContinueWatchingSettingsSnapshot(
     val nextUpFromFurthestEpisode: Boolean,
     val continueWatchingSortMode: ContinueWatchingSortMode,
     val watchedItemsVersion: Int,  // triggers re-evaluation when watched items change
-    val hasLoadedRemoteProgress: Boolean
+    val hasLoadedRemoteProgress: Boolean,
+    /** Live TV fork: On Demand titles have their own Home row, so leave them out here. */
+    val onDemandHomeRowActive: Boolean = false
 )
 
 /**
@@ -317,8 +319,12 @@ internal fun HomeViewModel.loadContinueWatchingPipeline() {
                 arrayOf(daysCap, dismissedNextUp, showUnairedNextUp, nextUpFromFurthest, sortMode)
             },
             watchProgressRepository.watchedItems.map { it.size },
-            cwPipelineRefreshTrigger
-        ) { progressSnapshot, settingsSnapshot, watchedItemsSize, _ ->
+            cwPipelineRefreshTrigger,
+            // Live TV fork: when the On Demand row is on, its titles move to that row.
+            liveTvPreferences.settings
+                .map { it.onDemandEnabled && it.onDemandHomeRowEnabled }
+                .distinctUntilChanged()
+        ) { progressSnapshot, settingsSnapshot, watchedItemsSize, _, onDemandHomeRowActive ->
             val (items, nextUpSeeds, hasLoadedRemoteProgress) = progressSnapshot
             @Suppress("UNCHECKED_CAST")
             val daysCap = settingsSnapshot[0] as Int
@@ -335,7 +341,8 @@ internal fun HomeViewModel.loadContinueWatchingPipeline() {
                 nextUpFromFurthestEpisode = nextUpFromFurthestEpisode,
                 continueWatchingSortMode = continueWatchingSortMode,
                 watchedItemsVersion = watchedItemsSize,
-                hasLoadedRemoteProgress = hasLoadedRemoteProgress
+                hasLoadedRemoteProgress = hasLoadedRemoteProgress,
+                onDemandHomeRowActive = onDemandHomeRowActive
             )
         }.debounce(CW_PROGRESS_DEBOUNCE_MS).holdWhilePlayerOpen().collectLatest { snapshot ->
             cwLastCycleStartedAtMs = System.currentTimeMillis()
@@ -358,6 +365,10 @@ internal fun HomeViewModel.loadContinueWatchingPipeline() {
                 )
                 val recentItems = items
                     .asSequence()
+                    .filter { progress ->
+                        !(snapshot.onDemandHomeRowActive &&
+                            com.nuvio.tv.livetv.ondemand.VodHomeIds.isOnDemandContentId(progress.contentId))
+                    }
                     .filter { progress -> cutoffMs == null || progress.lastWatched >= cutoffMs }
                     .sortedByDescending { it.lastWatched }
                     .take(CW_MAX_RECENT_PROGRESS_ITEMS)
@@ -365,6 +376,10 @@ internal fun HomeViewModel.loadContinueWatchingPipeline() {
 
                 val recentNextUpSeeds = nextUpSeeds
                     .asSequence()
+                    .filter { progress ->
+                        !(snapshot.onDemandHomeRowActive &&
+                            com.nuvio.tv.livetv.ondemand.VodHomeIds.isOnDemandContentId(progress.contentId))
+                    }
                     .filter { progress -> cutoffMs == null || progress.lastWatched >= cutoffMs }
                     .sortedByDescending { it.lastWatched }
                     .take(CW_MAX_RECENT_PROGRESS_ITEMS)
@@ -3509,6 +3524,12 @@ internal fun HomeViewModel.removeContinueWatchingPipeline(
                     }
                 },
                 upcomingItems = state.upcomingItems.filterNot { item ->
+                    when (item) {
+                        is ContinueWatchingItem.InProgress -> item.progress.contentId == contentId
+                        is ContinueWatchingItem.NextUp -> item.info.contentId == contentId
+                    }
+                },
+                onDemandContinueWatchingItems = state.onDemandContinueWatchingItems.filterNot { item ->
                     when (item) {
                         is ContinueWatchingItem.InProgress -> item.progress.contentId == contentId
                         is ContinueWatchingItem.NextUp -> item.info.contentId == contentId

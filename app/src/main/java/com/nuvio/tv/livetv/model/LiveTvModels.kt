@@ -463,6 +463,8 @@ data class LiveTvSettings(
      * "Off the menu only".
      */
     val onDemandEnabled: Boolean = true,
+    /** Show the On Demand titles you started in a Continue Watching row on Nuvio's Home. */
+    val onDemandHomeRowEnabled: Boolean = true,
     /** Recordings in the side menu (once anything is recorded or set to record). */
     val recordingsInSidebar: Boolean = true,
     /**

@@ -55,6 +55,8 @@ fun GridContinueWatchingSection(
     onMarkWatched: (ContinueWatchingItem) -> Unit = {},
     modifier: Modifier = Modifier,
     title: String? = null,
+    showLiveTvHint: Boolean = true,
+    showOptionsMenu: Boolean = true,
     fullWidth: Dp = Dp.Unspecified,
     focusedItemIndex: Int = -1,
     lastFocusedIndex: MutableIntState = remember { mutableIntStateOf(-1) },
@@ -109,7 +111,7 @@ fun GridContinueWatchingSection(
                         color = NuvioTheme.colors.TextPrimary
                     )
                     // Live TV fork: "Live TV ▲" hint when this is the top row.
-                    com.nuvio.tv.livetv.home.LiveTvHomeHint()
+                    if (showLiveTvHint) com.nuvio.tv.livetv.home.LiveTvHomeHint()
                 }
             }
         }
@@ -149,7 +151,9 @@ fun GridContinueWatchingSection(
                 val requester = focusRequesters.getOrPut(index) { FocusRequester() }
                 val focusModifier = Modifier.focusRequester(requester)
                 val stableOnClick = remember(progress) { { onItemClick(progress) } }
-                val stableOnLongPress = remember(progress) { { optionsItem = progress } }
+                val stableOnLongPress = remember(progress, showOptionsMenu) {
+                    { if (showOptionsMenu) optionsItem = progress }
+                }
                 var isCardFocused by remember { mutableStateOf(false) }
 
                 ContinueWatchingCard(

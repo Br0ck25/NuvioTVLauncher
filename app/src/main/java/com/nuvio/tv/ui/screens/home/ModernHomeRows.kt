@@ -943,7 +943,15 @@ internal fun ModernRowSection(
                     }
                 ) { index, item ->
                     val requester = itemFocusRequesters.getOrPut(index) { FocusRequester() }
-                    val isContinueWatchingRow = row.key == MODERN_CONTINUE_WATCHING_ROW_KEY || row.key == MODERN_UPCOMING_ROW_KEY
+                    val isContinueWatchingRow = row.key == MODERN_CONTINUE_WATCHING_ROW_KEY || row.key == MODERN_UPCOMING_ROW_KEY || row.key == MODERN_ON_DEMAND_ROW_KEY
+                    // On Demand cards have no Nuvio details page behind them, so no options menu.
+                    val onShowOptionsForRow = remember(row.key, onContinueWatchingOptions) {
+                        if (row.key == MODERN_ON_DEMAND_ROW_KEY) {
+                            { _: ContinueWatchingItem -> }
+                        } else {
+                            onContinueWatchingOptions
+                        }
+                    }
                     val onFocused = remember(row.key, index, isContinueWatchingRow) {
                         {
                             onRowItemFocused(row.key, index, isContinueWatchingRow)
@@ -979,7 +987,7 @@ internal fun ModernRowSection(
                                 continueWatchingCornerRadius = continueWatchingCornerRadius,
                                 onFocused = onFocused,
                                 onContinueWatchingClick = onContinueWatchingClick,
-                                onShowOptions = onContinueWatchingOptions
+                                onShowOptions = onShowOptionsForRow
                             )
                         }
 
