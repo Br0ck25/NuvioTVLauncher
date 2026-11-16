@@ -20,6 +20,8 @@ internal class YouTubeTranslatedCaptions(
     private val language: String
 ) {
     private var segmentNumber = -1L
+    private var segmentLoaded = false
+    private var lastFetchMs = 0L
     private var cues: List<Cue> = emptyList()
     private var wholeFileCues: List<Cue>? = null
     private var wholeFileTried = false
@@ -37,31 +39,51 @@ internal class YouTubeTranslatedCaptions(
             val parsed = cleaned?.let(::parse).orEmpty()
             if (parsed.isNotEmpty()) {
                 wholeFileCues = parsed
-                Log.i(TAG, "direct translated captions $videoId/$language cues=${parsed.size}")
+                Log.i(
+                    TAG,
+                    "direct translated captions $videoId/$language cues=${parsed.size} " +
+                        "lastEnd=${parsed.last().endMs}ms"
+                )
             } else {
                 Log.i(TAG, "direct translated captions $videoId/$language unavailable; using local translation")
             }
         }
         wholeFileCues?.let { all ->
-            return@withContext all.firstOrNull { positionMs >= it.startMs && positionMs < it.endMs }?.text
+            val line = all.firstOrNull { positionMs >= it.startMs && positionMs < it.endMs }?.text
+            if (line != null) return@withContext line
+            // YouTube sometimes hands back a translated file that stops early. Once playback
+            // moves past its last line, use the locally generated segments instead of going blank.
+            val lastEnd = all.lastOrNull()?.endMs ?: 0L
+            if (positionMs <= lastEnd + WHOLE_FILE_GRACE_MS) return@withContext null
+            Log.i(TAG, "direct translated captions $videoId/$language stop at ${lastEnd}ms; using local translation")
+            wholeFileCues = null
         }
 
         val number = positionMs / SEGMENT_MS
-        if (number != segmentNumber) {
-            segmentNumber = number
-            cues = fetch(number)
+        val now = System.currentTimeMillis()
+        // Retry a failed segment, but never more than once every couple of seconds.
+        if ((number != segmentNumber || !segmentLoaded) && now - lastFetchMs >= SEGMENT_RETRY_MS) {
+            val fetched = fetch(number)
+            lastFetchMs = now
+            if (fetched != null) {
+                segmentNumber = number
+                segmentLoaded = true
+                cues = fetched
+            }
         }
+        if (segmentNumber != number) return@withContext null
         val inside = positionMs - number * SEGMENT_MS
         cues.firstOrNull { inside >= it.startMs && inside < it.endMs }?.text
     }
 
-    private fun fetch(number: Long): List<Cue> {
-        val url = YouTubeMpdServer.segmentUrl(videoId, language, number) ?: return emptyList()
+    /** Returns null when the segment could not be fetched, so the caller can retry it. */
+    private fun fetch(number: Long): List<Cue>? {
+        val url = YouTubeMpdServer.segmentUrl(videoId, language, number) ?: return null
         val body = runCatching {
             http.newCall(Request.Builder().url(url).build()).execute().use { response ->
                 if (response.isSuccessful) response.body.string() else null
             }
-        }.getOrNull() ?: return emptyList()
+        }.getOrNull() ?: return null
         return parse(body)
     }
 
@@ -102,6 +124,10 @@ internal class YouTubeTranslatedCaptions(
     private companion object {
         const val TAG = "YouTubeCaptions"
         const val SEGMENT_MS = YouTubeCaptionSegments.DURATION_SECONDS * 1_000
+        /** A whole translated file that ends this close to the position is treated as finished. */
+        const val WHOLE_FILE_GRACE_MS = 2_000L
+        /** How soon a failed local segment is tried again. */
+        const val SEGMENT_RETRY_MS = 2_000L
         /** Hours are optional in the timing line; minutes and seconds are always there. */
         val timing = Regex("(?:(\\d+):)?(\\d{1,2}):(\\d{2})[.,](\\d{3})\\s*-->\\s*(?:(\\d+):)?(\\d{1,2}):(\\d{2})[.,](\\d{3})")
         val http by lazy { OkHttpClient.Builder().callTimeout(20, TimeUnit.SECONDS).build() }

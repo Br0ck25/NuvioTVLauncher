@@ -1290,17 +1290,43 @@ fun PlayerScreen(
                     val captions = com.nuvio.tv.youtube.YouTubeTranslatedCaptions(videoId, language)
                     while (true) {
                         val position = viewModel.controller.exoPlayer?.currentPosition ?: 0L
-                        val line = captions.lineAt(position)
+                        // A transient caption/network failure must not stop the loop for good.
+                        val line = try {
+                            captions.lineAt(position)
+                        } catch (cancel: kotlinx.coroutines.CancellationException) {
+                            throw cancel
+                        } catch (_: Exception) {
+                            null
+                        }
                         generatedYoutubeCaption = line
                         viewModel.controller.subtitleCueTracker.updateText(line)
                         delay(250)
                     }
                 }
-                val subtitleWidthKey = listOf(uiState.selectedSubtitleTrackIndex, uiState.selectedAddonSubtitle, subtitleTextMetrics)
+                val renderedSubtitleStyle = uiState.effectiveSubtitleStyle
+                val styledSubtitleTypeface = rememberSubtitleTypeface(renderedSubtitleStyle.fontId)
+                val measuredSubtitleTextMetrics = remember(
+                    subtitleTextMetrics,
+                    renderedSubtitleStyle.usesStyledRenderer,
+                    styledSubtitleTypeface
+                ) {
+                    subtitleTextMetrics?.let { metrics ->
+                        if (renderedSubtitleStyle.usesStyledRenderer) {
+                            metrics.forStyledRenderer(styledSubtitleTypeface)
+                        } else {
+                            metrics
+                        }
+                    }
+                }
+                val subtitleWidthKey = listOf(
+                    uiState.selectedSubtitleTrackIndex,
+                    uiState.selectedAddonSubtitle,
+                    measuredSubtitleTextMetrics
+                )
                 var widestSubtitleBlockPx by remember(subtitleWidthKey) { mutableStateOf<Float?>(null) }
                 val subtitleMeasurePaint = remember { android.graphics.Paint(android.graphics.Paint.ANTI_ALIAS_FLAG) }
                 LaunchedEffect(subtitleWidthKey, prescannedSubtitleTexts) {
-                    val metrics = subtitleTextMetrics ?: return@LaunchedEffect
+                    val metrics = measuredSubtitleTextMetrics ?: return@LaunchedEffect
                     val texts = prescannedSubtitleTexts
                     val widest = withContext(Dispatchers.Default) {
                         val paint = android.graphics.Paint(android.graphics.Paint.ANTI_ALIAS_FLAG)
@@ -1309,7 +1335,7 @@ fun PlayerScreen(
                     widestSubtitleBlockPx = maxOf(widestSubtitleBlockPx ?: 0f, widest)
                 }
                 LaunchedEffect(subtitleWidthKey, subtitleCueState) {
-                    val metrics = subtitleTextMetrics ?: return@LaunchedEffect
+                    val metrics = measuredSubtitleTextMetrics ?: return@LaunchedEffect
                     if (!subtitleCueState.visible) return@LaunchedEffect
                     val width = if (subtitleCueState.hasBitmap) {
                         Float.MAX_VALUE
@@ -1319,7 +1345,7 @@ fun PlayerScreen(
                     widestSubtitleBlockPx = maxOf(widestSubtitleBlockPx ?: 0f, width)
                 }
                 val subtitleTitleMarginPx = with(LocalDensity.current) { SUBTITLE_TITLE_MARGIN.toPx() }
-                val subtitleClearsControlsTitle = subtitleTextMetrics?.let {
+                val subtitleClearsControlsTitle = measuredSubtitleTextMetrics?.let {
                     subtitleClearsTitle(widestSubtitleBlockPx, it.centerXPx, controlsTitleRightPx, subtitleTitleMarginPx)
                 } == true
                 val effectiveControlsClearancePx = effectiveSubtitleControlsClearancePx(
@@ -1432,6 +1458,21 @@ fun PlayerScreen(
                                 modifier = Modifier.fillMaxSize()
                             )
                         }
+                    }
+
+                    if (!postPlayRecommendationState.isVisible) {
+                        val styledSubtitleCues by viewModel.controller.styledSubtitles.cues.collectAsState()
+                        val fallbackSubtitleTextSizePx = with(LocalDensity.current) {
+                            (SUBTITLE_BASE_TEXT_SP * renderedSubtitleStyle.size / 100f).sp.toPx()
+                        }
+                        StyledSubtitleOverlay(
+                            cues = styledSubtitleCues,
+                            style = renderedSubtitleStyle,
+                            textSizePx = measuredSubtitleTextMetrics?.textSizePx
+                                ?: fallbackSubtitleTextSizePx,
+                            liftPx = subtitleLiftPx,
+                            modifier = Modifier.fillMaxSize()
+                        )
                     }
 
                     // The generated translated track is drawn here instead of relying on
