@@ -27,6 +27,9 @@ import androidx.compose.material.icons.automirrored.filled.ArrowBack
 import androidx.compose.material.icons.filled.Album
 import androidx.compose.material.icons.filled.Cloud
 import androidx.compose.material.icons.filled.Favorite
+import androidx.compose.material.icons.filled.Link
+import androidx.compose.material.icons.filled.Logout
+import androidx.compose.material.icons.filled.Sync
 import androidx.compose.material.icons.filled.MusicNote
 import androidx.compose.material.icons.filled.QrCode2
 import androidx.compose.runtime.Composable
@@ -74,6 +77,7 @@ internal fun MusicIntegrationsScreen(
     val webDav by MusicWebDav.config.collectAsState()
     val navidrome by MusicNavidrome.config.collectAsState()
     val addons by MusicAddonRegistry.configs.collectAsState()
+    val spotifyLink by MusicSpotifyLink.state.collectAsState()
     val closeFocus = remember { FocusRequester() }
     val lastFmLoginFocus = remember { FocusRequester() }
     val spotifyImportFocus = remember { FocusRequester() }
@@ -91,12 +95,14 @@ internal fun MusicIntegrationsScreen(
     var importResult by remember { mutableStateOf<String?>(null) }
     var importError by remember { mutableStateOf<String?>(null) }
     var phoneTarget by remember { mutableStateOf<MusicPhoneTarget?>(null) }
+    var spotifyLinkPanel by remember { mutableStateOf(false) }
 
     LaunchedEffect(Unit) {
         MusicWebDav.init(context)
         MusicNavidrome.init(context)
         MusicScrobbler.init(context)
         MusicAddonRegistry.init(context)
+        MusicSpotifyLink.init(context)
         withFrameNanos { }
         runCatching { closeFocus.requestFocus() }
     }
@@ -301,9 +307,80 @@ internal fun MusicIntegrationsScreen(
                 IntegrationCard(
                     icon = Icons.Default.MusicNote,
                     tint = MusicPalette.accentTeal,
-                    title = "Spotify playlists",
-                    subtitle = "Import a public playlist by link; tracks are matched in the music catalogue."
+                    title = "Spotify",
+                    subtitle = when {
+                        spotifyLink.connected ->
+                            "Connected as ${spotifyLink.displayName ?: "your Spotify account"}."
+                        spotifyLink.configured ->
+                            "Link your account with a QR code, or import a public playlist."
+                        else -> "Import a public playlist; account linking isn't set up in this build."
+                    }
                 ) {
+                    if (spotifyLink.connected) {
+                        Row(horizontalArrangement = Arrangement.spacedBy(9.dp)) {
+                            IntegrationPill(
+                                icon = Icons.Default.Sync,
+                                label = if (spotifyLink.busy) "Syncing…" else "Sync playlists & Liked Songs",
+                                primary = true,
+                                enabled = !spotifyLink.busy,
+                                onClick = { MusicSpotifyLink.sync(context) }
+                            )
+                            IntegrationPill(
+                                icon = Icons.Default.Link,
+                                label = "Re-link",
+                                enabled = !spotifyLink.busy,
+                                onClick = { spotifyLinkPanel = true }
+                            )
+                            IntegrationPill(
+                                icon = Icons.Default.Logout,
+                                label = "Disconnect",
+                                enabled = !spotifyLink.busy,
+                                onClick = { MusicSpotifyLink.disconnect(context) }
+                            )
+                        }
+                        spotifyLink.syncProgress?.let {
+                            Spacer(Modifier.height(8.dp))
+                            Text(text = it, color = MusicPalette.textSecondary, fontSize = 11.sp)
+                        }
+                        spotifyLink.syncResult?.let {
+                            Spacer(Modifier.height(8.dp))
+                            Text(text = it, color = MusicPalette.accentTeal, fontSize = 11.sp)
+                        }
+                    } else {
+                        Row(horizontalArrangement = Arrangement.spacedBy(9.dp)) {
+                            IntegrationPill(
+                                icon = Icons.Default.QrCode2,
+                                label = if (spotifyLink.configured) "Link Spotify with QR" else "Spotify link not set up",
+                                primary = true,
+                                enabled = spotifyLink.configured,
+                                onClick = { spotifyLinkPanel = true }
+                            )
+                        }
+                        if (!spotifyLink.configured) {
+                            Spacer(Modifier.height(8.dp))
+                            Text(
+                                text = "Add SPOTIFY_CLIENT_ID and SPOTIFY_LINK_BASE_URL to local.properties, then build again.",
+                                color = MusicPalette.textMuted,
+                                fontSize = 10.sp,
+                                lineHeight = 14.sp
+                            )
+                        }
+                    }
+                    spotifyLink.message?.let {
+                        Spacer(Modifier.height(8.dp))
+                        Text(text = it, color = MusicPalette.accentTeal, fontSize = 11.sp)
+                    }
+                    spotifyLink.error?.let {
+                        Spacer(Modifier.height(8.dp))
+                        Text(text = it, color = MusicPalette.error, fontSize = 11.sp)
+                    }
+                    Spacer(Modifier.height(12.dp))
+                    Text(
+                        text = "Or import a public playlist",
+                        color = MusicPalette.textMuted,
+                        fontSize = 10.sp
+                    )
+                    Spacer(Modifier.height(6.dp))
                     IntegrationField(
                         label = "Playlist link",
                         value = spotifyUrl,
@@ -398,6 +475,14 @@ internal fun MusicIntegrationsScreen(
         }
         phoneTarget?.let {
             MusicPhoneLinkPanel(target = it, onClose = { phoneTarget = null })
+        }
+        if (spotifyLinkPanel) {
+            MusicSpotifyLinkPanel(
+                onClose = {
+                    spotifyLinkPanel = false
+                    MusicSpotifyLink.stop()
+                }
+            )
         }
     }
 }

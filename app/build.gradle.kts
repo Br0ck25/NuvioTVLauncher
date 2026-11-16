@@ -164,6 +164,10 @@ android {
         buildConfigField("String", "SIMKL_CLIENT_ID", buildConfigString(resolveProperty(devProperties, localProperties, "SIMKL_CLIENT_ID")))
         buildConfigField("String", "SIMKL_APP_NAME", buildConfigString(resolveProperty(devProperties, localProperties, "SIMKL_APP_NAME", "nuvio")))
         buildConfigField("String", "MDBLIST_CLIENT_ID", buildConfigString(resolveProperty(devProperties, localProperties, "MDBLIST_CLIENT_ID")))
+        // Music: Spotify Authorization Code + PKCE. The client ID is public; no secret on the TV.
+        buildConfigField("String", "SPOTIFY_CLIENT_ID", buildConfigString(resolveProperty(devProperties, localProperties, "SPOTIFY_CLIENT_ID")))
+        // Static HTTPS page used as the Spotify redirect (e.g. https://user.github.io/repo/spotify-link).
+        buildConfigField("String", "SPOTIFY_LINK_BASE_URL", buildConfigString(resolveProperty(devProperties, localProperties, "SPOTIFY_LINK_BASE_URL")))
         buildConfigField("String", "TMDB_API_KEY", "\"${localProperties.getProperty("TMDB_API_KEY", "")}\"")
         buildConfigField("String", "TV_LOGIN_WEB_BASE_URL", "\"${localProperties.getProperty("TV_LOGIN_WEB_BASE_URL", "https://nuvio.tv/tv-login")}\"")
         buildConfigField("String", "DEVICE_LOGIN_WEB_BASE_URL", "\"${localProperties.getProperty("DEVICE_LOGIN_WEB_BASE_URL", "https://nuvio.tv/link")}\"")

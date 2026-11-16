@@ -20,6 +20,12 @@ data class SpotifyImportResult(
     val total: Int
 )
 
+data class SpotifySyncResult(
+    val playlists: Int,
+    val tracks: Int,
+    val matched: Int
+)
+
 /**
  * Imports a public Spotify playlist by reading the track list from its embed page. Each entry is
  * matched to a YouTube Music song and written into a normal local playlist.
@@ -120,5 +126,167 @@ object MusicSpotifyImport {
             .getJSONObject("state")
             .getJSONObject("data")
             .getJSONObject("entity")
+    }
+
+    // ---------------------------------------------------------------- account sync
+
+    private const val SYNC_PREFS = "nuvio_music_spotify_sync"
+    private const val KEY_PLAYLIST_MAP = "playlist_map"
+    private const val KEY_TRACK_MAP = "track_map"
+    private const val KEY_LAST_SYNC = "last_sync"
+    private const val LIKED_PLAYLIST_ID = "__liked__"
+    private const val LIKED_PLAYLIST_NAME = "Spotify Liked Songs"
+
+    private data class SyncTarget(
+        val spotifyId: String,
+        val name: String,
+        val tracks: List<SpotifyTrack>
+    )
+
+    /**
+     * Reads the linked account's playlists and Liked Songs and adds the tracks that can be
+     * matched to the local Music library. Re-syncing updates the playlists made by an earlier
+     * sync instead of creating new ones, and never removes tracks the user added by hand.
+     */
+    suspend fun syncAccount(
+        context: Context,
+        accessToken: String,
+        onProgress: suspend (String) -> Unit
+    ): Result<SpotifySyncResult> = withContext(Dispatchers.IO) {
+        runCatching {
+            MusicLibrary.init(context)
+            val app = context.applicationContext
+            val store = app.getSharedPreferences(SYNC_PREFS, Context.MODE_PRIVATE)
+            val playlistMap = loadStringMap(store.getString(KEY_PLAYLIST_MAP, null))
+            val trackMap = loadTrackMap(store.getString(KEY_TRACK_MAP, null))
+
+            val profile = runCatching { MusicSpotifyApi.profile(accessToken) }.getOrNull()
+            onProgress("Reading ${profile?.displayName ?: "your Spotify"} library…")
+            val playlists = MusicSpotifyApi.playlists(accessToken)
+            val liked = MusicSpotifyApi.likedTracks(accessToken)
+            val targets = buildList {
+                if (liked.isNotEmpty()) add(SyncTarget(LIKED_PLAYLIST_ID, LIKED_PLAYLIST_NAME, liked))
+                playlists.forEach { playlist ->
+                    val tracks = MusicSpotifyApi.playlistTracks(accessToken, playlist.id)
+                    if (tracks.isNotEmpty()) add(SyncTarget(playlist.id, playlist.name, tracks))
+                }
+            }
+            if (targets.isEmpty()) {
+                error("Spotify didn't return any playlists or Liked Songs.")
+            }
+
+            var playlistsSynced = 0
+            var tracksSeen = 0
+            var tracksAdded = 0
+            targets.forEachIndexed { index, target ->
+                onProgress("${target.name} (${index + 1} of ${targets.size})…")
+                val localId = ensureLocalPlaylist(target, playlistMap)
+                store.edit().putString(KEY_PLAYLIST_MAP, JSONObject(playlistMap).toString()).apply()
+
+                val existing = withContext(Dispatchers.Main) {
+                    MusicLibrary.playlists.value
+                        .firstOrNull { it.id == localId }
+                        ?.songs
+                        ?.mapTo(mutableSetOf()) { it.videoId }
+                        ?: mutableSetOf()
+                }
+                val knownTracks = trackMap.getOrPut(localId) { mutableMapOf() }
+                var addedHere = 0
+
+                target.tracks.forEachIndexed { trackIndex, track ->
+                    tracksSeen++
+                    if (track.isLocal || track.id.isBlank() || track.title.isBlank()) return@forEachIndexed
+                    val knownVideoId = knownTracks[track.id]
+                    if (knownVideoId != null && knownVideoId in existing) return@forEachIndexed
+
+                    val query = listOf(track.title, track.artists)
+                        .filter { it.isNotBlank() }
+                        .joinToString(" ")
+                    val found = runCatching {
+                        withTimeoutOrNull(12_000L) {
+                            YtMusicRepository.search(query, SearchFilter.SONGS)
+                        }
+                    }.getOrNull()?.getOrNull()
+                    val song = found.orEmpty()
+                        .asSequence()
+                        .mapNotNull { result ->
+                            when (result) {
+                                is SearchResult.TopTrack -> result.song
+                                is SearchResult.Track -> result.song
+                                else -> null
+                            }
+                        }
+                        .firstOrNull { it.videoId.isNotBlank() }
+
+                    if (song != null) {
+                        if (existing.add(song.videoId)) {
+                            withContext(Dispatchers.Main) {
+                                MusicLibrary.addToPlaylist(localId, song)
+                            }
+                            addedHere++
+                        }
+                        knownTracks[track.id] = song.videoId
+                    }
+                    if (trackIndex % 10 == 9) {
+                        onProgress(
+                            "${target.name}: ${trackIndex + 1} of ${target.tracks.size}…"
+                        )
+                    }
+                }
+
+                tracksAdded += addedHere
+                playlistsSynced++
+                store.edit().putString(KEY_TRACK_MAP, JSONObject(trackMap).toString()).apply()
+            }
+
+            store.edit()
+                .putString(KEY_PLAYLIST_MAP, JSONObject(playlistMap).toString())
+                .putString(KEY_TRACK_MAP, JSONObject(trackMap).toString())
+                .putLong(KEY_LAST_SYNC, System.currentTimeMillis())
+                .apply()
+            SpotifySyncResult(
+                playlists = playlistsSynced,
+                tracks = tracksSeen,
+                matched = tracksAdded
+            )
+        }
+    }
+
+    private suspend fun ensureLocalPlaylist(
+        target: SyncTarget,
+        playlistMap: MutableMap<String, String>
+    ): String {
+        val mapped = playlistMap[target.spotifyId]
+        if (mapped != null && MusicLibrary.playlists.value.any { it.id == mapped }) return mapped
+        val playlist = withContext(Dispatchers.Main) {
+            MusicLibrary.createPlaylist(target.name)
+        }
+        playlistMap[target.spotifyId] = playlist.id
+        return playlist.id
+    }
+
+    private fun loadStringMap(raw: String?): MutableMap<String, String> {
+        val result = mutableMapOf<String, String>()
+        if (raw.isNullOrBlank()) return result
+        val json = runCatching { JSONObject(raw) }.getOrNull() ?: return result
+        json.keys().forEach { key ->
+            json.optString(key).takeIf { it.isNotBlank() }?.let { result[key] = it }
+        }
+        return result
+    }
+
+    private fun loadTrackMap(raw: String?): MutableMap<String, MutableMap<String, String>> {
+        val result = mutableMapOf<String, MutableMap<String, String>>()
+        if (raw.isNullOrBlank()) return result
+        val json = runCatching { JSONObject(raw) }.getOrNull() ?: return result
+        json.keys().forEach { localId ->
+            val tracks = json.optJSONObject(localId) ?: return@forEach
+            val map = mutableMapOf<String, String>()
+            tracks.keys().forEach { spotifyId ->
+                tracks.optString(spotifyId).takeIf { it.isNotBlank() }?.let { map[spotifyId] = it }
+            }
+            result[localId] = map
+        }
+        return result
     }
 }
