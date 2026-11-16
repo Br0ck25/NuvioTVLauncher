@@ -3,11 +3,17 @@ package com.nuvio.tv.music
 import android.annotation.SuppressLint
 import android.app.Activity
 import android.content.Intent
+import android.graphics.Canvas
 import android.graphics.Color
+import android.graphics.Paint
 import android.os.Bundle
 import android.os.Handler
 import android.os.Looper
+import android.os.SystemClock
 import android.view.Gravity
+import android.view.KeyEvent
+import android.view.MotionEvent
+import android.view.View
 import android.view.ViewGroup
 import android.webkit.CookieManager
 import android.webkit.WebChromeClient
@@ -18,6 +24,8 @@ import android.widget.Button
 import android.widget.FrameLayout
 import android.widget.LinearLayout
 import android.widget.TextView
+import androidx.core.view.ViewCompat
+import androidx.core.view.WindowInsetsCompat
 import com.nuvio.tv.music.spotifyweb.SpotifyWebClient
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Dispatchers
@@ -30,6 +38,10 @@ import kotlinx.coroutines.withContext
  * A real Spotify sign-in page on the TV, so the same `sp_dc` session the desktop app uses can be
  * captured without typing a password into Nuvio. The page itself cannot read the HttpOnly cookie;
  * the app's CookieManager can, and the cookie is validated before it is saved.
+ *
+ * TV remotes cannot click a web page directly, so a virtual cursor sits over the page: D-pad
+ * moves it, OK clicks the element under it. While the on-screen keyboard is open the cursor
+ * steps aside and the remote controls the keyboard.
  */
 class SpotifyLoginActivity : Activity() {
     companion object {
@@ -44,11 +56,17 @@ class SpotifyLoginActivity : Activity() {
 
     private lateinit var webView: WebView
     private lateinit var status: TextView
+    private lateinit var cursor: CursorView
+    private lateinit var cursorButton: Button
     private val handler = Handler(Looper.getMainLooper())
     private val scope = CoroutineScope(SupervisorJob() + Dispatchers.Main)
     private var lastTriedCookie = ""
     private var validating = false
     private var finished = false
+    private var cursorOn = true
+    private var cursorX = 0f
+    private var cursorY = 0f
+    private var cursorStep = 24f
 
     private val poll = object : Runnable {
         override fun run() {
@@ -66,7 +84,9 @@ class SpotifyLoginActivity : Activity() {
     @SuppressLint("SetJavaScriptEnabled")
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
+        window.setSoftInputMode(android.view.WindowManager.LayoutParams.SOFT_INPUT_ADJUST_RESIZE)
         MusicSpotifyWebSession.init(this)
+        cursorStep = 26f * resources.displayMetrics.density
 
         val root = FrameLayout(this).apply { setBackgroundColor(Color.BLACK) }
 
@@ -87,13 +107,23 @@ class SpotifyLoginActivity : Activity() {
             webViewClient = object : WebViewClient() {
                 override fun onPageFinished(view: WebView?, url: String?) {
                     super.onPageFinished(view, url)
-                    status.text = "Waiting for Spotify sign-in…"
+                    status.text = "D-pad moves the cursor · OK clicks · Back hides it"
                     checkCookie()
                 }
             }
             webChromeClient = WebChromeClient()
         }
         root.addView(webView)
+
+        cursor = CursorView(this).apply {
+            isClickable = false
+            isFocusable = false
+            importantForAccessibility = View.IMPORTANT_FOR_ACCESSIBILITY_NO
+        }
+        root.addView(cursor, FrameLayout.LayoutParams(
+            ViewGroup.LayoutParams.MATCH_PARENT,
+            ViewGroup.LayoutParams.MATCH_PARENT
+        ))
 
         val top = LinearLayout(this).apply {
             orientation = LinearLayout.HORIZONTAL
@@ -108,12 +138,18 @@ class SpotifyLoginActivity : Activity() {
             gravity = Gravity.CENTER_VERTICAL
             layoutParams = LinearLayout.LayoutParams(0, ViewGroup.LayoutParams.WRAP_CONTENT, 1f)
         }
+        cursorButton = Button(this).apply {
+            text = "Cursor: on"
+            isFocusable = false
+            setOnClickListener { setCursorOn(true) }
+        }
         val cancel = Button(this).apply {
             text = "Cancel"
             isFocusable = true
             setOnClickListener { cancelAndFinish() }
         }
         top.addView(title)
+        top.addView(cursorButton)
         top.addView(cancel)
         root.addView(top, FrameLayout.LayoutParams(
             ViewGroup.LayoutParams.MATCH_PARENT,
@@ -138,6 +174,81 @@ class SpotifyLoginActivity : Activity() {
         webView.loadUrl(LOGIN_URL)
         handler.postDelayed(poll, POLL_MS)
         handler.postDelayed(timeout, TIMEOUT_MS)
+
+        webView.post {
+            cursorX = webView.width / 2f
+            cursorY = webView.height / 2f
+            cursor.moveTo(cursorX, cursorY)
+        }
+
+        // While the on-screen keyboard is open, let the remote control the keyboard.
+        ViewCompat.setOnApplyWindowInsetsListener(root) { _, insets ->
+            val ime = insets.isVisible(WindowInsetsCompat.Type.ime())
+            setCursorOn(!ime)
+            insets
+        }
+    }
+
+    override fun dispatchKeyEvent(event: KeyEvent): Boolean {
+        if (!cursorOn) return super.dispatchKeyEvent(event)
+        if (event.action == KeyEvent.ACTION_DOWN) {
+            when (event.keyCode) {
+                KeyEvent.KEYCODE_DPAD_UP -> {
+                    moveCursor(0f, -cursorStep)
+                    return true
+                }
+                KeyEvent.KEYCODE_DPAD_DOWN -> {
+                    moveCursor(0f, cursorStep)
+                    return true
+                }
+                KeyEvent.KEYCODE_DPAD_LEFT -> {
+                    moveCursor(-cursorStep, 0f)
+                    return true
+                }
+                KeyEvent.KEYCODE_DPAD_RIGHT -> {
+                    moveCursor(cursorStep, 0f)
+                    return true
+                }
+                KeyEvent.KEYCODE_DPAD_CENTER, KeyEvent.KEYCODE_ENTER, KeyEvent.KEYCODE_NUMPAD_ENTER -> {
+                    clickAtCursor()
+                    return true
+                }
+                KeyEvent.KEYCODE_BACK, KeyEvent.KEYCODE_ESCAPE -> {
+                    setCursorOn(false)
+                    return true
+                }
+                else -> return super.dispatchKeyEvent(event)
+            }
+        }
+        return true
+    }
+
+    private fun moveCursor(dx: Float, dy: Float) {
+        cursorX = (cursorX + dx).coerceIn(0f, webView.width.toFloat())
+        cursorY = (cursorY + dy).coerceIn(0f, webView.height.toFloat())
+        cursor.moveTo(cursorX, cursorY)
+    }
+
+    private fun clickAtCursor() {
+        val now = SystemClock.uptimeMillis()
+        val down = MotionEvent.obtain(now, now, MotionEvent.ACTION_DOWN, cursorX, cursorY, 0)
+        val up = MotionEvent.obtain(now, now + 60, MotionEvent.ACTION_UP, cursorX, cursorY, 0)
+        webView.dispatchTouchEvent(down)
+        webView.dispatchTouchEvent(up)
+        down.recycle()
+        up.recycle()
+    }
+
+    private fun setCursorOn(on: Boolean) {
+        cursorOn = on
+        cursor.visibility = if (on) View.VISIBLE else View.GONE
+        cursorButton.text = if (on) "Cursor: on" else "Cursor: off"
+        cursorButton.isFocusable = !on
+        if (on) {
+            status.text = "D-pad moves the cursor · OK clicks · Back hides it"
+        } else {
+            status.text = "Cursor off. Press Back or Cancel."
+        }
     }
 
     private fun checkCookie() {
@@ -154,11 +265,12 @@ class SpotifyLoginActivity : Activity() {
         validating = true
         status.text = "Checking the Spotify session…"
         scope.launch {
-            val client = runCatching {
+            val result = runCatching {
                 withContext(Dispatchers.IO) {
-                    SpotifyWebClient.connect(cookie, requireSignedIn = true).getOrNull()
+                    SpotifyWebClient.connect(cookie, requireSignedIn = true).getOrThrow()
                 }
-            }.getOrNull()
+            }
+            val client = result.getOrNull()
             if (client?.isSignedIn == true) {
                 val account = runCatching {
                     withContext(Dispatchers.IO) { client.account().getOrNull() }
@@ -173,7 +285,12 @@ class SpotifyLoginActivity : Activity() {
                 setResult(RESULT_OK, Intent().putExtra("spotify_account", account?.name))
                 finish()
             } else {
-                status.text = "Waiting for Spotify sign-in…"
+                val error = result.exceptionOrNull()?.message
+                status.text = if (error.isNullOrBlank()) {
+                    "Waiting for Spotify sign-in…"
+                } else {
+                    "Spotify check failed: $error"
+                }
                 validating = false
             }
         }
@@ -189,6 +306,10 @@ class SpotifyLoginActivity : Activity() {
 
     @Deprecated("Deprecated in Java")
     override fun onBackPressed() {
+        if (cursorOn) {
+            setCursorOn(false)
+            return
+        }
         if (webView.canGoBack()) webView.goBack() else cancelAndFinish()
     }
 
@@ -199,5 +320,37 @@ class SpotifyLoginActivity : Activity() {
         runCatching { webView.stopLoading() }
         runCatching { webView.destroy() }
         super.onDestroy()
+    }
+
+    private class CursorView(context: android.content.Context) : View(context) {
+        private var x = 0f
+        private var y = 0f
+        private val fill = Paint(Paint.ANTI_ALIAS_FLAG).apply {
+            color = Color.argb(180, 0, 0, 0)
+            style = Paint.Style.FILL
+        }
+        private val ring = Paint(Paint.ANTI_ALIAS_FLAG).apply {
+            color = Color.WHITE
+            style = Paint.Style.STROKE
+            strokeWidth = 2.5f * context.resources.displayMetrics.density
+        }
+        private val dot = Paint(Paint.ANTI_ALIAS_FLAG).apply {
+            color = Color.WHITE
+            style = Paint.Style.FILL
+        }
+
+        fun moveTo(newX: Float, newY: Float) {
+            x = newX
+            y = newY
+            invalidate()
+        }
+
+        override fun onDraw(canvas: Canvas) {
+            super.onDraw(canvas)
+            val r = 12f * resources.displayMetrics.density
+            canvas.drawCircle(x, y, r, fill)
+            canvas.drawCircle(x, y, r, ring)
+            canvas.drawCircle(x, y, 2.5f * resources.displayMetrics.density, dot)
+        }
     }
 }
