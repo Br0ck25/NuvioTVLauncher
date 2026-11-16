@@ -1,5 +1,7 @@
 package com.music.bitchord.data.model
 
+import kotlinx.serialization.Serializable
+
 /** Tier of an item in the playback queue. */
 enum class QueueTier {
     /** Explicitly queued by user ("Play Next", "Add to Queue", or preserved user queue). */
@@ -399,6 +401,7 @@ enum class SearchFilter(val label: String, val params: String?) {
 }
 
 /** A card in a home-feed carousel: either a track (videoId) or an album/playlist (browseId). */
+@Serializable
 data class ShelfItem(
     val title: String,
     val subtitle: String,
@@ -413,6 +416,7 @@ data class ShelfItem(
 )
 
 /** How a shelf's items are laid out — the web player's `ShelfLayout`, by the same rules. */
+@Serializable
 enum class ShelfLayout {
     /** Square cards in one scrolling row. */
     CARDS,
@@ -461,6 +465,7 @@ data class AccountChannel(
     val key: String get() = pageId ?: dataSyncId ?: name
 }
 
+@Serializable
 data class HomeShelf(
     val title: String,
     val items: List<ShelfItem>,
@@ -519,12 +524,14 @@ data class HomeFeed(
 )
 
 /** One server-defined group of the buttons shown on Explore. */
+@Serializable
 data class MoodGenreSection(
     val title: String,
     val items: List<MoodGenre>,
 )
 
 /** A mood or genre button and the exact browse request that it represents. */
+@Serializable
 data class MoodGenre(
     val title: String,
     val browseId: String,

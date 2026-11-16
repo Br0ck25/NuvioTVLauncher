@@ -17,8 +17,10 @@ import androidx.compose.foundation.layout.offset
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.width
+import androidx.compose.foundation.layout.widthIn
 import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
+import androidx.compose.material3.CircularProgressIndicator
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.AccountCircle
 import androidx.compose.material.icons.filled.MusicNote
@@ -103,6 +105,7 @@ fun MusicScreen(
     val liked by MusicLibrary.liked.collectAsState()
     val recents by MusicLibrary.recents.collectAsState()
     val playlists by MusicLibrary.playlists.collectAsState()
+    val spotifySync by MusicSpotifyWebSync.state.collectAsState()
     val party by MusicPartyManager.state.collectAsState()
     val accountViewModel: YouTubeAccountViewModel = hiltViewModel()
     // Music keeps its own YouTube profile choice, separate from OneTube's.
@@ -536,6 +539,33 @@ fun MusicScreen(
                         },
                         onLoadMore = viewModel::loadMoreSearch
                     )
+                }
+                if (spotifySync.busy) {
+                    Row(
+                        Modifier
+                            .align(Alignment.BottomEnd)
+                            .padding(24.dp)
+                            .clip(RoundedCornerShape(50))
+                            .background(MusicPalette.surfaceRaised)
+                            .border(1.dp, MusicPalette.accent, RoundedCornerShape(50))
+                            .padding(horizontal = 16.dp, vertical = 10.dp),
+                        verticalAlignment = Alignment.CenterVertically,
+                        horizontalArrangement = Arrangement.spacedBy(10.dp)
+                    ) {
+                        CircularProgressIndicator(
+                            modifier = Modifier.size(16.dp),
+                            strokeWidth = 2.dp,
+                            color = MusicPalette.accent
+                        )
+                        Text(
+                            text = spotifySync.progress ?: "Syncing Spotify…",
+                            color = MusicPalette.text,
+                            fontSize = 12.sp,
+                            maxLines = 1,
+                            overflow = TextOverflow.Ellipsis,
+                            modifier = Modifier.widthIn(max = 380.dp)
+                        )
+                    }
                 }
             }
         }

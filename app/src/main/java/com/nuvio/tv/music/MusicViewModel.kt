@@ -138,7 +138,26 @@ class MusicViewModel @Inject constructor(
     init {
         MusicAccountRepository.init(context)
         MusicAddonRegistry.init(context)
-        loadHome()
+        viewModelScope.launch {
+            // Show the last feed at once; the network refresh replaces it when it arrives.
+            val cached = withContext(Dispatchers.IO) { MusicFeedCache.load(context) }
+            if (cached != null) {
+                _state.update {
+                    it.copy(
+                        home = it.home.copy(
+                            shelves = cached.home,
+                            loading = cached.home.isEmpty(),
+                            account = cached.account
+                        ),
+                        explore = it.explore.copy(
+                            sections = cached.explore,
+                            loading = cached.explore.isEmpty()
+                        )
+                    )
+                }
+            }
+            loadHome()
+        }
     }
 
     // ---- tabs ----
@@ -188,6 +207,7 @@ class MusicViewModel @Inject constructor(
                         )
                     )
                 }
+                persistFeedCache()
                 return@launch
             }
             val result = withContext(Dispatchers.IO) { YtMusicRepository.home() }
@@ -205,6 +225,7 @@ class MusicViewModel @Inject constructor(
                             )
                         )
                     }
+                    persistFeedCache()
                 },
                 onFailure = { error ->
                     _state.update {
@@ -751,6 +772,7 @@ class MusicViewModel @Inject constructor(
                             )
                         )
                     }
+                    persistFeedCache()
                 },
                 onFailure = { error ->
                     _state.update {
@@ -853,4 +875,16 @@ class MusicViewModel @Inject constructor(
         if (detail.songs.isEmpty()) return
         MusicPlayer.playQueue(detail.songs, startIndex)
     }
+    private fun persistFeedCache() {
+        val state = _state.value
+        viewModelScope.launch(Dispatchers.IO) {
+            MusicFeedCache.save(
+                context = context,
+                home = state.home.shelves,
+                explore = state.explore.sections,
+                account = state.home.account
+            )
+        }
+    }
+
 }

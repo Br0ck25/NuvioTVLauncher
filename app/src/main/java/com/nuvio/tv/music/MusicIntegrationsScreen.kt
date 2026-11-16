@@ -328,8 +328,9 @@ internal fun MusicIntegrationsScreen(
                                 icon = Icons.Default.Sync,
                                 label = if (webSync.busy) "Syncing…" else "Sync playlists & Liked Songs",
                                 primary = true,
-                                enabled = !webSync.busy,
-                                onClick = { MusicSpotifyWebSync.sync(context) }
+                                // Keep it focusable while syncing: disabling it moved focus to Last.fm.
+                                enabled = true,
+                                onClick = { if (!webSync.busy) MusicSpotifyWebSync.sync(context) }
                             )
                             IntegrationPill(
                                 icon = Icons.Default.Login,

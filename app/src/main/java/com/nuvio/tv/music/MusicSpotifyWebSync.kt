@@ -9,9 +9,14 @@ import com.music.bitchord.data.model.Song
 import com.nuvio.tv.music.spotifyweb.SpotifySource
 import com.nuvio.tv.music.spotifyweb.SpotifyTrack
 import com.nuvio.tv.music.spotifyweb.SpotifyWebClient
+import java.util.Collections
+import java.util.concurrent.ConcurrentHashMap
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.SupervisorJob
+import kotlinx.coroutines.async
+import kotlinx.coroutines.awaitAll
+import kotlinx.coroutines.coroutineScope
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.asStateFlow
@@ -36,12 +41,20 @@ object MusicSpotifyWebSync {
     private const val PREFS = "nuvio_music_spotify_web_sync"
     private const val KEY_PLAYLIST_MAP = "playlist_map"
     private const val KEY_TRACK_MAP = "track_map"
+    private const val KEY_PLAYLIST_COUNTS = "playlist_counts"
     private const val KEY_LAST_SYNC = "last_sync"
     private const val SOURCE_PREFIX = "web:"
+    private const val MATCH_CONCURRENCY = 4
+    private const val SEARCH_TIMEOUT_MS = 8_000L
 
     private val scope = CoroutineScope(SupervisorJob() + Dispatchers.IO)
     private val _state = MutableStateFlow(SpotifyWebSyncState())
     val state: StateFlow<SpotifyWebSyncState> = _state.asStateFlow()
+
+    private data class PendingTrack(
+        val trackKey: String,
+        val query: String
+    )
 
     fun sync(context: Context) {
         if (_state.value.busy) return
@@ -61,6 +74,10 @@ object MusicSpotifyWebSync {
                 val store = app.getSharedPreferences(PREFS, Context.MODE_PRIVATE)
                 val playlistMap = loadStringMap(store.getString(KEY_PLAYLIST_MAP, null))
                 val trackMap = loadTrackMap(store.getString(KEY_TRACK_MAP, null))
+                val playlistCounts = loadIntMap(store.getString(KEY_PLAYLIST_COUNTS, null))
+                val localIndex = buildLocalIndex()
+                val queryHits = ConcurrentHashMap<String, Song>()
+                val queryMisses = Collections.synchronizedSet(HashSet<String>())
                 var playlistsSynced = 0
                 var tracksSeen = 0
                 var tracksAdded = 0
@@ -75,6 +92,19 @@ object MusicSpotifyWebSync {
                     _state.value = _state.value.copy(
                         progress = "$name (${index + 1} of ${account.library.size})…"
                     )
+
+                    val mappedLocal = playlistMap[sourceKey]
+                    val localExists = mappedLocal != null &&
+                        MusicLibrary.playlists.value.any { it.id == mappedLocal }
+                    val spotifyCount = entry.count
+                    // Unchanged on Spotify and already local: no need to fetch or search it again.
+                    if (localExists && spotifyCount != null && spotifyCount > 0 &&
+                        playlistCounts[sourceKey] == spotifyCount
+                    ) {
+                        playlistsSynced++
+                        return@forEachIndexed
+                    }
+
                     val playlist = if (entry.source is SpotifySource.Liked) {
                         client.liked().getOrThrow()
                     } else {
@@ -96,58 +126,99 @@ object MusicSpotifyWebSync {
                     }
                     val known = trackMap.getOrPut(localId) { mutableMapOf() }
                     var addedHere = 0
+                    var handled = 0
+                    val pending = ArrayList<PendingTrack>()
 
-                    playlist.tracks.forEachIndexed { trackIndex, track ->
+                    // Cheap pass first: tracks already mapped or already in the library do not
+                    // need a YouTube search at all.
+                    playlist.tracks.forEach { track ->
                         tracksSeen++
-                        if (track.local || track.name.isBlank()) return@forEachIndexed
-                        val trackKey = trackKey(track)
-                        val knownVideoId = known[trackKey]
-                        if (knownVideoId != null && knownVideoId in existing) return@forEachIndexed
-
-                        val query = listOf(track.name, track.artistLine)
-                            .filter { it.isNotBlank() }
-                            .joinToString(" ")
-                        val found = runCatching {
-                            withTimeoutOrNull(12_000L) {
-                                YtMusicRepository.search(query, SearchFilter.SONGS)
-                            }
-                        }.getOrNull()?.getOrNull()
-                        val song = found.orEmpty()
-                            .asSequence()
-                            .mapNotNull { item ->
-                                when (item) {
-                                    is SearchResult.TopTrack -> item.song
-                                    is SearchResult.Track -> item.song
-                                    else -> null
-                                }
-                            }
-                            .firstOrNull { it.videoId.isNotBlank() }
-
-                        if (song != null) {
-                            if (existing.add(song.videoId)) {
+                        if (track.local || track.name.isBlank()) {
+                            handled++
+                            return@forEach
+                        }
+                        val key = trackKey(track)
+                        val knownVideoId = known[key]
+                        if (knownVideoId != null && knownVideoId in existing) {
+                            handled++
+                            return@forEach
+                        }
+                        val indexKey = localIndexKey(track.name, track.artistLine)
+                        val localVideoId = localIndex[indexKey]
+                        if (localVideoId != null) {
+                            known[key] = localVideoId
+                            if (existing.add(localVideoId)) {
                                 withContext(Dispatchers.Main) {
-                                    MusicLibrary.addToPlaylist(localId, song)
+                                    MusicLibrary.addToPlaylist(
+                                        localId,
+                                        Song(
+                                            videoId = localVideoId,
+                                            title = track.name,
+                                            artist = track.artistLine,
+                                            thumbnailUrl = track.art,
+                                            durationText = null
+                                        )
+                                    )
                                 }
                                 addedHere++
                             }
-                            known[trackKey] = song.videoId
+                            handled++
+                            return@forEach
                         }
-                        if (trackIndex % 10 == 9) {
-                            _state.value = _state.value.copy(
-                                progress = "$name: ${trackIndex + 1} of ${playlist.tracks.size}…"
-                            )
-                        }
+                        val query = listOf(track.name, track.artistLine)
+                            .filter { it.isNotBlank() }
+                            .joinToString(" ")
+                        pending += PendingTrack(key, query)
                     }
+
+                    // Search the remaining tracks a few at a time; a large playlist used to
+                    // wait for every track one by one.
+                    pending.chunked(MATCH_CONCURRENCY).forEach { chunk ->
+                        val found = coroutineScope {
+                            chunk.map { item ->
+                                async {
+                                    val cached = queryHits[item.query]
+                                    if (cached != null) return@async item to cached
+                                    if (item.query in queryMisses) return@async item to null
+                                    val song = searchSong(item.query)
+                                    if (song == null) queryMisses.add(item.query)
+                                    else queryHits[item.query] = song
+                                    item to song
+                                }
+                            }.awaitAll()
+                        }
+                        found.forEach { (item, song) ->
+                            if (song != null) {
+                                if (existing.add(song.videoId)) {
+                                    withContext(Dispatchers.Main) {
+                                        MusicLibrary.addToPlaylist(localId, song)
+                                    }
+                                    addedHere++
+                                }
+                                known[item.trackKey] = song.videoId
+                            }
+                        }
+                        handled += chunk.size
+                        _state.value = _state.value.copy(
+                            progress = "$name: ${handled.coerceAtMost(playlist.tracks.size)} of ${playlist.tracks.size}…"
+                        )
+                    }
+
                     tracksAdded += addedHere
                     playlistsSynced++
+                    if (spotifyCount != null && spotifyCount > 0) {
+                        playlistCounts[sourceKey] = spotifyCount
+                    }
                     store.edit()
                         .putString(KEY_TRACK_MAP, JSONObject(trackMap).toString())
+                        .putString(KEY_PLAYLIST_COUNTS, JSONObject(playlistCounts).toString())
                         .apply()
                 }
 
                 store.edit()
                     .putString(KEY_PLAYLIST_MAP, JSONObject(playlistMap).toString())
                     .putString(KEY_TRACK_MAP, JSONObject(trackMap).toString())
+                    .putString(KEY_PLAYLIST_COUNTS, JSONObject(playlistCounts).toString())
                     .putLong(KEY_LAST_SYNC, System.currentTimeMillis())
                     .apply()
                 Triple(playlistsSynced, tracksAdded, tracksSeen)
@@ -168,6 +239,39 @@ object MusicSpotifyWebSync {
                 }
             )
         }
+    }
+
+    private suspend fun searchSong(query: String): Song? {
+        val found = runCatching {
+            withTimeoutOrNull(SEARCH_TIMEOUT_MS) {
+                YtMusicRepository.search(query, SearchFilter.SONGS)
+            }
+        }.getOrNull()?.getOrNull()
+        return found.orEmpty()
+            .asSequence()
+            .mapNotNull { item ->
+                when (item) {
+                    is SearchResult.TopTrack -> item.song
+                    is SearchResult.Track -> item.song
+                    else -> null
+                }
+            }
+            .firstOrNull { it.videoId.isNotBlank() }
+    }
+
+    /** Tracks already in this device's library, so they are added without a search. */
+    private fun buildLocalIndex(): Map<String, String> {
+        val index = HashMap<String, String>()
+        fun add(title: String, artist: String, videoId: String) {
+            if (title.isBlank() || videoId.isBlank()) return
+            index.putIfAbsent(localIndexKey(title, artist), videoId)
+        }
+        MusicLibrary.liked.value.forEach { add(it.title, it.artist, it.videoId) }
+        MusicLibrary.recents.value.forEach { add(it.title, it.artist, it.videoId) }
+        MusicLibrary.playlists.value.forEach { playlist ->
+            playlist.songs.forEach { add(it.title, it.artist, it.videoId) }
+        }
+        return index
     }
 
     private suspend fun ensureLocalPlaylist(
@@ -191,12 +295,26 @@ object MusicSpotifyWebSync {
     private fun trackKey(track: SpotifyTrack): String =
         "${track.name.lowercase().trim()}|${track.artistLine.lowercase().trim()}|${track.durationMs}"
 
+    private fun localIndexKey(title: String, artist: String): String =
+        "${title.lowercase().trim()}|${artist.lowercase().trim()}"
+
     private fun loadStringMap(raw: String?): MutableMap<String, String> {
         val result = mutableMapOf<String, String>()
         if (raw.isNullOrBlank()) return result
         val json = runCatching { JSONObject(raw) }.getOrNull() ?: return result
         json.keys().forEach { key ->
             json.optString(key).takeIf { it.isNotBlank() }?.let { result[key] = it }
+        }
+        return result
+    }
+
+    private fun loadIntMap(raw: String?): MutableMap<String, Int> {
+        val result = mutableMapOf<String, Int>()
+        if (raw.isNullOrBlank()) return result
+        val json = runCatching { JSONObject(raw) }.getOrNull() ?: return result
+        json.keys().forEach { key ->
+            val value = json.optInt(key, 0)
+            if (value > 0) result[key] = value
         }
         return result
     }
