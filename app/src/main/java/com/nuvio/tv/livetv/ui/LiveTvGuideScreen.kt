@@ -64,6 +64,7 @@ import androidx.compose.runtime.Composable
 import androidx.compose.runtime.CompositionLocalProvider
 import androidx.compose.runtime.DisposableEffect
 import androidx.compose.runtime.LaunchedEffect
+import androidx.compose.runtime.derivedStateOf
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableIntStateOf
 import androidx.compose.runtime.mutableLongStateOf
@@ -215,7 +216,16 @@ private fun LiveTvGuideScreenBody(
     // Full screen happens right here, TiviMate style: the same video view grows from the
     // preview window to the whole screen and back. The picture never moves to a different
     // view, which is what froze it (or left it loading) on some TVs.
-    var fullscreen by remember { mutableStateOf(false) }
+    // Decide before drawing, including when an existing guide receives another request.
+    // Multiview handoffs still wait for their profile/channel checks below.
+    val queuedSportsHandoff by com.nuvio.tv.livetv.sports.SportsWatchLaunch.singleHandoff.collectAsStateWithLifecycle()
+    var fullscreenShown by remember { mutableStateOf(false) }
+    val fullscreen by remember {
+        derivedStateOf {
+            fullscreenShown || (LiveTvFullscreen.pending && queuedSportsHandoff == null &&
+                com.nuvio.tv.livetv.sports.SportsWatchLaunch.singleHandoff.value == null)
+        }
+    }
     val sportsHandoffOnOpen = remember {
         com.nuvio.tv.livetv.sports.SportsWatchLaunch.singleHandoff.value != null
     }
@@ -245,7 +255,7 @@ private fun LiveTvGuideScreenBody(
     // Back did nothing until pressed several times).
     var fullscreenComing by remember { mutableStateOf(false) }
     fun goFullscreen() {
-        fullscreen = true
+        fullscreenShown = true
     }
     val ui by viewModel.uiState.collectAsStateWithLifecycle()
     val settings by viewModel.settings.collectAsStateWithLifecycle()
@@ -314,7 +324,6 @@ private fun LiveTvGuideScreenBody(
     }
     // Sports Multiview releases its owners before sending this key. Wait until this guide is
     // the resumed destination, then resolve the source again under the current profile rules.
-    val queuedSportsHandoff by com.nuvio.tv.livetv.sports.SportsWatchLaunch.singleHandoff.collectAsStateWithLifecycle()
     val sportsHandoff = queuedSportsHandoff
     if (sportsHandoff != null) {
         val source: com.nuvio.tv.livetv.sports.SportsWatchViewModel = hiltViewModel()
@@ -342,7 +351,7 @@ private fun LiveTvGuideScreenBody(
             LiveTvFullscreen.pending = false
             if (channel == null || source.currentProfile.value != handoff.profileId || !source.mayPlay(channel)) {
                 viewModel.playback.stop()
-                fullscreen = false
+                fullscreenShown = false
                 fullscreenComing = false
                 com.nuvio.tv.livetv.sports.SportsWatchLaunch.cancelSingleHandoff(handoff)
                 com.nuvio.tv.livetv.record.LiveTvNotice.show("This stream is no longer available for this profile.")
@@ -350,7 +359,7 @@ private fun LiveTvGuideScreenBody(
             }
             viewModel.preview(channel)
             handoff.eventId?.let(com.nuvio.tv.livetv.sports.SportsLaunch::openedFromSports)
-            fullscreen = true
+            fullscreenShown = true
             fullscreenComing = false
             com.nuvio.tv.livetv.sports.SportsWatchLaunch.finishSingleHandoff(handoff, source.currentProfile.value)
         }
@@ -685,12 +694,14 @@ private fun LiveTvGuideScreenBody(
     LaunchedEffect(fullscreenRequests) {
         if (com.nuvio.tv.livetv.sports.SportsWatchLaunch.singleHandoff.value != null) return@LaunchedEffect
         if (!LiveTvFullscreen.pending) return@LaunchedEffect
-        LiveTvFullscreen.pending = false
         fullscreenComing = true
+        fullscreenShown = true
+        LiveTvFullscreen.pending = false
         // A recording picked in Recordings or the Calendar.
         com.nuvio.tv.livetv.record.RecordingLaunch.take()?.let { r ->
             if (!viewModel.playRecording(r.recordingId, r.fromStart)) {
                 com.nuvio.tv.livetv.record.LiveTvNotice.show("That recording can't be played")
+                fullscreenShown = false
                 com.nuvio.tv.livetv.record.RecordingLaunch.takeReturn()?.let { onReturnTo(it) }
                 fullscreenComing = false
                 return@LaunchedEffect
@@ -700,8 +711,6 @@ private fun LiveTvGuideScreenBody(
         com.nuvio.tv.livetv.sports.SportsLaunch.takeCatchup()?.let { c ->
             viewModel.channelByKey(c.channelKey)?.let { ch -> viewModel.playCatchup(ch, c.program) }
         }
-        delay(150)
-        fullscreen = true
     }
     LaunchedEffect(focusGroupsOnOpen) {
         if (focusGroupsOnOpen) {
@@ -1030,6 +1039,38 @@ private fun LiveTvGuideScreenBody(
         }
         goFullscreen()
     }
+    // Remote Buttons (Settings → Remote Buttons): the jobs a button can be given in the guide,
+    // each one the same function its usual button already calls.
+    val remoteKeys = com.nuvio.tv.livetv.remote.rememberRemoteKeys(com.nuvio.tv.livetv.remote.RemoteCatalog.GUIDE)
+    remoteKeys.run = run@{ id, _ ->
+        when (id) {
+            "guide.channel_menu" -> { val ch = focusedChannel ?: return@run false; menuTarget = MenuTarget(ch, focusedBlock) }
+            "guide.fullscreen" -> {
+                if (playback.channelKey == null) return@run false
+                // The same as holding Back: remember the spot, and use the playing channel's group.
+                savedSpot = ui.selectedGroupId to focusedChannel?.key
+                scope.launch {
+                    viewModel.channelByKey(playback.channelKey)?.let { playing ->
+                        viewModel.groupToShow(playing)?.let { viewModel.selectGroup(it) }
+                    }
+                    goFullscreen()
+                }
+            }
+            "guide.search" -> { LiveTvSearchBridge.origin.value = LiveTvSearchBridge.GUIDE; onOpenNuvioSearch() }
+            "guide.previous_channel" -> { val ch = viewModel.previousChannel() ?: return@run false; playChannel(ch) }
+            "guide.page_up" -> moveRow(-8)
+            "guide.page_down" -> moveRow(8)
+            "guide.groups" -> focusGroups()
+            "guide.favorites" -> viewModel.selectGroup(ChannelGroup.FAVORITES)
+            "guide.now" -> resetToNow()
+            "guide.options" -> { runCatching { guideGearFocus.requestFocus() } }
+            "guide.multiview_add" -> { val ch = focusedChannel ?: return@run false; com.nuvio.tv.livetv.multiview.MultiviewQueue.addAndAnnounce(ch.key) }
+            "guide.favorite_toggle" -> { val ch = focusedChannel ?: return@run false; viewModel.toggleFavorite(ch) }
+            "guide.play" -> { val ch = focusedChannel ?: return@run false; viewModel.preview(ch); goFullscreen() }
+            else -> return@run false
+        }
+        true
+    }
     FrameMeter("Guide")
     androidx.compose.runtime.CompositionLocalProvider(
         LocalShowDetails provides { key, p -> viewModel.details(key, p) },
@@ -1064,7 +1105,9 @@ private fun LiveTvGuideScreenBody(
                 // Play/Pause on the remote: straight to full screen on what's playing. Works on
                 // every remote, including ones that can't report a held Back button.
                 if (e.type == KeyEventType.KeyDown && playingNow && e.nativeKeyEvent.repeatCount == 0 &&
-                    (e.key == Key.MediaPlayPause || e.key == Key.MediaPlay)
+                    (e.key == Key.MediaPlayPause || e.key == Key.MediaPlay) &&
+                    // Unless the user gave Play/Pause another job here (Remote Buttons).
+                    !(gridFocused && remoteKeys.overrides(e.nativeKeyEvent))
                 ) {
                     returnToPlaying()
                     return@onPreviewKeyEvent true
@@ -1485,6 +1528,10 @@ private fun LiveTvGuideScreenBody(
                                     }
                                     return@onPreviewKeyEvent true
                                 }
+                                // Remote Buttons: a button the user changed does its new job (others carry on below).
+                                if (!reorderActive && !visibilityMode && logoPickerFor == null && epgPickerFor == null &&
+                                    (remoteKeys.onKey(event.nativeKeyEvent, nav = false) || remoteKeys.onKey(event.nativeKeyEvent, nav = true))
+                                ) return@onPreviewKeyEvent true
                                 // Remember Up/Down presses: some remotes (clickable rings, e.g. on some
                                 // JVC Google TVs) also send OK with them, which would play the
                                 // highlighted channel while just scrolling.
@@ -1678,7 +1725,8 @@ private fun LiveTvGuideScreenBody(
                                             windowStart = windowStart,
                                             now = now,
                                             isFavorite = if (favoritesMode) ch.key in pendingFavorites else ch.key in user.favorites,
-                                            isPlaying = ch.key == playback.channelKey,
+                                            // Preview window off: nothing plays behind the guide, so mark the channel last watched.
+                                            isPlaying = ch.key == (playback.channelKey ?: if (!settings.showPreview) user.lastChannelKey else null),
                                             focusColumn = if (index == row && (gridFocused || epgPickerFor != null || logoPickerFor != null) && !nameFocus && !reorderActive) column else null,
                                             focusedBlock = if (index == row) focusedBlock else null,
                                             visible = if (visibilityMode) ch.key !in pendingHidden else null,
@@ -2025,9 +2073,13 @@ private fun LiveTvGuideScreenBody(
             LaunchedEffect(fc?.key, gridFocused) {
                 if (gridFocused && fc != null && fc.key != ch.key) epgPickerFor = fc
             }
+            // Only the guides switched on for this channel's playlist (its Guides settings).
+            val chSources = remember(epgSources, ch.sourceId) {
+                epgSources.filter { it.playlistIds == null || ch.sourceId in it.playlistIds }
+            }
             EpgSidePanel(
                 channel = ch,
-                sources = epgSources,
+                sources = chSources,
                 current = user.epgOverrides[ch.key],
                 automatic = epgAutoMatches[ch.key],
                 loading = status.loading || epgListsLoading,
@@ -2421,19 +2473,18 @@ private fun LiveTvGuideScreenBody(
                     if (recordingReturn != null || viewModel.catchup.value?.recordingId != null) {
                         // A recording from Recordings / the Calendar: its spot is kept, and Back goes back there.
                         viewModel.stopRecordingPlayback()
-                        fullscreen = false
+                        fullscreenShown = false
                         if (recordingReturn != null) onReturnTo(recordingReturn) else exitFullscreenTick++
                     } else if (com.nuvio.tv.livetv.sports.SportsLaunch.takeReturnToSports()) {
-                        // Opened from the Sports page: back to the game you picked there.
-                        fullscreen = false
+                        // Keep the picture full screen throughout the transition back to Sports.
                         onReturnToSports()
                     } else {
                         stopIfNoPreview()
-                        fullscreen = false; exitFullscreenTick++
+                        fullscreenShown = false; exitFullscreenTick++
                     }
                 },
-                onFindInNuvio = { com.nuvio.tv.livetv.record.RecordingLaunch.clearReturn(); com.nuvio.tv.livetv.sports.SportsLaunch.clearReturn(); fullscreenComing = false; fullscreen = false; exitFullscreenTick++; onFindInNuvio() },
-                onBackToGroups = { com.nuvio.tv.livetv.record.RecordingLaunch.clearReturn(); com.nuvio.tv.livetv.sports.SportsLaunch.clearReturn(); fullscreenComing = false; stopIfNoPreview(); fullscreen = false; savedSpot = null; exitFullscreenTick++; focusGroups() },
+                onFindInNuvio = { com.nuvio.tv.livetv.record.RecordingLaunch.clearReturn(); com.nuvio.tv.livetv.sports.SportsLaunch.clearReturn(); fullscreenComing = false; fullscreenShown = false; exitFullscreenTick++; onFindInNuvio() },
+                onBackToGroups = { com.nuvio.tv.livetv.record.RecordingLaunch.clearReturn(); com.nuvio.tv.livetv.sports.SportsLaunch.clearReturn(); fullscreenComing = false; stopIfNoPreview(); fullscreenShown = false; savedSpot = null; exitFullscreenTick++; focusGroups() },
                 embedded = true,
                 onOpenSettings = onOpenSettings,
                 onOpenSportsMultiview = { panes -> onOpenSportsMultiview(panes, playback.channelKey) },
@@ -4576,7 +4627,7 @@ object LiveTvFullscreen {
     /** True while Live TV is full screen (the loading bubble stays out of the way). */
     val active = kotlinx.coroutines.flow.MutableStateFlow(false)
     val requests = kotlinx.coroutines.flow.MutableStateFlow(0)
-    @Volatile var pending = false
+    var pending by mutableStateOf(false)
     fun request() {
         pending = true
         requests.value++

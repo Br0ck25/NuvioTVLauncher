@@ -681,6 +681,7 @@ dependencies {
     androidTestImplementation(libs.androidx.test.ext.junit)
     androidTestImplementation(libs.androidx.test.runner)
     testImplementation("junit:junit:4.13.2")
+    testImplementation("org.robolectric:robolectric:4.17")
     testImplementation(kotlin("test-junit"))
     testImplementation("org.json:json:20240303")
     // Icon pack tests parse appfilter.xml; Android's XmlPullParser is not on the JVM test classpath.
