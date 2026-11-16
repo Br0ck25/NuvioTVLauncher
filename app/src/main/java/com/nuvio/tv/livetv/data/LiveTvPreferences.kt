@@ -1949,7 +1949,11 @@ class LiveTvPreferences @Inject constructor(
                     sourceType = o.optString("sourceType").ifBlank { o.optString("providerKind").ifBlank { if (o.optJSONObject("stalkerConfig") != null || o.optJSONObject("stalker") != null) "stalker" else "" } },
                     stalkerConfig = (o.optJSONObject("stalkerConfig") ?: o.optJSONObject("stalker"))?.let { value ->
                         runCatching { com.nuvio.stalker.StalkerConfig.fromJson(kotlinx.serialization.json.Json.parseToJsonElement(value.toString()) as kotlinx.serialization.json.JsonObject) }.getOrNull()
-                    }
+                    },
+                    linkServer = o.optString("linkServer"),
+                    linkUsername = o.optString("linkUsername"),
+                    linkPassword = o.optString("linkPassword"),
+                    vodInPlaylist = o.optBoolean("vodInPlaylist", false)
                 )
             }
         }.getOrDefault(emptyList())
@@ -1966,6 +1970,8 @@ class LiveTvPreferences @Inject constructor(
                     .put("useEmbeddedEpg", s.useEmbeddedEpg)
                     .put("xtreamServer", s.xtreamServer).put("xtreamUsername", s.xtreamUsername)
                     .put("xtreamPassword", s.xtreamPassword)
+                    .put("linkServer", s.linkServer).put("linkUsername", s.linkUsername)
+                    .put("linkPassword", s.linkPassword).put("vodInPlaylist", s.vodInPlaylist)
                     .put("lastUpdatedMs", s.lastUpdatedMs).put("lastError", s.lastError ?: "")
                     .put("channelCount", s.channelCount)
                     .put("importVod", s.importVod)
