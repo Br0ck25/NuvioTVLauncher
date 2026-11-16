@@ -47,9 +47,9 @@ class SpotifyLoginActivity : Activity() {
     companion object {
         private const val LOGIN_URL =
             "https://accounts.spotify.com/login?continue=https%3A%2F%2Fopen.spotify.com%2F"
-        private const val DESKTOP_USER_AGENT =
-            "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 " +
-                "(KHTML, like Gecko) Chrome/140.0.0.0 Safari/537.36"
+        private const val MOBILE_USER_AGENT =
+            "Mozilla/5.0 (Linux; Android 9; AFTALMO) AppleWebKit/537.36 " +
+                "(KHTML, like Gecko) Chrome/138.0.0.0 Mobile Safari/537.36"
         private const val POLL_MS = 1_500L
         private const val TIMEOUT_MS = 5 * 60 * 1000L
     }
@@ -100,7 +100,9 @@ class SpotifyLoginActivity : Activity() {
             settings.domStorageEnabled = true
             settings.databaseEnabled = true
             settings.cacheMode = WebSettings.LOAD_DEFAULT
-            settings.userAgentString = DESKTOP_USER_AGENT
+            settings.userAgentString = MOBILE_USER_AGENT
+            settings.useWideViewPort = true
+            settings.loadWithOverviewMode = true
             settings.mediaPlaybackRequiresUserGesture = true
             CookieManager.getInstance().setAcceptCookie(true)
             CookieManager.getInstance().setAcceptThirdPartyCookies(this, true)
@@ -171,7 +173,13 @@ class SpotifyLoginActivity : Activity() {
         ))
 
         setContentView(root)
-        webView.loadUrl(LOGIN_URL)
+        // Start from a clean guest session; a stale sp_dc from an earlier attempt can make
+        // Spotify's login form fail after the email step.
+        runCatching { android.webkit.WebStorage.getInstance().deleteAllData() }
+        webView.clearCache(true)
+        CookieManager.getInstance().removeAllCookies {
+            webView.loadUrl(LOGIN_URL)
+        }
         handler.postDelayed(poll, POLL_MS)
         handler.postDelayed(timeout, TIMEOUT_MS)
 
