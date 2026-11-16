@@ -21,8 +21,8 @@ jobs:
       - name: Unzip kit
         run: |
           if [ ! -f nuvio-livetv-kit.zip ]; then
-            echo "nuvio-livetv-kit.zip not found in the repo root" >&2
-            exit 1
+            echo "No kit zip in this checkout; nothing to apply."
+            exit 0
           fi
           # Workflow files can't be written by GITHUB_TOKEN, so .github/ is skipped here.
           unzip -o nuvio-livetv-kit.zip -x ".github/*" "nuvio-livetv.patch"
