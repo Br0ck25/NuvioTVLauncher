@@ -98,6 +98,7 @@ object MusicSpotifyLink {
             _state.update {
                 it.copy(
                     running = false,
+                    url = null,
                     error = "Spotify linking isn't set up in this build. Add SPOTIFY_CLIENT_ID and " +
                         "SPOTIFY_LINK_BASE_URL, then build again."
                 )
@@ -115,6 +116,7 @@ object MusicSpotifyLink {
             _state.update {
                 it.copy(
                     running = false,
+                    url = null,
                     error = "No network address found. Connect the TV to Wi-Fi or Ethernet."
                 )
             }
@@ -159,6 +161,7 @@ object MusicSpotifyLink {
             _state.update {
                 it.copy(
                     running = false,
+                    url = null,
                     error = error.message ?: "Couldn't start the Spotify link."
                 )
             }
@@ -168,7 +171,7 @@ object MusicSpotifyLink {
     @Synchronized
     fun stop() {
         stopServer()
-        _state.update { it.copy(running = false) }
+        _state.update { it.copy(running = false, url = null) }
     }
 
     @Synchronized
@@ -279,6 +282,7 @@ object MusicSpotifyLink {
             _state.update {
                 it.copy(
                     running = false,
+                    url = null,
                     busy = false,
                     error = if (error == "access_denied") {
                         "Spotify access was denied. Nothing was linked."
@@ -294,6 +298,7 @@ object MusicSpotifyLink {
             _state.update {
                 it.copy(
                     running = false,
+                    url = null,
                     busy = false,
                     error = "The Spotify answer did not match this TV. Show a new QR code."
                 )
@@ -321,6 +326,7 @@ object MusicSpotifyLink {
             _state.update {
                 it.copy(
                     running = false,
+                    url = null,
                     busy = false,
                     error = "Spotify didn't accept the link. Show a new QR code."
                 )
