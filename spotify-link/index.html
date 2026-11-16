@@ -75,7 +75,12 @@
   try {
     sessionStorage.setItem("spotify_tv", tv);
     sessionStorage.setItem("spotify_state", state);
-  } catch (e) { /* sessionStorage can be unavailable; the callback then asks for a new QR. */ }
+  } catch (e) { /* sessionStorage can be unavailable; the cookie below is the fallback. */ }
+  try {
+    var cookie = "; Max-Age=600; Path=/; Secure; SameSite=Lax";
+    document.cookie = "spotify_tv=" + encodeURIComponent(tv) + cookie;
+    document.cookie = "spotify_state=" + encodeURIComponent(state) + cookie;
+  } catch (e) { /* cookies can be unavailable too; the TV still validates the state. */ }
 
   var authorize = "https://accounts.spotify.com/authorize" +
     "?response_type=code" +

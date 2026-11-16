@@ -62,12 +62,31 @@
     }
   }
 
+  function readCookie(name) {
+    var prefix = name + "=";
+    var parts = document.cookie ? document.cookie.split("; ") : [];
+    for (var i = 0; i < parts.length; i++) {
+      if (parts[i].indexOf(prefix) === 0) {
+        try { return decodeURIComponent(parts[i].substring(prefix.length)); } catch (e) { return null; }
+      }
+    }
+    return null;
+  }
+
+  function clearCookie(name) {
+    try {
+      document.cookie = name + "=; Max-Age=0; Path=/; Secure; SameSite=Lax";
+    } catch (e) { /* ignore */ }
+  }
+
   var tv = null;
   var expectedState = null;
   try {
     tv = sessionStorage.getItem("spotify_tv");
     expectedState = sessionStorage.getItem("spotify_state");
   } catch (e) { /* handled below */ }
+  if (!tv) tv = readCookie("spotify_tv");
+  if (!expectedState) expectedState = readCookie("spotify_state");
 
   if (!tv || !expectedState) {
     fail("This page lost the TV address. Show a new QR code on the TV and scan it again.");
@@ -97,6 +116,8 @@
     sessionStorage.removeItem("spotify_state");
     sessionStorage.removeItem("spotify_tv");
   } catch (e) { /* ignore */ }
+  clearCookie("spotify_tv");
+  clearCookie("spotify_state");
   location.replace(target);
 })();
 </script>
