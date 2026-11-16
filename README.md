@@ -154,6 +154,20 @@ It needs **Android 7.0 or newer** (Fire OS 6 or later).
 
 ---
 
+## Performance
+
+Nuvio One ships with a baseline profile, so Android precompiles the hot code paths for Home, OneTube, Music, Live TV and the player when the app is installed or updated. There is nothing to set up.
+
+If you sideload the APK and want the extra step from the community "make sideloaded Nuvio faster" guide, you can force a full AOT compile on the TV:
+
+```sh
+adb shell cmd package compile -m speed -f app.onetube.tv
+```
+
+This is optional, only affects that device, and has to be re-run after every update. `scripts/adb-speed-compile.sh` and `scripts/adb-speed-compile.ps1` wrap the command and print the result. See **[docs/PERFORMANCE.md](docs/PERFORMANCE.md)** for details.
+
+---
+
 ## Getting started
 
 1. Open the app and **sign in with your Nuvio account** (or skip and add addons yourself).

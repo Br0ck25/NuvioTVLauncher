@@ -109,6 +109,11 @@ The generator collects the startup portion of the app (the launch and the settle
 screen) with the startup flag, and the five journeys without it. The startup profile therefore
 carries the launch path only, the merged profile carries the rules of all five journeys.
 
+The fork-only sections are covered by manual wildcard rules at the end of
+`app/src/main/baseline-prof.txt`: OneTube, Music, Live TV, the shared player, the shared Compose
+components, the `com.music.bitchord` and `com.liskovsoft` engines, and the Media3 playback
+packages. The generator union-merges with that file, so the rules survive a profile regeneration.
+
 Regenerating the profile rewrites the two generated files, so they have to be reviewed (and
 usually restored) when the profile is not the change under test.
 
