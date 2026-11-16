@@ -7,7 +7,7 @@ Nuvio One ships with a baseline profile, so Android precompiles the hot code pat
 | Piece | What it does |
 |---|---|
 | `app/src/main/baseline-prof.txt` | ART profile rules for the Home screen, navigation, the player, settings, OneTube, Music, Live TV and Media3 playback. |
-| `app/src/main/generated/baselineProfiles/startup-prof.txt` | The launch path, compiled during startup. |
+| `app/src/main/generated/baselineProfiles/startup-prof.txt` | The launch path, precompiled at install. |
 | `androidx.profileinstaller` | Installs the profile into ART after the APK is installed. |
 | `assets/updater_dm/*.dm` | The in-app updater passes the profile to the package installer, so an update keeps the compiled state. |
 
@@ -17,7 +17,8 @@ The compiled profile is stored in the APK as `assets/dexopt/baseline.prof` and `
 
 - The upstream journeys: Home, fast scroll, detail, player, settings and library.
 - OneTube (`com.nuvio.tv.youtube`), Music (`com.nuvio.tv.music`), Live TV (`com.nuvio.tv.livetv`) and the shared player (`com.nuvio.tv.core.player`).
-- The shared Compose components and the Media3 ExoPlayer, common, datasource, TS and MP4 extractor packages used by Live TV, OneTube and Music.
+- The Music engine (`com.music.bitchord`) and the YouTube engine (`com.liskovsoft.youtubeapi`, `mediaserviceinterfaces`, `sharedutils`, `googlecommon`).
+- The shared Compose components, the sync layer and the Media3 ExoPlayer, common, datasource, TS and MP4 extractor packages used by Live TV, OneTube and Music.
 
 ## Optional: full AOT compilation
 
