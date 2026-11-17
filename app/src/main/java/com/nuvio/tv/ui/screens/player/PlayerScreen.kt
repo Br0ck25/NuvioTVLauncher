@@ -2474,6 +2474,9 @@ private fun VlcPlayerSurface(
         viewModel.attachVlcView(vlcView)
         onDispose {
             viewModel.attachVlcView(null)
+            // Also release the view itself: attachVlcView(null) can return early if the
+            // controller already dropped its reference, and this call is a no-op then.
+            vlcView.releasePlayer()
         }
     }
 

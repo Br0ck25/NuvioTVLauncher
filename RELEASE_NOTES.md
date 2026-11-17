@@ -14,6 +14,7 @@
 - Translated YouTube captions: the background now wraps the caption text instead of spanning the whole screen.
 - OneTube keeps its first poster clear of the TV's overscan and the side menu, so cards are no longer clipped on the left after switching sections on sets like Hisense.
 - A stuck OneTube video lookup now gives up after about a minute and shows a retry message instead of leaving the spinner up for several minutes. Normal lookups, which take a few seconds, are unchanged.
+- VLC now stops and releases its native player when you leave playback. Repeated VLC use no longer leaves a decoder running in the background, which could build up memory and crash the app.
 
 ## Music
 

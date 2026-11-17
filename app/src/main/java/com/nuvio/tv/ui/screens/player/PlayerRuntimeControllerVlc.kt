@@ -16,9 +16,15 @@ internal fun PlayerRuntimeController.isUsingVlcEngine(): Boolean {
 internal fun PlayerRuntimeController.attachVlcView(view: NuvioVlcSurfaceView?) {
     Log.i(PlayerRuntimeController.TAG, "attachVlcView view=${view != null} prepared=$vlcMediaLoadPrepared url=${currentStreamUrl.isNotBlank()}")
     if (vlcView === view) return
+    if (view == null) {
+        // The player screen is leaving. Release the native player here: the composable's
+        // onDispose runs before the controller's own release, so dropping the view without
+        // stopping it used to leak a MediaPlayer and its decoder on every VLC exit.
+        vlcView?.releasePlayer()
+        vlcView = null
+        return
+    }
     vlcView = view
-
-    if (view == null) return
 
     var lastLoggedState: NuvioVlcSurfaceView.State? = null
     view.onStateChanged = { state ->

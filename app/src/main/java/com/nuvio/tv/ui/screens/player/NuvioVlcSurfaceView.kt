@@ -2,6 +2,7 @@ package com.nuvio.tv.ui.screens.player
 
 import android.content.Context
 import android.net.Uri
+import android.os.Looper
 import android.os.SystemClock
 import android.util.Log
 import android.view.ViewGroup
@@ -497,11 +498,20 @@ class NuvioVlcSurfaceView @JvmOverloads constructor(
     }
 
     fun releasePlayer() {
+        // libVLC's surface and player calls belong on the thread that owns the views.
+        if (Looper.myLooper() != Looper.getMainLooper()) {
+            post { releasePlayer() }
+            return
+        }
+        if (!initialized && mediaPlayer == null) return
         Log.i(TAG, "releasePlayer")
         requestedUrl = null
         runCatching { mediaPlayer?.setEventListener(null) }
         runCatching { mediaPlayer?.stop() }
-        runCatching { mediaPlayer?.detachViews() }
+        if (viewsAttached) {
+            runCatching { mediaPlayer?.detachViews() }
+            viewsAttached = false
+        }
         runCatching { mediaPlayer?.release() }
         mediaPlayer = null
         // The process-wide LibVLC stays alive: its plugin startup is the slow part and the
