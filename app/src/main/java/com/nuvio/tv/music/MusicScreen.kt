@@ -350,9 +350,11 @@ fun MusicScreen(
             MusicTopNavigation(
                 selectedTab = state.tab,
                 onTabSelected = ::selectTab,
+                playback = playback,
                 accountName = account.accountName,
                 accountAvatar = account.accounts.firstOrNull { it.selected }?.avatar,
                 partyRunning = party.running,
+                onOpenNowPlaying = { showNowPlaying = true },
                 onOpenAccount = { showAccount = true },
                 onOpenSettings = { showSettings = true },
                 onOpenParty = { showParty = true },
@@ -623,19 +625,6 @@ fun MusicScreen(
                         )
                     }
                 }
-                if (playback.song != null) {
-                    NowPlayingChip(
-                        playback = playback,
-                        onClick = { showNowPlaying = true },
-                        modifier = Modifier
-                            .align(Alignment.BottomEnd)
-                            .padding(
-                                end = 24.dp,
-                                // Keep the temporary Spotify sync pill above it, not on top.
-                                bottom = if (spotifySync.busy) 76.dp else 24.dp
-                            )
-                    )
-                }
             }
         }
     }
@@ -764,9 +753,11 @@ private fun MusicOverlayDialog(
 private fun MusicTopNavigation(
     selectedTab: MusicTab,
     onTabSelected: (MusicTab) -> Unit,
+    playback: MusicPlayer.State,
     accountName: String?,
     accountAvatar: String?,
     partyRunning: Boolean,
+    onOpenNowPlaying: () -> Unit,
     onOpenAccount: () -> Unit,
     onOpenSettings: () -> Unit,
     onOpenParty: () -> Unit,
@@ -790,10 +781,21 @@ private fun MusicTopNavigation(
         Box(
             Modifier
                 .fillMaxWidth()
-                .height(68.dp)
+                .height(96.dp)
                 .padding(horizontal = 24.dp)
         ) {
-            MusicBrand(Modifier.align(Alignment.CenterStart))
+            Column(
+                modifier = Modifier.align(Alignment.CenterStart),
+                verticalArrangement = Arrangement.spacedBy(6.dp)
+            ) {
+                MusicBrand()
+                if (playback.song != null) {
+                    NowPlayingChip(
+                        playback = playback,
+                        onClick = onOpenNowPlaying
+                    )
+                }
+            }
             MusicNavigationPill(
                 selectedTab = selectedTab,
                 onTabSelected = onTabSelected,
