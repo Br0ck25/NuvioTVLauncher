@@ -3544,7 +3544,7 @@ private fun GroupColumn(
                             groupHoldStartedAt = native.downTime
                             groupHoldJumped = false
                         } else if (!groupHoldJumped && groupHoldKey == e.key &&
-                            native.eventTime - groupHoldStartedAt >= 700L
+                            native.eventTime - groupHoldStartedAt >= 1_800L
                         ) {
                             groupHoldJumped = true
                             jumpToGroup(
@@ -3557,7 +3557,7 @@ private fun GroupColumn(
                     } else if (e.type == KeyEventType.KeyUp) {
                         val wasJumped = groupHoldJumped
                         val heldLongEnough = !wasJumped && groupHoldKey == e.key &&
-                            e.nativeKeyEvent.eventTime - groupHoldStartedAt >= 700L
+                            e.nativeKeyEvent.eventTime - groupHoldStartedAt >= 1_800L
                         groupHoldKey = null
                         groupHoldJumped = false
                         when {
