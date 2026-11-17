@@ -1460,7 +1460,7 @@ fun PlayerScreen(
                         }
                     }
 
-                    if (!postPlayRecommendationState.isVisible) {
+                    if (!postPlayRecommendationState.isVisible && !youtubeCaptionTranslated) {
                         val styledSubtitleCues by viewModel.controller.styledSubtitles.cues.collectAsState()
                         val fallbackSubtitleTextSizePx = with(LocalDensity.current) {
                             (SUBTITLE_BASE_TEXT_SP * renderedSubtitleStyle.size / 100f).sp.toPx()

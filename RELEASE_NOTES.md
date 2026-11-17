@@ -1,51 +1,26 @@
-# Nuvio One 1.2.0-beta.1.4
+# Nuvio One 1.2.0-beta.1.16
 
-## Four channels at once
+## Subtitles
 
-Multiview is new. Open it from the guide's top bar, from the Multiview button in the player, or from a channel's menu, then fill up to four panes. Pick a simple layout for one, two, three or four streams, or one large pane with smaller ones beside it. The picker uses your own channel groups and has a Sports tab for games that are on now.
+- Fixed subtitles going blank when a background colour, custom font, or drop shadow was selected. The styled subtitle overlay is restored after an upstream merge dropped it.
+- Fixed Croatian/Serbian translated captions not showing. Media3 reports `hbs-hrv`/`hbs-srp` while YouTube uses `hr`/`sr`; the player now matches those codes.
+- Fixed duplicate subtitles when a translated YouTube track (marked `*`) is selected: the stale original cue is no longer drawn above the translated line.
+- Translated captions no longer stop early: if YouTube's translated file ends before the video, the player falls back to the locally generated 60-second segments, retries failed segments, and keeps the caption loop alive after transient errors.
+- Caption language filtering understands the same aliases, so Croatian/Serbian tracks are kept instead of filtered out.
 
-Only the selected pane plays sound. A pane that loses its stream reconnects on its own, and a channel that won't start can fall back to a backup copy.
+## Music & Spotify
 
-## Live TV
+- Link Spotify from Music → Integrations with the desktop-style web login (mobile user agent, D-pad cursor, cursor hides with the keyboard).
+- Spotify **Liked Songs** now go into the app's **Liked Songs**; Spotify playlists become their own local playlists. The old “Spotify Liked Songs” playlist is migrated into Liked Songs and removed.
+- Songs appear in the library while syncing; Music Home and Explore are cached so they open quickly.
+- Sync backs off when YouTube Music rate-limits: one match at a time, 600 ms pause, a 20 s wait on the first 403, then a clear message. Tracks already added are kept.
+- Bottom-right sync status pill and friendly rate-limit errors across Music Home, Explore, Search and detail.
+- Last.fm sign-in is configured in this build.
 
-- Stalker and Ministra portals can now be added next to M3U, Xtream and add-on sources, for Live TV and On Demand.
-- **Add from phone** shows a QR code, so playlist, Xtream login and guide details can be typed on a phone instead of with the TV remote.
-- The guide opens from its saved copy straight away and refreshes in the background.
-- Playlists load faster and take less memory.
-- Recording can stop when you stop it, when the programme ends, or at a time you choose. Record and Record series are also in overlay mode (hold OK).
-- Channel names can use two lines, and the play bar can show the group name.
-- The programme header now includes the guide's sub-title, so a sports listing can show the actual match-up instead of a generic title.
-- Search puts the closest matches first and prefers the best-quality copy of a channel.
-- Channel and On Demand group management has Select all and Clear.
-- Time shifts go up to ±24 hours.
-- The Live TV screens are translated into German, French, Spanish, Portuguese, Italian, Dutch, Polish, Turkish and Russian.
+## Home / Live TV
 
-## Sports
+- On Demand Continue Watching row on Home, with a toggle under **Settings → Live TV → On Demand**. It uses the existing On Demand progress and removes those items from the normal Continue Watching row while active.
 
-- Final-score alerts for the teams you follow.
-- Alerts for a single game, even when neither team is followed.
-- Live games are matched to channels faster.
-- The league picker has search and groups leagues by sport.
-- Golf, racing, tennis and combat events appear in the Calendar.
+## Playback
 
-## Player and OneTube
-
-- Seek previews now work in OneTube, as well as movies, series, catch-up, recordings, sports replays and live TV rewind. They are on by default unless the device is low on memory, and can be switched off under Settings → Playback.
-- Nuvio 1.2.0 adds subtitle font and style choices, chapters, a setting for what Continue Watching opens, and automatic fallback to the next source when one fails.
-
-## Fixes
-
-- Guide reloads and guide matching getting stuck.
-- Disabled playlists coming back.
-- Playlists rejected by their provider now load.
-- The channel panel now closes after your Info Bar Stays For time.
-- Pinned scoreboards in full-screen Live TV.
-- On Demand progress and Continue Watching from page/search playback.
-- Record series repeats and cancelled episodes.
-- Recordings saved without a start time.
-- Sports channel fixes surviving searches and provider renames; fight cards with only a date no longer vanish.
-- 60 fps detection after a 24 or 50 fps channel.
-- Multiview panes failing to start on this Media3 version.
-- OneTube seek previews when YouTube supplies the storyboard late.
-
-
+- Hardware video decoder failures retry once with the platform software decoder; `ERROR_CODE_DECODING_RESOURCES_RECLAIMED` is treated as retryable; decoder errors show a short message. Seek thumbnails default off again on low-end boxes to avoid stealing the only hardware decoder.
