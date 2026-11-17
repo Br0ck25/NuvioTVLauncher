@@ -18,6 +18,8 @@ data class ResolvedMusicStream(
     val url: String,
     val headers: Map<String, String> = emptyMap(),
     val mimeType: String? = null,
+    /** The addon that served this stream, when it came from one; null for YouTube. */
+    val sourceName: String? = null,
     val lookedUpAt: Long = SystemClock.elapsedRealtime()
 ) {
     /** YouTube's stream links stop working after a few hours. */
@@ -146,7 +148,8 @@ object MusicStreamResolver {
         val resolved = ResolvedMusicStream(
             videoId = videoId,
             url = stream.url,
-            mimeType = stream.resolvedMimeType()
+            mimeType = stream.resolvedMimeType(),
+            sourceName = stream.sourceName
         )
         if (cache.size >= 64) cache.clear()
         cache[videoId] = resolved

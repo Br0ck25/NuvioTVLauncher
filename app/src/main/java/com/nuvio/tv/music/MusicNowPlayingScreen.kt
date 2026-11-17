@@ -357,12 +357,18 @@ internal fun MusicNowPlayingScreen(
                         Modifier.weight(1.08f).fillMaxHeight(),
                         verticalArrangement = Arrangement.Center
                     ) {
+                        val source = song?.let {
+                            state.playbackSource?.takeIf { name -> name.isNotBlank() }
+                                ?: when {
+                                    it.videoId.startsWith("webdav:") -> "WebDAV"
+                                    it.videoId.startsWith("navidrome:") -> "Navidrome"
+                                    it.localUri != null || it.videoId.startsWith("local:") -> "This device"
+                                    else -> "YouTube"
+                                }
+                        }
                         Text(
-                            text = if (song?.localUri != null) {
-                                "PLAYING FROM THIS DEVICE"
-                            } else {
-                                "PLAYING FROM NUVIO MUSIC"
-                            },
+                            text = source?.let { "PLAYING FROM ${it.uppercase()}" }
+                                ?: "PLAYING FROM NUVIO MUSIC",
                             color = MusicPalette.accentTeal,
                             fontSize = 10.sp,
                             letterSpacing = 1.8.sp,

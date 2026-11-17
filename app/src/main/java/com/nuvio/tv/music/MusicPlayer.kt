@@ -62,6 +62,8 @@ object MusicPlayer {
         val index: Int = -1,
         val isPlaying: Boolean = false,
         val isBuffering: Boolean = false,
+        /** Where the current stream came from: YouTube, an addon name, WebDAV, Navidrome, a download. */
+        val playbackSource: String? = null,
         val positionMs: Long = 0L,
         val durationMs: Long = 0L,
         val repeatMode: RepeatMode = RepeatMode.OFF,
@@ -645,6 +647,7 @@ object MusicPlayer {
                     song = song,
                     isBuffering = true,
                     isPlaying = false,
+                    playbackSource = sourceLabel(song),
                     positionMs = 0L,
                     durationMs = song.durationMillis(),
                     error = null,
@@ -667,7 +670,9 @@ object MusicPlayer {
                     startFadeIn()
                     MusicLibrary.recordPlayed(song)
                 }
-                _state.update { it.copy(isBuffering = false) }
+                _state.update {
+                    it.copy(isBuffering = false, playbackSource = sourceLabel(song))
+                }
                 prefetchNext()
                 return@launch
             }
@@ -684,7 +689,9 @@ object MusicPlayer {
                     startFadeIn()
                     MusicLibrary.recordPlayed(song)
                 }
-                _state.update { it.copy(isBuffering = false) }
+                _state.update {
+                    it.copy(isBuffering = false, playbackSource = "Download")
+                }
                 prefetchNext()
                 return@launch
             }
@@ -701,7 +708,9 @@ object MusicPlayer {
                         startFadeIn()
                         MusicLibrary.recordPlayed(song)
                     }
-                    _state.update { it.copy(isBuffering = false) }
+                    _state.update {
+                        it.copy(isBuffering = false, playbackSource = sourceLabel(song, stream))
+                    }
                     prefetchNext()
                 },
                 onFailure = { error ->
@@ -723,6 +732,19 @@ object MusicPlayer {
      * The addon search runs beside the YouTube lookup and only gets a short window: if it has not
      * found a confident match by then, YouTube starts as usual. Setting is off by default.
      */
+    /** The real source of the current stream, for the Now Playing tagline. */
+    private fun sourceLabel(song: Song, stream: ResolvedMusicStream? = null): String {
+        stream?.sourceName?.takeIf { it.isNotBlank() }?.let { return it }
+        val id = song.videoId
+        return when {
+            id.startsWith("webdav:") -> "WebDAV"
+            id.startsWith("navidrome:") -> "Navidrome"
+            id.startsWith("local:") || song.localUri != null -> "This device"
+            MusicAddonRegistry.isAddonTrack(id) -> MusicAddonRegistry.sourceName(id) ?: "Addon"
+            else -> "YouTube"
+        }
+    }
+
     private suspend fun resolveTrackStream(song: Song): Result<ResolvedMusicStream> =
         withContext(Dispatchers.IO) {
             if (!MusicSettings.preferAddonSources.value ||
@@ -746,7 +768,8 @@ object MusicPlayer {
                     ResolvedMusicStream(
                         videoId = song.videoId,
                         url = substitute.url,
-                        mimeType = substitute.resolvedMimeType()
+                        mimeType = substitute.resolvedMimeType(),
+                        sourceName = substitute.sourceName
                     )
                 )
             } else {

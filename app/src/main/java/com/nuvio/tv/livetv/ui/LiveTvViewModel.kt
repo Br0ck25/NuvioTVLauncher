@@ -160,6 +160,8 @@ class LiveTvViewModel @Inject constructor(
     val now: StateFlow<Long> = _now
 
     private val searchQuery = MutableStateFlow("")
+    /** The group to return to when the user leaves a search result. */
+    private var searchReturnGroup: String? = null
 
     /**
      * Guide Time Offset: each channel's listings as last moved, by the original list. Declared
@@ -278,6 +280,10 @@ class LiveTvViewModel @Inject constructor(
 
     fun selectGroup(id: String) {
         session.currentGroupId.value = id
+        if (id != ChannelGroup.SEARCH) {
+            searchQuery.value = ""
+            searchReturnGroup = null
+        }
     }
 
     // ------------------------------------------------------------ sleep timer, quality
@@ -324,8 +330,18 @@ class LiveTvViewModel @Inject constructor(
     fun checkPin(pin: String) = com.nuvio.tv.livetv.parental.ParentalControls.checkPin(pin, settings.value)
 
     fun setSearchQuery(q: String) {
+        val previous = session.currentGroupId.value
+        if (previous != null && previous != ChannelGroup.SEARCH) searchReturnGroup = previous
         searchQuery.value = q
         session.currentGroupId.value = ChannelGroup.SEARCH
+    }
+
+    /** Back from search results: return to the group the listener came from. */
+    fun clearSearch(returnToGroup: Boolean = true) {
+        searchQuery.value = ""
+        val target = if (returnToGroup) searchReturnGroup else null
+        session.currentGroupId.value = target ?: uiState.value.defaultGroupId
+        searchReturnGroup = null
     }
 
     /** Channels already tried in a row of backup switches (cleared when you change channel). */

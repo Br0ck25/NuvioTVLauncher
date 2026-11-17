@@ -835,6 +835,15 @@ private fun LiveTvGuideScreenBody(
             }
             // Browse by channel name: from the shows, Back goes to the channel name first.
             settings.browseByChannelName && !nameFocus && !groupsOpen -> nameFocus = true
+            // Back from search results: return to the group the listener came from.
+            ui.selectedGroupId == ChannelGroup.SEARCH && !groupsOpen -> {
+                viewModel.clearSearch()
+                row = 0
+                column = GuideColumn.CHANNEL
+                windowStart = floorSlot(now)
+                cursorMs = now
+                scope.launch { delay(60); runCatching { gridFocus.requestFocus() } }
+            }
             // Back from the channels: the group list, with the group you're in highlighted.
             !groupsOpen -> focusGroups()
             else -> openNuvioSidebar()
@@ -4645,14 +4654,42 @@ internal fun TextInputDialog(
 ) {
     var text by remember { mutableStateOf(initial) }
     val fieldFocus = remember { FocusRequester() }
-    LiveDialog(onDismiss = onDismiss) {
+    val dialogContext = androidx.compose.ui.platform.LocalContext.current
+    val dialogView = androidx.compose.ui.platform.LocalView.current
+    val dialogFocus = androidx.compose.ui.platform.LocalFocusManager.current
+    val dialogKeyboard = androidx.compose.ui.platform.LocalSoftwareKeyboardController.current
+    // A keyboard left open after Search kept Back for itself: the guide looked stuck until
+    // another section closed it. Clear the IME and focus before every exit path.
+    fun closeDialog(action: () -> Unit) {
+        dialogFocus.clearFocus(force = true)
+        dialogKeyboard?.hide()
+        (dialogContext.getSystemService(android.content.Context.INPUT_METHOD_SERVICE)
+            as? android.view.inputmethod.InputMethodManager)
+            ?.hideSoftInputFromWindow(dialogView.windowToken, 0)
+        action()
+    }
+    LiveDialog(onDismiss = { closeDialog(onDismiss) }) {
         LiveText(title, size = 20.sp, weight = FontWeight.Bold)
         Spacer(Modifier.height(12.dp))
-        LiveTextField(value = text, onValueChange = { text = it }, hint = hint, focusRequester = fieldFocus, numeric = numeric, onDone = { onConfirm(text) })
+        LiveTextField(
+            value = text,
+            onValueChange = { text = it },
+            hint = hint,
+            focusRequester = fieldFocus,
+            numeric = numeric,
+            onDone = { closeDialog { onConfirm(text) } }
+        )
         Spacer(Modifier.height(16.dp))
         Row(horizontalArrangement = Arrangement.spacedBy(10.dp)) {
-            LiveFocusRow(onClick = { onConfirm(text) }) { f -> LiveText(confirmLabel, color = focusedTextColor(f)) }
-            LiveFocusRow(onClick = onDismiss) { f -> LiveText(androidx.compose.ui.res.stringResource(com.nuvio.tv.R.string.action_cancel), color = focusedTextColor(f)) }
+            LiveFocusRow(onClick = { closeDialog { onConfirm(text) } }) { f ->
+                LiveText(confirmLabel, color = focusedTextColor(f))
+            }
+            LiveFocusRow(onClick = { closeDialog(onDismiss) }) { f ->
+                LiveText(
+                    androidx.compose.ui.res.stringResource(com.nuvio.tv.R.string.action_cancel),
+                    color = focusedTextColor(f)
+                )
+            }
         }
     }
     LaunchedEffect(Unit) { delay(80); runCatching { fieldFocus.requestFocus() } }
