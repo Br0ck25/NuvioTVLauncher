@@ -141,17 +141,23 @@ object DebugReportBuilder {
      * Reads the app's own logcat tail. Android only lets an app read its own UID's log, which is
      * exactly what a report needs. If a device blocks it, the report says so instead of failing.
      */
-    private fun readRecentLogs(maxLines: Int = 700): String {
+    private fun readRecentLogs(maxLines: Int = 20_000): String {
         return runCatching {
             val process = ProcessBuilder(
                 "logcat", "-d", "-v", "time", "-t", maxLines.toString(), "--pid=${Process.myPid()}"
             ).redirectErrorStream(true).start()
             val output = process.inputStream.bufferedReader().use { it.readText() }
             process.waitFor()
-            if (output.isBlank()) {
+            // YouTube's engine logs a "Path not found" line for every optional JSON field it
+            // reads. A single video lookup fills the whole buffer with them and pushes the
+            // useful YouTubeVM/player lines out, so leave them out of the report.
+            val useful = output.lineSequence()
+                .filterNot { it.contains("JsonPathTypeAdapter") }
+                .joinToString("\n")
+            if (useful.isBlank()) {
                 "No recent log lines were available."
             } else {
-                output.trimEnd().takeLast(150_000)
+                useful.trimEnd().takeLast(150_000)
             }
         }.getOrElse { error ->
             "Log unavailable (${error.javaClass.simpleName})."
