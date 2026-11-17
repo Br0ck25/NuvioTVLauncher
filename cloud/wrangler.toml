@@ -7,3 +7,9 @@ compatibility_date = "2025-06-01"
 binding = "DB"
 database_name = "nuviotv-sync"
 database_id = "8f15196e-9da6-48bf-bc22-d775f2ef93b2"
+
+# The sports data files (made by the nuviotv-data job, which copies each changed file here). Served
+# read-only at /data/<file>.
+[[r2_buckets]]
+binding = "DATA"
+bucket_name = "nuvio-sports"

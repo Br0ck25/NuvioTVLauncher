@@ -316,7 +316,8 @@ internal class SportsFeeds {
 
     companion object {
         private const val ESPN = "https://site.api.espn.com/apis/site/v2/sports/"
-        const val DATA_URL = "https://raw.githubusercontent.com/homelessbrian/nuvio-data/main/"
+        /** The sports data files: served from this fork's own service (the Worker in /cloud), filled by the nuviotv-data job. */
+        const val DATA_URL = "https://nuviotv-sync.jamesbrock25.workers.dev/data/"
         const val WRESTLING_URL = DATA_URL + "wrestling.json"
 
         /** A league id as the shared ESPN cache file is named ("football/nfl" -> "football_nfl"). */
