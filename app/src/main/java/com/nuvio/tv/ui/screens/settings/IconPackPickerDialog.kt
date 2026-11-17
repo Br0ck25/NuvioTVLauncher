@@ -2,14 +2,13 @@
 
 package com.nuvio.tv.ui.screens.settings
 
-import androidx.compose.foundation.BorderStroke
 import androidx.compose.foundation.Image
 import androidx.compose.foundation.background
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.Row
-import androidx.compose.foundation.layout.Spacer
+import androidx.compose.foundation.layout.PaddingValues
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
@@ -36,17 +35,13 @@ import androidx.compose.ui.semantics.Role
 import androidx.compose.ui.semantics.role
 import androidx.compose.ui.semantics.selected
 import androidx.compose.ui.semantics.semantics
-import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
-import androidx.tv.material3.Border
-import androidx.tv.material3.Button
-import androidx.tv.material3.ButtonDefaults
-import androidx.tv.material3.ClickableSurfaceDefaults
+import androidx.tv.material3.Card
+import androidx.tv.material3.CardDefaults
 import androidx.tv.material3.ExperimentalTvMaterial3Api
 import androidx.tv.material3.Icon
 import androidx.tv.material3.MaterialTheme
-import androidx.tv.material3.Surface
 import androidx.tv.material3.Text
 import com.nuvio.tv.R
 import com.nuvio.tv.core.apps.IconPackInfo
@@ -73,16 +68,10 @@ fun IconPackPickerDialog(
         onDismiss = onDismiss,
         title = stringResource(R.string.appearance_icon_pack_dialog_title),
         subtitle = stringResource(R.string.appearance_icon_pack_dialog_subtitle),
-        width = 680.dp,
-        suppressFirstKeyUp = false,
-        usePlatformDefaultWidth = false,
-        contentPadding = 20.dp,
-        contentSpacing = 14.dp
+        width = 520.dp,
+        suppressFirstKeyUp = false
     ) {
-        Column(
-            modifier = Modifier.fillMaxWidth(),
-            verticalArrangement = Arrangement.spacedBy(10.dp)
-        ) {
+        Column(modifier = Modifier.fillMaxWidth()) {
             if (isLoading) {
                 Box(
                     modifier = Modifier
@@ -96,8 +85,9 @@ fun IconPackPickerDialog(
                 LazyColumn(
                     modifier = Modifier
                         .fillMaxWidth()
-                        .heightIn(max = 380.dp),
-                    verticalArrangement = Arrangement.spacedBy(8.dp)
+                        .heightIn(max = 320.dp),
+                    verticalArrangement = Arrangement.spacedBy(NuvioTheme.spacing.sm),
+                    contentPadding = PaddingValues(vertical = NuvioTheme.spacing.xs)
                 ) {
                     // 1. System Default Option
                     item(key = "__system_default__") {
@@ -137,21 +127,6 @@ fun IconPackPickerDialog(
                     }
                 }
             }
-
-            Spacer(modifier = Modifier.height(4.dp))
-
-            Button(
-                onClick = onDismiss,
-                modifier = Modifier.fillMaxWidth(),
-                colors = ButtonDefaults.colors(
-                    containerColor = Color.White.copy(alpha = 0.08f),
-                    focusedContainerColor = Color.White,
-                    contentColor = Color.White,
-                    focusedContentColor = Color.Black
-                )
-            ) {
-                Text(stringResource(R.string.app_menu_cancel))
-            }
         }
     }
 }
@@ -165,49 +140,33 @@ private fun IconPackOptionRow(
     onClick: () -> Unit,
     modifier: Modifier = Modifier
 ) {
-    val shape = RoundedCornerShape(12.dp)
-
-    Surface(
+    Card(
         onClick = onClick,
         modifier = modifier
             .fillMaxWidth()
-            .height(64.dp)
             .semantics {
                 role = Role.RadioButton
                 selected = isSelected
             },
-        shape = ClickableSurfaceDefaults.shape(shape),
-        colors = ClickableSurfaceDefaults.colors(
-            containerColor = if (isSelected) {
-                NuvioTheme.colors.Primary.copy(alpha = 0.15f)
-            } else {
-                Color.White.copy(alpha = 0.05f)
-            },
-            focusedContainerColor = Color.White.copy(alpha = 0.22f)
+        colors = CardDefaults.colors(
+            containerColor = if (isSelected) NuvioTheme.colors.FocusBackground else NuvioTheme.colors.BackgroundCard,
+            focusedContainerColor = NuvioTheme.colors.FocusBackground
         ),
-        border = ClickableSurfaceDefaults.border(
-            border = Border(
-                BorderStroke(
-                    1.dp,
-                    if (isSelected) NuvioTheme.colors.Primary else Color.White.copy(alpha = 0.08f)
-                )
-            ),
-            focusedBorder = Border(BorderStroke(2.dp, Color.White))
-        ),
-        scale = ClickableSurfaceDefaults.scale(focusedScale = 1.01f)
+        shape = CardDefaults.shape(RoundedCornerShape(10.dp)),
+        scale = CardDefaults.scale(focusedScale = 1f)
     ) {
         Row(
             modifier = Modifier
-                .fillMaxSize()
-                .padding(horizontal = 16.dp),
+                .fillMaxWidth()
+                .padding(NuvioTheme.spacing.lg),
             verticalAlignment = Alignment.CenterVertically,
-            horizontalArrangement = Arrangement.spacedBy(14.dp)
+            horizontalArrangement = Arrangement.spacedBy(NuvioTheme.spacing.md)
         ) {
             Box(
                 modifier = Modifier
-                    .size(42.dp)
+                    .size(40.dp)
                     .clip(RoundedCornerShape(8.dp))
-                    .background(Color.White.copy(alpha = 0.06f)),
+                    .background(NuvioTheme.colors.Background.copy(alpha = 0.5f)),
                 contentAlignment = Alignment.Center
             ) {
                 if (icon != null) {
@@ -229,8 +188,8 @@ private fun IconPackOptionRow(
             Column(modifier = Modifier.weight(1f)) {
                 Text(
                     text = name,
-                    style = MaterialTheme.typography.bodyLarge.copy(fontWeight = FontWeight.SemiBold),
-                    color = Color.White,
+                    style = MaterialTheme.typography.bodyLarge,
+                    color = if (isSelected) NuvioTheme.colors.Primary else NuvioTheme.colors.TextPrimary,
                     maxLines = 1,
                     overflow = TextOverflow.Ellipsis
                 )
@@ -248,7 +207,7 @@ private fun IconPackOptionRow(
                     imageVector = Icons.Default.Check,
                     contentDescription = stringResource(R.string.cd_selected),
                     tint = NuvioTheme.colors.Primary,
-                    modifier = Modifier.size(24.dp)
+                    modifier = Modifier.size(20.dp)
                 )
             }
         }
