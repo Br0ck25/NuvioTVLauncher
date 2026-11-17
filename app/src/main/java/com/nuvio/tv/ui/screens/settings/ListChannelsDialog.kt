@@ -2,19 +2,13 @@
 
 package com.nuvio.tv.ui.screens.settings
 
-import androidx.compose.foundation.background
 import androidx.compose.foundation.layout.Arrangement
-import androidx.compose.foundation.layout.Column
+import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.ColumnScope
-import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.fillMaxWidth
-import androidx.compose.foundation.layout.padding
+import androidx.compose.foundation.layout.heightIn
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.items
-import androidx.compose.foundation.shape.RoundedCornerShape
-import androidx.compose.foundation.text.BasicTextField
-import androidx.compose.foundation.text.KeyboardActions
-import androidx.compose.foundation.text.KeyboardOptions
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
@@ -23,35 +17,32 @@ import androidx.compose.runtime.produceState
 import androidx.compose.runtime.remember
 import androidx.compose.runtime.setValue
 import androidx.compose.runtime.withFrameNanos
-import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
-import androidx.compose.ui.draw.clip
 import androidx.compose.ui.focus.FocusRequester
 import androidx.compose.ui.focus.focusRequester
-import androidx.compose.ui.graphics.Color
-import androidx.compose.ui.graphics.SolidColor
 import androidx.compose.ui.input.key.onPreviewKeyEvent
+import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.res.stringResource
-import androidx.compose.ui.text.input.ImeAction
 import androidx.compose.ui.unit.dp
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
-import androidx.tv.material3.Button
 import androidx.tv.material3.MaterialTheme
-import androidx.tv.material3.OutlinedButton
 import androidx.tv.material3.Text
 import com.nuvio.tv.R
 import com.nuvio.tv.livetv.lists.ListChannel
 import com.nuvio.tv.livetv.lists.ListChannels
 import com.nuvio.tv.livetv.lists.ListRef
 import com.nuvio.tv.ui.components.NuvioDialog
+import com.nuvio.tv.ui.screens.collection.NuvioTextField
 import com.nuvio.tv.ui.theme.NuvioTheme
 
 /**
  * The viewer's list channels: make one from any of their lists (Home catalogs, collection folders,
  * library lists; movies and shows can be mixed), change which lists it plays, or delete it.
+ * Built from the same rows, field and buttons as the other Live TV settings dialogs.
  */
 @Composable
 internal fun ListChannelsDialog(onDismiss: () -> Unit) {
+    val context = LocalContext.current
     val channels by ListChannels.channels.collectAsStateWithLifecycle()
     // null: the list of channels; otherwise the one being edited (a blank id: a new one).
     var editing by remember { mutableStateOf<ListChannel?>(null) }
@@ -66,9 +57,8 @@ internal fun ListChannelsDialog(onDismiss: () -> Unit) {
             }
         ),
         subtitle = if (editor == null) stringResource(R.string.live_tv_list_channels_description) else null,
-        width = 640.dp,
-        usePlatformDefaultWidth = false,
-        contentSpacing = NuvioTheme.spacing.md
+        width = 620.dp,
+        contentSpacing = NuvioTheme.spacing.sm
     ) {
         if (editor != null) {
             ListChannelEditor(initial = editor, onDone = { editing = null })
@@ -81,10 +71,6 @@ internal fun ListChannelsDialog(onDismiss: () -> Unit) {
                 if (runCatching { first.requestFocus() }.isSuccess) return@LaunchedEffect
             }
         }
-        Button(
-            onClick = { editing = ListChannel(id = "", name = "", refs = emptyList(), seed = 0L) },
-            modifier = Modifier.fillMaxWidth().focusRequester(first)
-        ) { Text(stringResource(R.string.live_tv_list_channel_new)) }
         if (channels.isEmpty()) {
             Text(
                 text = stringResource(R.string.live_tv_list_channel_none),
@@ -92,29 +78,40 @@ internal fun ListChannelsDialog(onDismiss: () -> Unit) {
                 color = NuvioTheme.colors.TextSecondary
             )
         }
-        // Takes what is left after the button below it, so it always stays on screen.
+        // Scrolls inside the dialog, so Close always stays on screen.
         LazyColumn(
-            modifier = Modifier.fillMaxWidth().weight(1f, fill = false),
-            verticalArrangement = Arrangement.spacedBy(NuvioTheme.spacing.sm)
+            modifier = Modifier.fillMaxWidth().heightIn(max = 360.dp),
+            verticalArrangement = Arrangement.spacedBy(NuvioTheme.spacing.xxs)
         ) {
+            item(key = "__new__") {
+                SettingsActionRow(
+                    title = stringResource(R.string.live_tv_list_channel_new),
+                    subtitle = null,
+                    onClick = { editing = ListChannel(id = "", name = "", refs = emptyList(), seed = 0L) },
+                    modifier = Modifier.focusRequester(first)
+                )
+            }
             items(channels, key = { it.id }) { channel ->
                 // A channel made on mylistsaddon.com is edited there; here it can only be looked at.
-                OutlinedButton(onClick = { editing = channel }, enabled = !channel.isSynced, modifier = Modifier.fillMaxWidth()) {
-                    Text(
-                        if (channel.isSynced) "${channel.name}  ·  " + stringResource(R.string.live_tv_list_channel_synced)
-                        else "${channel.name}  ·  " + stringResource(R.string.live_tv_list_channel_summary, channel.refs.size)
-                    )
-                }
+                SettingsActionRow(
+                    title = channel.name,
+                    subtitle = null,
+                    value = if (channel.isSynced) stringResource(R.string.live_tv_list_channel_synced)
+                    else stringResource(R.string.live_tv_list_channel_summary, channel.refs.size),
+                    onClick = { editing = channel },
+                    enabled = !channel.isSynced
+                )
             }
         }
-        Row(modifier = Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.End) {
-            OutlinedButton(onClick = onDismiss) { Text(stringResource(R.string.self_setup_close)) }
+        SettingsDialogActionRow {
+            SettingsDialogActionButton(text = context.getString(R.string.self_setup_close), onClick = onDismiss, primary = true)
         }
     }
 }
 
 @Composable
 private fun ColumnScope.ListChannelEditor(initial: ListChannel, onDone: () -> Unit) {
+    val context = LocalContext.current
     var name by remember { mutableStateOf(initial.name) }
     var picked by remember { mutableStateOf(initial.refs) }
     // null while they are found: addon catalogs, collection folders and library lists.
@@ -134,36 +131,16 @@ private fun ColumnScope.ListChannelEditor(initial: ListChannel, onDone: () -> Un
         onDone()
     }
     val canSave = picked.isNotEmpty()
-    BasicTextField(
+    NuvioTextField(
         value = name,
         onValueChange = { name = it.take(60) },
-        singleLine = true,
-        textStyle = MaterialTheme.typography.bodyLarge.copy(color = NuvioTheme.colors.TextPrimary),
-        cursorBrush = SolidColor(NuvioTheme.colors.TextPrimary),
-        keyboardOptions = KeyboardOptions(imeAction = ImeAction.Done),
-        keyboardActions = KeyboardActions(onDone = { runCatching { saveFocus.requestFocus() } }),
-        decorationBox = { inner ->
-            Column(Modifier.padding(14.dp)) {
-                if (name.isEmpty()) Text(stringResource(R.string.live_tv_list_channel_name_hint), color = NuvioTheme.colors.TextSecondary)
-                inner()
-            }
-        },
-        modifier = Modifier
-            .fillMaxWidth()
-            .focusRequester(field)
-            .clip(RoundedCornerShape(10.dp))
-            .background(Color.White.copy(alpha = 0.08f))
+        modifier = Modifier.fillMaxWidth(),
+        placeholder = stringResource(R.string.live_tv_list_channel_name_hint),
+        focusRequester = field
     )
-    Row(modifier = Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.spacedBy(NuvioTheme.spacing.sm, Alignment.End)) {
-        if (initial.id.isNotEmpty()) {
-            OutlinedButton(onClick = { ListChannels.remove(initial.id); onDone() }) { Text(stringResource(R.string.live_tv_list_channel_delete)) }
-        }
-        OutlinedButton(onClick = onDone) { Text(stringResource(R.string.self_setup_close)) }
-        Button(onClick = save, enabled = canSave, modifier = Modifier.focusRequester(saveFocus)) { Text(stringResource(R.string.live_tv_list_channel_save)) }
-    }
     Text(
         text = stringResource(R.string.live_tv_list_channel_lists_heading),
-        style = MaterialTheme.typography.titleSmall,
+        style = MaterialTheme.typography.bodySmall,
         color = NuvioTheme.colors.TextSecondary
     )
     val lists = available
@@ -175,23 +152,43 @@ private fun ColumnScope.ListChannelEditor(initial: ListChannel, onDone: () -> Un
             val keys = lists.mapTo(HashSet()) { it.key }
             val rows = picked.filter { it.key !in keys } + lists
             LazyColumn(
-                modifier = Modifier.fillMaxWidth().weight(1f, fill = false),
+                modifier = Modifier.fillMaxWidth().heightIn(max = 280.dp),
                 verticalArrangement = Arrangement.spacedBy(NuvioTheme.spacing.xxs)
             ) {
                 items(rows, key = { it.key }) { ref ->
                     val on = picked.any { it.key == ref.key }
-                    OutlinedButton(
-                        onClick = { picked = if (on) picked.filterNot { it.key == ref.key } else picked + ref },
-                        modifier = Modifier.fillMaxWidth().onPreviewKeyEvent { event ->
+                    SettingsToggleRow(
+                        title = ref.title,
+                        subtitle = null,
+                        checked = on,
+                        onToggle = { picked = if (on) picked.filterNot { it.key == ref.key } else picked + ref },
+                        modifier = Modifier.onPreviewKeyEvent { event ->
                             // Right goes straight to Save, so a long list need not be scrolled to its end.
                             if (event.nativeKeyEvent.keyCode == android.view.KeyEvent.KEYCODE_DPAD_RIGHT && canSave) {
                                 if (event.nativeKeyEvent.action == android.view.KeyEvent.ACTION_DOWN) runCatching { saveFocus.requestFocus() }
                                 true
                             } else false
                         }
-                    ) { Text((if (on) "✓  " else "☐  ") + ref.title) }
+                    )
                 }
             }
+        }
+    }
+    SettingsDialogActionRow {
+        if (initial.id.isNotEmpty()) {
+            SettingsDialogActionButton(
+                text = context.getString(R.string.live_tv_list_channel_delete),
+                onClick = { ListChannels.remove(initial.id); onDone() }
+            )
+        }
+        SettingsDialogActionButton(text = context.getString(R.string.self_setup_close), onClick = onDone)
+        Box(Modifier.focusRequester(saveFocus)) {
+            SettingsDialogActionButton(
+                text = context.getString(R.string.live_tv_list_channel_save),
+                onClick = save,
+                primary = true,
+                enabled = canSave
+            )
         }
     }
 }
