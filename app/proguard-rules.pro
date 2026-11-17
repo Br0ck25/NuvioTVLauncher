@@ -120,6 +120,14 @@
 # so keep the whole package to avoid JNI lookup crashes after R8.
 -keep class is.xyz.mpv.** { *; }
 
+# libVLC (native JNI callbacks)
+# libvlcjni.so looks up org.videolan.libvlc.VLCObject.mInstance and other
+# Java fields by name. The libvlc-all AAR ships no consumer ProGuard rules,
+# so without this R8 renames them and JNI_OnLoad fails with GetFieldID.
+-keep class org.videolan.libvlc.** { *; }
+-keep class org.videolan.libvlc.interfaces.** { *; }
+-dontwarn org.videolan.libvlc.**
+
 # ── Missing class stubs (referenced by cloudstream3 / jsoup / newpipe) ────────
 -dontwarn org.mozilla.javascript.**
 -dontwarn com.google.re2j.**
