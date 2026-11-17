@@ -62,6 +62,7 @@ internal fun homeRowChannelSelections(
 // Retain only these collections, not older audio/quality/reminder maps from skipped saves.
 private fun rowUser(u: LiveUserState): LiveUserState = LiveUserState(
     hiddenChannels = u.hiddenChannels, hiddenGroups = u.hiddenGroups,
+    groupTagFilters = u.groupTagFilters,
     favorites = u.favorites, recent = u.recent, lockedGroups = u.lockedGroups,
     customGroups = u.customGroups, channelOrder = u.channelOrder,
     channelCopies = u.channelCopies, groupOrder = u.groupOrder

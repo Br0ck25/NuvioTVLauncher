@@ -622,6 +622,8 @@ data class LiveTvSettings(
 data class LiveUserState(
     val hiddenChannels: Set<String> = emptySet(),
     val hiddenGroups: Set<String> = emptySet(),
+    /** Group-title tags to hide ("AR", "Arabic", "Hindi"...). Empty = no tag filter. */
+    val groupTagFilters: Set<String> = emptySet(),
     val favorites: List<String> = emptyList(),
     val recent: List<String> = emptyList(),
     /** Recently watched channel key -> the group it was last opened from (your own group, Favorites…). */
@@ -659,7 +661,27 @@ data class LiveUserState(
     val vodGroupNames: Map<String, String> = emptyMap(),
     /** On Demand: the sort you picked for a category (category uid -> VodSort name). */
     val vodSorts: Map<String, String> = emptyMap()
-)
+) {
+    /** Channels kept visible by favorites, custom groups or copies even when their group is filtered. */
+    val keptChannelKeys: Set<String>
+        get() {
+            if (favorites.isEmpty() && customGroups.isEmpty() && channelCopies.isEmpty()) return emptySet()
+            val kept = HashSet<String>(favorites)
+            customGroups.forEach { kept += it.channelKeys }
+            channelCopies.values.forEach { kept += it }
+            return kept
+        }
+
+    private val groupTagMatcher: LiveTvGroupTags.Matcher by lazy {
+        LiveTvGroupTags.Matcher(groupTagFilters)
+    }
+
+    /** True when [channel] is hidden by the group-tag filter, unless it is in [kept]. */
+    fun hidesByGroupTag(channel: LiveChannel, kept: Collection<String> = favorites): Boolean =
+        groupTagFilters.isNotEmpty() &&
+            channel.key !in kept &&
+            groupTagMatcher.matches(channel.group)
+}
 
 /** "Remind me" on an upcoming show. */
 data class Reminder(

@@ -34,6 +34,7 @@ import androidx.compose.material.icons.filled.Lock
 import androidx.compose.material.icons.filled.Movie
 import androidx.compose.material.icons.filled.Notifications
 import androidx.compose.material.icons.filled.FiberManualRecord
+import androidx.compose.material.icons.filled.FilterAlt
 import androidx.compose.material.icons.filled.PlayCircleFilled
 import androidx.compose.material.icons.filled.Schedule
 import androidx.compose.material.icons.automirrored.filled.Help
@@ -210,6 +211,7 @@ private sealed interface LiveDialog {
     data class EditEpg(val source: EpgSource) : LiveDialog
     data object HiddenChannels : LiveDialog
     data object HiddenGroups : LiveDialog
+    data object GroupTags : LiveDialog
     data class PlaylistGuideShift(val source: PlaylistSource) : LiveDialog
     data class PlaylistCatchupShift(val source: PlaylistSource) : LiveDialog
     data class EpgSourceShift(val source: EpgSource) : LiveDialog
@@ -344,6 +346,9 @@ internal fun LiveTvSettingsContent(
     val installedAddons by viewModel.installedAddons.collectAsStateWithLifecycle()
     val s by viewModel.settings.collectAsStateWithLifecycle()
     val user by viewModel.userState.collectAsStateWithLifecycle()
+    val groupTags by viewModel.groupTags.collectAsStateWithLifecycle()
+    val scanningGroupTags by viewModel.scanningGroupTags.collectAsStateWithLifecycle()
+    val groupTagChannelCount by viewModel.groupTagChannelCount.collectAsStateWithLifecycle()
     val status by viewModel.status.collectAsStateWithLifecycle()
     val accounts by viewModel.accounts.collectAsStateWithLifecycle()
     var dialog by remember { mutableStateOf<LiveDialog?>(null) }
@@ -631,6 +636,13 @@ internal fun LiveTvSettingsContent(
                     SubHeading(context.getString(R.string.iptv_settings_hidden_your_groups))
                     SettingsActionRow(context.getString(R.string.iptv_settings_hidden_channels), context.getString(R.string.iptv_settings_channels_you_hid_select_one_to_show_it), "${user.hiddenChannels.size}", leadingIcon = Icons.Default.VisibilityOff, onClick = { dialog = LiveDialog.HiddenChannels })
                     SettingsActionRow(context.getString(R.string.iptv_settings_hidden_groups), context.getString(R.string.iptv_settings_groups_you_hid_select_one_to_show_it), "${user.hiddenGroups.size}", leadingIcon = Icons.Default.VisibilityOff, onClick = { dialog = LiveDialog.HiddenGroups })
+                    SettingsActionRow(
+                        title = context.getString(R.string.iptv_settings_filter_by_group_tag),
+                        subtitle = context.getString(R.string.iptv_settings_filter_by_group_tag_subtitle),
+                        value = context.getString(R.string.iptv_settings_group_tags_selected, user.groupTagFilters.size),
+                        leadingIcon = Icons.Default.FilterAlt,
+                        onClick = { dialog = LiveDialog.GroupTags }
+                    )
                     SettingsActionRow(context.getString(R.string.iptv_settings_my_groups), context.getString(R.string.iptv_settings_groups_you_created_select_one_to_delete_it), "${user.customGroups.size}", onClick = { dialog = LiveDialog.CustomGroups })
                     SubHeading(context.getString(R.string.iptv_settings_clear_reset))
                     SettingsActionRow(context.getString(R.string.iptv_settings_clear_favorites), context.getString(R.string.iptv_settings_removes_every_channel_from_favorites), "${user.favorites.size}", onClick = {
@@ -2070,6 +2082,16 @@ internal fun LiveTvSettingsContent(
             entries = user.hiddenGroups.sorted().map { it to viewModel.groupLabel(it) },
             onUnhide = { viewModel.unhideGroup(it) },
             onUnhideAll = { viewModel.unhideAllGroups(); close() },
+            onDismiss = close
+        )
+        LiveDialog.GroupTags -> GroupTagsDialog(
+            tags = groupTags,
+            selected = user.groupTagFilters,
+            scanning = scanningGroupTags,
+            channelCount = groupTagChannelCount,
+            onScan = viewModel::scanGroupTags,
+            onToggle = viewModel::setGroupTagFilter,
+            onClear = viewModel::clearGroupTagFilters,
             onDismiss = close
         )
         is LiveDialog.PlaylistGuideShift -> SettingsSingleChoiceDialog(

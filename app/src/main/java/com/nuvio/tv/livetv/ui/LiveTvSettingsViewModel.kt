@@ -12,15 +12,21 @@ import com.nuvio.tv.domain.model.Addon
 import com.nuvio.tv.domain.model.CatalogDescriptor
 import com.nuvio.tv.livetv.model.AddonChannelSource
 import com.nuvio.tv.livetv.model.EpgSource
+import com.nuvio.tv.livetv.model.LiveTvGroupTags
 import com.nuvio.tv.livetv.model.LiveTvSettings
 import com.nuvio.tv.livetv.model.LiveUserState
 import com.nuvio.tv.livetv.model.PlaylistSource
 import dagger.hilt.android.lifecycle.HiltViewModel
 import dagger.hilt.android.qualifiers.ApplicationContext
+import kotlinx.coroutines.Dispatchers
+import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.SharingStarted
 import kotlinx.coroutines.flow.StateFlow
+import kotlinx.coroutines.flow.asStateFlow
+import kotlinx.coroutines.flow.map
 import kotlinx.coroutines.flow.stateIn
 import kotlinx.coroutines.launch
+import kotlinx.coroutines.withContext
 import javax.inject.Inject
 
 @HiltViewModel
@@ -52,6 +58,14 @@ class LiveTvSettingsViewModel @Inject constructor(
     /** Expiry and connections per playlist, when the provider gives them. */
     val accounts: StateFlow<Map<String, com.nuvio.tv.livetv.model.PlaylistAccount>> =
         prefs.playlistAccounts.stateIn(viewModelScope, SharingStarted.Eagerly, emptyMap())
+
+    private val _groupTags = MutableStateFlow<List<LiveTvGroupTags.Tag>>(emptyList())
+    internal val groupTags: StateFlow<List<LiveTvGroupTags.Tag>> = _groupTags.asStateFlow()
+    private val _scanningGroupTags = MutableStateFlow(false)
+    val scanningGroupTags: StateFlow<Boolean> = _scanningGroupTags.asStateFlow()
+    val groupTagChannelCount: StateFlow<Int> = repository.channels
+        .map { it.size }
+        .stateIn(viewModelScope, SharingStarted.Eagerly, repository.channels.value.size)
 
     init {
         repository.ensureLoaded()
@@ -160,6 +174,22 @@ class LiveTvSettingsViewModel @Inject constructor(
     fun unhideAllChannels() = viewModelScope.launch { prefs.clearHiddenChannels() }
     fun unhideGroup(id: String) = viewModelScope.launch { prefs.setGroupHidden(id, false) }
     fun unhideAllGroups() = viewModelScope.launch { prefs.clearHiddenGroups() }
+
+    /** Manual scan: reads the loaded channel groups and lists the tags they use. */
+    fun scanGroupTags() {
+        if (_scanningGroupTags.value) return
+        _scanningGroupTags.value = true
+        viewModelScope.launch {
+            val channels = repository.channels.value
+            _groupTags.value = withContext(Dispatchers.Default) { LiveTvGroupTags.scan(channels) }
+            _scanningGroupTags.value = false
+        }
+    }
+
+    fun setGroupTagFilter(tag: String, enabled: Boolean) =
+        viewModelScope.launch { prefs.setGroupTagFilter(tag, enabled) }
+
+    fun clearGroupTagFilters() = viewModelScope.launch { prefs.clearGroupTagFilters() }
     fun clearFavorites() = viewModelScope.launch { prefs.clearFavorites() }
     fun clearRecent() = viewModelScope.launch { prefs.clearRecent() }
     fun resetChannelEdits() = viewModelScope.launch { prefs.resetChannelEdits() }

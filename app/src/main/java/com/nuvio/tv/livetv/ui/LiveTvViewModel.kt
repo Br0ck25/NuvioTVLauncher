@@ -364,7 +364,7 @@ class LiveTvViewModel @Inject constructor(
             .filter { it.key !in backupTried }
             // Local stations: "FOX (WNYW)" isn't a backup for "FOX (KTTV)".
             .filter { c -> val a = stationNote(failed.name); val b = stationNote(c.name); a == null || b == null || a == b }
-            .filter { it.key !in user.hiddenChannels && it.groupId !in user.hiddenGroups }
+            .filter { it.key !in user.hiddenChannels && it.groupId !in user.hiddenGroups && !user.hidesByGroupTag(it) }
             .filter { !com.nuvio.tv.livetv.parental.ParentalControls.isLocked(it.groupId, it.group, s, user.lockedGroups) }
             .sortedBy { if (it.sourceId != failed.sourceId) 0 else 1 }
             .firstOrNull() ?: return false
@@ -486,7 +486,7 @@ class LiveTvViewModel @Inject constructor(
 
     /** Every channel in the current group, hidden ones included, for Manage visibility. */
     fun channelsWithHidden(): List<LiveChannel> {
-        val user = userState.value.copy(hiddenChannels = emptySet())
+        val user = userState.value.copy(hiddenChannels = emptySet(), groupTagFilters = emptySet())
         return buildUi(
             displayChannels.value, user, settings.value,
             session.currentGroupId.value ?: uiState.value.selectedGroupId, "", true
@@ -495,7 +495,7 @@ class LiveTvViewModel @Inject constructor(
 
     /** Every group you can hide (not Favorites, Recently watched or All), hidden ones included. */
     fun groupsWithHidden(): List<ChannelGroup> {
-        val user = userState.value.copy(hiddenGroups = emptySet())
+        val user = userState.value.copy(hiddenGroups = emptySet(), groupTagFilters = emptySet())
         return buildUi(displayChannels.value, user, settings.value, uiState.value.selectedGroupId, "", true)
             .groups.filter { !it.special && !it.id.startsWith(ChannelGroup.CUSTOM_PREFIX) }
     }
@@ -1677,7 +1677,7 @@ internal fun stationNote(name: String): String? =
 internal fun sameForLiveTvLists(a: LiveUserState, b: LiveUserState): Boolean =
     a.favorites == b.favorites && a.recent == b.recent &&
         a.hiddenChannels == b.hiddenChannels && a.hiddenGroups == b.hiddenGroups &&
-        a.lockedGroups == b.lockedGroups && a.customGroups == b.customGroups &&
+        a.groupTagFilters == b.groupTagFilters && a.lockedGroups == b.lockedGroups && a.customGroups == b.customGroups &&
         a.channelOrder == b.channelOrder && a.groupOrder == b.groupOrder &&
         a.channelCopies == b.channelCopies
 

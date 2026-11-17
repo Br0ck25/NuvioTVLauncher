@@ -242,6 +242,7 @@ class LiveTvPreferences @Inject constructor(
 
         val hiddenChannels = stringSetPreferencesKey("hidden_channels")
         val hiddenGroups = stringSetPreferencesKey("hidden_groups")
+        val groupTagFilters = stringSetPreferencesKey("group_tag_filters")
         val favorites = stringPreferencesKey("favorites")
         val recent = stringPreferencesKey("recent")
         /** Recently watched channel -> the group it was opened from, as JSON. */
@@ -279,7 +280,7 @@ class LiveTvPreferences @Inject constructor(
         Keys.vodGroupOrder, Keys.vodSorts, Keys.sportsMine
     )
     private val personalSetKeys: List<Preferences.Key<Set<String>>> = listOf(
-        Keys.hiddenChannels, Keys.hiddenGroups, Keys.vodHiddenCategories
+        Keys.hiddenChannels, Keys.hiddenGroups, Keys.groupTagFilters, Keys.vodHiddenCategories
     )
 
     @JvmName("myString")
@@ -570,7 +571,12 @@ class LiveTvPreferences @Inject constructor(
             kept += decodeStringList(v[Keys.favorites])
             decodeCustomGroups(v[Keys.customGroups]).forEach { g -> if (g.id !in hiddenGroups) kept += g.channelKeys }
             decodeListMap(v[Keys.channelCopies]).forEach { (groupId, keys) -> if (groupId !in hiddenGroups) kept += keys }
-            HiddenView(v[Keys.hiddenChannels] ?: emptySet(), hiddenGroups, kept)
+            HiddenView(
+            v[Keys.hiddenChannels] ?: emptySet(),
+            hiddenGroups,
+            kept,
+            v[Keys.groupTagFilters] ?: emptySet()
+        )
         })
     }.distinctUntilChanged()
 
@@ -586,6 +592,7 @@ class LiveTvPreferences @Inject constructor(
         LiveUserState(
             hiddenChannels = p[Keys.hiddenChannels] ?: emptySet(),
             hiddenGroups = p[Keys.hiddenGroups] ?: emptySet(),
+            groupTagFilters = p[Keys.groupTagFilters] ?: emptySet(),
             favorites = decodeStringList(p[Keys.favorites]),
             recent = decodeStringList(p[Keys.recent]),
             recentGroups = decodeStringMap(p[Keys.recentGroups]),
@@ -1290,6 +1297,21 @@ class LiveTvPreferences @Inject constructor(
         store.edit { it[my(Keys.hiddenGroups)] = emptySet() }
     }
 
+    /** Adds or removes one group-title tag from this profile's channel filter. */
+    suspend fun setGroupTagFilter(tag: String, enabled: Boolean) {
+        val value = tag.trim()
+        if (value.isEmpty()) return
+        store.edit { p ->
+            val cur = p[my(Keys.groupTagFilters)] ?: emptySet()
+            val without = cur.filterNot { it.equals(value, ignoreCase = true) }.toSet()
+            p[my(Keys.groupTagFilters)] = if (enabled) without + value else without
+        }
+    }
+
+    suspend fun clearGroupTagFilters() {
+        store.edit { it[my(Keys.groupTagFilters)] = emptySet() }
+    }
+
     suspend fun toggleFavorite(key: String) {
         store.edit { p ->
             val cur = decodeStringList(p[my(Keys.favorites)])
@@ -1800,19 +1822,33 @@ class LiveTvPreferences @Inject constructor(
     }
 }
 
-/** Each profile's hidden channels and hidden groups (see [LiveTvPreferences.hiddenEverywhere]). */
 /** One profile's hidden channels and groups, and the channels it shows elsewhere anyway. */
-data class HiddenView(val channels: Set<String>, val groups: Set<String>, val kept: Set<String> = emptySet())
+data class HiddenView(
+    val channels: Set<String>,
+    val groups: Set<String>,
+    val kept: Set<String> = emptySet(),
+    val tags: Set<String> = emptySet()
+) {
+    private val tagMatcher: com.nuvio.tv.livetv.model.LiveTvGroupTags.Matcher by lazy {
+        com.nuvio.tv.livetv.model.LiveTvGroupTags.Matcher(tags)
+    }
+
+    fun matchesTag(groupTitle: String): Boolean = tags.isNotEmpty() && tagMatcher.matches(groupTitle)
+}
 
 data class HiddenEverywhere(private val views: List<HiddenView>) {
     /**
-     * True when no profile shows this channel (hidden itself, or its group is). A channel in
-     * Favorites, in a group you made, or copied into another group is shown: its listings are
-     * kept even when its own group is hidden. (They weren't: channels in your own groups whose
-     * provider group was hidden had almost no guide.)
+     * True when no profile shows this channel (hidden itself, its group is, or its group
+     * carries a tag this profile filters out). A channel in Favorites, in a group you made,
+     * or copied into another group is shown: its listings are kept even when its own group
+     * is hidden.
      */
-    fun hides(channelKey: String, groupId: String): Boolean =
+    fun hides(channelKey: String, groupId: String, groupTitle: String): Boolean =
         views.isNotEmpty() && views.all { v ->
-            channelKey !in v.kept && (channelKey in v.channels || groupId in v.groups)
+            channelKey !in v.kept && (
+                channelKey in v.channels ||
+                    groupId in v.groups ||
+                    v.matchesTag(groupTitle)
+                )
         }
 }

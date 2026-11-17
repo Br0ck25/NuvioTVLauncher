@@ -22,8 +22,14 @@ internal fun liveTvChannelVisibility(
     user: LiveUserState,
     settings: LiveTvSettings,
 ): LiveTvChannelVisibility {
+    val kept = user.keptChannelKeys
+    val tagMatcher = user.groupTagFilters.takeIf { it.isNotEmpty() }
+        ?.let { com.nuvio.tv.livetv.model.LiveTvGroupTags.Matcher(it) }
     // A hidden playlist group can still supply custom groups, but never the all-channels picker.
-    val notHidden = channels.filter { it.key !in user.hiddenChannels }
+    val notHidden = channels.filter {
+        it.key !in user.hiddenChannels &&
+            (tagMatcher == null || it.key in kept || !tagMatcher.matches(it.group))
+    }
     // Older setups (and the Drive backup) keep plain group names, while a TV with more than
     // one playlist uses "playlistId::group" ids. Match both, or restored hidden groups look
     // listed in Settings but stay visible in the guide.
@@ -66,6 +72,7 @@ internal fun allowedLiveTvChannelsFlow(
     channels,
     user.distinctUntilChanged { previous, next ->
         previous.hiddenChannels == next.hiddenChannels && previous.hiddenGroups == next.hiddenGroups &&
+            previous.groupTagFilters == next.groupTagFilters &&
             previous.lockedGroups == next.lockedGroups && previous.customGroups == next.customGroups
     },
     settings.distinctUntilChanged { previous, next ->
