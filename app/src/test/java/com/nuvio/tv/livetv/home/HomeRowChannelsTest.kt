@@ -119,6 +119,7 @@ class HomeRowChannelsTest {
     fun `every saved selection input still reaches buildUi`() = runTest {
         val changes: List<(LiveUserState) -> LiveUserState> = listOf(
             { it.copy(hiddenChannels = setOf("a")) }, { it.copy(hiddenGroups = setOf("g")) },
+            { it.copy(hiddenPlaylists = setOf("p")) },
             { it.copy(favorites = listOf("c")) }, { it.copy(recent = listOf("c")) },
             { it.copy(lockedGroups = setOf("g")) },
             { it.copy(customGroups = listOf(CustomGroup("custom:test", "Custom", listOf("c")))) },

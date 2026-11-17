@@ -43,4 +43,17 @@ class LiveTvChannelVisibilityTagsTest {
 
         assertEquals(setOf("one", "two"), visible.map { it.key }.toSet())
     }
+
+    @Test
+    fun `hidden playlist removes all of its channels`() {
+        val channels = listOf(
+            channel("one", "A").copy(sourceId = "hidden"),
+            channel("two", "B").copy(sourceId = "shown")
+        )
+        val user = LiveUserState(hiddenPlaylists = setOf("hidden"))
+
+        val visible = liveTvChannelVisibility(channels, user, LiveTvSettings()).visible
+
+        assertEquals(setOf("two"), visible.map { it.key }.toSet())
+    }
 }
