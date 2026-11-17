@@ -833,9 +833,8 @@ private fun LiveTvGuideScreenBody(
                 windowStart = floorSlot(now)
                 cursorMs = now
             }
-            // Browse by channel name: from the shows, Back goes to the channel name first.
-            settings.browseByChannelName && !nameFocus && !groupsOpen -> nameFocus = true
-            // Back from search results: return to the group the listener came from.
+            // Back from search results: return to the group the listener came from. Keep this
+            // before Browse by channel name: a search result is not a channel-name cursor.
             ui.selectedGroupId == ChannelGroup.SEARCH && !groupsOpen -> {
                 viewModel.clearSearch()
                 row = 0
@@ -844,6 +843,8 @@ private fun LiveTvGuideScreenBody(
                 cursorMs = now
                 scope.launch { delay(60); runCatching { gridFocus.requestFocus() } }
             }
+            // Browse by channel name: from the shows, Back goes to the channel name first.
+            settings.browseByChannelName && !nameFocus && !groupsOpen -> nameFocus = true
             // Back from the channels: the group list, with the group you're in highlighted.
             !groupsOpen -> focusGroups()
             else -> openNuvioSidebar()
