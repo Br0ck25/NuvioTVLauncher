@@ -1,0 +1,14 @@
+{
+  "name": "nuviotv-launcher-cloud",
+  "private": true,
+  "type": "module",
+  "description": "Setup sync Worker for the Nuvio TV Launcher fork (Cloudflare Workers + D1)",
+  "scripts": {
+    "test": "node test/worker.test.mjs",
+    "deploy": "wrangler deploy"
+  },
+  "devDependencies": {
+    "miniflare": "^3.20250408.0",
+    "wrangler": "^4.0.0"
+  }
+}

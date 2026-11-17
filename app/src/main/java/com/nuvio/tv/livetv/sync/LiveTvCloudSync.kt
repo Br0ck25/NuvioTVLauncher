@@ -619,10 +619,10 @@ class LiveTvCloudSync @Inject constructor(
         val token = auth.currentAccessTokenOrNull()?.takeIf { it.isNotBlank() }
             ?: return@withContext Reply(401, null)
         val request = Request.Builder()
-            .url(CLOUD_URL + ForkService.syncPath(path))
+            // Our own service has only the /v1/ routes and no app key door, so the path is used as it is.
+            .url(CLOUD_URL + path)
             .header("Authorization", "Bearer $token")
             .header("apikey", serverConfiguration.publishableKey)
-            .apply { if (ForkService.hasKey) header(ForkService.HEADER, ForkService.appKey) }
             .method(method, body?.toString()?.toRequestBody(json))
             .build()
         http.newCall(request).execute().use { response ->
@@ -647,8 +647,11 @@ class LiveTvCloudSync @Inject constructor(
         MessageDigest.getInstance("SHA-256").digest(text.toByteArray()).joinToString("") { "%02x".format(it) }
 
     companion object {
-        /** Our own small service (the livetv-cloud Worker). */
-        const val CLOUD_URL = "https://livetv-cloud.nuvioplusiptv.workers.dev"
+        /**
+         * This fork's own setup-sync service (the Worker in /cloud). The Nuvio Plus service needs an app key
+         * only that project holds, so builds of this fork talk to this one instead.
+         */
+        const val CLOUD_URL = "https://nuviotv-sync.jamesbrock25.workers.dev"
         private const val KEY_ENABLED = "enabled_"
         private const val KEY_DECLINED = "declined_"
         private const val KEY_BASE_USER = "base_user"

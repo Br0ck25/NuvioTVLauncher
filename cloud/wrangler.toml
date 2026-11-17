@@ -1,0 +1,9 @@
+name = "nuviotv-sync"
+main = "src/index.js"
+compatibility_date = "2025-06-01"
+
+# The database: one saved Live TV setup per Nuvio account (the tables are made on first use).
+[[d1_databases]]
+binding = "DB"
+database_name = "nuviotv-sync"
+database_id = "8f15196e-9da6-48bf-bc22-d775f2ef93b2"
