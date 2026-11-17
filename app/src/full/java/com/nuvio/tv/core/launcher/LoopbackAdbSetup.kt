@@ -122,6 +122,10 @@ internal class LoopbackAdbSetup(private val context: Context) : LocalAdbSetup {
             DeviceCommands.disableStock.forEach { shell(manager, it) }
             "The TV's own launcher is turned off. If the TV shows a black screen or a recovery screen, turn it back on from this page."
         }
+        DeviceAction.UNINSTALL_STOCK -> {
+            DeviceCommands.uninstallStock.forEach { shell(manager, it) }
+            "The TV's own launcher is removed for this user and stays off after a restart. If the TV shows a black screen or a recovery screen, turn it back on from this page."
+        }
         DeviceAction.ENABLE_STOCK -> {
             DeviceCommands.enableStock.forEach { shell(manager, it) }
             "The TV's own launcher is on."

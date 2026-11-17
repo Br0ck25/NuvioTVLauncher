@@ -42,10 +42,12 @@ object LauncherSetupCommands {
             SetupSection(
                 title = "Optional: turn off the stock launcher (Chromecast with Google TV)",
                 intro = "Only if the TV keeps going back to its own launcher after the Home button override is on. This is FLauncher's method, and it is reversible.",
-                warning = "This launcher's Home takeover works best with the TV's own launcher left on. With it off, Google TV can show a black screen or loop on a recovery screen when you press Home, and the remote's YouTube button stops working (a button-remapping app such as Button Mapper, flar2.homebutton, can map it again). Only use this if the Home button override does not work. The re-enable command below undoes it.",
+                warning = "Most people should leave the TV's own launcher on: if it is on and the Home button override ever switches off, Home just opens Google TV. With it turned off or uninstalled, nothing else shows Home, so a lost override means a black screen or a loop on a recovery screen. Run the permission command below first: it lets this app switch its own Home button override back on after every restart. The remote's YouTube button also stops working (a button-remapping app such as Button Mapper, flar2.homebutton, can map it again). Only use this if the Home button override does not work. The re-enable command below undoes it.",
                 commands = listOf(
+                    SetupCommand("Let the app keep its Home button override on (run this first)", "Gives this app the permission to switch its own accessibility setting back on after a restart.", adb("pm grant ${component.substringBefore('/')} android.permission.WRITE_SECURE_SETTINGS")),
                     SetupCommand("Disable the stock launcher", "${DeviceCommands.GOOGLE_TV_LAUNCHER} is the default launcher.", adbAll(DeviceCommands.disableStock)),
-                    SetupCommand("Re-enable it", "Undoes the step above. Harmless if it is already on.", adbAll(DeviceCommands.enableStock)),
+                    SetupCommand("Uninstall it for this user (stays off after restart)", "On a Chromecast with Google TV the disable step above is undone at the next restart; this one stays. Riskier: with it removed and the override lost, Home is a black screen.", adbAll(DeviceCommands.uninstallStock)),
+                    SetupCommand("Re-enable it", "Undoes both steps above (also brings back an uninstalled launcher). Harmless if it is already on.", adbAll(DeviceCommands.enableStock)),
                     SetupCommand("Check who holds the Home role", "", adb(DeviceCommands.roleHolders))
                 )
             )

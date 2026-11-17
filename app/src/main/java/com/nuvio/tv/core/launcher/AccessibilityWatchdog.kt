@@ -48,8 +48,16 @@ internal object AccessibilityWatchdog {
     fun canWriteSecureSettings(context: Context): Boolean =
         context.checkSelfPermission(WRITE_SECURE) == PackageManager.PERMISSION_GRANTED
 
-    fun isOptedIn(context: Context): Boolean =
-        LauncherSetup.preferences(context).getBoolean(OPT_IN, false)
+    /**
+     * An explicit choice (setup flow or the "keep override" switch) always wins. With no choice recorded, holding
+     * WRITE_SECURE_SETTINGS counts as opting in: a user who granted it (for example `adb shell pm grant`, or after
+     * a factory reset and an Android-toggle setup) otherwise had a watchdog that silently never ran, and a lost
+     * accessibility setting left the TV with no Home app showing.
+     */
+    fun isOptedIn(context: Context): Boolean {
+        val prefs = LauncherSetup.preferences(context)
+        return if (prefs.contains(OPT_IN)) prefs.getBoolean(OPT_IN, false) else canWriteSecureSettings(context)
+    }
 
     fun setOptIn(context: Context, optedIn: Boolean) {
         LauncherSetup.preferences(context).edit().putBoolean(OPT_IN, optedIn).apply()
