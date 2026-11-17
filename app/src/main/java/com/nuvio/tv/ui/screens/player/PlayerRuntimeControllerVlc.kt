@@ -62,6 +62,9 @@ internal fun PlayerRuntimeController.attachVlcView(view: NuvioVlcSurfaceView?) {
         vlcAudioPreferenceApplied = false
         vlcSubtitlePreferenceApplied = false
         vlcEndReachedHandled = false
+        vlcTracksSignature = 0
+        vlcAudioTrackCount = 0
+        vlcSubtitleTrackCount = 0
         val startPosition = resolvePendingInitialResumePosition().takeIf { it > 0L } ?: 0L
         view.setMedia(
             currentStreamUrl,
@@ -143,6 +146,9 @@ internal fun PlayerRuntimeController.initializeVlcPlayer(
         vlcAudioPreferenceApplied = false
         vlcSubtitlePreferenceApplied = false
         vlcEndReachedHandled = false
+        vlcTracksSignature = 0
+        vlcAudioTrackCount = 0
+        vlcSubtitleTrackCount = 0
         val initialResumePosition = resolvePendingInitialResumePosition().takeIf { it > 0L } ?: 0L
         playbackAnalyticsDiagnostics.setStartupStartPosition(initialResumePosition)
         view.setMedia(
@@ -244,50 +250,68 @@ internal fun PlayerRuntimeController.updateVlcAvailableTracks() {
     if (!isUsingVlcEngine()) return
     val audio = view.audioTrackInfos()
     val subtitles = view.subtitleTrackInfos()
+    val selectedAudioIndex = audio.indexOfFirst { it.isSelected }
+    val selectedSubtitleIndex = subtitles.indexOfFirst { it.isSelected }
+
+    // VLC sends an ESAdded/ESSelected event for every track while a file opens. Rebuilding the
+    // UI state and re-applying preferences for each one caused a feedback loop (especially with
+    // "subtitles off" and a file carrying dozens of subtitle tracks), so skip unchanged lists.
+    val signature = audio.hashCode() * 31 +
+        subtitles.hashCode() * 17 +
+        selectedAudioIndex * 3 +
+        selectedSubtitleIndex
+    if (signature == vlcTracksSignature && vlcAudioPreferenceApplied && vlcSubtitlePreferenceApplied) {
+        return
+    }
+    vlcTracksSignature = signature
+
+    if (audio.size != vlcAudioTrackCount) {
+        vlcAudioTrackCount = audio.size
+        vlcAudioPreferenceApplied = false
+    }
+    if (subtitles.size != vlcSubtitleTrackCount) {
+        vlcSubtitleTrackCount = subtitles.size
+        vlcSubtitlePreferenceApplied = false
+    }
+    if (audio.isEmpty()) vlcAudioPreferenceApplied = true
+    if (subtitles.isEmpty()) vlcSubtitlePreferenceApplied = true
+
     val subtitlesMustBeOff =
         subtitleLanguageTargets().isEmpty() && !isUserExplicitSubtitleSelection
-    if (subtitlesMustBeOff && subtitles.any { it.isSelected }) {
-        // VLC can honour a Matroska track's default flag even after the media option;
-        // keep turning off any track it selects while the setting is None.
+    val selectedSubtitleId = subtitles.firstOrNull { it.isSelected }?.trackId?.toIntOrNull() ?: -1
+    if (subtitlesMustBeOff && selectedSubtitleId >= 0) {
+        // VLC can honour a Matroska track's default flag even after the media option.
+        // Only a real subtitle track (id >= 0) needs switching off; the "Off" entry itself
+        // has id -1 and is already selected, which used to make this call repeat forever.
         runCatching { view.selectSubtitleTrackById(-1) }
         Log.i(PlayerRuntimeController.TAG, "VLC subtitles disabled by settings")
     }
-    Log.i(PlayerRuntimeController.TAG, "VLC tracks audio=${audio.size} selected=${audio.indexOfFirst { it.isSelected }} subtitles=${subtitles.size}")
+    Log.i(PlayerRuntimeController.TAG, "VLC tracks audio=${audio.size} selected=$selectedAudioIndex subtitles=${subtitles.size}")
     _uiState.update { current ->
         current.copy(
             audioTracks = audio,
             subtitleTracks = subtitles,
-            selectedAudioTrackIndex = audio.indexOfFirst { it.isSelected },
-            selectedSubtitleTrackIndex = if (subtitlesMustBeOff) -1 else subtitles.indexOfFirst { it.isSelected },
+            selectedAudioTrackIndex = selectedAudioIndex,
+            selectedSubtitleTrackIndex = if (subtitlesMustBeOff) -1 else selectedSubtitleIndex,
             selectedAddonSubtitle = if (subtitlesMustBeOff) null else current.selectedAddonSubtitle
         )
     }
 
-    // Apply the user's preferred audio/subtitle languages once per media. The flags are set
-    // before selecting so the track-change callbacks cannot loop back into this block.
+    // Apply the user's preferred languages once per media. A changed track count re-arms the
+    // preference so a track that arrives in a later ESAdded event is still picked up.
     if (!vlcAudioPreferenceApplied && audio.isNotEmpty()) {
         vlcAudioPreferenceApplied = true
         val preferred = audio.indexOfFirst { track ->
             mpvPreferredAudioLanguages.any { target -> audioTrackMatchesLanguage(track, target) }
         }
-        if (preferred >= 0) {
-            if (!audio[preferred].isSelected) selectAudioTrack(preferred)
-        } else {
-            // Tracks may still be arriving one ESAdded event at a time.
-            vlcAudioPreferenceApplied = false
-        }
+        if (preferred >= 0 && !audio[preferred].isSelected) selectAudioTrack(preferred)
     }
 
     if (!vlcSubtitlePreferenceApplied && subtitles.isNotEmpty()) {
         vlcSubtitlePreferenceApplied = true
-        hasScannedTextTracksOnce = true
-        tryAutoSelectPreferredSubtitleFromAvailableTracks()
-        val targets = subtitleLanguageTargets()
-        if (targets.isNotEmpty() && subtitles.none { track ->
-                targets.any { target -> PlayerSubtitleUtils.matchesLanguageCode(track.language, target) }
-            }) {
-            // The preferred language may arrive in a later ESAdded event.
-            vlcSubtitlePreferenceApplied = false
+        if (!subtitlesMustBeOff) {
+            hasScannedTextTracksOnce = true
+            tryAutoSelectPreferredSubtitleFromAvailableTracks()
         }
     }
 }

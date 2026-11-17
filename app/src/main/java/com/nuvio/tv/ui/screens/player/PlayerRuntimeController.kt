@@ -693,6 +693,10 @@ class PlayerRuntimeController(
     internal var vlcAudioPreferenceApplied: Boolean = false
     internal var vlcSubtitlePreferenceApplied: Boolean = false
     internal var vlcEndReachedHandled: Boolean = false
+    /** Deduplicates the many ESAdded/ESSelected callbacks VLC sends while a file opens. */
+    internal var vlcTracksSignature: Int = 0
+    internal var vlcAudioTrackCount: Int = 0
+    internal var vlcSubtitleTrackCount: Int = 0
     internal var pauseOverlayJob: Job? = null
     internal val pauseOverlayDelayMs = 5000L
     internal val seekProgressSyncDebounceMs = 700L
