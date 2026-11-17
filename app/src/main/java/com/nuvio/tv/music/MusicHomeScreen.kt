@@ -17,6 +17,7 @@ import androidx.compose.foundation.layout.offset
 import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.lazy.LazyColumn
+import androidx.compose.foundation.lazy.LazyRow
 import androidx.compose.foundation.lazy.itemsIndexed
 import androidx.compose.foundation.lazy.rememberLazyListState
 import androidx.compose.foundation.shape.RoundedCornerShape
@@ -48,6 +49,7 @@ import androidx.tv.material3.Icon
 import androidx.tv.material3.Text
 import com.music.bitchord.data.model.HomeShelf
 import com.music.bitchord.data.model.ShelfItem
+import com.music.bitchord.data.model.Song
 
 @Composable
 internal fun MusicHomeScreen(
@@ -56,13 +58,23 @@ internal fun MusicHomeScreen(
     onHeroDetails: (ShelfItem) -> Unit,
     onLoadMore: () -> Unit,
     onRetry: () -> Unit,
+    recentSongs: List<Song> = emptyList(),
+    localPlaylists: List<StoredPlaylist> = emptyList(),
+    accountPlaylists: List<MusicAccountPlaylist> = emptyList(),
+    onPlayCurated: (List<Song>, Int) -> Unit = { _, _ -> },
+    onPlayMix: (MusicCuratedMix) -> Unit = {},
+    onOpenLocalPlaylist: (StoredPlaylist) -> Unit = {},
+    onOpenAccountPlaylist: (MusicAccountPlaylist) -> Unit = {},
     modifier: Modifier = Modifier
 ) {
+    val hasPersonal = !state.curation.isEmpty || recentSongs.isNotEmpty() ||
+        localPlaylists.isNotEmpty() || accountPlaylists.isNotEmpty()
     when {
-        state.loading && state.shelves.isEmpty() -> MusicLoading(modifier.fillMaxSize())
-        state.error != null && state.shelves.isEmpty() ->
+        state.loading && state.shelves.isEmpty() && !hasPersonal ->
+            MusicLoading(modifier.fillMaxSize())
+        state.error != null && state.shelves.isEmpty() && !hasPersonal ->
             MusicErrorState(state.error, onRetry, modifier)
-        state.shelves.isEmpty() -> MusicEmptyState(
+        state.shelves.isEmpty() && !hasPersonal -> MusicEmptyState(
             title = "No music yet",
             message = "The music service didn't send anything back. Check the connection and try again.",
             modifier = modifier
@@ -72,6 +84,13 @@ internal fun MusicHomeScreen(
             onShelfItemClick = onShelfItemClick,
             onHeroDetails = onHeroDetails,
             onLoadMore = onLoadMore,
+            recentSongs = recentSongs,
+            localPlaylists = localPlaylists,
+            accountPlaylists = accountPlaylists,
+            onPlayCurated = onPlayCurated,
+            onPlayMix = onPlayMix,
+            onOpenLocalPlaylist = onOpenLocalPlaylist,
+            onOpenAccountPlaylist = onOpenAccountPlaylist,
             modifier = modifier
         )
     }
@@ -83,6 +102,13 @@ private fun MusicHomeFeed(
     onShelfItemClick: (HomeShelf, Int) -> Unit,
     onHeroDetails: (ShelfItem) -> Unit,
     onLoadMore: () -> Unit,
+    recentSongs: List<Song>,
+    localPlaylists: List<StoredPlaylist>,
+    accountPlaylists: List<MusicAccountPlaylist>,
+    onPlayCurated: (List<Song>, Int) -> Unit,
+    onPlayMix: (MusicCuratedMix) -> Unit,
+    onOpenLocalPlaylist: (StoredPlaylist) -> Unit,
+    onOpenAccountPlaylist: (MusicAccountPlaylist) -> Unit,
     modifier: Modifier = Modifier
 ) {
     val listState = rememberLazyListState()
@@ -98,6 +124,16 @@ private fun MusicHomeFeed(
 
     val heroShelf = state.shelves.firstOrNull { it.items.isNotEmpty() }
     val heroItem = heroShelf?.items?.firstOrNull()
+    val curatedIds = remember(state.curation) {
+        buildSet {
+            addAll(state.curation.quickPicks.map { it.videoId })
+            state.curation.dailyMixes.forEach { addAll(it.tracks.map { track -> track.videoId }) }
+            addAll(state.curation.onRepeat.map { it.videoId })
+            state.curation.because.forEach { addAll(it.tracks.map { track -> track.videoId }) }
+            addAll(state.curation.forgotten.map { it.videoId })
+        }
+    }
+    val jumpBackSongs = recentSongs.filterNot { it.videoId in curatedIds }
 
     LazyColumn(
         state = listState,
@@ -116,6 +152,98 @@ private fun MusicHomeFeed(
                         // [onShelfItemClick] also plays a plain track card directly.
                         onShelfItemClick(heroShelf, 0)
                     }
+                )
+            }
+        }
+        val curation = state.curation
+        if (curation.quickPicks.isNotEmpty()) {
+            item(key = "curated-quick") {
+                MusicCuratedSongsRow(
+                    title = "Quick picks",
+                    subtitle = "New finds mixed with songs you love — fresh every day",
+                    songs = curation.quickPicks,
+                    onPlay = onPlayCurated
+                )
+            }
+        }
+        if (curation.dailyMixes.isNotEmpty()) {
+            item(key = "curated-mixes") {
+                MusicCuratedMixesRow(mixes = curation.dailyMixes, onPlay = onPlayMix)
+            }
+        }
+        if (jumpBackSongs.isNotEmpty()) {
+            item(key = "curated-recents") {
+                MusicCuratedSongsRow(
+                    title = "Jump back in",
+                    songs = jumpBackSongs,
+                    onPlay = onPlayCurated
+                )
+            }
+        }
+        if (curation.onRepeat.isNotEmpty()) {
+            item(key = "curated-repeat") {
+                MusicCuratedSongsRow(
+                    title = "On repeat",
+                    subtitle = "Songs you've played most this month",
+                    songs = curation.onRepeat,
+                    onPlay = onPlayCurated
+                )
+            }
+        }
+        curation.because.forEachIndexed { index, feed ->
+            item(key = "curated-because-$index") {
+                MusicCuratedSongsRow(
+                    title = feed.title,
+                    songs = feed.tracks,
+                    onPlay = onPlayCurated
+                )
+            }
+        }
+        if (curation.forgotten.isNotEmpty()) {
+            item(key = "curated-forgotten") {
+                MusicCuratedSongsRow(
+                    title = "Forgotten favourites",
+                    subtitle = "Songs you liked but haven't played in a while",
+                    songs = curation.forgotten,
+                    onPlay = onPlayCurated
+                )
+            }
+        }
+        if (localPlaylists.isNotEmpty()) {
+            item(key = "curated-playlists") {
+                MusicCuratedPlaylistsRow(
+                    playlists = localPlaylists,
+                    onOpen = onOpenLocalPlaylist
+                )
+            }
+        }
+        if (accountPlaylists.isNotEmpty()) {
+            item(key = "curated-account-playlists") {
+                MusicCuratedAccountPlaylistsRow(
+                    playlists = accountPlaylists,
+                    onOpen = onOpenAccountPlaylist
+                )
+            }
+        }
+        if (state.curationLoading) {
+            item(key = "curated-building") {
+                Text(
+                    text = "Building your picks from what you play and like…",
+                    color = MusicPalette.textSecondary,
+                    fontSize = 10.5.sp,
+                    modifier = Modifier.padding(horizontal = 26.dp)
+                )
+            }
+        }
+        if (state.shelves.isNotEmpty()) {
+            item(key = "yt-header") {
+                Text(
+                    text = "FROM YOUTUBE MUSIC",
+                    color = MusicPalette.textMuted,
+                    fontSize = 10.sp,
+                    fontWeight = FontWeight.Bold,
+                    letterSpacing = 1.4.sp,
+                    modifier = Modifier.padding(horizontal = 26.dp, vertical = 2.dp)
                 )
             }
         }
@@ -141,6 +269,139 @@ private fun MusicHomeFeed(
         }
     }
 }
+
+@Composable
+internal fun MusicCuratedSongsRow(
+    title: String,
+    subtitle: String? = null,
+    songs: List<Song>,
+    onPlay: (List<Song>, Int) -> Unit
+) {
+    if (songs.isEmpty()) return
+    Column(Modifier.fillMaxWidth()) {
+        MusicSectionHeader(title = title, subtitle = subtitle)
+        Spacer(Modifier.height(10.dp))
+        LazyRow(
+            contentPadding = PaddingValues(horizontal = 27.dp),
+            horizontalArrangement = Arrangement.spacedBy(14.dp)
+        ) {
+            itemsIndexed(
+                items = songs,
+                key = { index, song -> "${song.videoId}#$index" }
+            ) { index, song ->
+                MusicCard(
+                    item = song.toCuratedShelfItem(),
+                    onClick = { onPlay(songs, index) }
+                )
+            }
+        }
+    }
+}
+
+@Composable
+private fun MusicCuratedMixesRow(
+    mixes: List<MusicCuratedMix>,
+    onPlay: (MusicCuratedMix) -> Unit
+) {
+    if (mixes.isEmpty()) return
+    Column(Modifier.fillMaxWidth()) {
+        MusicSectionHeader(
+            title = "Your daily mixes",
+            subtitle = "Your favourite artists, blended with music like theirs"
+        )
+        Spacer(Modifier.height(10.dp))
+        LazyRow(
+            contentPadding = PaddingValues(horizontal = 27.dp),
+            horizontalArrangement = Arrangement.spacedBy(14.dp)
+        ) {
+            itemsIndexed(mixes, key = { _, mix -> mix.id }) { _, mix ->
+                val cover = mix.tracks.firstOrNull()
+                MusicCard(
+                    item = ShelfItem(
+                        title = mix.name,
+                        subtitle = mix.artists.joinToString(" · "),
+                        thumbnailUrl = cover?.thumbnailUrl,
+                        videoId = cover?.videoId,
+                        browseId = mix.id,
+                        isVideo = false
+                    ),
+                    onClick = { onPlay(mix) }
+                )
+            }
+        }
+    }
+}
+
+@Composable
+private fun MusicCuratedPlaylistsRow(
+    playlists: List<StoredPlaylist>,
+    onOpen: (StoredPlaylist) -> Unit
+) {
+    if (playlists.isEmpty()) return
+    Column(Modifier.fillMaxWidth()) {
+        MusicSectionHeader(title = "Your playlists")
+        Spacer(Modifier.height(10.dp))
+        LazyRow(
+            contentPadding = PaddingValues(horizontal = 27.dp),
+            horizontalArrangement = Arrangement.spacedBy(14.dp)
+        ) {
+            itemsIndexed(playlists, key = { _, playlist -> playlist.id }) { _, playlist ->
+                MusicCard(
+                    item = ShelfItem(
+                        title = playlist.name,
+                        subtitle = if (playlist.songs.size == 1) "1 song" else "${playlist.songs.size} songs",
+                        thumbnailUrl = playlist.songs.firstOrNull()?.thumbnailUrl,
+                        videoId = null,
+                        browseId = playlist.id,
+                        isVideo = false
+                    ),
+                    onClick = { onOpen(playlist) }
+                )
+            }
+        }
+    }
+}
+
+@Composable
+private fun MusicCuratedAccountPlaylistsRow(
+    playlists: List<MusicAccountPlaylist>,
+    onOpen: (MusicAccountPlaylist) -> Unit
+) {
+    if (playlists.isEmpty()) return
+    Column(Modifier.fillMaxWidth()) {
+        MusicSectionHeader(title = "From your account")
+        Spacer(Modifier.height(10.dp))
+        LazyRow(
+            contentPadding = PaddingValues(horizontal = 27.dp),
+            horizontalArrangement = Arrangement.spacedBy(14.dp)
+        ) {
+            itemsIndexed(playlists, key = { _, playlist -> playlist.id }) { _, playlist ->
+                MusicCard(
+                    item = ShelfItem(
+                        title = playlist.title,
+                        subtitle = playlist.count?.let { count ->
+                            if (count == 1) "1 song" else "$count songs"
+                        } ?: "Playlist",
+                        thumbnailUrl = playlist.thumbnailUrl,
+                        videoId = null,
+                        browseId = "account:playlist:${playlist.id}",
+                        isVideo = false
+                    ),
+                    onClick = { onOpen(playlist) }
+                )
+            }
+        }
+    }
+}
+
+private fun Song.toCuratedShelfItem(): ShelfItem = ShelfItem(
+    title = title,
+    subtitle = artist,
+    thumbnailUrl = thumbnailUrl,
+    videoId = videoId,
+    browseId = null,
+    isVideo = isVideo
+)
 
 @Composable
 private fun MusicHero(

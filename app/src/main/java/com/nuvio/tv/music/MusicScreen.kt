@@ -464,7 +464,48 @@ fun MusicScreen(
                             }
                         },
                         onLoadMore = viewModel::loadMoreHome,
-                        onRetry = viewModel::loadHome
+                        onRetry = viewModel::loadHome,
+                        recentSongs = recents.map { it.toSong() },
+                        localPlaylists = playlists,
+                        accountPlaylists = state.accountLibrary.playlists,
+                        onPlayCurated = { songs, index -> play(songs, index) },
+                        onPlayMix = { mix -> play(mix.tracks, 0) },
+                        onOpenLocalPlaylist = { playlist ->
+                            openPlaylistId = playlist.id
+                            viewModel.selectTab(MusicTab.LIBRARY)
+                        },
+                        onOpenAccountPlaylist = { playlist ->
+                            viewModel.openDetail(
+                                browseId = "account:playlist:${playlist.id}",
+                                title = playlist.title,
+                                subtitle = "Playlist",
+                                thumbnailUrl = playlist.thumbnailUrl,
+                                type = BrowseType.PLAYLIST
+                            )
+                        }
+                    )
+                    state.tab == MusicTab.DISCOVER -> MusicDiscoverScreen(
+                        curation = state.home.curation,
+                        loading = state.home.curationLoading,
+                        onPlaySongs = { songs, index -> play(songs, index) },
+                        onOpenRelease = { release ->
+                            viewModel.openDetail(
+                                browseId = release.browseId,
+                                title = release.title,
+                                subtitle = release.artist,
+                                thumbnailUrl = release.thumbnailUrl,
+                                type = BrowseType.ALBUM
+                            )
+                        },
+                        onOpenArtist = { artist ->
+                            viewModel.openDetail(
+                                browseId = artist.browseId,
+                                title = artist.name,
+                                subtitle = "Artist",
+                                thumbnailUrl = artist.thumbnailUrl,
+                                type = BrowseType.ARTIST
+                            )
+                        }
                     )
                     state.tab == MusicTab.EXPLORE -> MusicExploreScreen(
                         state = state.explore,
@@ -808,6 +849,16 @@ private fun MusicNavigationPill(
             },
             onLeftEdge = onOpenNuvioMenu,
             onClick = { onTabSelected(MusicTab.HOME) }
+        )
+        MusicTopNavItem(
+            label = "Discover",
+            selected = selectedTab == MusicTab.DISCOVER,
+            modifier = if (selectedTab == MusicTab.DISCOVER) {
+                Modifier.focusRequester(initialFocus)
+            } else {
+                Modifier
+            },
+            onClick = { onTabSelected(MusicTab.DISCOVER) }
         )
         MusicTopNavItem(
             label = "Explore",

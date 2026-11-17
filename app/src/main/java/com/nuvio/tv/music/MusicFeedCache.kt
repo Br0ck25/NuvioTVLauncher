@@ -13,6 +13,8 @@ import kotlinx.serialization.json.Json
 internal data class CachedMusicFeed(
     val home: List<HomeShelf> = emptyList(),
     val explore: List<MoodGenreSection> = emptyList(),
+    val releases: List<HomeShelf> = emptyList(),
+    val charts: List<HomeShelf> = emptyList(),
     val account: Boolean = false,
     val savedAt: Long = 0L
 )
@@ -38,13 +40,17 @@ internal object MusicFeedCache {
         context: Context,
         home: List<HomeShelf>,
         explore: List<MoodGenreSection>,
-        account: Boolean
+        account: Boolean,
+        releases: List<HomeShelf> = emptyList(),
+        charts: List<HomeShelf> = emptyList()
     ) {
         runCatching {
             val file = File(context.filesDir, FILE_NAME)
             val data = CachedMusicFeed(
                 home = home,
                 explore = explore,
+                releases = releases,
+                charts = charts,
                 account = account,
                 savedAt = System.currentTimeMillis()
             )

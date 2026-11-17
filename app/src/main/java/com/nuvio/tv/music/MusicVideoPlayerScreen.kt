@@ -121,6 +121,9 @@ internal fun MusicVideoPlayerScreen(
     var durationMs by remember { mutableLongStateOf(0L) }
     var ended by remember { mutableStateOf(false) }
     var advanceHandled by remember(video.videoId) { mutableStateOf(false) }
+    var listenPlayedMs by remember(video.videoId) { mutableLongStateOf(0L) }
+    var listenRecorded by remember(video.videoId) { mutableStateOf(false) }
+    var lastListenTickMs by remember(video.videoId) { mutableLongStateOf(0L) }
     var showQueue by remember { mutableStateOf(false) }
     val playFocus = remember { FocusRequester() }
     val queueFocus = remember { FocusRequester() }
@@ -236,6 +239,24 @@ internal fun MusicVideoPlayerScreen(
                 positionMs = it.currentPosition.coerceAtLeast(0L)
                 durationMs = it.duration.coerceAtLeast(0L)
                 isPlaying = it.isPlaying
+                if (it.isPlaying) {
+                    val now = android.os.SystemClock.elapsedRealtime()
+                    if (lastListenTickMs > 0L) {
+                        listenPlayedMs += (now - lastListenTickMs).coerceIn(0L, 1_000L)
+                    }
+                    lastListenTickMs = now
+                    if (!listenRecorded) {
+                        val duration = it.duration.takeIf { value -> value > 0L } ?: 0L
+                        val threshold = if (duration > 0L) minOf(30_000L, duration / 2) else 30_000L
+                        if (listenPlayedMs >= threshold) {
+                            listenRecorded = true
+                            MusicListeningStore.record(video)
+                            MusicPlayer.markListened(video.videoId)
+                        }
+                    }
+                } else {
+                    lastListenTickMs = 0L
+                }
             }
             delay(250L)
         }

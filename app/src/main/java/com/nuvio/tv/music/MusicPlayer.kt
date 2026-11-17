@@ -96,6 +96,10 @@ object MusicPlayer {
     private var fadeJob: Job? = null
     private var fadeOutStarted = false
     @Volatile private var fastProgress = false
+    private var listenVideoId: String? = null
+    private var listenPlayedMs = 0L
+    private var listenRecorded = false
+    private var lastListenTickMs = 0L
     private var sleepTimerEndsAt: Long? = null
     /** The queue before shuffle; used to restore the original order. */
     private var originalQueue: List<Song> = emptyList()
@@ -127,6 +131,7 @@ object MusicPlayer {
         val app = context.applicationContext
         appContext = app
         MusicLibrary.init(app)
+        MusicListeningStore.init(app)
         MusicStreamResolver.init(app)
         MusicSettings.init(app)
         MusicDownloads.init(app)
@@ -278,6 +283,7 @@ object MusicPlayer {
         if (current.queue.isEmpty()) return
         // Repeat-one only applies when the track ends on its own; pressing Next still moves on.
         if (auto && current.repeatMode == RepeatMode.ONE) {
+            resetListenTracking()
             player?.seekTo(0)
             player?.play()
             _state.update { it.copy(positionMs = 0L) }
@@ -629,6 +635,7 @@ object MusicPlayer {
         val p = player ?: return
         val paused = startPaused
         startPaused = false
+        resetListenTracking()
         videoJob?.cancel()
         resolvedVideoSong = null
         videoPreparedFor = null
@@ -994,6 +1001,52 @@ object MusicPlayer {
         }
     }
 
+    private fun resetListenTracking() {
+        listenVideoId = null
+        listenPlayedMs = 0L
+        listenRecorded = false
+        lastListenTickMs = 0L
+    }
+
+    /** Counts only time the track is actually playing, not pauses or buffering. */
+    private fun trackListening() {
+        val p = player ?: return
+        val song = _state.value.song ?: return
+        if (!p.isPlaying) {
+            lastListenTickMs = 0L
+            return
+        }
+        val now = SystemClock.elapsedRealtime()
+        if (listenVideoId != song.videoId) {
+            listenVideoId = song.videoId
+            listenPlayedMs = 0L
+            listenRecorded = false
+            lastListenTickMs = now
+            return
+        }
+        if (lastListenTickMs > 0L) {
+            listenPlayedMs += (now - lastListenTickMs).coerceIn(0L, 2_000L)
+        }
+        lastListenTickMs = now
+        if (listenRecorded) return
+        val duration = p.duration.takeIf { it > 0L } ?: song.durationMillis()
+        val threshold = if (duration > 0L) minOf(30_000L, duration / 2) else 30_000L
+        if (listenPlayedMs >= threshold) {
+            listenRecorded = true
+            MusicListeningStore.record(song)
+        }
+    }
+
+    /** The video player already counted this track; don't count it again when audio resumes. */
+    @Synchronized
+    fun markListened(videoId: String) {
+        if (videoId.isBlank()) return
+        listenVideoId = videoId
+        listenPlayedMs = 0L
+        listenRecorded = true
+        lastListenTickMs = 0L
+    }
+
     private fun ensureTicker() {
         if (tickerJob?.isActive == true) return
         tickerJob = scope.launch {
@@ -1008,6 +1061,7 @@ object MusicPlayer {
                                 ?: it.durationMs
                         )
                     }
+                    trackListening()
                     val now = SystemClock.elapsedRealtime()
                     if (now - lastPersistMs >= 5_000L) {
                         lastPersistMs = now

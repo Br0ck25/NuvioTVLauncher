@@ -54,6 +54,7 @@ import androidx.tv.material3.Text
 import com.music.bitchord.data.model.BrowseItem
 import com.music.bitchord.data.model.SearchFilter
 import com.music.bitchord.data.model.SearchResult
+import com.music.bitchord.data.model.ShelfItem
 import com.music.bitchord.data.model.Song
 
 @Composable
@@ -202,6 +203,41 @@ internal fun MusicSearchScreen(
             }
         }
 
+        if (state.typeahead.isNotEmpty() && state.query.isNotBlank() && !state.submitted) {
+            LazyRow(
+                contentPadding = PaddingValues(horizontal = 26.dp),
+                horizontalArrangement = Arrangement.spacedBy(12.dp),
+                modifier = Modifier.padding(top = 10.dp)
+            ) {
+                itemsIndexed(
+                    items = state.typeahead,
+                    key = { index, row -> searchKey(row, index) }
+                ) { _, row ->
+                    when (row) {
+                        is SearchResult.TopTrack -> MusicCard(
+                            item = row.song.toSearchShelfItem(),
+                            onClick = { onTrackClick(row.song) }
+                        )
+                        is SearchResult.Track -> MusicCard(
+                            item = row.song.toSearchShelfItem(),
+                            onClick = { onTrackClick(row.song) }
+                        )
+                        is SearchResult.Browse -> MusicCard(
+                            item = ShelfItem(
+                                title = row.item.title,
+                                subtitle = row.item.subtitle,
+                                thumbnailUrl = row.item.thumbnailUrl,
+                                videoId = null,
+                                browseId = row.item.browseId,
+                                isVideo = false
+                            ),
+                            onClick = { onBrowseClick(row.item) }
+                        )
+                    }
+                }
+            }
+        }
+
         Spacer(Modifier.height(14.dp))
 
         when {
@@ -250,38 +286,139 @@ internal fun MusicSearchScreen(
                         contentPadding = PaddingValues(horizontal = 26.dp, vertical = 4.dp),
                         verticalArrangement = Arrangement.spacedBy(4.dp)
                     ) {
-                        itemsIndexed(
-                            items = state.rows,
-                            key = { index, row ->
-                                when (row) {
-                                    is SearchResult.TopTrack -> "t:${row.song.videoId}#$index"
-                                    is SearchResult.Track -> "t:${row.song.videoId}#$index"
-                                    is SearchResult.Browse -> "b:${row.item.browseId}#$index"
+                        if (state.filter == SearchFilter.ALL) {
+                            state.topResult?.let { top ->
+                                item(key = "search-top") {
+                                    SearchTopResult(
+                                        row = top,
+                                        onTrackClick = onTrackClick,
+                                        onBrowseClick = onBrowseClick
+                                    )
                                 }
                             }
-                        ) { _, row ->
-                            when (row) {
-                                is SearchResult.TopTrack -> TrackResult(
-                                    song = row.song,
-                                    state = state,
-                                    playingSongId = playback.song?.videoId,
-                                    playing = playback.isPlaying,
-                                    onTrackClick = onTrackClick
-                                )
-                                is SearchResult.Track -> TrackResult(
-                                    song = row.song,
-                                    state = state,
-                                    playingSongId = playback.song?.videoId,
-                                    playing = playback.isPlaying,
-                                    onTrackClick = onTrackClick
-                                )
-                                is SearchResult.Browse -> MusicBrowseRow(
-                                    title = row.item.title,
-                                    subtitle = row.item.subtitle,
-                                    thumbnailUrl = row.item.thumbnailUrl,
-                                    type = row.item.type,
-                                    onClick = { onBrowseClick(row.item) }
-                                )
+                            if (state.songResults.isNotEmpty()) {
+                                item(key = "search-songs-header") {
+                                    SearchGroupHeader("Songs") {
+                                        onFilterChange(SearchFilter.SONGS)
+                                    }
+                                }
+                                itemsIndexed(
+                                    items = state.songResults.take(5),
+                                    key = { index, row -> searchKey(row, index) }
+                                ) { _, row ->
+                                    TrackResult(
+                                        song = row.song,
+                                        state = state,
+                                        playingSongId = playback.song?.videoId,
+                                        playing = playback.isPlaying,
+                                        onTrackClick = onTrackClick
+                                    )
+                                }
+                            }
+                            if (state.videoResults.isNotEmpty()) {
+                                item(key = "search-videos-header") {
+                                    SearchGroupHeader("Videos") {
+                                        onFilterChange(SearchFilter.VIDEOS)
+                                    }
+                                }
+                                itemsIndexed(
+                                    items = state.videoResults.take(5),
+                                    key = { index, row -> searchKey(row, index) }
+                                ) { _, row ->
+                                    TrackResult(
+                                        song = row.song,
+                                        state = state,
+                                        playingSongId = playback.song?.videoId,
+                                        playing = playback.isPlaying,
+                                        onTrackClick = onTrackClick
+                                    )
+                                }
+                            }
+                            if (state.albumResults.isNotEmpty()) {
+                                item(key = "search-albums-header") {
+                                    SearchGroupHeader("Albums") {
+                                        onFilterChange(SearchFilter.ALBUMS)
+                                    }
+                                }
+                                itemsIndexed(
+                                    items = state.albumResults.take(5),
+                                    key = { index, row -> searchKey(row, index) }
+                                ) { _, row ->
+                                    MusicBrowseRow(
+                                        title = row.item.title,
+                                        subtitle = row.item.subtitle,
+                                        thumbnailUrl = row.item.thumbnailUrl,
+                                        type = row.item.type,
+                                        onClick = { onBrowseClick(row.item) }
+                                    )
+                                }
+                            }
+                            if (state.artistResults.isNotEmpty()) {
+                                item(key = "search-artists-header") {
+                                    SearchGroupHeader("Artists") {
+                                        onFilterChange(SearchFilter.ARTISTS)
+                                    }
+                                }
+                                itemsIndexed(
+                                    items = state.artistResults.take(5),
+                                    key = { index, row -> searchKey(row, index) }
+                                ) { _, row ->
+                                    MusicBrowseRow(
+                                        title = row.item.title,
+                                        subtitle = row.item.subtitle,
+                                        thumbnailUrl = row.item.thumbnailUrl,
+                                        type = row.item.type,
+                                        onClick = { onBrowseClick(row.item) }
+                                    )
+                                }
+                            }
+                            if (state.playlistResults.isNotEmpty()) {
+                                item(key = "search-playlists-header") {
+                                    SearchGroupHeader("Playlists") {
+                                        onFilterChange(SearchFilter.PLAYLISTS)
+                                    }
+                                }
+                                itemsIndexed(
+                                    items = state.playlistResults.take(5),
+                                    key = { index, row -> searchKey(row, index) }
+                                ) { _, row ->
+                                    MusicBrowseRow(
+                                        title = row.item.title,
+                                        subtitle = row.item.subtitle,
+                                        thumbnailUrl = row.item.thumbnailUrl,
+                                        type = row.item.type,
+                                        onClick = { onBrowseClick(row.item) }
+                                    )
+                                }
+                            }
+                        } else {
+                            itemsIndexed(
+                                items = state.rows,
+                                key = { index, row -> searchKey(row, index) }
+                            ) { _, row ->
+                                when (row) {
+                                    is SearchResult.TopTrack -> TrackResult(
+                                        song = row.song,
+                                        state = state,
+                                        playingSongId = playback.song?.videoId,
+                                        playing = playback.isPlaying,
+                                        onTrackClick = onTrackClick
+                                    )
+                                    is SearchResult.Track -> TrackResult(
+                                        song = row.song,
+                                        state = state,
+                                        playingSongId = playback.song?.videoId,
+                                        playing = playback.isPlaying,
+                                        onTrackClick = onTrackClick
+                                    )
+                                    is SearchResult.Browse -> MusicBrowseRow(
+                                        title = row.item.title,
+                                        subtitle = row.item.subtitle,
+                                        thumbnailUrl = row.item.thumbnailUrl,
+                                        type = row.item.type,
+                                        onClick = { onBrowseClick(row.item) }
+                                    )
+                                }
                             }
                         }
                         if (state.loadingMore) {
@@ -302,6 +439,128 @@ internal fun MusicSearchScreen(
                 }
             }
         }
+    }
+}
+
+private fun searchKey(row: SearchResult, index: Int): String = when (row) {
+    is SearchResult.TopTrack -> "t:${row.song.videoId}#$index"
+    is SearchResult.Track -> "t:${row.song.videoId}#$index"
+    is SearchResult.Browse -> "b:${row.item.browseId}#$index"
+}
+
+private fun Song.toSearchShelfItem(): ShelfItem = ShelfItem(
+    title = title,
+    subtitle = artist,
+    thumbnailUrl = thumbnailUrl,
+    videoId = videoId,
+    browseId = null,
+    isVideo = isVideo
+)
+
+@Composable
+private fun SearchTopResult(
+    row: SearchResult,
+    onTrackClick: (Song) -> Unit,
+    onBrowseClick: (BrowseItem) -> Unit
+) {
+    val song = when (row) {
+        is SearchResult.TopTrack -> row.song
+        is SearchResult.Track -> row.song
+        is SearchResult.Browse -> null
+    }
+    val browse = (row as? SearchResult.Browse)?.item
+    val title = song?.title ?: browse?.title ?: return
+    val subtitle = song?.artist ?: browse?.subtitle.orEmpty()
+    val artwork = song?.thumbnailUrl ?: browse?.thumbnailUrl
+    val action: () -> Unit = {
+        when (row) {
+            is SearchResult.TopTrack -> onTrackClick(row.song)
+            is SearchResult.Track -> onTrackClick(row.song)
+            is SearchResult.Browse -> onBrowseClick(row.item)
+        }
+    }
+    Row(
+        Modifier
+            .fillMaxWidth()
+            .padding(horizontal = 26.dp, vertical = 6.dp)
+            .clip(RoundedCornerShape(16.dp))
+            .background(MusicPalette.surface)
+            .clickable(onClick = action)
+            .padding(16.dp),
+        verticalAlignment = Alignment.CenterVertically,
+        horizontalArrangement = Arrangement.spacedBy(18.dp)
+    ) {
+        MusicArtwork(
+            url = artwork,
+            modifier = Modifier.size(150.dp),
+            cornerRadius = 14.dp,
+            iconSize = 48.dp,
+            artworkPx = 600
+        )
+        Column(Modifier.weight(1f)) {
+            Text(
+                text = "TOP RESULT",
+                color = MusicPalette.accentTeal,
+                fontSize = 10.sp,
+                letterSpacing = 1.8.sp,
+                fontWeight = FontWeight.Bold
+            )
+            Spacer(Modifier.height(6.dp))
+            Text(
+                text = title,
+                color = MusicPalette.text,
+                fontFamily = MusicDisplay,
+                fontSize = 30.sp,
+                lineHeight = 32.sp,
+                fontWeight = FontWeight.Bold,
+                maxLines = 2,
+                overflow = TextOverflow.Ellipsis
+            )
+            if (subtitle.isNotBlank()) {
+                Spacer(Modifier.height(4.dp))
+                Text(
+                    text = subtitle,
+                    color = MusicPalette.textSecondary,
+                    fontSize = 13.sp,
+                    maxLines = 1,
+                    overflow = TextOverflow.Ellipsis
+                )
+            }
+            Spacer(Modifier.height(12.dp))
+            MusicPill(
+                label = if (song != null) "Play" else "Open",
+                selected = false,
+                onClick = action
+            )
+        }
+    }
+}
+
+@Composable
+private fun SearchGroupHeader(
+    title: String,
+    onShowAll: () -> Unit
+) {
+    Row(
+        Modifier
+            .fillMaxWidth()
+            .padding(horizontal = 26.dp, vertical = 6.dp),
+        verticalAlignment = Alignment.CenterVertically
+    ) {
+        Text(
+            text = title,
+            color = MusicPalette.text,
+            fontFamily = MusicDisplay,
+            fontSize = 19.sp,
+            fontWeight = FontWeight.Bold
+        )
+        Spacer(Modifier.weight(1f))
+        MusicPill(
+            label = "Show all",
+            selected = false,
+            onClick = onShowAll,
+            compact = true
+        )
     }
 }
 

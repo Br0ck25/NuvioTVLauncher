@@ -15,10 +15,15 @@ import dagger.hilt.android.lifecycle.HiltViewModel
 import dagger.hilt.android.qualifiers.ApplicationContext
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.Job
+import kotlinx.coroutines.async
+import kotlinx.coroutines.coroutineScope
 import kotlinx.coroutines.delay
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.asStateFlow
+import kotlinx.coroutines.flow.collectLatest
+import kotlinx.coroutines.flow.combine
+import kotlinx.coroutines.flow.distinctUntilChanged
 import kotlinx.coroutines.flow.update
 import kotlinx.coroutines.launch
 import kotlinx.coroutines.withContext
@@ -27,6 +32,7 @@ import javax.inject.Inject
 /** The top tabs of the Music section. Library and Settings join these in a later wave. */
 enum class MusicTab(val title: String) {
     HOME("Home"),
+    DISCOVER("Discover"),
     EXPLORE("Explore"),
     LIBRARY("Library"),
     LOCAL("Local"),
@@ -40,7 +46,10 @@ data class MusicHomeState(
     val loadingMore: Boolean = false,
     val continuation: String? = null,
     /** True when these shelves came from the signed-in YouTube Music account. */
-    val account: Boolean = false
+    val account: Boolean = false,
+    /** Local, personal Home/Discover sections built from listening history and the library. */
+    val curation: MusicCuration = MusicCuration(),
+    val curationLoading: Boolean = false
 )
 
 data class MusicSearchState(
@@ -54,7 +63,9 @@ data class MusicSearchState(
     val addonRows: List<SearchResult> = emptyList(),
     val continuation: String? = null,
     val error: String? = null,
-    val suggestions: List<String> = emptyList()
+    val suggestions: List<String> = emptyList(),
+    /** Songs and artists YouTube Music offers while the listener is still typing. */
+    val typeahead: List<SearchResult> = emptyList()
 ) {
     /** The playable tracks in this result page, in display order. */
     val songs: List<Song>
@@ -65,6 +76,43 @@ data class MusicSearchState(
                 is SearchResult.Browse -> null
             }
         }
+
+    /** The promoted card at the head of an unfiltered search, or a sensible fallback. */
+    val topResult: SearchResult?
+        get() = rows.firstOrNull { it is SearchResult.TopTrack }
+            ?: rows.filterIsInstance<SearchResult.Browse>()
+                .firstOrNull { it.item.type == BrowseType.ARTIST }
+            ?: rows.firstOrNull()
+
+    private val topVideoId: String?
+        get() = when (val top = topResult) {
+            is SearchResult.TopTrack -> top.song.videoId
+            is SearchResult.Track -> top.song.videoId
+            else -> null
+        }
+
+    private val topBrowseId: String?
+        get() = (topResult as? SearchResult.Browse)?.item?.browseId
+
+    val songResults: List<SearchResult.Track>
+        get() = rows.filterIsInstance<SearchResult.Track>()
+            .filter { !it.song.isVideo && it.song.videoId != topVideoId }
+
+    val videoResults: List<SearchResult.Track>
+        get() = rows.filterIsInstance<SearchResult.Track>()
+            .filter { it.song.isVideo && it.song.videoId != topVideoId }
+
+    val albumResults: List<SearchResult.Browse>
+        get() = rows.filterIsInstance<SearchResult.Browse>()
+            .filter { it.item.type == BrowseType.ALBUM && it.item.browseId != topBrowseId }
+
+    val artistResults: List<SearchResult.Browse>
+        get() = rows.filterIsInstance<SearchResult.Browse>()
+            .filter { it.item.type == BrowseType.ARTIST && it.item.browseId != topBrowseId }
+
+    val playlistResults: List<SearchResult.Browse>
+        get() = rows.filterIsInstance<SearchResult.Browse>()
+            .filter { it.item.type == BrowseType.PLAYLIST && it.item.browseId != topBrowseId }
 }
 
 data class MusicDetailState(
@@ -92,7 +140,11 @@ data class MusicExploreState(
     val selected: MoodGenre? = null,
     val selectedLoading: Boolean = false,
     val selectedShelves: List<HomeShelf> = emptyList(),
-    val selectedError: String? = null
+    val selectedError: String? = null,
+    /** Non-personal new-release and chart shelves shown below the moods. */
+    val releases: List<HomeShelf> = emptyList(),
+    val charts: List<HomeShelf> = emptyList(),
+    val extrasLoading: Boolean = false
 )
 
 data class MusicAccountLibraryState(
@@ -126,6 +178,7 @@ class MusicViewModel @Inject constructor(
     private var homeJob: Job? = null
     private var homeMoreJob: Job? = null
     private var searchJob: Job? = null
+    private var curationJob: Job? = null
     private var searchMoreJob: Job? = null
     private var addonSearchJob: Job? = null
     private var suggestionJob: Job? = null
@@ -151,12 +204,27 @@ class MusicViewModel @Inject constructor(
                         ),
                         explore = it.explore.copy(
                             sections = cached.explore,
+                            releases = cached.releases,
+                            charts = cached.charts,
                             loading = cached.explore.isEmpty()
                         )
                     )
                 }
             }
             loadHome()
+        }
+        // Likes and playlist edits change the taste fingerprint. Rebuild quietly while
+        // the personal tabs are open; recents are left out so playback does not churn it.
+        viewModelScope.launch {
+            MusicPlayer.init(context)
+            combine(MusicLibrary.liked, MusicLibrary.playlists) { liked, playlists ->
+                liked.size to playlists.size
+            }.distinctUntilChanged().collectLatest {
+                delay(2_000L)
+                if (_state.value.tab == MusicTab.HOME || _state.value.tab == MusicTab.DISCOVER) {
+                    loadCuration()
+                }
+            }
         }
     }
 
@@ -180,6 +248,16 @@ class MusicViewModel @Inject constructor(
         when (tab) {
             MusicTab.HOME -> if (_state.value.home.shelves.isEmpty() && _state.value.home.error == null) {
                 loadHome()
+            } else {
+                // Cache/fingerprint check: rebuild only when likes, playlists or seeds changed.
+                loadCuration()
+            }
+            MusicTab.DISCOVER -> if (_state.value.home.curation.isEmpty &&
+                !_state.value.home.curationLoading
+            ) {
+                loadHome()
+            } else {
+                loadCuration()
             }
             MusicTab.EXPLORE -> if (_state.value.explore.sections.isEmpty() &&
                 _state.value.explore.error == null
@@ -194,7 +272,49 @@ class MusicViewModel @Inject constructor(
 
     // ---- home ----
 
+    /**
+     * The personal Home/Discover shelves. The cached copy is shown immediately; the
+     * network build runs behind it and never blanks the screen on failure.
+     */
+    private fun loadCuration() {
+        if (_state.value.home.curationLoading) return
+        MusicPlayer.init(context)
+        MusicCurator.loadCached(context)?.let { cached ->
+            _state.update { it.copy(home = it.home.copy(curation = cached)) }
+        }
+        curationJob?.cancel()
+        curationJob = viewModelScope.launch {
+            val liked = MusicLibrary.liked.value
+            val recents = MusicLibrary.recents.value
+            val playlists = MusicLibrary.playlists.value
+            val fingerprint = withContext(Dispatchers.Default) {
+                MusicCurator.fingerprint(liked, recents, playlists)
+            }
+            val cached = MusicCurator.loadCached(context)
+            if (cached != null && !MusicCurator.isStale(cached, fingerprint)) {
+                _state.update {
+                    it.copy(home = it.home.copy(curation = cached, curationLoading = false))
+                }
+                return@launch
+            }
+            _state.update { it.copy(home = it.home.copy(curationLoading = true)) }
+            val built = withContext(Dispatchers.IO) {
+                runCatching { MusicCurator.build(liked, recents, playlists) }.getOrNull()
+            }
+            if (built != null && (!built.isEmpty || cached == null)) {
+                MusicCurator.save(context, built)
+                _state.update {
+                    it.copy(home = it.home.copy(curation = built, curationLoading = false))
+                }
+            } else {
+                // Throttled or empty build: keep the last good curation on screen.
+                _state.update { it.copy(home = it.home.copy(curationLoading = false)) }
+            }
+        }
+    }
+
     fun loadHome() {
+        loadCuration()
         homeJob?.cancel()
         homeJob = viewModelScope.launch {
             _state.update { it.copy(home = it.home.copy(loading = true, error = null)) }
@@ -356,7 +476,7 @@ class MusicViewModel @Inject constructor(
     // ---- search ----
 
     fun onSearchQueryChanged(value: String) {
-        _state.update { it.copy(search = it.search.copy(query = value)) }
+        _state.update { it.copy(search = it.search.copy(query = value, submitted = false)) }
         scheduleSuggestions(value)
     }
 
@@ -494,17 +614,30 @@ class MusicViewModel @Inject constructor(
     private fun scheduleSuggestions(value: String) {
         suggestionJob?.cancel()
         if (value.isBlank()) {
-            _state.update { it.copy(search = it.search.copy(suggestions = emptyList())) }
+            _state.update {
+                it.copy(search = it.search.copy(suggestions = emptyList(), typeahead = emptyList()))
+            }
             return
         }
         suggestionJob = viewModelScope.launch {
             delay(220L)
-            val found = withContext(Dispatchers.IO) {
-                runCatching { YtMusicRepository.searchSuggestions(value).getOrNull() }.getOrNull()
-            }.orEmpty()
+            val (found, quick) = withContext(Dispatchers.IO) {
+                val suggestions = runCatching {
+                    YtMusicRepository.searchSuggestions(value).getOrNull()
+                }.getOrNull().orEmpty()
+                val typeahead = runCatching {
+                    YtMusicRepository.searchTypeahead(value).getOrNull()?.rows
+                }.getOrNull().orEmpty()
+                suggestions to typeahead
+            }
             _state.update {
                 if (it.search.query != value) it
-                else it.copy(search = it.search.copy(suggestions = found.take(8)))
+                else it.copy(
+                    search = it.search.copy(
+                        suggestions = found.take(8),
+                        typeahead = quick.take(6)
+                    )
+                )
             }
         }
     }
@@ -771,15 +904,33 @@ class MusicViewModel @Inject constructor(
     fun loadExplore() {
         exploreJob?.cancel()
         exploreJob = viewModelScope.launch {
-            _state.update { it.copy(explore = it.explore.copy(loading = true, error = null)) }
-            val result = withContext(Dispatchers.IO) { YtMusicRepository.moodAndGenres() }
+            _state.update {
+                it.copy(
+                    explore = it.explore.copy(
+                        loading = true,
+                        extrasLoading = true,
+                        error = null
+                    )
+                )
+            }
+            val (result, releases, charts) = withContext(Dispatchers.IO) {
+                coroutineScope {
+                    val moods = async { YtMusicRepository.moodAndGenres() }
+                    val newReleases = async { YtMusicRepository.newReleases().getOrNull().orEmpty() }
+                    val chartShelves = async { YtMusicRepository.charts().getOrNull().orEmpty() }
+                    Triple(moods.await(), newReleases.await(), chartShelves.await())
+                }
+            }
             result.fold(
                 onSuccess = { sections ->
                     _state.update {
                         it.copy(
                             explore = it.explore.copy(
                                 loading = false,
+                                extrasLoading = false,
                                 sections = sections,
+                                releases = releases,
+                                charts = charts,
                                 error = null
                             )
                         )
@@ -791,10 +942,18 @@ class MusicViewModel @Inject constructor(
                         it.copy(
                             explore = it.explore.copy(
                                 loading = false,
-                                error = friendlyMusicError(error, "Couldn't load Explore.")
+                                extrasLoading = false,
+                                releases = releases,
+                                charts = charts,
+                                error = if (releases.isEmpty() && charts.isEmpty()) {
+                                    friendlyMusicError(error, "Couldn't load Explore.")
+                                } else {
+                                    null
+                                }
                             )
                         )
                     }
+                    if (releases.isNotEmpty() || charts.isNotEmpty()) persistFeedCache()
                 }
             )
         }
@@ -894,7 +1053,9 @@ class MusicViewModel @Inject constructor(
                 context = context,
                 home = state.home.shelves,
                 explore = state.explore.sections,
-                account = state.home.account
+                account = state.home.account,
+                releases = state.explore.releases,
+                charts = state.explore.charts
             )
         }
     }

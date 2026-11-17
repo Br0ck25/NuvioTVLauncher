@@ -39,13 +39,22 @@ import androidx.compose.ui.graphics.Brush
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.graphicsLayer
 import androidx.compose.ui.graphics.lerp
+import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import androidx.tv.material3.Icon
 import androidx.tv.material3.Text
+import com.music.bitchord.data.YtMusicRepository
 import com.music.bitchord.data.model.HomeShelf
 import com.music.bitchord.data.model.MoodGenre
+import kotlinx.coroutines.Dispatchers
+import kotlinx.coroutines.sync.Semaphore
+import kotlinx.coroutines.sync.withPermit
+import kotlinx.coroutines.withContext
+
+/** Mood tiles fetch their cover two at a time; the repository caches the shelves. */
+private val moodCoverGate = Semaphore(2)
 
 @Composable
 internal fun MusicExploreScreen(
@@ -59,16 +68,23 @@ internal fun MusicExploreScreen(
 ) {
     val selected = state.selected
     if (selected == null) {
+        val hasAnything = state.sections.isNotEmpty() ||
+            state.releases.isNotEmpty() || state.charts.isNotEmpty()
         when {
-            state.loading && state.sections.isEmpty() -> MusicLoading(modifier.fillMaxSize())
-            state.error != null && state.sections.isEmpty() ->
+            state.loading && !hasAnything -> MusicLoading(modifier.fillMaxSize())
+            state.error != null && !hasAnything ->
                 MusicErrorState(state.error, onRetry, modifier)
-            state.sections.isEmpty() -> MusicEmptyState(
+            !hasAnything -> MusicEmptyState(
                 title = "Nothing to explore",
                 message = "The music service didn't send any moods or genres.",
                 modifier = modifier
             )
-            else -> MoodList(state, onMoodClick, modifier)
+            else -> MoodList(
+                state = state,
+                onMoodClick = onMoodClick,
+                onShelfItemClick = onShelfItemClick,
+                modifier = modifier
+            )
         }
     } else {
         MoodDetail(
@@ -86,6 +102,7 @@ internal fun MusicExploreScreen(
 private fun MoodList(
     state: MusicExploreState,
     onMoodClick: (MoodGenre) -> Unit,
+    onShelfItemClick: (HomeShelf, Int) -> Unit,
     modifier: Modifier = Modifier
 ) {
     val firstMoodFocus = remember { FocusRequester() }
@@ -138,6 +155,44 @@ private fun MoodList(
                 }
             }
         }
+        if (state.releases.isNotEmpty()) {
+            item(key = "explore-releases-header") {
+                MusicSectionHeader(title = "New releases")
+            }
+            itemsIndexed(
+                items = state.releases,
+                key = { index, shelf -> "release#${shelf.title}#$index" }
+            ) { _, shelf ->
+                MusicShelfRow(
+                    shelf = shelf,
+                    onItemClick = { _, index -> onShelfItemClick(shelf, index) }
+                )
+            }
+        }
+        if (state.charts.isNotEmpty()) {
+            item(key = "explore-charts-header") {
+                MusicSectionHeader(title = "Charts")
+            }
+            itemsIndexed(
+                items = state.charts,
+                key = { index, shelf -> "chart#${shelf.title}#$index" }
+            ) { _, shelf ->
+                MusicShelfRow(
+                    shelf = shelf,
+                    onItemClick = { _, index -> onShelfItemClick(shelf, index) }
+                )
+            }
+        }
+        if (state.extrasLoading && state.releases.isEmpty() && state.charts.isEmpty()) {
+            item(key = "explore-extras-loading") {
+                Text(
+                    text = "Loading new releases and charts…",
+                    color = MusicPalette.textSecondary,
+                    fontSize = 10.5.sp,
+                    modifier = Modifier.padding(horizontal = 26.dp)
+                )
+            }
+        }
     }
 }
 
@@ -168,6 +223,26 @@ private fun MoodTile(
     onClick: () -> Unit
 ) {
     var focused by remember { mutableStateOf(false) }
+    val context = LocalContext.current
+    var coverUrl by remember(mood.browseId, mood.params) {
+        mutableStateOf(
+            mood.thumbnailUrl ?: MusicMoodCovers.get(context, mood.browseId, mood.params)
+        )
+    }
+    LaunchedEffect(mood.browseId, mood.params) {
+        if (coverUrl != null) return@LaunchedEffect
+        val url = withContext(Dispatchers.IO) {
+            moodCoverGate.withPermit {
+                runCatching {
+                    YtMusicRepository.moodGenreArtwork(mood.browseId, mood.params).getOrNull()
+                }.getOrNull()
+            }
+        }
+        if (url != null) {
+            coverUrl = url
+            MusicMoodCovers.put(context, mood.browseId, mood.params, url)
+        }
+    }
     val scale by animateFloatAsState(
         targetValue = if (focused) 1.04f else 1f,
         animationSpec = tween(140),
@@ -198,6 +273,27 @@ private fun MoodTile(
             .clickable(onClick = onClick)
             .padding(15.dp)
     ) {
+        coverUrl?.let { url ->
+            MusicArtwork(
+                url = url,
+                modifier = Modifier
+                    .matchParentSize()
+                    .graphicsLayer { alpha = 0.42f },
+                cornerRadius = 15.dp
+            )
+            Box(
+                Modifier
+                    .matchParentSize()
+                    .background(
+                        Brush.verticalGradient(
+                            listOf(
+                                Color.Black.copy(alpha = 0.08f),
+                                Color.Black.copy(alpha = 0.5f)
+                            )
+                        )
+                    )
+            )
+        }
         // The oversized ring is the mockup's quiet visual signature for a mood tile.
         Box(
             Modifier

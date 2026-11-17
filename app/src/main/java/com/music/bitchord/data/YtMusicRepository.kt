@@ -299,6 +299,22 @@ object YtMusicRepository {
         InnertubeParser.parseMoodAndGenres(Innertube.browse("FEmusic_moods_and_genres"))
     }
 
+    /** New albums and singles, as the Explore tab's non-personal shelves. */
+    suspend fun newReleases(): Result<List<HomeShelf>> = call("new-releases") {
+        val albums = shelvesOf("FEmusic_new_releases_albums")
+        val all = shelvesOf("FEmusic_new_releases")
+        (albums + all).distinctBy { shelf ->
+            shelf.title.ifBlank { shelf.items.firstOrNull()?.title.orEmpty() }
+        }
+    }
+
+    /** YouTube Music's charts, as the Explore tab's non-personal shelves. */
+    suspend fun charts(): Result<List<HomeShelf>> = call("charts") {
+        InnertubeParser.parseHome(
+            Innertube.browse("FEmusic_charts", "sgYPRkVtdXNpY19leHBsb3Jl")
+        )
+    }
+
     /**
      * The playlist shelves behind one mood/genre category. This result also
      * supplies its tile artwork, so caching it avoids a second request when a

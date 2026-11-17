@@ -17,6 +17,7 @@ import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
+import androidx.compose.material.icons.filled.AutoAwesome
 import androidx.compose.material.icons.filled.Cloud
 import androidx.compose.material.icons.filled.Explore
 import androidx.compose.material.icons.filled.Extension
@@ -136,6 +137,17 @@ internal fun MusicSidebar(
                     Modifier
                 },
                 onClick = { onTabSelected(MusicTab.HOME) }
+            )
+            MusicSidebarItem(
+                label = "Discover",
+                icon = Icons.Default.AutoAwesome,
+                selected = selectedTab == MusicTab.DISCOVER,
+                modifier = if (selectedTab == MusicTab.DISCOVER) {
+                    Modifier.focusRequester(initialFocus)
+                } else {
+                    Modifier
+                },
+                onClick = { onTabSelected(MusicTab.DISCOVER) }
             )
             MusicSidebarItem(
                 label = "Explore",
