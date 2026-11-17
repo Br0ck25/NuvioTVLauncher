@@ -2,12 +2,12 @@
 
 ## Subtitles
 
-- Fixed duplicate subtitles when a translated YouTube track (marked `*`) is selected: the stale original cue is no longer drawn above the translated line.
+- Fixed duplicate subtitles when a translated YouTube track (marked `*`) is selected: the original cue no longer stays on screen above the translated line.
 
 ## Music
 
-- Last.fm sign-in is configured in this build.
+- Last.fm sign-in is now configured in the release build.
 
 ## Updates
 
-- Updates are no longer downloaded in the background. The update card offers **Download now** or **Later**; after downloading, **Install** is a separate step. Automatic installs remain an opt-in setting.
+- Updates are no longer downloaded in the background. When a new version is found, the update card offers **Download now** or **Later**. After downloading, **Install** is a separate step. Automatic installs remain an opt-in setting.
