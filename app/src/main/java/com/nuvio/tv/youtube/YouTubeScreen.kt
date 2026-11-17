@@ -127,6 +127,11 @@ import com.nuvio.tv.core.qr.QrCodeGenerator
 
 private val YtRed = Color(0xFFFF0033)
 private val CardBg = Color(0xFF1C1C1E)
+/** The page is laid out at 90% density, so the same number of dp covers more of the screen. */
+private const val YouTubeContentScale = 0.90f
+/** Left and right inset shared by the header and every card. It keeps the first poster clear of
+ *  the TV's overscan and the side menu, the same way Home and Library keep theirs clear. */
+private val YouTubePageInset = 56.dp
 
 /**
  * The YouTube page: its own section in the side menu, laid out like the YouTube app: feeds along
@@ -162,7 +167,7 @@ fun YouTubeScreen(
     // and the header/tabs stop feeling oversized. Everything inside the page scales together.
     val baseDensity = LocalDensity.current
     val contentDensity = remember(baseDensity) {
-        Density(baseDensity.density * 0.90f, baseDensity.fontScale)
+        Density(baseDensity.density * YouTubeContentScale, baseDensity.fontScale)
     }
 
     // Signing in happens on this page: the code shows here and the tab reloads when it's approved.
@@ -320,7 +325,7 @@ fun YouTubeScreen(
     }
 
     CompositionLocalProvider(LocalDensity provides contentDensity) {
-    Column(Modifier.fillMaxSize().padding(start = 28.dp, end = 28.dp, top = 16.dp)) {
+    Column(Modifier.fillMaxSize().padding(start = YouTubePageInset, end = YouTubePageInset, top = 16.dp)) {
         // The header and tab strip share one collapsing band, so the cards get the full screen
         // height while browsing and the whole header comes back on one press.
         AnimatedVisibility(
@@ -766,12 +771,13 @@ private fun Content(
     // Grids follow the "Posters per row" setting; rows are 16:9 and get their own width so
     // about four cards fit on a 1080p TV, with the next one peeking in at the edge.
     val columnCount = YouTubeSettings.posterColumns(context)
-    val screenWidthDp = context.resources.configuration.screenWidthDp
+    // Width in the page's own density, so a row fills the space between the two insets.
+    val screenWidthDp = context.resources.configuration.screenWidthDp / YouTubeContentScale
     // The same "Posters per row" choice drives horizontal feed rows and grids. It used to
     // affect only grids, so changing it from 5 to 3 or 4 left the Home rows looking identical.
     val rowCardWidth = run {
         val gapDp = 16f * (columnCount - 1).coerceAtLeast(0)
-        ((screenWidthDp - 56f - gapDp) / columnCount.toFloat())
+        ((screenWidthDp - YouTubePageInset.value * 2f - gapDp) / columnCount.toFloat())
             .coerceIn(150f, 340f)
             .dp
     }

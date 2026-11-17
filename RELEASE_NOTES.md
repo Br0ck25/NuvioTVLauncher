@@ -6,11 +6,13 @@
 - The scan is manual — nothing scans when playlists load. The tag list shows how many channels and groups each tag covers, and the settings row shows how many tags are selected.
 - Back from Live TV search results returns to the group you were in before searching. Submitting or cancelling the search also closes the keyboard, so Back is never left going to the IME.
 - In the group list, hold **Up** or **Down** for about two seconds to jump straight to the first or last group.
+- Each profile can now choose which playlists it shows under **Settings → Live TV → Playlists**. The playlist sources and logins stay shared, so nothing is stored twice; a hidden playlist is left out of the guide, All channels, search, Home rows, Sports, Multiview and EPG listings for that profile.
 
 ## Playback
 
 - Dolby Vision Profile 7 remuxes: official builds now include the native DV7 → DV8.1 bridge, so **Convert to DV8.1** works. If the bridge is unavailable, playback falls back to the HDR10 base layer instead of failing.
 - Translated YouTube captions: the background now wraps the caption text instead of spanning the whole screen.
+- OneTube keeps its first poster clear of the TV's overscan and the side menu, so cards are no longer clipped on the left after switching sections on sets like Hisense.
 
 ## Music
 
