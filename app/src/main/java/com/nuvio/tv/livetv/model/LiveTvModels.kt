@@ -586,7 +586,7 @@ data class LiveTvSettings(
     /** OK opens the guide on the channel instead of playing it full screen. */
     val homeRowOpensGuide: Boolean = false,
     /** A "Next: 9:00 The News" line on each card. */
-    val homeRowShowNext: Boolean = false,
+    val homeRowShowNext: Boolean = true,
     /** Compact cards: logo and show name only. */
     val homeRowCompact: Boolean = false,
     /** Live TV buffer: "none" (the least the player can run on), "small" (fast channel changes), "normal", "large", "xlarge". */
@@ -945,7 +945,7 @@ object DeveloperTools {
  */
 object LiveTvLoadReport {
     /** Which Live TV kit this app was built from: changed with every kit, so a report shows the exact build. */
-    const val KIT_STAMP = "2026-11-17 00:50"
+    const val KIT_STAMP = "2026-11-17 14:05"
 
     /** The first line of every report: kit and app version, so it's clear which build wrote it. */
     val buildLine: String

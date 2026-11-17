@@ -17,7 +17,10 @@ enum class DeviceAction(val id: String) {
     /** FLauncher's way: turn off the Google TV launcher so only this launcher is left. Optional and risky; see the warning on the setup page. */
     DISABLE_STOCK("disable-stock"),
 
-    /** Turn the stock launcher (and Google TV's setup service) back on. Undoes [DISABLE_STOCK]. */
+    /** Remove the Google TV launcher for this user. Unlike [DISABLE_STOCK] it stays gone after a restart. Optional and riskier. */
+    UNINSTALL_STOCK("uninstall-stock"),
+
+    /** Turn the stock launcher (and Google TV's setup service) back on. Undoes [DISABLE_STOCK] and [UNINSTALL_STOCK]. */
     ENABLE_STOCK("enable-stock"),
 
     /** Point the Home button back at the launcher the TV came with. */
@@ -58,8 +61,15 @@ object DeviceCommands {
      */
     val disableStock = listOf("pm disable-user --user 0 $GOOGLE_TV_LAUNCHER")
 
+    /**
+     * Removes the Google TV launcher for this user only (the system copy stays on the TV). A disable can be
+     * undone by the TV at the next restart on a Chromecast; an uninstall stays. [enableStock] brings it back.
+     */
+    val uninstallStock = listOf("pm uninstall --user 0 $GOOGLE_TV_LAUNCHER")
+
     /** Turns the stock launchers (and Google TV's setup service) back on. Harmless if they already are. */
-    val enableStock = STOCK_LAUNCHERS.map { "pm enable $it" } + "pm enable $GOOGLE_TV_SETUP_FALLBACK"
+    val enableStock = listOf("cmd package install-existing --user 0 $GOOGLE_TV_LAUNCHER") +
+        STOCK_LAUNCHERS.map { "pm enable $it" } + "pm enable $GOOGLE_TV_SETUP_FALLBACK"
 
     /**
      * `enabled_accessibility_services` with [service] added (kept if the list already has it), as one

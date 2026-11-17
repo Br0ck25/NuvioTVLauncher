@@ -196,7 +196,7 @@ class LiveTvPreferences @Inject constructor(
         val homeRowLimit = intPreferencesKey("home_row_limit")
         val homeRowHidePlaceholders = booleanPreferencesKey("home_row_hide_placeholders")
         val homeRowOpensGuide = booleanPreferencesKey("home_row_opens_guide")
-        val homeRowShowNext = booleanPreferencesKey("home_row_show_next")
+        val homeRowShowNext = booleanPreferencesKey("home_row_show_next_v2") // v2: the default became on; earlier saves had stored "off"
         val homeRowCompact = booleanPreferencesKey("home_row_compact")
         val bufferSize = stringPreferencesKey("buffer_size")
         val groupSort = stringPreferencesKey("group_sort")
