@@ -3461,8 +3461,30 @@ private fun GroupColumn(
         }
         return true
     }
+
+    /** Hold Up/Down: jump to the first/last group instead of stepping row by row. */
+    fun jumpToGroup(groupId: String?) {
+        if (groupId == null || stepping[0]) return
+        val index = rowKeys.indexOf(groupId)
+        if (index < 0) return
+        focusedKey = groupId
+        stepping[0] = true
+        stepScope.launch {
+            try {
+                listState.scrollToItem(index)
+                androidx.compose.runtime.withFrameNanos { }
+                runCatching { requesterFor(groupId).requestFocus() }
+            } finally {
+                stepping[0] = false
+            }
+        }
+    }
+
     // OK held down in Reorder groups (a tick, not a pick): its release is swallowed.
     var okHeld by remember { mutableStateOf(false) }
+    var groupHoldKey by remember { mutableStateOf<Key?>(null) }
+    var groupHoldStartedAt by remember { mutableStateOf(0L) }
+    var groupHoldJumped by remember { mutableStateOf(false) }
     Column(
         modifier = Modifier
             .fillMaxHeight()
@@ -3512,8 +3534,46 @@ private fun GroupColumn(
                 }
                 if (e.type == KeyEventType.KeyDown && e.key == Key.DirectionRight) {
                     onRight(); true
-                } else if (e.type == KeyEventType.KeyDown && (e.key == Key.DirectionUp || e.key == Key.DirectionDown)) {
-                    stepGroup(e)
+                } else if (e.key == Key.DirectionUp || e.key == Key.DirectionDown) {
+                    if (searchFocused) {
+                        stepGroup(e)
+                    } else if (e.type == KeyEventType.KeyDown) {
+                        val native = e.nativeKeyEvent
+                        if (native.repeatCount == 0) {
+                            groupHoldKey = e.key
+                            groupHoldStartedAt = native.downTime
+                            groupHoldJumped = false
+                        } else if (!groupHoldJumped && groupHoldKey == e.key &&
+                            native.eventTime - groupHoldStartedAt >= 700L
+                        ) {
+                            groupHoldJumped = true
+                            jumpToGroup(
+                                if (e.key == Key.DirectionUp) listed.firstOrNull()?.id
+                                else listed.lastOrNull()?.id
+                            )
+                            return@onPreviewKeyEvent true
+                        }
+                        if (groupHoldJumped) true else stepGroup(e)
+                    } else if (e.type == KeyEventType.KeyUp) {
+                        val wasJumped = groupHoldJumped
+                        val heldLongEnough = !wasJumped && groupHoldKey == e.key &&
+                            e.nativeKeyEvent.eventTime - groupHoldStartedAt >= 700L
+                        groupHoldKey = null
+                        groupHoldJumped = false
+                        when {
+                            wasJumped -> true
+                            heldLongEnough -> {
+                                jumpToGroup(
+                                    if (e.key == Key.DirectionUp) listed.firstOrNull()?.id
+                                    else listed.lastOrNull()?.id
+                                )
+                                true
+                            }
+                            else -> false
+                        }
+                    } else {
+                        false
+                    }
                 } else false
             }
     ) {
