@@ -437,14 +437,15 @@ private fun LiveTvGuideScreenBody(
     var savedMovedKey by remember { mutableStateOf<String?>(null) }
     var visibilityChannels by remember { mutableStateOf<List<LiveChannel>>(emptyList()) }
     var pendingHidden by remember { mutableStateOf<Set<String>>(emptySet()) }
-    val channelVisibilityActionsFocus = remember { FocusRequester() }
-    val groupVisibilityActionsFocus = remember { FocusRequester() }
-    val groupVisibilityFirstRowFocus = remember { FocusRequester() }
-    val groupVisibilityLastRowFocus = remember { FocusRequester() }
     // Pick favorites (several at once, TiviMate style): a group's channels, ★ on the ones picked.
     var favoritesMode by remember { mutableStateOf(false) }
     var favoritesChannels by remember { mutableStateOf<List<LiveChannel>>(emptyList()) }
     var pendingFavorites by remember { mutableStateOf<Set<String>>(emptySet()) }
+    // Copy channels to a group (several at once): a group's channels, ✓ on the ones picked.
+    var copyPickMode by remember { mutableStateOf(false) }
+    var copyPickChannels by remember { mutableStateOf<List<LiveChannel>>(emptyList()) }
+    var copyPicked by remember { mutableStateOf<Set<String>>(emptySet()) }
+    var copyTargetPicker by remember { mutableStateOf(false) }
     // A channel to move the cursor to once it's in the list (after a group switch, etc).
     var highlightKey by remember { mutableStateOf<String?>(null) }
     val groupsListState = rememberLazyListState()
@@ -457,7 +458,6 @@ private fun LiveTvGuideScreenBody(
     var infoTarget by remember { mutableStateOf<MenuTarget?>(null) }
     var searchOpen by remember { mutableStateOf(false) }
     var textPrompt by remember { mutableStateOf<TextPrompt?>(null) }
-    var groupPickerFor by remember { mutableStateOf<LiveChannel?>(null) }
     var groupMenu by remember { mutableStateOf<ChannelGroup?>(null) }
     var epgPickerFor by remember { mutableStateOf<LiveChannel?>(null) }
     var logoPickerFor by remember { mutableStateOf<LiveChannel?>(null) }
@@ -482,6 +482,7 @@ private fun LiveTvGuideScreenBody(
     val channels = when {
         visibilityMode -> visibilityChannels
         favoritesMode -> favoritesChannels
+        copyPickMode -> copyPickChannels
         reorderActive -> reorderList
         savedOrder != null -> savedOrder!!
         epgUnassignedOnly -> ui.channels.filter { programs[it.key].isNullOrEmpty() }
@@ -1039,38 +1040,6 @@ private fun LiveTvGuideScreenBody(
         }
         goFullscreen()
     }
-    // Remote Buttons (Settings → Remote Buttons): the jobs a button can be given in the guide,
-    // each one the same function its usual button already calls.
-    val remoteKeys = com.nuvio.tv.livetv.remote.rememberRemoteKeys(com.nuvio.tv.livetv.remote.RemoteCatalog.GUIDE)
-    remoteKeys.run = run@{ id, _ ->
-        when (id) {
-            "guide.channel_menu" -> { val ch = focusedChannel ?: return@run false; menuTarget = MenuTarget(ch, focusedBlock) }
-            "guide.fullscreen" -> {
-                if (playback.channelKey == null) return@run false
-                // The same as holding Back: remember the spot, and use the playing channel's group.
-                savedSpot = ui.selectedGroupId to focusedChannel?.key
-                scope.launch {
-                    viewModel.channelByKey(playback.channelKey)?.let { playing ->
-                        viewModel.groupToShow(playing)?.let { viewModel.selectGroup(it) }
-                    }
-                    goFullscreen()
-                }
-            }
-            "guide.search" -> { LiveTvSearchBridge.origin.value = LiveTvSearchBridge.GUIDE; onOpenNuvioSearch() }
-            "guide.previous_channel" -> { val ch = viewModel.previousChannel() ?: return@run false; playChannel(ch) }
-            "guide.page_up" -> moveRow(-8)
-            "guide.page_down" -> moveRow(8)
-            "guide.groups" -> focusGroups()
-            "guide.favorites" -> viewModel.selectGroup(ChannelGroup.FAVORITES)
-            "guide.now" -> resetToNow()
-            "guide.options" -> { runCatching { guideGearFocus.requestFocus() } }
-            "guide.multiview_add" -> { val ch = focusedChannel ?: return@run false; com.nuvio.tv.livetv.multiview.MultiviewQueue.addAndAnnounce(ch.key) }
-            "guide.favorite_toggle" -> { val ch = focusedChannel ?: return@run false; viewModel.toggleFavorite(ch) }
-            "guide.play" -> { val ch = focusedChannel ?: return@run false; viewModel.preview(ch); goFullscreen() }
-            else -> return@run false
-        }
-        true
-    }
     FrameMeter("Guide")
     androidx.compose.runtime.CompositionLocalProvider(
         LocalShowDetails provides { key, p -> viewModel.details(key, p) },
@@ -1105,9 +1074,7 @@ private fun LiveTvGuideScreenBody(
                 // Play/Pause on the remote: straight to full screen on what's playing. Works on
                 // every remote, including ones that can't report a held Back button.
                 if (e.type == KeyEventType.KeyDown && playingNow && e.nativeKeyEvent.repeatCount == 0 &&
-                    (e.key == Key.MediaPlayPause || e.key == Key.MediaPlay) &&
-                    // Unless the user gave Play/Pause another job here (Remote Buttons).
-                    !(gridFocused && remoteKeys.overrides(e.nativeKeyEvent))
+                    (e.key == Key.MediaPlayPause || e.key == Key.MediaPlay)
                 ) {
                     returnToPlaying()
                     return@onPreviewKeyEvent true
@@ -1237,9 +1204,6 @@ private fun LiveTvGuideScreenBody(
                     onHideAllGroups = { groupHiddenPending = groupVisibilityList.orEmpty().map { it.id }.toSet() },
                     onShowAllGroups = { groupHiddenPending = emptySet() },
                     onVisibilityDone = ::finishGroupVisibility,
-                    onVisibilityActions = { groupVisibilityActionsFocus.requestFocus() },
-                    visibilityFirstRowFocus = groupVisibilityFirstRowFocus,
-                    visibilityLastRowFocus = groupVisibilityLastRowFocus,
                     playlistNames = playlistNames,
                     showPlaylistHeadings = settings.groupPlaylistHeadings,
                     collapsed = collapsedPlaylists,
@@ -1463,19 +1427,35 @@ private fun LiveTvGuideScreenBody(
                                             }
                                         }
                                         !down -> Unit
-                                        event.key == Key.DirectionUp -> {
-                                            if (row <= 0) channelVisibilityActionsFocus.requestFocus()
-                                            else moveRow(-1)
-                                        }
-                                        event.key == Key.DirectionDown -> {
-                                            if (row >= channels.lastIndex) channelVisibilityActionsFocus.requestFocus()
-                                            else moveRow(1)
-                                        }
+                                        event.key == Key.DirectionUp -> moveRow(-1)
+                                        event.key == Key.DirectionDown -> moveRow(1)
                                         event.key == Key.PageUp || event.key == Key.ChannelUp -> moveRow(-8)
                                         event.key == Key.PageDown || event.key == Key.ChannelDown -> moveRow(8)
                                         event.key == Key.DirectionLeft -> pendingHidden = channels.map { it.key }.toSet()
                                         event.key == Key.DirectionRight -> pendingHidden = emptySet()
                                         event.key == Key.Back -> finishChannelVisibility()
+                                    }
+                                    return@onPreviewKeyEvent true
+                                }
+                                if (copyPickMode) {
+                                    // OK: pick or unpick · Left: none · Right: all · Back: choose the group
+                                    val down = event.type == KeyEventType.KeyDown
+                                    when {
+                                        isOk && event.type == KeyEventType.KeyUp -> {
+                                            channels.getOrNull(row)?.let { ch ->
+                                                copyPicked = if (ch.key in copyPicked) copyPicked - ch.key else copyPicked + ch.key
+                                            }
+                                        }
+                                        !down -> Unit
+                                        event.key == Key.DirectionUp -> moveRow(-1)
+                                        event.key == Key.DirectionDown -> moveRow(1)
+                                        event.key == Key.PageUp || event.key == Key.ChannelUp -> moveRow(-8)
+                                        event.key == Key.PageDown || event.key == Key.ChannelDown -> moveRow(8)
+                                        event.key == Key.DirectionLeft -> copyPicked = emptySet()
+                                        event.key == Key.DirectionRight -> copyPicked = channels.map { it.key }.toSet()
+                                        event.key == Key.Back -> {
+                                            if (copyPicked.isEmpty()) copyPickMode = false else copyTargetPicker = true
+                                        }
                                     }
                                     return@onPreviewKeyEvent true
                                 }
@@ -1528,10 +1508,6 @@ private fun LiveTvGuideScreenBody(
                                     }
                                     return@onPreviewKeyEvent true
                                 }
-                                // Remote Buttons: a button the user changed does its new job (others carry on below).
-                                if (!reorderActive && !visibilityMode && logoPickerFor == null && epgPickerFor == null &&
-                                    (remoteKeys.onKey(event.nativeKeyEvent, nav = false) || remoteKeys.onKey(event.nativeKeyEvent, nav = true))
-                                ) return@onPreviewKeyEvent true
                                 // Remember Up/Down presses: some remotes (clickable rings, e.g. on some
                                 // JVC Google TVs) also send OK with them, which would play the
                                 // highlighted channel while just scrolling.
@@ -1730,6 +1706,7 @@ private fun LiveTvGuideScreenBody(
                                             focusColumn = if (index == row && (gridFocused || epgPickerFor != null || logoPickerFor != null) && !nameFocus && !reorderActive) column else null,
                                             focusedBlock = if (index == row) focusedBlock else null,
                                             visible = if (visibilityMode) ch.key !in pendingHidden else null,
+                                            picked = if (copyPickMode) ch.key in copyPicked else null,
                                             onToggleVisibility = if (visibilityMode) ({
                                                 row = index
                                                 pendingHidden = if (ch.key in pendingHidden) pendingHidden - ch.key else pendingHidden + ch.key
@@ -1916,33 +1893,6 @@ private fun LiveTvGuideScreenBody(
                 LiveText("Manage group visibility", size = 15.sp, weight = FontWeight.Bold)
                 Spacer(Modifier.height(4.dp))
                 LiveText("OK: show or hide group", color = NuvioTheme.colors.TextSecondary, size = 13.sp)
-                VisibilityBulkActions(
-                    firstFocus = groupVisibilityActionsFocus,
-                    onSelectAll = { groupHiddenPending = emptySet() },
-                    onDeselectAll = { groupHiddenPending = groupVisibilityList.orEmpty().map { it.id }.toSet() },
-                    onReturnToFirst = {
-                        scope.launch {
-                            if (groupVisibilityList.orEmpty().isNotEmpty()) {
-                                groupsListState.scrollToItem(0)
-                                androidx.compose.runtime.withFrameNanos { }
-                                runCatching { groupVisibilityFirstRowFocus.requestFocus() }
-                            }
-                        }
-                    },
-                    onReturnToList = {
-                        scope.launch {
-                            val last = groupVisibilityList.orEmpty().lastIndex
-                            if (last >= 0) {
-                                groupsListState.scrollToItem(last)
-                                androidx.compose.runtime.withFrameNanos { }
-                                runCatching { groupVisibilityLastRowFocus.requestFocus() }
-                            }
-                        }
-                    },
-                    onDone = ::finishGroupVisibility,
-                )
-                LiveText("Up at first / Down at last: actions", color = NuvioTheme.colors.TextSecondary, size = 12.sp)
-                LiveText("Actions: Down to first · Up to last", color = NuvioTheme.colors.TextSecondary, size = 12.sp)
                 LiveText("Left: hide all", color = NuvioTheme.colors.TextSecondary, size = 13.sp)
                 LiveText("Right: show all", color = NuvioTheme.colors.TextSecondary, size = 13.sp)
                 LiveText("Back: save and return", color = NuvioTheme.colors.TextSecondary, size = 13.sp)
@@ -2001,6 +1951,23 @@ private fun LiveTvGuideScreenBody(
                 LiveText("Back: save and finish", color = NuvioTheme.colors.TextSecondary, size = 13.sp)
             }
         }
+        if (copyPickMode) {
+            Column(
+                modifier = Modifier
+                    .align(Alignment.BottomEnd)
+                    .padding(end = 36.dp, bottom = 24.dp)
+                    .glass(guideInfoGlass(settings.guideInfoBackground), RoundedCornerShape(10.dp))
+                    .padding(horizontal = 16.dp, vertical = 12.dp)
+            ) {
+                LiveText("Copy channels to a group", size = 15.sp, weight = FontWeight.Bold)
+                Spacer(Modifier.height(4.dp))
+                LiveText("${copyPicked.size} of ${copyPickChannels.size} picked", color = NuvioTheme.colors.TextSecondary, size = 13.sp)
+                LiveText("OK: pick or unpick", color = NuvioTheme.colors.TextSecondary, size = 13.sp)
+                LiveText("Left: pick none", color = NuvioTheme.colors.TextSecondary, size = 13.sp)
+                LiveText("Right: pick all", color = NuvioTheme.colors.TextSecondary, size = 13.sp)
+                LiveText(if (copyPicked.isEmpty()) "Back: cancel" else "Back: choose the group", color = NuvioTheme.colors.TextSecondary, size = 13.sp)
+            }
+        }
         if (favoritesMode) {
             Column(
                 modifier = Modifier
@@ -2029,28 +1996,6 @@ private fun LiveTvGuideScreenBody(
                 LiveText("Manage visibility", size = 15.sp, weight = FontWeight.Bold)
                 Spacer(Modifier.height(4.dp))
                 LiveText("OK: show or hide channel", color = NuvioTheme.colors.TextSecondary, size = 13.sp)
-                VisibilityBulkActions(
-                    firstFocus = channelVisibilityActionsFocus,
-                    onSelectAll = { pendingHidden = emptySet() },
-                    onDeselectAll = { pendingHidden = visibilityChannels.map { it.key }.toSet() },
-                    onReturnToFirst = {
-                        row = 0
-                        scope.launch {
-                            if (channels.isNotEmpty()) listState.scrollToItem(0)
-                            runCatching { gridFocus.requestFocus() }
-                        }
-                    },
-                    onReturnToList = {
-                        row = channels.lastIndex.coerceAtLeast(0)
-                        scope.launch {
-                            if (channels.isNotEmpty()) listState.scrollToItem(row)
-                            runCatching { gridFocus.requestFocus() }
-                        }
-                    },
-                    onDone = ::finishChannelVisibility,
-                )
-                LiveText("Up at first / Down at last: actions", color = NuvioTheme.colors.TextSecondary, size = 12.sp)
-                LiveText("Actions: Down to first · Up to last", color = NuvioTheme.colors.TextSecondary, size = 12.sp)
                 LiveText("Left: hide all", color = NuvioTheme.colors.TextSecondary, size = 13.sp)
                 LiveText("Right: show all", color = NuvioTheme.colors.TextSecondary, size = 13.sp)
                 LiveText("Back: save and return", color = NuvioTheme.colors.TextSecondary, size = 13.sp)
@@ -2186,7 +2131,6 @@ private fun LiveTvGuideScreenBody(
                     row = (row + d).coerceIn(0, (channels.size - 1).coerceAtLeast(0))
                 },
                 onRemoveFromGroup = { gid -> viewModel.removeFromGroup(gid, target.channel); menuTarget = null },
-                onAddToGroup = { menuTarget = null; groupPickerFor = target.channel },
                 onRename = {
                     menuTarget = null
                     textPrompt = TextPrompt(
@@ -2223,6 +2167,14 @@ private fun LiveTvGuideScreenBody(
                     scope.launch { delay(60); runCatching { gridFocus.requestFocus() } }
                 },
                 onCopy = { menuTarget = null; copyPickerFor = target.channel },
+                onCopyMany = {
+                    menuTarget = null
+                    copyPickChannels = channels
+                    copyPicked = setOf(target.channel.key)
+                    copyPickMode = true
+                    row = channels.indexOfFirst { it.key == target.channel.key }.coerceAtLeast(0)
+                    scope.launch { delay(60); runCatching { gridFocus.requestFocus() } }
+                },
                 isCopyHere = viewModel.isCopyIn(ui.selectedGroupId, target.channel),
                 onRemoveCopy = { viewModel.removeCopy(ui.selectedGroupId, target.channel); menuTarget = null },
                 onPickFavorites = {
@@ -2347,19 +2299,34 @@ private fun LiveTvGuideScreenBody(
                 }
             )
         }
-        groupPickerFor?.let { ch ->
+        if (copyTargetPicker) {
+            val picks = copyPickChannels.filter { it.key in copyPicked }
             GroupPickerDialog(
-                channel = ch,
-                groups = ui.customGroups,
-                onDismiss = { groupPickerFor = null },
-                onPick = { g -> viewModel.addToGroup(g.id, ch); groupPickerFor = null },
+                channel = null,
+                groups = viewModel.bulkCopyTargets(),
+                title = "Copy ${picks.size} ${if (picks.size == 1) "channel" else "channels"} to…",
+                onDismiss = { copyTargetPicker = false },
+                onPick = { g ->
+                    val added = viewModel.copyChannelsToGroup(g.id, picks)
+                    copyTargetPicker = false
+                    copyPickMode = false
+                    com.nuvio.tv.livetv.record.LiveTvNotice.show(
+                        if (added == 0) "Already in ${g.title}" else "Copied $added ${if (added == 1) "channel" else "channels"} to ${g.title}"
+                    )
+                },
                 onNewGroup = {
-                    groupPickerFor = null
+                    copyTargetPicker = false
                     textPrompt = TextPrompt(
                         title = "New group",
                         initial = "",
                         hint = "Group name",
-                        onConfirm = { name -> viewModel.createGroupWith(name, ch) }
+                        onConfirm = { name ->
+                            viewModel.createGroupWithChannels(name, picks)
+                            copyPickMode = false
+                            com.nuvio.tv.livetv.record.LiveTvNotice.show(
+                                "Copied ${picks.size} ${if (picks.size == 1) "channel" else "channels"} to ${name.trim().ifBlank { "My group" }}"
+                            )
+                        }
                     )
                 }
             )
@@ -2369,7 +2336,7 @@ private fun LiveTvGuideScreenBody(
             ActionMenuDialog(
                 title = g.title,
                 actions = buildList {
-                    add("Rename group" to {
+                    add("Rename group…" to {
                         groupMenu = null
                         textPrompt = TextPrompt(
                             title = "Rename group",
@@ -2379,7 +2346,7 @@ private fun LiveTvGuideScreenBody(
                         )
                     })
                     if (viewModel.parentalEnabled()) {
-                        if (viewModel.isGroupLockSet(g.id)) add("Remove parental lock" to {
+                        if (viewModel.isGroupLockSet(g.id)) add("Remove parental lock…" to {
                             groupMenu = null
                             pinRemovesLock = true
                             pinWrong = false
@@ -2406,14 +2373,30 @@ private fun LiveTvGuideScreenBody(
                             scope.launch { delay(80); listState.scrollToItem(0); runCatching { gridFocus.requestFocus() } }
                         }
                     })
-                    add("Manage visibility" to {
+                    if (g.id != ChannelGroup.RECENT && g.id != ChannelGroup.SEARCH) add("Copy channels to group…" to {
+                        groupMenu = null
+                        val list = viewModel.channelsInGroup(g.id)
+                        if (list.isEmpty()) {
+                            com.nuvio.tv.livetv.record.LiveTvNotice.show("No channels in ${g.title}")
+                        } else {
+                            if (ui.selectedGroupId != g.id) viewModel.selectGroup(g.id)
+                            copyPickChannels = list
+                            copyPicked = emptySet()
+                            copyPickMode = true
+                            row = 0
+                            groupsOpen = false
+                            nameFocus = settings.browseByChannelName
+                            scope.launch { delay(80); listState.scrollToItem(0); runCatching { gridFocus.requestFocus() } }
+                        }
+                    })
+                    add("Manage visibility…" to {
                         groupMenu = null
                         val all = viewModel.groupsWithHidden()
                         groupVisibilityList = all
                         groupHiddenPending = user.hiddenGroups intersect all.map { it.id }.toSet()
                         scope.launch { delay(80); runCatching { groupsFocus.requestFocus() } }
                     })
-                    add("Reorder groups" to {
+                    add("Reorder groups…" to {
                         groupMenu = null
                         groupWorking = ui.groups.filter { !it.special }
                         groupReorderId = g.id
@@ -2424,7 +2407,7 @@ private fun LiveTvGuideScreenBody(
                     })
                     add("Move up" to { viewModel.moveGroup(g.id, -1) })
                     add("Move down" to { viewModel.moveGroup(g.id, 1) })
-                    add("New group" to {
+                    add("New group…" to {
                         groupMenu = null
                         textPrompt = TextPrompt(
                             title = "New group", initial = "", hint = "Group name",
@@ -2788,6 +2771,8 @@ private fun GuideRow(
     focusedBlock: GuideBlock?,
     /** In Manage visibility: true = shown, false = hidden. Null otherwise. */
     visible: Boolean? = null,
+    /** In Copy channels to a group: true = picked, false = not. Null otherwise. */
+    picked: Boolean? = null,
     onToggleVisibility: (() -> Unit)? = null,
     /** Picked up to be moved with "Reorder channels". */
     moving: Boolean = false,
@@ -2919,6 +2904,16 @@ private fun GuideRow(
                     contentDescription = if (moving) "Moving" else "Can be moved",
                     tint = if (moving || nameFocused) cell.text else NuvioTheme.colors.TextSecondary,
                     modifier = Modifier.size(gdp(18f))
+                )
+            }
+            // Copy channels to a group: a tick on the channels picked.
+            if (picked == true) {
+                Spacer(Modifier.width(6.dp))
+                Icon(
+                    imageVector = Icons.Default.Check,
+                    contentDescription = "Picked",
+                    tint = if (channelFocused || nameFocused) cell.text else NuvioTheme.colors.Secondary,
+                    modifier = Modifier.size(gdp(16f))
                 )
             }
             // Manage visibility: an eye for shown channels, a crossed-out eye for hidden ones.
@@ -3230,40 +3225,6 @@ private fun EmptyGuideMessage(title: String, body: String?, action: String?) {
 
 // ==================================================================== group panel
 
-/** Bulk visibility edits stay in the current draft; Back uses the list's existing save path. */
-@Composable
-private fun VisibilityBulkActions(
-    firstFocus: FocusRequester,
-    onSelectAll: () -> Unit,
-    onDeselectAll: () -> Unit,
-    onReturnToFirst: () -> Unit,
-    onReturnToList: () -> Unit,
-    onDone: () -> Unit,
-) {
-    val secondFocus = remember { FocusRequester() }
-    Row(
-        modifier = Modifier.padding(vertical = 8.dp).onPreviewKeyEvent { event ->
-            val down = event.type == KeyEventType.KeyDown
-            when (event.key) {
-                Key.DirectionUp -> { if (down) onReturnToList(); true }
-                Key.DirectionDown -> { if (down) onReturnToFirst(); true }
-                Key.DirectionLeft -> { if (down) firstFocus.requestFocus(); true }
-                Key.DirectionRight -> { if (down) secondFocus.requestFocus(); true }
-                Key.Back -> { if (down) onDone(); true }
-                else -> false
-            }
-        },
-        horizontalArrangement = Arrangement.spacedBy(8.dp),
-    ) {
-        LiveFocusRow(modifier = Modifier.width(128.dp).focusRequester(firstFocus), onClick = onSelectAll) { focused ->
-            LiveText("Select all", color = focusedTextColor(focused), size = 13.sp)
-        }
-        LiveFocusRow(modifier = Modifier.width(148.dp).focusRequester(secondFocus), onClick = onDeselectAll) { focused ->
-            LiveText("Deselect all", color = focusedTextColor(focused), size = 13.sp)
-        }
-    }
-}
-
 @Composable
 private fun GroupColumn(
     width: Dp,
@@ -3300,9 +3261,6 @@ private fun GroupColumn(
     onHideAllGroups: () -> Unit = {},
     onShowAllGroups: () -> Unit = {},
     onVisibilityDone: () -> Unit = {},
-    onVisibilityActions: () -> Unit = {},
-    visibilityFirstRowFocus: FocusRequester? = null,
-    visibilityLastRowFocus: FocusRequester? = null,
     /** Height of a group tile: the same as a channel tile, so the two lists line up. */
     tileHeight: Dp = 32.dp
 ) {
@@ -3388,8 +3346,6 @@ private fun GroupColumn(
                         e.key == Key.DirectionLeft -> { onHideAllGroups(); true }
                         e.key == Key.DirectionRight -> { onShowAllGroups(); true }
                         e.key == Key.Back -> { onVisibilityDone(); true }
-                        e.key == Key.DirectionUp && focusedKey == rowKeys.firstOrNull() -> { onVisibilityActions(); true }
-                        e.key == Key.DirectionDown && focusedKey == rowKeys.lastOrNull() -> { onVisibilityActions(); true }
                         e.key == Key.DirectionUp || e.key == Key.DirectionDown -> stepGroup(e)
                         else -> false
                     }
@@ -3472,10 +3428,6 @@ private fun GroupColumn(
                         moving = moving,
                         visible = hiddenPending?.let { g.id !in it },
                         modifier = Modifier.focusRequester(requesterFor(g.id))
-                            .then(if (hiddenPending != null && g.id == rowKeys.firstOrNull() && visibilityFirstRowFocus != null)
-                                Modifier.focusRequester(visibilityFirstRowFocus) else Modifier)
-                            .then(if (hiddenPending != null && g.id == rowKeys.lastOrNull() && visibilityLastRowFocus != null)
-                                Modifier.focusRequester(visibilityLastRowFocus) else Modifier)
                             .then(if (requester) Modifier.focusRequester(focusRequester) else Modifier),
                         onFocused = {
                             focusedGroupId = g.id
@@ -3713,7 +3665,6 @@ private fun ChannelContextMenu(
     customGroupId: String?,
     onMoveInGroup: (String, Int) -> Unit,
     onRemoveFromGroup: (String) -> Unit,
-    onAddToGroup: () -> Unit,
     onRename: () -> Unit,
     onChangeEpg: () -> Unit,
     onChangeLogo: () -> Unit,
@@ -3722,6 +3673,8 @@ private fun ChannelContextMenu(
     canReorder: Boolean,
     onReorder: () -> Unit,
     onCopy: () -> Unit,
+    /** Copy several channels of this group to another group at once. */
+    onCopyMany: () -> Unit,
     isCopyHere: Boolean,
     onRemoveCopy: () -> Unit,
     onManageVisibility: () -> Unit,
@@ -3792,28 +3745,28 @@ private fun ChannelContextMenu(
                 item { MenuItem("Move up in favorites", onClick = { onMoveFavorite(-1) }) }
                 item { MenuItem("Move down in favorites", onClick = { onMoveFavorite(1) }) }
             }
-            item { MenuItem("Add to group…", onClick = onAddToGroup) }
             if (customGroupId != null) {
                 item { MenuItem("Move up in this group", onClick = { onMoveInGroup(customGroupId, -1) }) }
                 item { MenuItem("Move down in this group", onClick = { onMoveInGroup(customGroupId, 1) }) }
                 item { MenuItem("Remove from this group", onClick = { onRemoveFromGroup(customGroupId) }) }
             }
-            item { MenuItem("Copy channel…", onClick = onCopy) }
+            item { MenuItem("Copy to group…", onClick = onCopy) }
+            item { MenuItem("Copy several to group…", onClick = onCopyMany) }
             if (isCopyHere) item { MenuItem("Remove copy from this group", onClick = onRemoveCopy) }
             item { MenuHeader("Edit channel") }
-            item { MenuItem("Rename channel", onClick = onRename) }
-            item { MenuItem("Change channel number", onClick = onRenumber) }
-            item { MenuItem("Assign EPG", onClick = onChangeEpg) }
-            item { MenuItem("Change logo", onClick = onChangeLogo) }
+            item { MenuItem("Rename channel…", onClick = onRename) }
+            item { MenuItem("Change channel number…", onClick = onRenumber) }
+            item { MenuItem("Assign EPG…", onClick = onChangeEpg) }
+            item { MenuItem("Change logo…", onClick = onChangeLogo) }
             item { MenuHeader("Hide & arrange") }
             item { MenuItem("Hide channel", onClick = onHide) }
             item { MenuItem("Hide group \"${ch.group}\"", onClick = onHideGroup) }
-            item { MenuItem("Manage visibility", onClick = onManageVisibility) }
-            if (canReorder) item { MenuItem("Reorder channels", onClick = onReorder) }
+            item { MenuItem("Manage visibility…", onClick = onManageVisibility) }
+            if (canReorder) item { MenuItem("Reorder channels…", onClick = onReorder) }
             item { MenuHeader("Guide") }
             item { MenuItem("Update playlists & EPG", onClick = onRefresh) }
-            item { MenuItem("Guide display (info panel, preview…)", onClick = onGuideDisplay) }
-            item { MenuItem("Live TV settings", onClick = onSettings) }
+            item { MenuItem("Guide display (info panel, preview)…", onClick = onGuideDisplay) }
+            item { MenuItem("Live TV settings…", onClick = onSettings) }
         }
     }
     LaunchedEffect(Unit) { delay(60); runCatching { first.requestFocus() } }
@@ -4388,12 +4341,12 @@ private data class TextPrompt(
 
 @Composable
 internal fun GroupPickerDialog(
-    channel: LiveChannel,
+    channel: LiveChannel?,
     groups: List<ChannelGroup>,
     onDismiss: () -> Unit,
     onPick: (ChannelGroup) -> Unit,
     onNewGroup: () -> Unit,
-    title: String = "Add \"${channel.name}\" to…"
+    title: String = "Add \"${channel?.name.orEmpty()}\" to…"
 ) {
     val first = remember { FocusRequester() }
     LiveDialog(onDismiss = onDismiss, width = 460.dp) {

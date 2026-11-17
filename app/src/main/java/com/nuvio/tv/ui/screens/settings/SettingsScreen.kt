@@ -261,7 +261,6 @@ fun SettingsScreen(
             SettingsCategory.VPN to FocusRequester(),
             SettingsCategory.SIDE_MENU to FocusRequester(),
             SettingsCategory.CALENDAR to FocusRequester(),
-            SettingsCategory.REMOTE_BUTTONS to FocusRequester(),
             SettingsCategory.PLAYBACK to FocusRequester(),
             SettingsCategory.DEFAULT_LAUNCHER to FocusRequester(),
             SettingsCategory.ADVANCED to FocusRequester(),
@@ -950,7 +949,7 @@ private fun SettingsDetailPane(
                 }
             )
         }
-        SettingsCategory.REMOTE_BUTTONS -> RemoteButtonsHubContent(
+        SettingsCategory.REMOTE_BUTTONS -> ButtonMapperSettingsContent(
             initialFocusRequester = if (allowDetailAutofocus) {
                 contentFocusRequesters[SettingsCategory.REMOTE_BUTTONS]
             } else {

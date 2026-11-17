@@ -218,7 +218,17 @@ class LiveTvRepository @Inject constructor(
     private suspend fun addGuideForNewPlaylist(playlistId: String, playlistName: String, epgUrl: String): String? {
         val url = PlaylistSource.tidyLink(epgUrl)
         if (url.isBlank()) return null
-        prefs.currentEpgSources().firstOrNull { it.url.trim() == url }?.let { existing ->
+        // The same link written a little differently (http/https, a trailing slash, letter case in
+        // the server name) is still the same guide: making a second copy switched it off for the
+        // playlists that were already getting their listings from it.
+        fun sameLink(u: String): String {
+            val t = PlaylistSource.tidyLink(u).trimEnd('/')
+            val rest = t.substringAfter("://", t)
+            val host = rest.substringBefore('/').lowercase()
+            return host + rest.removePrefix(rest.substringBefore('/'))
+        }
+        val key = sameLink(url)
+        prefs.currentEpgSources().firstOrNull { it.url.trim() == url || sameLink(it.url) == key }?.let { existing ->
             prefs.updatePlaylists { list -> list.map { if (it.id == playlistId) it.copy(guidesOff = it.guidesOff - existing.id) else it } }
             if (!existing.enabled) prefs.updateEpgSources { l -> l.map { if (it.id == existing.id) it.copy(enabled = true) else it } }
             return existing.id
@@ -659,7 +669,7 @@ class LiveTvRepository @Inject constructor(
                 // M3U links from Xtream providers (get.php with a login): the account's details.
                 if (!pl.hasCatalog) refreshM3uAccount(pl)
                 val err = result.exceptionOrNull()?.let { e ->
-                    when (e) {
+                    if (pl.isStalker) com.nuvio.tv.livetv.stalker.StalkerGateway.safeUpdateError(e) else when (e) {
                         is java.net.UnknownHostException -> "Couldn't find the provider's server (${e.message?.substringAfter("\"")?.substringBefore("\"") ?: "address"}). Check the address, your internet, or try again later."
                         is java.net.SocketTimeoutException -> "The provider took too long to answer (timeout). It may be busy; try again later."
                         else -> e.message ?: e.javaClass.simpleName
@@ -671,7 +681,7 @@ class LiveTvRepository @Inject constructor(
                     }
                 }
                 if (err != null) {
-                    LiveTvNotice.show(statusText(R.string.iptv_repository_status_playlist_update_failed, pl.name, result.exceptionOrNull()?.let { playlistNoticeError(it) }.orEmpty()))
+                    LiveTvNotice.show(statusText(R.string.iptv_repository_status_playlist_update_failed, pl.name, if (pl.isStalker) err else result.exceptionOrNull()?.let { playlistNoticeError(it) }.orEmpty()))
                     Log.w(TAG, "Playlist ${pl.name} failed: $err")
                     LIVE_REPORT.add("Playlist \"${pl.name}\" failed: $err" + if (pl.isXtream) " (Xtream login: server ${if (pl.xtreamServer.isBlank()) "missing" else "set"}, user ${if (pl.xtreamUsername.isBlank()) "missing" else "set"}, password ${if (pl.xtreamPassword.isBlank()) "missing" else "set"})" else "")
                 }
@@ -720,14 +730,17 @@ class LiveTvRepository @Inject constructor(
                     )
                 }
                 if (result.getOrNull() == true) changed = true
-                val err = result.exceptionOrNull()?.let { it.message ?: it.javaClass.simpleName }
+                val isStalkerGuide = target.url.startsWith("stalker:")
+                val err = result.exceptionOrNull()?.let {
+                    if (isStalkerGuide) com.nuvio.tv.livetv.stalker.StalkerGateway.safeUpdateError(it) else it.message ?: it.javaClass.simpleName
+                }
                 if (target.sourceId != null) {
                     prefs.updateEpgSources { list ->
                         list.map { if (it.id == target.sourceId) it.copy(lastUpdatedMs = if (err == null) now else it.lastUpdatedMs, lastError = err) else it }
                     }
                 }
                 if (err != null) {
-                    LiveTvNotice.show(statusText(R.string.iptv_repository_status_guide_update_failed, target.name, result.exceptionOrNull()?.let { plainDownloadError(it) }.orEmpty()))
+                    LiveTvNotice.show(statusText(R.string.iptv_repository_status_guide_update_failed, target.name, if (isStalkerGuide) err else result.exceptionOrNull()?.let { plainDownloadError(it) }.orEmpty()))
                     Log.w(TAG, "EPG ${target.name} failed: $err")
                     LIVE_REPORT.add("Guide \"${target.name}\" failed: $err")
                 }
@@ -3194,6 +3207,7 @@ class LiveTvRepository @Inject constructor(
         val groups = client.liveGroups().associate { it.id to it.name }
         val channels = client.liveChannels()
         val identity = com.nuvio.tv.livetv.stalker.StalkerGateway.identity(pl)
+        file.parentFile?.mkdirs()
         val tmp = File(file.parentFile, file.name + ".tmp")
         fun attr(value: String) = value.replace('"', '\'').replace('\n', ' ').replace('\r', ' ')
         try {
@@ -3225,6 +3239,8 @@ class LiveTvRepository @Inject constructor(
         val client = stalker.client(pl)
         val identity = com.nuvio.tv.livetv.stalker.StalkerGateway.identity(pl)
         val channels = _channels.value.filter { it.sourceId == pl.id && it.stalkerRef != null }
+        // A portal added as the first source: no guide has made the folder yet.
+        file.parentFile?.mkdirs()
         val tmp = File(file.parentFile, file.name + ".tmp")
         val time = java.text.SimpleDateFormat("yyyyMMddHHmmss Z", java.util.Locale.US).apply { timeZone = java.util.TimeZone.getTimeZone("UTC") }
         val stampDate = java.util.Date(0L)
