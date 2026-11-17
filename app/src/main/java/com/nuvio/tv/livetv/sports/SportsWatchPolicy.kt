@@ -30,7 +30,9 @@ internal data class SportsWatchRules(
     fun permits(channel: LiveChannel): Boolean {
         if (!sports.showInSidebar) return false
         if (!picked(channel) &&
-            (channel.key in user.hiddenChannels || channel.groupId in user.hiddenGroups || user.hidesByGroupTag(channel))) return false
+            (channel.sourceId in user.hiddenPlaylists ||
+                channel.key in user.hiddenChannels || channel.groupId in user.hiddenGroups ||
+                user.hidesByGroupTag(channel))) return false
         if (ParentalControls.enabled(live)) {
             if (channel.groupId !in unlockedGroups &&
                 (channel.groupId in user.lockedGroups ||

@@ -242,6 +242,8 @@ class LiveTvPreferences @Inject constructor(
 
         val hiddenChannels = stringSetPreferencesKey("hidden_channels")
         val hiddenGroups = stringSetPreferencesKey("hidden_groups")
+        /** Playlist source ids this profile hides; the sources themselves stay shared. */
+        val hiddenPlaylists = stringSetPreferencesKey("hidden_playlists")
         val groupTagFilters = stringSetPreferencesKey("group_tag_filters")
         val favorites = stringPreferencesKey("favorites")
         val recent = stringPreferencesKey("recent")
@@ -280,7 +282,8 @@ class LiveTvPreferences @Inject constructor(
         Keys.vodGroupOrder, Keys.vodSorts, Keys.sportsMine
     )
     private val personalSetKeys: List<Preferences.Key<Set<String>>> = listOf(
-        Keys.hiddenChannels, Keys.hiddenGroups, Keys.groupTagFilters, Keys.vodHiddenCategories
+        Keys.hiddenChannels, Keys.hiddenGroups, Keys.hiddenPlaylists, Keys.groupTagFilters,
+        Keys.vodHiddenCategories
     )
 
     @JvmName("myString")
@@ -592,6 +595,7 @@ class LiveTvPreferences @Inject constructor(
         LiveUserState(
             hiddenChannels = p[Keys.hiddenChannels] ?: emptySet(),
             hiddenGroups = p[Keys.hiddenGroups] ?: emptySet(),
+            hiddenPlaylists = p[Keys.hiddenPlaylists] ?: emptySet(),
             groupTagFilters = p[Keys.groupTagFilters] ?: emptySet(),
             favorites = decodeStringList(p[Keys.favorites]),
             recent = decodeStringList(p[Keys.recent]),
@@ -1271,6 +1275,15 @@ class LiveTvPreferences @Inject constructor(
         store.edit { p ->
             val cur = p[my(Keys.hiddenGroups)] ?: emptySet()
             p[my(Keys.hiddenGroups)] = (cur - show) + hide
+        }
+    }
+
+    /** Shows or hides one shared playlist for this profile; the source itself is untouched. */
+    suspend fun setPlaylistHidden(id: String, hidden: Boolean) {
+        if (id.isBlank()) return
+        store.edit { p ->
+            val cur = p[my(Keys.hiddenPlaylists)] ?: emptySet()
+            p[my(Keys.hiddenPlaylists)] = if (hidden) cur + id else cur - id
         }
     }
 

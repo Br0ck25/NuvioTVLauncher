@@ -43,6 +43,7 @@ import androidx.compose.material.icons.filled.Link
 import androidx.compose.material.icons.filled.PhoneAndroid
 import androidx.compose.material.icons.filled.LiveTv
 import androidx.compose.material.icons.filled.Refresh
+import androidx.compose.material.icons.filled.Visibility
 import androidx.compose.material.icons.filled.VisibilityOff
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
@@ -212,6 +213,7 @@ private sealed interface LiveDialog {
     data object HiddenChannels : LiveDialog
     data object HiddenGroups : LiveDialog
     data object GroupTags : LiveDialog
+    data object PlaylistVisibility : LiveDialog
     data class PlaylistGuideShift(val source: PlaylistSource) : LiveDialog
     data class PlaylistCatchupShift(val source: PlaylistSource) : LiveDialog
     data class EpgSourceShift(val source: EpgSource) : LiveDialog
@@ -519,6 +521,19 @@ internal fun LiveTvSettingsContent(
                             valueColor = if (expiring) NuvioTheme.colors.Error else NuvioTheme.colors.TextSecondary,
                             leadingIcon = Icons.Default.LiveTv,
                             onClick = { dialog = LiveDialog.PlaylistActions(pl) }
+                        )
+                    }
+                    if (playlists.isNotEmpty()) {
+                        SettingsActionRow(
+                            title = context.getString(R.string.iptv_settings_playlists_on_this_profile),
+                            subtitle = context.getString(R.string.iptv_settings_playlists_on_this_profile_sub),
+                            value = context.getString(
+                                R.string.iptv_settings_playlists_visible_count,
+                                playlists.count { it.id !in user.hiddenPlaylists },
+                                playlists.size
+                            ),
+                            leadingIcon = Icons.Default.Visibility,
+                            onClick = { dialog = LiveDialog.PlaylistVisibility }
                         )
                     }
                     SettingsActionRow(
@@ -2094,6 +2109,12 @@ internal fun LiveTvSettingsContent(
             onClear = viewModel::clearGroupTagFilters,
             onDismiss = close
         )
+        LiveDialog.PlaylistVisibility -> PlaylistVisibilityDialog(
+            playlists = playlists,
+            hidden = user.hiddenPlaylists,
+            onToggle = viewModel::setPlaylistVisible,
+            onDismiss = close
+        )
         is LiveDialog.PlaylistGuideShift -> SettingsSingleChoiceDialog(
             title = context.getString(R.string.iptv_settings_guide_time_shift_1_s, d.source.name),
             subtitle = context.getString(R.string.iptv_settings_moves_this_playlist_s_built_in_guide_earlier),
@@ -2904,6 +2925,58 @@ private fun restoreMessage(context: Context, loaded: Boolean, info: com.nuvio.tv
         else -> null
     }
     return listOfNotNull(base, saved, warning).joinToString("\n\n")
+}
+
+@Composable
+private fun PlaylistVisibilityDialog(
+    playlists: List<PlaylistSource>,
+    hidden: Set<String>,
+    onToggle: (String, Boolean) -> Unit,
+    onDismiss: () -> Unit
+) {
+    val context = LocalContext.current
+    val first = remember { FocusRequester() }
+    LaunchedEffect(Unit) {
+        delay(80)
+        runCatching { first.requestFocus() }
+    }
+    NuvioDialog(
+        onDismiss = onDismiss,
+        title = context.getString(R.string.iptv_settings_playlists_on_this_profile),
+        subtitle = context.getString(R.string.iptv_settings_playlists_on_this_profile_hint),
+        width = 620.dp
+    ) {
+        LazyColumn(
+            modifier = Modifier.heightIn(max = 420.dp),
+            verticalArrangement = Arrangement.spacedBy(NuvioTheme.spacing.xxs)
+        ) {
+            items(playlists, key = { it.id }) { playlist ->
+                val visible = playlist.id !in hidden
+                SettingsToggleRow(
+                    title = playlist.name,
+                    subtitle = when {
+                        playlist.isStalker -> context.getString(R.string.iptv_settings_stalker)
+                        playlist.isXtream -> context.getString(R.string.iptv_settings_xtream)
+                        else -> "M3U"
+                    },
+                    checked = visible,
+                    onToggle = { onToggle(playlist.id, !visible) },
+                    modifier = if (playlist.id == playlists.firstOrNull()?.id) {
+                        Modifier.focusRequester(first)
+                    } else {
+                        Modifier
+                    }
+                )
+            }
+        }
+        SettingsDialogActionRow {
+            SettingsDialogActionButton(
+                text = context.getString(R.string.iptv_settings_done),
+                onClick = onDismiss,
+                primary = true
+            )
+        }
+    }
 }
 
 @Composable

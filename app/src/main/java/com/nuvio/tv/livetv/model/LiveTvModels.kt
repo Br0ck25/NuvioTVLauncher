@@ -622,6 +622,8 @@ data class LiveTvSettings(
 data class LiveUserState(
     val hiddenChannels: Set<String> = emptySet(),
     val hiddenGroups: Set<String> = emptySet(),
+    /** Playlist source ids hidden for this profile. Empty = every shared playlist is visible. */
+    val hiddenPlaylists: Set<String> = emptySet(),
     /** Group-title tags to hide ("AR", "Arabic", "Hindi"...). Empty = no tag filter. */
     val groupTagFilters: Set<String> = emptySet(),
     val favorites: List<String> = emptyList(),

@@ -790,7 +790,9 @@ class LiveTvDriveSync @Inject constructor(
         /** The user's own ordering, kept from this TV on a first sync (also "_p2" copies). */
         private val LOCAL_ORDER_KEYS = setOf("group_order", "vod_group_order", "side_menu_order")
         /** Personal choices combined on a first sync (also "_p2" copies). */
-        private val PERSONAL_UNION_KEYS = setOf("favorites", "hidden_channels", "hidden_groups", "vod_hidden_categories")
+        private val PERSONAL_UNION_KEYS = setOf(
+            "favorites", "hidden_channels", "hidden_groups", "hidden_playlists", "vod_hidden_categories"
+        )
         const val MODE_APPDATA = "appdata"
         const val MODE_FILE = "file"
         /** Tried in order until Google accepts one. Google's TV device flow currently refuses

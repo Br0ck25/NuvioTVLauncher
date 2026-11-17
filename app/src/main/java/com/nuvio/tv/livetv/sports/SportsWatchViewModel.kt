@@ -50,6 +50,7 @@ class SportsWatchViewModel @Inject constructor(
     private val rules: StateFlow<SportsWatchRules?> = combine(
         preferences.userState.distinctUntilChanged { a, b ->
             a.hiddenChannels == b.hiddenChannels && a.hiddenGroups == b.hiddenGroups &&
+                a.hiddenPlaylists == b.hiddenPlaylists &&
                 a.groupTagFilters == b.groupTagFilters && a.lockedGroups == b.lockedGroups
         },
         preferences.settings.distinctUntilChanged { a, b ->

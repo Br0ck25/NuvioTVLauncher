@@ -175,6 +175,10 @@ class LiveTvSettingsViewModel @Inject constructor(
     fun unhideGroup(id: String) = viewModelScope.launch { prefs.setGroupHidden(id, false) }
     fun unhideAllGroups() = viewModelScope.launch { prefs.clearHiddenGroups() }
 
+    /** Shows or hides one shared playlist for the active profile. */
+    fun setPlaylistVisible(id: String, visible: Boolean) =
+        viewModelScope.launch { prefs.setPlaylistHidden(id, !visible) }
+
     /** Manual scan: reads the loaded channel groups and lists the tags they use. */
     fun scanGroupTags() {
         if (_scanningGroupTags.value) return

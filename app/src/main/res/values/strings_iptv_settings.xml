@@ -65,6 +65,10 @@
     <string name="iptv_settings_disconnect">"Disconnect"</string>
     <string name="iptv_settings_playlists_guides">"Playlists &amp; Guides"</string>
     <string name="iptv_settings_playlists">"Playlists"</string>
+    <string name="iptv_settings_playlists_on_this_profile">"Playlists on this profile"</string>
+    <string name="iptv_settings_playlists_on_this_profile_sub">"Choose which shared playlists this profile shows. Sources stay shared."</string>
+    <string name="iptv_settings_playlists_on_this_profile_hint">"Switch a playlist off to hide its channels and groups on this profile. Other profiles keep their own choices."</string>
+    <string name="iptv_settings_playlists_visible_count">"%1$d of %2$d"</string>
     <string name="iptv_settings_add_from_your_phone">"Add From Your Phone"</string>
     <string name="iptv_settings_scan_a_qr_code_then_paste_your_playlist">"Scan a QR code, then paste your playlist link, Xtream login or EPG link on your phone instead of typing it with the remote"</string>
     <string name="iptv_settings_stalker">" (Stalker)"</string>
