@@ -8,3 +8,4 @@
 ## Playback
 
 - Dolby Vision Profile 7 remuxes: official builds now include the native DV7 → DV8.1 bridge, so **Convert to DV8.1** works. If the bridge is unavailable, playback falls back to the HDR10 base layer instead of failing.
+- Translated YouTube captions: the background now wraps the caption text instead of spanning the whole screen.

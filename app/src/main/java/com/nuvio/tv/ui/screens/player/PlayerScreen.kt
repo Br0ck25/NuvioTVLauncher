@@ -1485,33 +1485,38 @@ fun PlayerScreen(
                             (subtitleLiftPx + 36f).toDp()
                         } + (captionStyle.verticalOffset / 3).dp
                         val captionBackground = if ((captionStyle.backgroundColor ushr 24) != 0) {
-                            Modifier
-                                .background(Color(captionStyle.backgroundColor))
-                                .padding(horizontal = 12.dp, vertical = 4.dp)
+                            Modifier.background(Color(captionStyle.backgroundColor))
                         } else {
                             Modifier
                         }
-                        Text(
-                            text = generatedYoutubeCaption.orEmpty(),
-                            color = Color(captionStyle.textColor),
-                            fontSize = (24f * captionStyle.size / 100f).sp,
-                            fontWeight = if (captionStyle.bold) FontWeight.Bold else FontWeight.Normal,
-                            textAlign = TextAlign.Center,
-                            maxLines = 4,
-                            style = TextStyle(
-                                shadow = Shadow(
-                                    color = Color(captionStyle.outlineColor),
-                                    offset = Offset.Zero,
-                                    blurRadius = (captionStyle.outlineWidth * 2f)
-                                )
-                            ),
+                        Box(
                             modifier = Modifier
                                 .align(Alignment.BottomCenter)
                                 .fillMaxWidth(0.92f)
-                                .padding(bottom = captionBottom)
-                                .then(captionBackground)
-                                .padding(horizontal = 24.dp)
-                        )
+                                .padding(bottom = captionBottom),
+                            contentAlignment = Alignment.Center
+                        ) {
+                            Text(
+                                text = generatedYoutubeCaption.orEmpty(),
+                                color = Color(captionStyle.textColor),
+                                fontSize = (24f * captionStyle.size / 100f).sp,
+                                fontWeight = if (captionStyle.bold) FontWeight.Bold else FontWeight.Normal,
+                                textAlign = TextAlign.Center,
+                                maxLines = 4,
+                                style = TextStyle(
+                                    shadow = Shadow(
+                                        color = Color(captionStyle.outlineColor),
+                                        offset = Offset.Zero,
+                                        blurRadius = (captionStyle.outlineWidth * 2f)
+                                    )
+                                ),
+                                // The background belongs to the text, not the 92%-wide
+                                // container: a short line gets a short box, not a screen bar.
+                                modifier = Modifier
+                                    .then(captionBackground)
+                                    .padding(horizontal = 12.dp, vertical = 4.dp)
+                            )
+                        }
                     }
                 }
 
