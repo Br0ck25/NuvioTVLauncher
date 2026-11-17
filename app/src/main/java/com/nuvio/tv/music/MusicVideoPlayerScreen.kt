@@ -106,7 +106,8 @@ internal fun MusicVideoPlayerScreen(
     startPositionMs: Long,
     onClose: (videoPositionMs: Long) -> Unit,
     onSkip: (direction: Int) -> Unit = {},
-    onSelectQueue: (index: Int) -> Unit = {}
+    onSelectQueue: (index: Int) -> Unit = {},
+    onEnded: () -> Unit = {}
 ) {
     val context = LocalContext.current
     val view = LocalView.current
@@ -119,6 +120,7 @@ internal fun MusicVideoPlayerScreen(
     var positionMs by remember { mutableLongStateOf(startPositionMs.coerceAtLeast(0L)) }
     var durationMs by remember { mutableLongStateOf(0L) }
     var ended by remember { mutableStateOf(false) }
+    var advanceHandled by remember(video.videoId) { mutableStateOf(false) }
     var showQueue by remember { mutableStateOf(false) }
     val playFocus = remember { FocusRequester() }
     val queueFocus = remember { FocusRequester() }
@@ -236,6 +238,24 @@ internal fun MusicVideoPlayerScreen(
                 isPlaying = it.isPlaying
             }
             delay(250L)
+        }
+    }
+
+    // A music video that reaches its end follows the queue, like audio playback does.
+    // Repeat one replays the same video; everything else asks MusicScreen for the next item.
+    LaunchedEffect(ended) {
+        if (!ended) {
+            advanceHandled = false
+            return@LaunchedEffect
+        }
+        if (advanceHandled) return@LaunchedEffect
+        advanceHandled = true
+        val singleRepeatAll = musicState.repeatMode == RepeatMode.ALL && musicState.queue.size <= 1
+        if (musicState.repeatMode == RepeatMode.ONE || singleRepeatAll) {
+            player?.seekTo(0L)
+            player?.play()
+        } else {
+            onEnded()
         }
     }
 

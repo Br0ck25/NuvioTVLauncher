@@ -90,6 +90,13 @@ private const val MUSIC_UI_SCALE = 0.88f
 
 private data class MusicVideoRequest(val video: Song, val startPositionMs: Long)
 
+/** A queue item that can open the full-screen video player instead of audio-only. */
+private fun Song.hasMusicVideo(): Boolean =
+    localUri == null &&
+        !videoId.startsWith("local:") &&
+        !videoId.startsWith("webdav:") &&
+        !videoId.startsWith("navidrome:")
+
 /**
  * The Music section: YouTube Music browsing, search and an audio-first player, in BitChord's
  * Apple-Music-inspired layout.
@@ -236,11 +243,8 @@ fun MusicScreen(
     }
 
     fun showVideoFor(song: Song, startMs: Long) {
-        // A local/addon track has no YouTube video; leave the video screen and let its audio play.
-        if (song.localUri != null ||
-            song.videoId.startsWith("local:") || song.videoId.startsWith("webdav:") ||
-            song.videoId.startsWith("navidrome:")
-        ) {
+        // A local track has no YouTube video; leave the video screen and let its audio play.
+        if (!song.hasMusicVideo()) {
             musicVideo = null
             showNowPlaying = true
             return
@@ -253,7 +257,7 @@ fun MusicScreen(
         }
     }
 
-    fun skipVideo(direction: Int) {
+    fun skipVideo(direction: Int, auto: Boolean = false) {
         val s = MusicPlayer.state.value
         if (s.queue.isEmpty() || s.index !in s.queue.indices) return
         val target = when {
@@ -261,9 +265,22 @@ fun MusicScreen(
             direction < 0 && s.index > 0 -> s.index - 1
             direction > 0 && s.repeatMode == RepeatMode.ALL -> 0
             direction < 0 && s.repeatMode == RepeatMode.ALL -> s.queue.lastIndex
-            else -> return
+            else -> null
         }
-        MusicPlayer.jumpTo(target, play = false)
+        if (target == null) {
+            // End of the queue. Let the audio player do its usual autoplay/stop, then
+            // hand back to Now Playing because there is no next video to show.
+            if (auto && direction > 0) {
+                MusicPlayer.next(auto = true)
+                musicVideo = null
+                showNowPlaying = true
+            }
+            return
+        }
+        val next = s.queue[target]
+        // A local track has no video to open: start its audio and let showVideoFor
+        // hand the screen back to Now Playing.
+        MusicPlayer.jumpTo(target, play = !next.hasMusicVideo())
         MusicPlayer.state.value.song?.let { showVideoFor(it, 0L) }
     }
 
@@ -601,8 +618,9 @@ fun MusicScreen(
                 video = request.video,
                 startPositionMs = request.startPositionMs,
                 onClose = ::closeVideo,
-                onSkip = ::skipVideo,
-                onSelectQueue = ::selectVideoQueue
+                onSkip = { skipVideo(it) },
+                onSelectQueue = ::selectVideoQueue,
+                onEnded = { skipVideo(1, auto = true) }
             )
         }
     }

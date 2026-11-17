@@ -9,3 +9,7 @@
 
 - Dolby Vision Profile 7 remuxes: official builds now include the native DV7 → DV8.1 bridge, so **Convert to DV8.1** works. If the bridge is unavailable, playback falls back to the HDR10 base layer instead of failing.
 - Translated YouTube captions: the background now wraps the caption text instead of spanning the whole screen.
+
+## Music
+
+- Music videos now continue to the next track in the queue when they end. Repeat one replays the same video; repeat all wraps to the start; at the end of the queue the audio player's usual autoplay/stop behavior takes over.
