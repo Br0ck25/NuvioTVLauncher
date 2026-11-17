@@ -144,7 +144,10 @@ object DebugReportBuilder {
     private fun readRecentLogs(maxLines: Int = 20_000): String {
         return runCatching {
             val process = ProcessBuilder(
-                "logcat", "-d", "-v", "time", "-t", maxLines.toString(), "--pid=${Process.myPid()}"
+                // Same UID, not just this PID: after a native crash the app restarts with a new
+                // PID, and the old process's last lines (including the VLC/native crash) are
+                // exactly what the report needs.
+                "logcat", "-d", "-v", "time", "-t", maxLines.toString(), "--uid=${Process.myUid()}"
             ).redirectErrorStream(true).start()
             val output = process.inputStream.bufferedReader().use { it.readText() }
             process.waitFor()
