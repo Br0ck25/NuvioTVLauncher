@@ -14,9 +14,16 @@
 - Translated YouTube captions: the background now wraps the caption text instead of spanning the whole screen.
 - OneTube keeps its first poster clear of the TV's overscan and the side menu, so cards are no longer clipped on the left after switching sections on sets like Hisense.
 - A stuck OneTube video lookup now gives up after about a minute and shows a retry message instead of leaving the spinner up for several minutes. Normal lookups, which take a few seconds, are unchanged.
+- VLC playback no longer closes the app in release builds. The release shrinker was removing a field libVLC's native library looks up by name; it is now kept. This fixes the immediate close on Fire TV and other Android TV devices.
 - VLC now stops and releases its native player when you leave playback. Repeated VLC use no longer leaves a decoder running in the background, which could build up memory and crash the app.
+- VLC also stops re-reading every subtitle track while a file opens, removing startup churn on files with many subtitle tracks.
 
 ## Music
 
+- Music has a new curated **Home** and **Discover** experience. Home combines your listening history with recommendations; Discover groups picks, new releases, charts and mood shelves.
+- Music now keeps a local listening history and uses it to improve recommendations. The curator skips alternate versions, talk tracks and the same song repeating back-to-back.
+- Search now groups results by songs, albums, artists, playlists and videos, with suggestions while you type.
+- Explore has mood covers, new releases and charts; mood covers are cached for a week.
+- The Now Playing pill now sits at the bottom right, out of the top bar.
 - Music videos now continue to the next track in the queue when they end. Repeat one replays the same video; repeat all wraps to the start; at the end of the queue the audio player's usual autoplay/stop behavior takes over.
 - Now Playing shows where the track is actually playing from: YouTube, a Music addon's own name (for example Nebula or Tidodido), a download, WebDAV, Navidrome or this device.
