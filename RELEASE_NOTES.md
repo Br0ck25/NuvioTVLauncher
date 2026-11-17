@@ -1,13 +1,5 @@
-# Nuvio One 1.2.0-beta.1.16
+# Nuvio One 1.2.0-beta.1.17
 
-## Subtitles
+## Live TV
 
-- Fixed duplicate subtitles when a translated YouTube track (marked `*`) is selected: the original cue no longer stays on screen above the translated line.
-
-## Music
-
-- Last.fm sign-in is now configured in the release build.
-
-## Updates
-
-- Updates are no longer downloaded in the background. When a new version is found, the update card offers **Download now** or **Later**. After downloading, **Install** is a separate step. Automatic installs remain an opt-in setting.
+- Added **Filter channels by group tag** under **Settings → Live TV → Channels**. Scan your groups on demand, then choose tags like `US`, `UK`, `Arabic` or `Hindi` to hide matching groups. Tags match whole words and segments, so `AR` does not hide `Arena`. Favorites, custom-group channels and copied channels stay visible. The filter applies to the guide, All channels, search, home rows, Multiview, Sports and EPG listings, and is saved per profile.
