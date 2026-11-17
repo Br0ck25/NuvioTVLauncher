@@ -30,9 +30,9 @@ private const val JOB_ID_CHECK_NOW = 10_022
 private const val CHECK_INTERVAL_MS = 12 * 60 * 60_000L
 
 /**
- * Background update work. The periodic job checks for a new release and downloads it, so the banner can offer an
- * install without waiting for the download. On Android 12+, with automatic installs enabled, a second job installs the
- * downloaded update while the device is idle, without a confirmation screen.
+ * Background update work. The periodic job checks for a new release and downloads it only when
+ * automatic installs are enabled. With automatic installs off, the in-app banner lets the user
+ * choose Download now or Later, and nothing is downloaded in the background.
  *
  * Dependencies are obtained via Hilt EntryPoint since JobService is not a supported Hilt injection target.
  */
@@ -82,7 +82,9 @@ class UpdateJobService : JobService() {
     private suspend fun checkAndDownload(entryPoint: UpdateJobEntryPoint) {
         val preferences = entryPoint.updatePreferences()
         val autoInstallEnabled = preferences.autoInstallEnabled.first()
-        if (!preferences.updateBannerEnabled.first() && !autoInstallEnabled) return
+        // Without automatic installs the in-app banner owns the download: the user chooses
+        // Download now or Later, and nothing is fetched in the background.
+        if (!autoInstallEnabled) return
 
         val downloadStore = entryPoint.updateDownloadStore()
         downloadStore.clearIfInstalled()
@@ -94,7 +96,7 @@ class UpdateJobService : JobService() {
 
         downloadStore.download(update).getOrThrow()
         Log.d(TAG, "Downloaded ${update.tag} in the background")
-        if (autoInstallEnabled) scheduleIdleInstall(applicationContext)
+        scheduleIdleInstall(applicationContext)
     }
 
     private suspend fun installDownloaded(entryPoint: UpdateJobEntryPoint) {

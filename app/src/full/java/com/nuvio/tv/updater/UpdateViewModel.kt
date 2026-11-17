@@ -142,7 +142,9 @@ class UpdateViewModel @Inject constructor(
                     val installedUpdate = _uiState.value.installedUpdate?.let { installed ->
                         if (installed.tag == update.tag) update else installed
                     }
-                    if (remoteNewer && downloadedFile == null && update.tag != dismissedTag && !BuildConfig.IS_DEBUG_BUILD) {
+                    if (remoteNewer && downloadedFile == null && update.tag != dismissedTag &&
+                        !BuildConfig.IS_DEBUG_BUILD && _uiState.value.autoInstallEnabled
+                    ) {
                         UpdateJobService.scheduleCheckNow(context)
                     }
                     val shouldShow = UpdateBannerPolicy.shouldShow(
@@ -304,7 +306,8 @@ class UpdateViewModel @Inject constructor(
                             errorMessage = null
                         )
                     }
-                    installUpdateOrRequestPermission()
+                    // Don't launch the installer here. The banner switches to "Install" so the
+                    // user can choose when to install, just like they chose when to download.
                 }
                 .onFailure { error ->
                     _uiState.update {
@@ -387,16 +390,18 @@ class UpdateViewModel @Inject constructor(
         }
     }
 
-    // Background checks run while the banner or automatic installs are on; the idle install job only with the latter.
+    // Background checks are only needed for automatic installs. The in-app check handles the
+    // banner, so a user who only wants the "Download now / Later" choice is never downloaded
+    // an update in the background.
     private fun syncBackgroundJobs() {
         if (BuildConfig.IS_DEBUG_BUILD) return
         val state = _uiState.value
-        if (state.updateBannerEnabled || state.autoInstallEnabled) {
+        if (state.autoInstallEnabled) {
             UpdateJobService.schedulePeriodicCheck(context)
         } else {
             UpdateJobService.cancelPeriodicCheck(context)
+            UpdateJobService.cancelIdleInstall(context)
         }
-        if (!state.autoInstallEnabled) UpdateJobService.cancelIdleInstall(context)
     }
 
     fun openUnknownSourcesSettings() {
