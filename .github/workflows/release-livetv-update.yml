@@ -56,6 +56,14 @@ jobs:
           java-version: "17"
           cache: gradle
 
+      # The DV7 bridge is native code. The build asks for this NDK version, so make
+      # sure the runner has it instead of relying on the image.
+      - name: Set up Android NDK
+        run: |
+          SDKMANAGER="${ANDROID_HOME:-$ANDROID_SDK_ROOT}/cmdline-tools/latest/bin/sdkmanager"
+          yes | "$SDKMANAGER" --licenses > /dev/null || true
+          "$SDKMANAGER" "ndk;29.0.14206865"
+
       - name: Write app keys
         env:
           NUVIO_BACKEND_URL: ${{ secrets.NUVIO_BACKEND_URL }}
@@ -129,6 +137,12 @@ jobs:
           add SUPPORTERS_API_BASE_URL "$SUPPORTERS_API_BASE_URL"
           add SUPPORT_URL "$SUPPORT_URL"
           add AVATAR_PUBLIC_BASE_URL "$AVATAR_PUBLIC_BASE_URL"
+          # Dolby Vision Profile 7 -> 8.1 native bridge. The build reads these from
+          # local.properties/local.dev.properties, so they must survive the keys copy.
+          add DOVI_NATIVE_ENABLED "true"
+          add DOVI_EXTRACTOR_HOOK_READY "true"
+          add DOVI_ENABLE_REAL_LINK "true"
+          add DOVI_LIBDOVI_PREBUILT_ROOT "DV7/libdovi"
           # The build reads some values from each file, so write both.
           cp keys.properties local.properties
           cp keys.properties local.dev.properties

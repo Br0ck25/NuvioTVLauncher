@@ -497,6 +497,20 @@ internal fun PlayerRuntimeController.initializePlayer(
                             "fallback=HDR10_BASE_LAYER host=${diagnosticHost}"
                 )
             }
+            // A build without the native bridge (or one where it failed to load) cannot
+            // convert DV7 to DV8.1. If the user picked that mode manually, don't leave the
+            // player on a path that can't decode: play the HEVC base layer instead, as AUTO
+            // already does when its probe fails.
+            if (effectiveDv7Mode == Dv7HandlingMode.DV81_LIBDOVI && !DoviBridge.isAvailable()) {
+                effectiveDv7Mode = Dv7HandlingMode.HDR10_BASE_LAYER
+                Log.i(
+                    PlayerRuntimeController.TAG,
+                    "DV7_FALLBACK: dv81-unavailable reason=${dv7ToDv81Probe.reason} " +
+                            "buildNative=${DoviBridge.isNativeEnabledInBuild} " +
+                            "libraryLoaded=${DoviBridge.isLibraryLoaded} " +
+                            "fallback=HDR10_BASE_LAYER host=${diagnosticHost}"
+                )
+            }
             hasAttemptedDv7ToDv81ForCurrentPlayback = false
             dv7ToDv81BridgeVersionForCurrentPlayback = dv7ToDv81Probe.bridgeVersion
             dv7ToDv81LastProbeReasonForCurrentPlayback = dv7ToDv81Probe.reason
