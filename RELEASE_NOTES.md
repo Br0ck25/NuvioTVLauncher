@@ -13,6 +13,7 @@
 - Dolby Vision Profile 7 remuxes: official builds now include the native DV7 → DV8.1 bridge, so **Convert to DV8.1** works. If the bridge is unavailable, playback falls back to the HDR10 base layer instead of failing.
 - Translated YouTube captions: the background now wraps the caption text instead of spanning the whole screen.
 - OneTube keeps its first poster clear of the TV's overscan and the side menu, so cards are no longer clipped on the left after switching sections on sets like Hisense.
+- A stuck OneTube video lookup now gives up after about a minute and shows a retry message instead of leaving the spinner up for several minutes. Normal lookups, which take a few seconds, are unchanged.
 
 ## Music
 
