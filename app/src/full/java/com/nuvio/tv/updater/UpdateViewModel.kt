@@ -46,7 +46,7 @@ data class UpdateUiState(
     val autoInstallSupported: Boolean = Build.VERSION.SDK_INT >= Build.VERSION_CODES.S,
     val autoInstallNoticeEnabled: Boolean = true,
     /** Updates the user installs carry dex metadata; off sends them through the system installer screen. */
-    val optimizeDuringInstall: Boolean = true,
+    val optimizeDuringInstall: Boolean = false,
     val optimizeDuringInstallSupported: Boolean = ApkInstaller.supportsDexMetadata,
     /** Release installed automatically since the last launch, shown in the banner until dismissed. */
     val installedUpdate: AppUpdate? = null

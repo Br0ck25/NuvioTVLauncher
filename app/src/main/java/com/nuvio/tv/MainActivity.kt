@@ -1077,11 +1077,6 @@ open class MainActivity : ComponentActivity() {
                     val navBackStackEntry by navController.currentBackStackEntryAsState()
                     val actualRoute = navBackStackEntry?.destination?.route
                     val currentRoute = optimisticRoute ?: actualRoute
-                    // Live TV fork: Remote Buttons needs to know the page showing, and how to open another.
-                    androidx.compose.runtime.SideEffect {
-                        com.nuvio.tv.livetv.remote.RemoteButtons.route = currentRoute
-                        com.nuvio.tv.livetv.remote.RemoteButtons.navigate = { target -> navigateToDrawerRoute(navController, currentRoute, target) }
-                    }
                     startupDestination = startupDestinationForRoute(actualRoute ?: startDestination)
 
                     LaunchedEffect(actualRoute) {
@@ -1336,9 +1331,12 @@ open class MainActivity : ComponentActivity() {
                     val recordingNow = allRecordings.any {
                         it.status == com.nuvio.tv.livetv.record.RecordingStatus.RECORDING
                     }
-                    val recordingsInSidebar = liveTvSettingsNow.recordingsInSidebar && liveTvInSidebar && (allRecordings.isNotEmpty() ||
-                        liveTvRecordingScheduler.schedules.collectAsState().value.isNotEmpty() ||
-                        liveTvRecordingScheduler.series.collectAsState().value.isNotEmpty())
+                    // Always read both lists: reading them only when the switches above are on made
+                    // the screen under the menu rebuild (Settings lost its place) when one changed.
+                    val hasSchedules = liveTvRecordingScheduler.schedules.collectAsState().value.isNotEmpty()
+                    val hasSeries = liveTvRecordingScheduler.series.collectAsState().value.isNotEmpty()
+                    val recordingsInSidebar = liveTvSettingsNow.recordingsInSidebar && liveTvInSidebar &&
+                        (allRecordings.isNotEmpty() || hasSchedules || hasSeries)
                     // Opened from the guide's ● button, Back goes back to the guide; from the menu it's a menu page.
                     val recordingsFromGuide = currentRoute == Screen.Recordings.route &&
                         navController.previousBackStackEntry?.destination?.route == Screen.LiveTv.route
@@ -1956,11 +1954,6 @@ open class MainActivity : ComponentActivity() {
                 nativeHomeActive = LauncherSetup.isDefaultHome(this)
             )
         ) return true
-        // Live TV fork: Remote Buttons (the user's own button choices; untouched buttons pass straight through).
-        com.nuvio.tv.livetv.remote.RemoteButtons.start(this)
-        if (com.nuvio.tv.livetv.remote.RemoteButtons.swallowed(event)) return true
-        com.nuvio.tv.livetv.remote.RemoteButtons.noteKey(event)
-        if (com.nuvio.tv.livetv.remote.RemoteButtons.rootKey(event)) return true
         return super.dispatchKeyEvent(event)
     }
 

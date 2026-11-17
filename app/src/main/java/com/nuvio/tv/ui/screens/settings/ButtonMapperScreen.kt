@@ -73,9 +73,6 @@ internal fun ButtonMapperSettingsContent(
     val installedAppsList by viewModel.installedApps.collectAsStateWithLifecycle()
     val launcherSetup = rememberLauncherSetupState()
     val context = LocalContext.current
-    // Buttons also changed on the Live TV screens: the Button Mapper reads a press first, so those changes would not run.
-    androidx.compose.runtime.LaunchedEffect(Unit) { com.nuvio.tv.livetv.remote.RemoteButtons.start(context) }
-    val liveTvButtons by com.nuvio.tv.livetv.remote.RemoteButtons.state.collectAsStateWithLifecycle()
 
     var showCaptureDialog by remember { mutableStateOf(false) }
     var editingButtonKeyCode by remember { mutableStateOf<Int?>(null) }
@@ -209,14 +206,9 @@ internal fun ButtonMapperSettingsContent(
                     installedAppsList
                 )
 
-                val alsoOnLiveTv = if (effectiveMapping.enabled && persistedState.masterEnabled && !mapping.isHomeButton()) {
-                    com.nuvio.tv.livetv.remote.ButtonMapperOverlap.liveTvScreensFor(effectiveMapping.keyCode, liveTvButtons)
-                } else emptyList()
                 SettingsActionRow(
                     title = effectiveMapping.displayName,
-                    subtitle = "Single: $singleLabel • Double: $doubleLabel • Long: $longLabel" +
-                        if (alsoOnLiveTv.isEmpty()) "" else
-                            "\nAlso set in Live TV Remote Buttons (${alsoOnLiveTv.joinToString()}). The Button Mapper takes priority, so those won't run.",
+                    subtitle = "Single: $singleLabel • Double: $doubleLabel • Long: $longLabel",
                     value = statusLabel,
                     leadingIcon = iconForRemoteButton(effectiveMapping.keyCode),
                     enabled = persistedState.masterEnabled,
