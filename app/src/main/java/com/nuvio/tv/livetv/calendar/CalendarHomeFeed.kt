@@ -33,7 +33,24 @@ object CalendarHomeFeed {
     private var prefs: android.content.SharedPreferences? = null
     private val dismissed = HashSet<String>()
 
+    @Volatile private var appContext: Context? = null
+
+    /** A different profile is now in use: drop the last profile's cards and read this profile's own dismissed/snoozed picks. */
+    fun onProfileChanged() {
+        released = emptyList()
+        upcoming = emptyList()
+        movies = emptyList()
+        injected = emptySet()
+        injectedMovies = emptySet()
+        prefs = null
+        synchronized(dismissed) { dismissed.clear() }
+        synchronized(snoozed) { snoozed.clear() }
+        appContext?.let { init(it) }
+        _version.value++
+    }
+
     fun init(context: Context) {
+        appContext = context.applicationContext
         if (prefs != null) return
         val p = com.nuvio.tv.core.profile.ActiveProfile.prefs(context, "calendar_home")
         prefs = p

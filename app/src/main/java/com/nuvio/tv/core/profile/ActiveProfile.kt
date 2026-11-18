@@ -16,7 +16,11 @@ object ActiveProfile {
     /** Switching profile also forgets the Home backdrop shown last, so one profile never sees another's artwork. */
     @Volatile var id: Int = 1
         set(value) {
-            if (field != value) com.nuvio.tv.ui.screens.home.HeroBackdropState.reset()
+            if (field != value) {
+                com.nuvio.tv.ui.screens.home.HeroBackdropState.reset()
+                field = value
+                com.nuvio.tv.livetv.calendar.CalendarHomeFeed.onProfileChanged()
+            }
             field = value
         }
 
