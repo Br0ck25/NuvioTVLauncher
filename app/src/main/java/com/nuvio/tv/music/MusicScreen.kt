@@ -346,7 +346,13 @@ fun MusicScreen(
     }
 
     MusicTextTheme {
-        Column(Modifier.fillMaxSize().background(MusicPalette.background)) {
+        Column(
+            Modifier
+                .fillMaxSize()
+                .background(MusicPalette.background)
+                // Clear Nuvio's collapsed side menu, which overlays the page's left edge.
+                .padding(start = 64.dp)
+        ) {
             MusicTopNavigation(
                 selectedTab = state.tab,
                 onTabSelected = ::selectTab,
@@ -784,18 +790,7 @@ private fun MusicTopNavigation(
                 .height(96.dp)
                 .padding(horizontal = 24.dp)
         ) {
-            Column(
-                modifier = Modifier.align(Alignment.CenterStart),
-                verticalArrangement = Arrangement.spacedBy(6.dp)
-            ) {
-                MusicBrand()
-                if (playback.song != null) {
-                    NowPlayingChip(
-                        playback = playback,
-                        onClick = onOpenNowPlaying
-                    )
-                }
-            }
+            MusicBrand(Modifier.align(Alignment.CenterStart))
             MusicNavigationPill(
                 selectedTab = selectedTab,
                 onTabSelected = onTabSelected,
@@ -804,19 +799,31 @@ private fun MusicTopNavigation(
                 onOpenIntegrations = onOpenIntegrations,
                 onOpenNuvioMenu = onOpenNuvioMenu,
                 initialFocus = initialFocus,
-                modifier = Modifier.align(Alignment.Center)
+                // Nudge left so the right-hand controls and Now Playing pill fit without overlap.
+                modifier = Modifier.align(Alignment.Center).offset(x = (-12).dp)
             )
-            Row(
+            Column(
                 modifier = Modifier.align(Alignment.CenterEnd),
-                verticalAlignment = Alignment.CenterVertically,
-                horizontalArrangement = Arrangement.spacedBy(7.dp)
+                horizontalAlignment = Alignment.End,
+                verticalArrangement = Arrangement.spacedBy(6.dp)
             ) {
-                MusicAccountButton(
-                    name = accountName,
-                    avatar = accountAvatar,
-                    onClick = onOpenAccount
-                )
-                MusicSettingsButton(onClick = onOpenSettings)
+                Row(
+                    verticalAlignment = Alignment.CenterVertically,
+                    horizontalArrangement = Arrangement.spacedBy(7.dp)
+                ) {
+                    MusicAccountButton(
+                        name = accountName,
+                        avatar = accountAvatar,
+                        onClick = onOpenAccount
+                    )
+                    MusicSettingsButton(onClick = onOpenSettings)
+                }
+                if (playback.song != null) {
+                    NowPlayingChip(
+                        playback = playback,
+                        onClick = onOpenNowPlaying
+                    )
+                }
             }
         }
     }
