@@ -62,6 +62,7 @@ import androidx.compose.ui.Alignment
 import com.nuvio.tv.ui.components.CatalogRowSection
 import com.nuvio.tv.ui.components.CollectionRowSection
 import com.nuvio.tv.ui.components.ContinueWatchingSection
+import com.nuvio.tv.ui.components.UPCOMING_SCHEDULE_CARD_WIDTH
 import com.nuvio.tv.ui.components.LocalLandscapePosterMode
 import com.nuvio.tv.core.poster.withCustomPosterUrls
 import com.nuvio.tv.domain.model.ContinueWatchingCardStyle
@@ -844,12 +845,13 @@ fun ClassicHomeContent(
                                 ?.toClassicFocusArtwork(uiState.focusedPosterBackdropExpandEnabled)
                         }
                     },
-                    cardWidth = classicContinueWatchingCardWidth,
+                    cardWidth = UPCOMING_SCHEDULE_CARD_WIDTH,
                     imageHeight = classicContinueWatchingImageHeight,
                     cardStyle = uiState.continueWatchingCardStyle,
                     cornerRadius = posterCardStyle.cornerRadius,
                     posterTitleOverride = classicPosterTitleStyle,
-                    listState = upcomingListState
+                    listState = upcomingListState,
+                    isUpcomingSection = true
                 )
             }
         }
