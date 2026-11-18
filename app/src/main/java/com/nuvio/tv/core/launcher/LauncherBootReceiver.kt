@@ -43,7 +43,10 @@ class LauncherBootReceiver : BroadcastReceiver() {
                     // Android can switch the override off while it installs the update, a moment after this
                     // broadcast. Look again once it has settled and remember it for the next time the app opens.
                     val appContext = context.applicationContext
-                    Handler(Looper.getMainLooper()).postDelayed({ healOrNotifyAfterUpdate(appContext) }, 8_000L)
+                    Handler(Looper.getMainLooper()).postDelayed({
+                        restoreHomeAfterUpdate(appContext)
+                        healOrNotifyAfterUpdate(appContext)
+                    }, 8_000L)
                 }
                 // The service takes over by itself when it is bound; this is only the backup.
                 val serviceBound = LauncherAccessibilityService.isOperational.value
@@ -89,6 +92,21 @@ class LauncherBootReceiver : BroadcastReceiver() {
             delay(6_000L)
             // Still not bound (Wireless debugging off, pairing lost, ...): fall back to telling the user.
             LauncherSetup.checkOverrideLost(context, requireOperational = true)
+        }
+    }
+
+    /**
+     * Updating the app over itself can drop Android's saved "this is the Home app" choice. With the TV's own
+     * launcher turned off or removed, Home then falls to Google's recovery screen, which closes at once and
+     * reopens until the system crashes (seen on Chromecast with Google TV). If this app was the Home app before and
+     * is not now, set it again over Wireless debugging, the same step the phone setup runs.
+     */
+    private fun restoreHomeAfterUpdate(context: Context) {
+        if (!LauncherSetup.wasNativeHome(context) || LauncherSetup.isDefaultHome(context)) return
+        val setup = runCatching { LocalAdbSetupFactory.create(context) }.getOrNull() ?: return
+        CoroutineScope(Dispatchers.Default).launch {
+            val result = withTimeoutOrNull(40_000L) { setup.run(DeviceAction.MAKE_HOME, null) }
+            Log.i(TAG, "Post-update Home repair: ${result?.fold({ it }, { "failed: ${it.message}" }) ?: "timed out"}")
         }
     }
 
