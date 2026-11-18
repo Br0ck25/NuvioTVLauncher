@@ -493,13 +493,7 @@ private fun HomeCard(
                     .joinToString(" · ")
             } else entry.channel.name
             LiveText(sub, color = NuvioTheme.extendedColors.textSecondary, size = 12.sp, marquee = focused)
-            if (!compact && showNext && next != null) {
-                LiveText(
-                    "Next: ${formatClock(next.startMs, use24h)} ${next.title}",
-                    color = NuvioTheme.extendedColors.textSecondary, size = 12.sp, marquee = focused
-                )
-            }
-            // How far through the show it is.
+            // How far through the show it is: between what's playing and what's next.
             if (!compact && p != null) {
                 Box(
                     modifier = Modifier.fillMaxWidth().height(3.dp).clip(RoundedCornerShape(2.dp))
@@ -510,6 +504,12 @@ private fun HomeCard(
                             .background(NuvioTheme.colors.Secondary)
                     )
                 }
+            }
+            if (!compact && showNext && next != null) {
+                LiveText(
+                    "Next: ${formatClock(next.startMs, use24h)} ${next.title}",
+                    color = NuvioTheme.extendedColors.textSecondary, size = 12.sp, marquee = focused
+                )
             }
         }
     }
