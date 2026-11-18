@@ -67,6 +67,7 @@ import com.nuvio.tv.core.cloud.cloudLibraryDisplayArtworkUrl
 import com.nuvio.tv.ui.util.rememberRawSvgPainter
 
 private const val NuvioRepositoryUrl = "https://github.com/NuvioMedia/NuvioTV"
+private const val NuvioOneRepositoryUrl = "https://github.com/zoga2o3-ops/Nuvio-One"
 private const val TmdbUrl = "https://www.themoviedb.org"
 private const val TraktUrl = "https://trakt.tv"
 private const val SimklUrl = "https://simkl.com"
@@ -182,6 +183,7 @@ private fun LicensesAttributionsDetailsPanel(
                         item = appLicenseItem(),
                         modifier = Modifier.focusRequester(firstFocusRequester)
                     )
+                    AttributionDetailRow(item = nuvioLicenseItem())
                 }
 
                 AttributionSection(
@@ -354,6 +356,13 @@ private fun rememberUrlSvgPainter(url: String): Painter {
 
 @Composable
 private fun appLicenseItem() = LicenseAttributionItem(
+    title = stringResource(R.string.licenses_attributions_nuvio_one_title),
+    body = stringResource(R.string.licenses_attributions_nuvio_one_body),
+    url = NuvioOneRepositoryUrl
+)
+
+@Composable
+private fun nuvioLicenseItem() = LicenseAttributionItem(
     title = stringResource(R.string.licenses_attributions_nuvio_title),
     body = stringResource(R.string.licenses_attributions_nuvio_body),
     url = NuvioRepositoryUrl

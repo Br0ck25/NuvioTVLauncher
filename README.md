@@ -1,13 +1,14 @@
 <div align="center">
 
-# Nuvio One
+<img src="assets/nuviotv.png" alt="Nuvio TV Launcher" width="420" />
 
-**Movies and shows, live TV, sports, YouTube and music in one app for Google TV, Android TV and Fire TV.**
+# Nuvio TV Launcher
 
-[![Latest release](https://img.shields.io/github/v/release/zoga2o3-ops/Nuvio-One?label=latest&style=for-the-badge)](https://github.com/zoga2o3-ops/Nuvio-One/releases)
-[![Downloads](https://img.shields.io/github/downloads/zoga2o3-ops/Nuvio-One/total?style=for-the-badge)](https://github.com/zoga2o3-ops/Nuvio-One/releases)
+**A Home screen for Google TV, Android TV and Fire TV: movies and shows, live TV, sports, YouTube and music in one app. Built on [Nuvio One](https://github.com/zoga2o3-ops/Nuvio-One).**
+
+[![Latest release](https://img.shields.io/github/v/release/Br0ck25/NuvioTVLauncher?label=latest&style=for-the-badge)](https://github.com/Br0ck25/NuvioTVLauncher/releases)
+[![Downloads](https://img.shields.io/github/downloads/Br0ck25/NuvioTVLauncher/total?style=for-the-badge)](https://github.com/Br0ck25/NuvioTVLauncher/releases)
 [![License](https://img.shields.io/badge/license-GPL--3.0-blue?style=for-the-badge)](LICENSE)
-<a href="https://ko-fi.com/zoga2o3"><img src="https://img.shields.io/badge/Ko--fi-Support%20the%20project-FF5E5B?style=for-the-badge&logo=ko-fi&logoColor=white" alt="Support the project on Ko-fi" /></a>
 
 [What is it](#what-is-it) · [OneTube (YouTube)](#onetube-youtube-built-in) · [Music](#music) · [Live TV, Sports and On Demand](#live-tv-sports-and-on-demand-from-nuvio--iptv) · [Install](#installation) · [Setup](#getting-started) · [Remote controls](CONTROLS.md) · [Bugs](#reporting-bugs-and-asking-for-features) · [Support](#support-the-project) · [Credits](#credits)
 
@@ -17,12 +18,22 @@
 
 ## What is it
 
-Nuvio One is a personal fork that puts four things in one TV app:
+Nuvio TV Launcher is a fork of **[Nuvio One](https://github.com/zoga2o3-ops/Nuvio-One)** by zoga2o3 that can also be your TV's Home screen. Nuvio One puts four things in one TV app, and this keeps all of them:
 
-1. **[Nuvio](https://github.com/NuvioMedia/NuvioTV)**: the home screen, addons, Trakt and Simkl, your Nuvio account and its settings, and Nuvio's player.
+1. **[Nuvio](https://github.com/NuvioMedia/NuvioTV)** (through Nuvio One): the home screen, addons, Trakt and Simkl, your Nuvio account and its settings, and Nuvio's player.
 2. **IPTV**: a TiviMate-style Live TV guide, a Sports hub, catch-up, recordings and On Demand, from [NuvioPlusIPTV](https://github.com/homelessbrian/NuvioPlusIPTV) by homelessbrian.
 3. **OneTube**: YouTube without the YouTube app, in a section of its own in the side menu, played in Nuvio's own player. It's not a launcher and not a web view, and you can use it without an account.
 4. **Music**: an ad-free music section with YouTube Music, your own music server, local files, downloads and synced lyrics.
+
+### What the launcher adds
+
+- **Home screen**: set it as your TV's Home app, so the Home button opens it. Double-tap Home for the profile switcher.
+- **Stays working**: it re-enables its Home-button handling after a restart, and the phone setup page can set it up without a computer (including turning the TV's own launcher off or back on).
+- **Apps row and Apps page**: your installed apps on Home and on their own page, with Move, Rename, Change icon and Hide.
+- **Home list as a TV channel**, a floating profile pill, and one tile size shared by every Home row.
+- **Per-profile everything**: each Nuvio profile has its own YouTube and Music sign-ins, OneTube and Music settings, library and listening history.
+- **Upcoming row and Live TV row** with a schedule card, the next episodes you will get, and what's playing and what's next.
+
 
 You sign in with your usual Nuvio account and everything you set up there carries over: TMDB, Trakt, Simkl, MDBList, Premiumize, ratings, trailers, intro skip, avatars and Drive backup. The app has its own package name, so it installs next to the official Nuvio without replacing it. (Nuvio One was called Nuvio + IPTV + 1Tube until 1.1.0-beta.11.2, and updates install straight over those versions.)
 
@@ -137,7 +148,7 @@ All of this comes from NuvioPlusIPTV and works as it does there. Here is what yo
 
 ## Installation
 
-1. Open the **[latest release](https://github.com/zoga2o3-ops/Nuvio-One/releases)**.
+1. Open the **[latest release](https://github.com/Br0ck25/NuvioTVLauncher/releases)**.
 2. Download the APK for your device:
 
    | Device | APK |
@@ -183,11 +194,11 @@ Every button for the guide, full screen, Sports, On Demand and Recordings is lis
 
 ## Reporting bugs and asking for features
 
-Please look through the [existing issues](https://github.com/zoga2o3-ops/Nuvio-One/issues) first, then [open a new one](https://github.com/zoga2o3-ops/Nuvio-One/issues/new). Say which device you use, what you did and what happened. For OneTube or Music problems, mention the video's title or link.
+Please look through the [existing issues](https://github.com/Br0ck25/NuvioTVLauncher/issues) first, then [open a new one](https://github.com/Br0ck25/NuvioTVLauncher/issues/new). Say which device you use, what you did and what happened. For OneTube or Music problems, mention the video's title or link.
 
 If the app crashes, scan the QR code on the crash screen and paste the text into your report. If a playlist, guide or catch-up doesn't load, include **Settings → Live TV → Help → Start-Up Report** (usernames and passwords are hidden in it).
 
-Problems that also happen in the official Nuvio app belong with [Nuvio](https://github.com/NuvioMedia/NuvioTV/issues).
+Problems that also happen in Nuvio One belong with [Nuvio One](https://github.com/zoga2o3-ops/Nuvio-One/issues), and ones that also happen in the official Nuvio app with [Nuvio](https://github.com/NuvioMedia/NuvioTV/issues).
 
 ---
 
@@ -238,22 +249,21 @@ Your Live TV and Sports setup, in a private app folder in your own Google Drive 
 <details>
 <summary><b>Where do sports scores come from?</b></summary>
 
-ESPN's public feed, FotMob's league data through our own sports data service, TheSportsDB, WWE/AEW/TNA and boxing schedules, and sporting-events.org. Sports they don't cover are found in your own TV guide.
+ESPN's public feed, FotMob's league data through Nuvio One's sports data service, TheSportsDB, WWE/AEW/TNA and boxing schedules, and sporting-events.org. Sports they don't cover are found in your own TV guide.
 </details>
 
 ---
 
 ## Support the project
 
-Enjoying the app? A coffee keeps the updates coming. Totally optional, always appreciated.
-
-<a href="https://ko-fi.com/zoga2o3"><img src="https://img.shields.io/badge/Ko--fi-Support%20the%20project-FF5E5B?style=for-the-badge&logo=ko-fi&logoColor=white" alt="Support the project on Ko-fi" /></a>
+This launcher is a fork, and nearly everything it does comes from **Nuvio One**. If you want to say thanks, support its developer: [zoga2o3 on Ko-fi](https://ko-fi.com/zoga2o3).
 
 ---
 
 ## Credits
 
-- **[Nuvio](https://github.com/NuvioMedia/NuvioTV)** by the NuvioMedia team, which this app is built on.
+- **[Nuvio One](https://github.com/zoga2o3-ops/Nuvio-One)** by zoga2o3, which this app is a fork of: OneTube, Music, the Live TV guide, Sports hub, recordings and On Demand integration, and Nuvio One's sync and sports data services that this app uses. Without it there is no launcher.
+- **[Nuvio](https://github.com/NuvioMedia/NuvioTV)** by the NuvioMedia team, which Nuvio One and this app are built on.
 - **[NuvioPlusIPTV](https://github.com/homelessbrian/NuvioPlusIPTV)** by homelessbrian: the Live TV guide, Sports hub, recordings and On Demand.
 - **[SmartTube](https://github.com/yuliskov/SmartTube) / [MediaServiceCore](https://github.com/yuliskov/MediaServiceCore)** by Yurii Liskov (MIT licence): the YouTube engine. Licence texts are in `mediaservicecore/`.
 - **[BitChord](https://github.com/kushagrasinghx/BitChord)** by Kushagra Singh (GPL-3.0): the YouTube Music catalogue client and the Music section's design. The ported code is in `app/src/main/java/com/music/bitchord/` and `app/src/main/java/com/nuvio/tv/music/`.
@@ -261,7 +271,7 @@ Enjoying the app? A coffee keeps the updates coming. Totally optional, always ap
 - Sports data from ESPN's public feed, [TheSportsDB](https://www.thesportsdb.com), [FotMob](https://www.fotmob.com) (unofficial), [WWE.com](https://www.wwe.com), [All Elite Wrestling](https://www.allelitewrestling.com), [TNA Wrestling](https://tnawrestling.com), [Box.live](https://box.live), [BoxingScene](https://www.boxingscene.com) and sporting-events.org. Guide design inspired by TiviMate.
 - Built with Kotlin, Jetpack Compose, TV Material 3 and Media3 / ExoPlayer.
 
-This is an unofficial fork. It is **not affiliated with or endorsed by NuvioMedia, NuvioPlusIPTV, SmartTube, SponsorBlock, DeArrow, TiviMate, Google or YouTube**. YouTube is a trademark of Google LLC. Please report issues here, not to those projects.
+This is an unofficial fork. It is **not affiliated with or endorsed by Nuvio One, NuvioMedia, NuvioPlusIPTV, SmartTube, SponsorBlock, DeArrow, TiviMate, Google or YouTube**. YouTube is a trademark of Google LLC. Please report issues here first, not to those projects.
 
 ## Building
 
@@ -275,4 +285,4 @@ You need JDK 17 and the Android SDK. Copy `local.example.properties` to `local.p
 
 This app is a client-side player. It does not host, store or distribute any media, and it ships with no channels, playlists or content sources. Only use sources you own or are authorized to access. See Nuvio's [legal and DMCA information](https://github.com/NuvioMedia/NuvioTV#legal--dmca), which applies here as well.
 
-Licensed under the **GNU General Public License v3.0**, like upstream Nuvio. See [LICENSE](LICENSE). If you share a build, share its source too.
+Licensed under the **GNU General Public License v3.0**, like Nuvio One and Nuvio. See [LICENSE](LICENSE). If you share a build, share its source too.

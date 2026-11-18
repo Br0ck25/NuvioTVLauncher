@@ -1,5 +1,5 @@
 <resources>
-    <string name="app_name">Nuvio One</string>
+    <string name="app_name">Nuvio Launcher</string>
     <string name="music_downloads_channel_name">Music downloads</string>
     <string name="music_party_channel_name">Music party</string>
     <string name="tv_channel_continue_watching">Continue Watching</string>
@@ -475,6 +475,8 @@
     <string name="licenses_attributions_torbox_body">Nuvio connects to TorBox for account authentication, cloud library access, cache checks, and cloud playback features. Nuvio is not affiliated with or endorsed by TorBox.</string>
     <string name="licenses_attributions_mdblist_title">MDBList</string>
     <string name="licenses_attributions_mdblist_body">Nuvio uses MDBList for ratings, watched history and playback tracking. Nuvio is not affiliated with or endorsed by MDBList.</string>
+    <string name="licenses_attributions_nuvio_one_title">Nuvio One</string>
+    <string name="licenses_attributions_nuvio_one_body">This app is a fork of Nuvio One by zoga2o3 (GPL-3.0): OneTube, Music, the Live TV guide, Sports hub and the sync and sports data services all come from it. Not affiliated with or endorsed by Nuvio One.</string>
     <string name="licenses_attributions_smarttube_title">SmartTube and MediaServiceCore</string>
     <string name="licenses_attributions_smarttube_body">The YouTube section is built on MediaServiceCore, the YouTube engine from SmartTube, used under the MIT licence. This app is not affiliated with or endorsed by SmartTube, Google or YouTube. YouTube is a trademark of Google LLC.</string>
     <string name="licenses_attributions_sponsorblock_title">SponsorBlock</string>
@@ -2500,7 +2502,7 @@
     <string name="update_later">Later</string>
     <string name="update_download_now">Download now</string>
     <string name="update_new_version_message">A new version is ready. Download it now, or choose Later.</string>
-    <string name="update_installed_title">Nuvio One updated</string>
+    <string name="update_installed_title">Nuvio Launcher updated</string>
     <string name="update_installed_message">This device is now on the latest version.</string>
     <string name="update_downloading">Downloading update</string>
     <string name="update_download">Download</string>
