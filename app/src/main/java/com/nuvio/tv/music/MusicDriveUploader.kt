@@ -530,7 +530,7 @@ object MusicDriveUploader {
     }
 
     private fun prefs(context: Context) =
-        context.getSharedPreferences(PREFS, Context.MODE_PRIVATE)
+        com.nuvio.tv.core.profile.ActiveProfile.prefs(context, PREFS)
 
     private fun loadUploaded(context: Context): JSONObject =
         runCatching { JSONObject(prefs(context).getString(KEY_UPLOADED, "{}")) }
