@@ -271,4 +271,22 @@
     <string name="music_integrations_open_webdav">"Открыть WebDAV"</string>
     <string name="music_link_with_phone">"Связать с телефоном"</string>
     <string name="music_integrations_subtitle">"Скробблинг, импорт плейлистов и ваш собственный сервер."</string>
+    <string name="music_settings_detail_radio">"Запускает радиомикс после окончания очереди."</string>
+    <string name="music_settings_detail_skip_silence">"Пропускает длинные паузы внутри трека."</string>
+    <string name="music_settings_pauses_in">"Пауза через %1$s."</string>
+    <string name="music_account_scan_or_go">"Отсканируйте код телефоном или перейдите на %1$s и введите:"</string>
+    <string name="music_settings_applied">"Применено к музыкальному проигрывателю."</string>
+    <string name="music_settings_unsupported">"Не поддерживается на этом устройстве; выбор запоминается."</string>
+    <string name="music_account_waiting_approve">"Ожидание вашего подтверждения."</string>
+    <string name="music_account_follow_google">"Ваши отметки «Нравится», плейлисты и персональная главная страница будут использовать тот же аккаунт Google, что и YouTube на этом телевизоре."</string>
+    <string name="music_account_not_signed_in">"Вход не выполнен"</string>
+    <string name="music_account_go_and_enter">"На телефоне или компьютере перейдите на %1$s и введите:"</string>
+    <string name="music_account_title">"YouTube Music"</string>
+    <string name="music_settings_detail_gapless">"Без пауз использует предзагруженный следующий поток; плавный переход смягчает стык."</string>
+    <string name="music_settings_downloads_wait">"Загрузки ждут сеть без ограничений."</string>
+    <string name="music_account_waiting_approval">"Ожидание подтверждения входа"</string>
+    <string name="music_settings_detail_keep_playing">"Музыка продолжает играть, пока вы просматриваете фильмы, Live TV и библиотеки. Она приостанавливается при запуске видео."</string>
+    <string name="music_settings_downloads_mobile">"Загрузки могут использовать мобильные данные."</string>
+    <string name="music_settings_detail_lyrics_speed">"Текст и прогресс следуют за скоростью."</string>
+    <string name="music_settings_pauses_after">"Приостанавливает воспроизведение после выбранного времени."</string>
 </resources>

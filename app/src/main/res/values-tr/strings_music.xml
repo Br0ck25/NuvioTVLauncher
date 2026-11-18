@@ -271,4 +271,22 @@
     <string name="music_integrations_open_webdav">"WebDAV’ı aç"</string>
     <string name="music_link_with_phone">"Telefonla bağla"</string>
     <string name="music_integrations_subtitle">"Scrobbling, oynatma listesi içe aktarma ve kendi sunucunuz."</string>
+    <string name="music_settings_detail_radio">"Sıra bittiğinde bir radyo karışımı başlatır."</string>
+    <string name="music_settings_detail_skip_silence">"Bir parçadaki uzun sessiz bölümleri atlar."</string>
+    <string name="music_settings_pauses_in">"%1$s içinde duraklar."</string>
+    <string name="music_account_scan_or_go">"Kodu telefonunuzla tarayın veya %1$s adresine gidip şunu girin:"</string>
+    <string name="music_settings_applied">"Müzik oynatıcısına uygulandı."</string>
+    <string name="music_settings_unsupported">"Bu cihazda desteklenmiyor; seçim hatırlanır."</string>
+    <string name="music_account_waiting_approve">"Onaylamanız bekleniyor."</string>
+    <string name="music_account_follow_google">"Beğenileriniz, oynatma listeleriniz ve kişiselleştirilmiş Ana sayfanız bu televizyonda YouTube için kullandığınız aynı Google hesabını izler."</string>
+    <string name="music_account_not_signed_in">"Giriş yapılmadı"</string>
+    <string name="music_account_go_and_enter">"Telefonunuzda veya bilgisayarınızda %1$s adresine gidip şunu girin:"</string>
+    <string name="music_account_title">"YouTube Music"</string>
+    <string name="music_settings_detail_gapless">"Boşluksuz, önceden yüklenen sonraki akışı kullanır; bir geçiş birleşimi yumuşatır."</string>
+    <string name="music_settings_downloads_wait">"İndirmeler sınırsız bir ağ bekler."</string>
+    <string name="music_account_waiting_approval">"Giriş onayı bekleniyor"</string>
+    <string name="music_settings_detail_keep_playing">"Filmleri, Live TV’yi ve kitaplıklarınızı gezerken müzik devam eder. Bir video başladığında duraklar."</string>
+    <string name="music_settings_downloads_mobile">"İndirmeler mobil veri kullanabilir."</string>
+    <string name="music_settings_detail_lyrics_speed">"Şarkı sözleri ve ilerleme hıza uyar."</string>
+    <string name="music_settings_pauses_after">"Oynatmayı seçilen süreden sonra duraklatır."</string>
 </resources>

@@ -278,4 +278,22 @@
     <string name="music_integrations_open_webdav">"Open WebDAV"</string>
     <string name="music_link_with_phone">"Link with phone"</string>
     <string name="music_integrations_subtitle">"Scrobbling, playlist import and your own server."</string>
+    <string name="music_settings_detail_radio">"Starts a radio mix when the queue ends."</string>
+    <string name="music_settings_detail_skip_silence">"Skips long silent passages inside a track."</string>
+    <string name="music_settings_pauses_in">"Pauses in %1$s."</string>
+    <string name="music_account_scan_or_go">"Scan the code with your phone, or go to %1$s and enter:"</string>
+    <string name="music_settings_applied">"Applied to the music player."</string>
+    <string name="music_settings_unsupported">"Not supported on this device; the choice is remembered."</string>
+    <string name="music_account_waiting_approve">"Waiting for you to approve it."</string>
+    <string name="music_account_follow_google">"Your likes, playlists and personalised Home will follow the same Google account you use for YouTube on this TV."</string>
+    <string name="music_account_not_signed_in">"Not signed in"</string>
+    <string name="music_account_go_and_enter">"On your phone or computer, go to %1$s and enter:"</string>
+    <string name="music_account_title">"YouTube Music"</string>
+    <string name="music_settings_detail_gapless">"Gapless uses the prefetched next stream; a fade softens the join."</string>
+    <string name="music_settings_downloads_wait">"Downloads wait for an unmetered network."</string>
+    <string name="music_account_waiting_approval">"Waiting for sign-in approval"</string>
+    <string name="music_settings_detail_keep_playing">"Music continues while you browse movies, Live TV and your libraries. It pauses when a video starts."</string>
+    <string name="music_settings_downloads_mobile">"Downloads can use mobile data."</string>
+    <string name="music_settings_detail_lyrics_speed">"Lyrics and progress follow the speed."</string>
+    <string name="music_settings_pauses_after">"Pauses playback after the chosen time."</string>
 </resources>

@@ -271,4 +271,22 @@
     <string name="music_integrations_open_webdav">"Abrir WebDAV"</string>
     <string name="music_link_with_phone">"Vincular con el teléfono"</string>
     <string name="music_integrations_subtitle">"Scrobbling, importación de listas y tu propio servidor."</string>
+    <string name="music_settings_detail_radio">"Inicia una mezcla de radio cuando termina la cola."</string>
+    <string name="music_settings_detail_skip_silence">"Salta los pasajes largos de silencio dentro de una pista."</string>
+    <string name="music_settings_pauses_in">"Se pausa en %1$s."</string>
+    <string name="music_account_scan_or_go">"Escanea el código con tu teléfono o ve a %1$s e introduce:"</string>
+    <string name="music_settings_applied">"Aplicado al reproductor de música."</string>
+    <string name="music_settings_unsupported">"No compatible con este dispositivo; la elección se recuerda."</string>
+    <string name="music_account_waiting_approve">"Esperando a que lo apruebes."</string>
+    <string name="music_account_follow_google">"Tus me gusta, listas y página de inicio personalizada seguirán la misma cuenta de Google que usas para YouTube en este televisor."</string>
+    <string name="music_account_not_signed_in">"Sin iniciar sesión"</string>
+    <string name="music_account_go_and_enter">"En tu teléfono u ordenador, ve a %1$s e introduce:"</string>
+    <string name="music_account_title">"YouTube Music"</string>
+    <string name="music_settings_detail_gapless">"Sin cortes usa el siguiente flujo precargado; un fundido suaviza la unión."</string>
+    <string name="music_settings_downloads_wait">"Las descargas esperan a una red sin límites."</string>
+    <string name="music_account_waiting_approval">"Esperando la aprobación del inicio de sesión"</string>
+    <string name="music_settings_detail_keep_playing">"La música sigue mientras exploras películas, Live TV y tus bibliotecas. Se pausa cuando empieza un vídeo."</string>
+    <string name="music_settings_downloads_mobile">"Las descargas pueden usar datos móviles."</string>
+    <string name="music_settings_detail_lyrics_speed">"La letra y el progreso siguen la velocidad."</string>
+    <string name="music_settings_pauses_after">"Pausa la reproducción después del tiempo elegido."</string>
 </resources>

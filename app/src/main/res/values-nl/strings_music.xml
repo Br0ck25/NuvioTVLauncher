@@ -271,4 +271,22 @@
     <string name="music_integrations_open_webdav">"WebDAV openen"</string>
     <string name="music_link_with_phone">"Koppelen met telefoon"</string>
     <string name="music_integrations_subtitle">"Scrobbelen, afspeellijsten importeren en je eigen server."</string>
+    <string name="music_settings_detail_radio">"Start een radiomix wanneer de wachtrij eindigt."</string>
+    <string name="music_settings_detail_skip_silence">"Slaat lange stille stukken in een nummer over."</string>
+    <string name="music_settings_pauses_in">"Pauzeert over %1$s."</string>
+    <string name="music_account_scan_or_go">"Scan de code met je telefoon of ga naar %1$s en voer in:"</string>
+    <string name="music_settings_applied">"Toegepast op de muziekspeler."</string>
+    <string name="music_settings_unsupported">"Niet ondersteund op dit apparaat; de keuze wordt onthouden."</string>
+    <string name="music_account_waiting_approve">"Wachten tot je het goedkeurt."</string>
+    <string name="music_account_follow_google">"Je likes, afspeellijsten en persoonlijke startpagina volgen hetzelfde Google-account dat je voor YouTube op deze tv gebruikt."</string>
+    <string name="music_account_not_signed_in">"Niet aangemeld"</string>
+    <string name="music_account_go_and_enter">"Ga op je telefoon of computer naar %1$s en voer in:"</string>
+    <string name="music_account_title">"YouTube Music"</string>
+    <string name="music_settings_detail_gapless">"Naadloos gebruikt de vooraf geladen volgende stream; een fade verzacht de overgang."</string>
+    <string name="music_settings_downloads_wait">"Downloads wachten op een netwerk zonder limiet."</string>
+    <string name="music_account_waiting_approval">"Wachten op goedkeuring van de aanmelding"</string>
+    <string name="music_settings_detail_keep_playing">"Muziek blijft spelen terwijl je films, Live TV en je bibliotheken bekijkt. Het pauzeert wanneer een video start."</string>
+    <string name="music_settings_downloads_mobile">"Downloads kunnen mobiele data gebruiken."</string>
+    <string name="music_settings_detail_lyrics_speed">"Songtekst en voortgang volgen de snelheid."</string>
+    <string name="music_settings_pauses_after">"Pauzeert de weergave na de gekozen tijd."</string>
 </resources>

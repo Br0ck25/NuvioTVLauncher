@@ -271,4 +271,22 @@
     <string name="music_integrations_open_webdav">"WebDAV öffnen"</string>
     <string name="music_link_with_phone">"Mit Telefon verbinden"</string>
     <string name="music_integrations_subtitle">"Scrobbling, Playlist-Import und dein eigener Server."</string>
+    <string name="music_settings_detail_radio">"Startet einen Radio-Mix, wenn die Warteschlange endet."</string>
+    <string name="music_settings_detail_skip_silence">"Überspringt lange stille Passagen in einem Titel."</string>
+    <string name="music_settings_pauses_in">"Pausiert in %1$s."</string>
+    <string name="music_account_scan_or_go">"Scanne den Code mit deinem Telefon oder gehe zu %1$s und gib ein:"</string>
+    <string name="music_settings_applied">"Auf den Musikplayer angewendet."</string>
+    <string name="music_settings_unsupported">"Auf diesem Gerät nicht unterstützt; die Auswahl wird gemerkt."</string>
+    <string name="music_account_waiting_approve">"Warten auf deine Bestätigung."</string>
+    <string name="music_account_follow_google">"Deine Likes, Playlists und deine personalisierte Startseite folgen demselben Google-Konto, das du für YouTube auf diesem Fernseher verwendest."</string>
+    <string name="music_account_not_signed_in">"Nicht angemeldet"</string>
+    <string name="music_account_go_and_enter">"Gehe auf deinem Telefon oder Computer zu %1$s und gib ein:"</string>
+    <string name="music_account_title">"YouTube Music"</string>
+    <string name="music_settings_detail_gapless">"Gapless nutzt den vorab geladenen nächsten Stream; eine Überblendung glättet den Übergang."</string>
+    <string name="music_settings_downloads_wait">"Downloads warten auf ein ungetaktetes Netzwerk."</string>
+    <string name="music_account_waiting_approval">"Warten auf die Anmeldebestätigung"</string>
+    <string name="music_settings_detail_keep_playing">"Musik läuft weiter, während du Filme, Live TV und deine Bibliotheken durchstöberst. Sie pausiert, wenn ein Video startet."</string>
+    <string name="music_settings_downloads_mobile">"Downloads können mobile Daten verwenden."</string>
+    <string name="music_settings_detail_lyrics_speed">"Songtext und Fortschritt folgen der Geschwindigkeit."</string>
+    <string name="music_settings_pauses_after">"Pausiert die Wiedergabe nach der gewählten Zeit."</string>
 </resources>

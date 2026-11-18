@@ -271,4 +271,22 @@
     <string name="music_integrations_open_webdav">"فتح WebDAV"</string>
     <string name="music_link_with_phone">"الربط بالهاتف"</string>
     <string name="music_integrations_subtitle">"التسجيل في Last.fm واستيراد قوائم التشغيل والخادم الخاص بك."</string>
+    <string name="music_settings_detail_radio">"يبدأ مزيجًا إذاعيًا عند انتهاء قائمة الانتظار."</string>
+    <string name="music_settings_detail_skip_silence">"يتخطى فترات الصمت الطويلة داخل المقطع."</string>
+    <string name="music_settings_pauses_in">"يتوقف بعد %1$s."</string>
+    <string name="music_account_scan_or_go">"امسح الرمز بهاتفك، أو انتقل إلى %1$s وأدخل:"</string>
+    <string name="music_settings_applied">"تم التطبيق على مشغل الموسيقى."</string>
+    <string name="music_settings_unsupported">"غير مدعوم على هذا الجهاز؛ يتم تذكر الاختيار."</string>
+    <string name="music_account_waiting_approve">"بانتظار موافقتك."</string>
+    <string name="music_account_follow_google">"ستتبع إعجاباتك وقوائم التشغيل وصفحتك الرئيسية المخصصة نفس حساب Google الذي تستخدمه لـ YouTube على هذا التلفاز."</string>
+    <string name="music_account_not_signed_in">"لم يتم تسجيل الدخول"</string>
+    <string name="music_account_go_and_enter">"على هاتفك أو حاسوبك، انتقل إلى %1$s وأدخل:"</string>
+    <string name="music_account_title">"YouTube Music"</string>
+    <string name="music_settings_detail_gapless">"بدون فجوات يستخدم البث التالي المُحمّل مسبقًا؛ ويخفف التلاشي الوصل."</string>
+    <string name="music_settings_downloads_wait">"تنتظر التنزيلات شبكة غير محدودة."</string>
+    <string name="music_account_waiting_approval">"بانتظار الموافقة على تسجيل الدخول"</string>
+    <string name="music_settings_detail_keep_playing">"تستمر الموسيقى أثناء تصفح الأفلام وLive TV ومكتباتك. تتوقف عند بدء فيديو."</string>
+    <string name="music_settings_downloads_mobile">"يمكن للتنزيلات استخدام بيانات الجوال."</string>
+    <string name="music_settings_detail_lyrics_speed">"تتبع الكلمات والتقدم سرعة التشغيل."</string>
+    <string name="music_settings_pauses_after">"يوقف التشغيل بعد الوقت المختار."</string>
 </resources>

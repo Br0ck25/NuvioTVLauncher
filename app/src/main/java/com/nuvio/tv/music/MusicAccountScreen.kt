@@ -94,7 +94,7 @@ internal fun MusicAccountScreen(
                 )
                 Column {
                     Text(
-                        text = "YouTube Music",
+                        text = stringResource(R.string.music_account_title),
                         color = MusicPalette.text,
                         fontFamily = MusicDisplay,
                         fontSize = 34.sp,
@@ -104,9 +104,9 @@ internal fun MusicAccountScreen(
                     Spacer(Modifier.height(2.dp))
                     Text(
                         text = when {
-                            account.code != null -> "Waiting for sign-in approval"
+                            account.code != null -> stringResource(R.string.music_account_waiting_approval)
                             account.signedIn -> account.accountName ?: "Account"
-                            else -> "Not signed in"
+                            else -> stringResource(R.string.music_account_not_signed_in)
                         },
                         color = MusicPalette.textMuted,
                         fontSize = 13.sp
@@ -163,16 +163,16 @@ private fun SignInCodePanel(
         }
         Column(verticalArrangement = Arrangement.spacedBy(14.dp)) {
             Text(
-                text = "Sign in to YouTube Music",
+                text = stringResource(R.string.music_p2_sign_in_to_youtube_music),
                 color = MusicPalette.text,
                 fontSize = 22.sp,
                 fontWeight = FontWeight.SemiBold
             )
             Text(
                 text = if (qr != null) {
-                    "Scan the code with your phone, or go to ${account.url} and enter:"
+                    stringResource(R.string.music_account_scan_or_go, account.url)
                 } else {
-                    "On your phone or computer, go to ${account.url} and enter:"
+                    stringResource(R.string.music_account_go_and_enter, account.url)
                 },
                 color = MusicPalette.textSecondary,
                 fontSize = 15.sp
@@ -184,7 +184,7 @@ private fun SignInCodePanel(
                 fontWeight = FontWeight.Bold
             )
             Text(
-                text = "Waiting for you to approve it…",
+                text = stringResource(R.string.music_account_waiting_approve),
                 color = MusicPalette.textMuted,
                 fontSize = 14.sp
             )
@@ -256,14 +256,13 @@ private fun SignedOutPanel(
         verticalArrangement = Arrangement.spacedBy(14.dp)
     ) {
         Text(
-            text = "Sign in to YouTube Music",
+            text = stringResource(R.string.music_p2_sign_in_to_youtube_music),
             color = MusicPalette.text,
             fontSize = 24.sp,
             fontWeight = FontWeight.Bold
         )
         Text(
-            text = "Your likes, playlists and personalised Home will follow the same Google " +
-                "account you use for YouTube on this TV.",
+            text = stringResource(R.string.music_account_follow_google),
             color = MusicPalette.textSecondary,
             fontSize = 15.sp
         )
