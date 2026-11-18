@@ -672,4 +672,23 @@
     <string name="iptv_settings_today">"vandaag"</string>
     <string name="iptv_settings_yesterday">"gisteren"</string>
     <string name="iptv_settings_expiry_expired">"verlopen"</string>
+    <string name="iptv_settings_playlists_on_this_profile">"Afspeellijsten in dit profiel"</string>
+    <string name="iptv_settings_playlists_on_this_profile_sub">"Kies welke gedeelde afspeellijsten dit profiel toont. Bronnen blijven gedeeld."</string>
+    <string name="iptv_settings_playlists_on_this_profile_hint">"Zet een afspeellijst uit om de zenders en groepen ervan in dit profiel te verbergen. Andere profielen houden hun eigen keuzes."</string>
+    <string name="iptv_settings_playlists_visible_count">"%1$d van %2$d"</string>
+    <string name="iptv_settings_hold_to_jump_to_the_ends">"Ingedrukt houden om naar de uiteinden te springen"</string>
+    <string name="iptv_settings_how_long_to_hold_up_or_down_in_the_group_list">"Hoe lang u Omhoog of Omlaag in de groepenlijst ingedrukt houdt om naar boven of onderen te springen. Normaal scrollen wordt niet beïnvloed."</string>
+    <string name="iptv_settings_seconds_short">"%1$s s"</string>
+    <string name="iptv_settings_filter_by_group_tag">"Zenders filteren op groepstag"</string>
+    <string name="iptv_settings_filter_by_group_tag_subtitle">"Scan uw groepen op tags zoals US, UK, Arabisch of Hindi en kies de tags die u wilt verbergen. Favorieten worden nooit verborgen."</string>
+    <string name="iptv_settings_group_tags_selected">"%1$d geselecteerd"</string>
+    <string name="iptv_settings_group_tags_scan">"Tags scannen"</string>
+    <string name="iptv_settings_group_tags_scan_again">"Opnieuw scannen"</string>
+    <string name="iptv_settings_group_tags_scanning">"Groepen scannen."</string>
+    <string name="iptv_settings_group_tags_hint">"Selecteer een tag om alle zenders in groepen met die tag te verbergen. Uw favorieten blijven zichtbaar."</string>
+    <string name="iptv_settings_group_tags_empty">"Nog geen tags. Scan uw groepen om de gebruikte tags te zien."</string>
+    <string name="iptv_settings_group_tags_no_channels">"Nog geen zenders geladen. Vernieuw Live TV en scan opnieuw."</string>
+    <string name="iptv_settings_group_tags_count">"%1$d zenders · %2$d groepen"</string>
+    <string name="iptv_settings_group_tags_clear">"Alles wissen"</string>
+    <string name="iptv_settings_group_tags_done">"Klaar"</string>
 </resources>

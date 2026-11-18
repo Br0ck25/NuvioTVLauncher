@@ -672,4 +672,23 @@
     <string name="iptv_settings_today">"bugün"</string>
     <string name="iptv_settings_yesterday">"dün"</string>
     <string name="iptv_settings_expiry_expired">"süresi doldu"</string>
+    <string name="iptv_settings_playlists_on_this_profile">"Bu profildeki oynatma listeleri"</string>
+    <string name="iptv_settings_playlists_on_this_profile_sub">"Bu profilin hangi paylaşılan oynatma listelerini göstereceğini seçin. Kaynaklar paylaşılan olarak kalır."</string>
+    <string name="iptv_settings_playlists_on_this_profile_hint">"Bu profilde kanallarını ve gruplarını gizlemek için bir oynatma listesini kapatın. Diğer profiller kendi seçimlerini korur."</string>
+    <string name="iptv_settings_playlists_visible_count">"%1$d / %2$d"</string>
+    <string name="iptv_settings_hold_to_jump_to_the_ends">"Uçlara atlamak için basılı tutun"</string>
+    <string name="iptv_settings_how_long_to_hold_up_or_down_in_the_group_list">"Grup listesinde başa veya sona atlamak için Yukarı veya Aşağı tuşunu ne kadar basılı tutacağınız. Normal kaydırma etkilenmez."</string>
+    <string name="iptv_settings_seconds_short">"%1$s sn"</string>
+    <string name="iptv_settings_filter_by_group_tag">"Kanalları grup etiketine göre filtrele"</string>
+    <string name="iptv_settings_filter_by_group_tag_subtitle">"Gruplarınızı US, UK, Arapça veya Hintçe gibi etiketler için tarayın, ardından gizlenecek etiketleri seçin. Favoriler asla gizlenmez."</string>
+    <string name="iptv_settings_group_tags_selected">"%1$d seçildi"</string>
+    <string name="iptv_settings_group_tags_scan">"Etiketleri tara"</string>
+    <string name="iptv_settings_group_tags_scan_again">"Yeniden tara"</string>
+    <string name="iptv_settings_group_tags_scanning">"Gruplar taranıyor."</string>
+    <string name="iptv_settings_group_tags_hint">"Bu etikete sahip gruplardaki tüm kanalları gizlemek için bir etiket seçin. Favorileriniz görünür kalır."</string>
+    <string name="iptv_settings_group_tags_empty">"Henüz etiket yok. Kullandıkları etiketleri görmek için gruplarınızı tarayın."</string>
+    <string name="iptv_settings_group_tags_no_channels">"Henüz kanal yüklenmedi. Live TV’yi yenileyin ve yeniden tarayın."</string>
+    <string name="iptv_settings_group_tags_count">"%1$d kanal · %2$d grup"</string>
+    <string name="iptv_settings_group_tags_clear">"Tümünü temizle"</string>
+    <string name="iptv_settings_group_tags_done">"Bitti"</string>
 </resources>

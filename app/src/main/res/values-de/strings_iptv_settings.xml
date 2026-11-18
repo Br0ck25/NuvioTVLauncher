@@ -672,4 +672,23 @@
     <string name="iptv_settings_today">"heute"</string>
     <string name="iptv_settings_yesterday">"gestern"</string>
     <string name="iptv_settings_expiry_expired">"abgelaufen"</string>
+    <string name="iptv_settings_playlists_on_this_profile">"Wiedergabelisten in diesem Profil"</string>
+    <string name="iptv_settings_playlists_on_this_profile_sub">"Wählen Sie, welche geteilten Wiedergabelisten dieses Profil anzeigt. Die Quellen bleiben geteilt."</string>
+    <string name="iptv_settings_playlists_on_this_profile_hint">"Schalten Sie eine Wiedergabeliste aus, um ihre Sender und Gruppen in diesem Profil auszublenden. Andere Profile behalten ihre eigenen Einstellungen."</string>
+    <string name="iptv_settings_playlists_visible_count">"%1$d von %2$d"</string>
+    <string name="iptv_settings_hold_to_jump_to_the_ends">"Gedrückt halten, um zu den Enden zu springen"</string>
+    <string name="iptv_settings_how_long_to_hold_up_or_down_in_the_group_list">"Wie lange Sie in der Gruppenliste nach oben oder unten gedrückt halten, um zum Anfang oder Ende zu springen. Normales Scrollen ist nicht betroffen."</string>
+    <string name="iptv_settings_seconds_short">"%1$s s"</string>
+    <string name="iptv_settings_filter_by_group_tag">"Sender nach Gruppen-Tag filtern"</string>
+    <string name="iptv_settings_filter_by_group_tag_subtitle">"Durchsuchen Sie Ihre Gruppen nach Tags wie US, UK, Arabisch oder Hindi und wählen Sie dann die Tags zum Ausblenden. Favoriten werden nie ausgeblendet."</string>
+    <string name="iptv_settings_group_tags_selected">"%1$d ausgewählt"</string>
+    <string name="iptv_settings_group_tags_scan">"Tags scannen"</string>
+    <string name="iptv_settings_group_tags_scan_again">"Erneut scannen"</string>
+    <string name="iptv_settings_group_tags_scanning">"Gruppen werden gescannt."</string>
+    <string name="iptv_settings_group_tags_hint">"Wählen Sie ein Tag, um alle Sender in Gruppen mit diesem Tag auszublenden. Ihre Favoriten bleiben sichtbar."</string>
+    <string name="iptv_settings_group_tags_empty">"Noch keine Tags. Scannen Sie Ihre Gruppen, um die verwendeten Tags zu sehen."</string>
+    <string name="iptv_settings_group_tags_no_channels">"Noch keine Sender geladen. Aktualisieren Sie Live TV und scannen Sie dann erneut."</string>
+    <string name="iptv_settings_group_tags_count">"%1$d Sender · %2$d Gruppen"</string>
+    <string name="iptv_settings_group_tags_clear">"Alle löschen"</string>
+    <string name="iptv_settings_group_tags_done">"Fertig"</string>
 </resources>

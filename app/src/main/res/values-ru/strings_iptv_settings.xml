@@ -672,4 +672,23 @@
     <string name="iptv_settings_today">"сегодня"</string>
     <string name="iptv_settings_yesterday">"вчера"</string>
     <string name="iptv_settings_expiry_expired">"истёк"</string>
+    <string name="iptv_settings_playlists_on_this_profile">"Плейлисты в этом профиле"</string>
+    <string name="iptv_settings_playlists_on_this_profile_sub">"Выберите, какие общие плейлисты показывает этот профиль. Источники остаются общими."</string>
+    <string name="iptv_settings_playlists_on_this_profile_hint">"Отключите плейлист, чтобы скрыть его каналы и группы в этом профиле. Другие профили сохраняют собственный выбор."</string>
+    <string name="iptv_settings_playlists_visible_count">"%1$d из %2$d"</string>
+    <string name="iptv_settings_hold_to_jump_to_the_ends">"Удерживайте, чтобы перейти к краям"</string>
+    <string name="iptv_settings_how_long_to_hold_up_or_down_in_the_group_list">"Как долго удерживать Вверх или Вниз в списке групп, чтобы перейти к началу или концу. Обычная прокрутка не затрагивается."</string>
+    <string name="iptv_settings_seconds_short">"%1$s с"</string>
+    <string name="iptv_settings_filter_by_group_tag">"Фильтр каналов по тегу группы"</string>
+    <string name="iptv_settings_filter_by_group_tag_subtitle">"Просканируйте группы на теги, например US, UK, арабский или хинди, затем выберите теги для скрытия. Избранное никогда не скрывается."</string>
+    <string name="iptv_settings_group_tags_selected">"Выбрано: %1$d"</string>
+    <string name="iptv_settings_group_tags_scan">"Сканировать теги"</string>
+    <string name="iptv_settings_group_tags_scan_again">"Сканировать снова"</string>
+    <string name="iptv_settings_group_tags_scanning">"Сканирование групп."</string>
+    <string name="iptv_settings_group_tags_hint">"Выберите тег, чтобы скрыть все каналы в группах с этим тегом. Избранное остаётся видимым."</string>
+    <string name="iptv_settings_group_tags_empty">"Тегов пока нет. Просканируйте группы, чтобы увидеть используемые теги."</string>
+    <string name="iptv_settings_group_tags_no_channels">"Каналы ещё не загружены. Обновите Live TV и просканируйте снова."</string>
+    <string name="iptv_settings_group_tags_count">"%1$d каналов · %2$d групп"</string>
+    <string name="iptv_settings_group_tags_clear">"Очистить всё"</string>
+    <string name="iptv_settings_group_tags_done">"Готово"</string>
 </resources>

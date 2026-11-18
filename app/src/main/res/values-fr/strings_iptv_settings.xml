@@ -672,4 +672,23 @@
     <string name="iptv_settings_today">"aujourd’hui"</string>
     <string name="iptv_settings_yesterday">"hier"</string>
     <string name="iptv_settings_expiry_expired">"expiré"</string>
+    <string name="iptv_settings_playlists_on_this_profile">"Playlists de ce profil"</string>
+    <string name="iptv_settings_playlists_on_this_profile_sub">"Choisissez les playlists partagées que ce profil affiche. Les sources restent partagées."</string>
+    <string name="iptv_settings_playlists_on_this_profile_hint">"Désactivez une playlist pour masquer ses chaînes et ses groupes sur ce profil. Les autres profils conservent leurs propres choix."</string>
+    <string name="iptv_settings_playlists_visible_count">"%1$d sur %2$d"</string>
+    <string name="iptv_settings_hold_to_jump_to_the_ends">"Maintenir pour aller aux extrémités"</string>
+    <string name="iptv_settings_how_long_to_hold_up_or_down_in_the_group_list">"Durée de maintien de Haut ou Bas dans la liste des groupes pour aller au début ou à la fin. Le défilement normal n’est pas affecté."</string>
+    <string name="iptv_settings_seconds_short">"%1$s s"</string>
+    <string name="iptv_settings_filter_by_group_tag">"Filtrer les chaînes par étiquette de groupe"</string>
+    <string name="iptv_settings_filter_by_group_tag_subtitle">"Analysez vos groupes pour trouver des étiquettes comme US, UK, arabe ou hindi, puis choisissez celles à masquer. Les favoris ne sont jamais masqués."</string>
+    <string name="iptv_settings_group_tags_selected">"%1$d sélectionnées"</string>
+    <string name="iptv_settings_group_tags_scan">"Analyser les étiquettes"</string>
+    <string name="iptv_settings_group_tags_scan_again">"Analyser à nouveau"</string>
+    <string name="iptv_settings_group_tags_scanning">"Analyse des groupes."</string>
+    <string name="iptv_settings_group_tags_hint">"Sélectionnez une étiquette pour masquer toutes les chaînes des groupes qui l’utilisent. Vos favoris restent visibles."</string>
+    <string name="iptv_settings_group_tags_empty">"Pas encore d’étiquettes. Analysez vos groupes pour voir celles qu’ils utilisent."</string>
+    <string name="iptv_settings_group_tags_no_channels">"Aucune chaîne chargée. Actualisez Live TV, puis analysez à nouveau."</string>
+    <string name="iptv_settings_group_tags_count">"%1$d chaînes · %2$d groupes"</string>
+    <string name="iptv_settings_group_tags_clear">"Tout effacer"</string>
+    <string name="iptv_settings_group_tags_done">"Terminé"</string>
 </resources>
