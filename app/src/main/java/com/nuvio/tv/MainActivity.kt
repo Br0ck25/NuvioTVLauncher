@@ -539,6 +539,14 @@ open class MainActivity : ComponentActivity() {
         val launchEpisodeTitle = intent?.getStringExtra("episodeTitle")
         captureDeepLinkIntent(intent)
 
+        // Launcher: a first launch from the Home button counts as the first press (a restore after rotation or
+        // process death does not), and the Home role is re-read.
+        if (savedInstanceState == null) {
+            captureHomeRequestIntent(intent, fromNewIntent = false)
+            captureAppsRequest(intent)
+        }
+        refreshHomeRole()
+
         setContent {
             var hasSelectedProfileThisSession by rememberSaveable { mutableStateOf(false) }
             var startupSession by remember { mutableIntStateOf(0) }
@@ -1457,6 +1465,17 @@ open class MainActivity : ComponentActivity() {
                             focusedSplashTheme = null
                             hasSelectedProfileThisSession = false
                         }
+
+                        // Launcher: double-tapping Home asks for the profile switcher. Consumed on read so a later
+                        // recomposition (or returning from the switcher) cannot repeat it.
+                        val profileSwitchRequested by pendingProfileSwitchRequest.collectAsStateWithLifecycle()
+                        LaunchedEffect(profileSwitchRequested) {
+                            if (!profileSwitchRequested) return@LaunchedEffect
+                            pendingProfileSwitchRequest.value = false
+                            if (profiles.size > 1 || activeProfileHasPin) {
+                                handleSwitchProfile()
+                            }
+                        }
                         Box(modifier = Modifier.fillMaxSize()) {
                             CompositionLocalProvider(
                                 LocalNavViewModelStoreOwner provides navViewModelStoreOwner,
@@ -1944,6 +1963,10 @@ open class MainActivity : ComponentActivity() {
     }
 
     override fun onDestroy() {
+        builtMapper()?.let {
+            it.actionExecutor.detachForegroundHandler(this)
+            it.cancelPendingGestures()
+        }
         super.onDestroy()
         PluginRuntimeHooks.onActivityDestroy()
     }
