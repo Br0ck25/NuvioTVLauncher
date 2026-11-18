@@ -351,12 +351,12 @@ private fun NotificationsDrawerContent(
                     shape = ClickableSurfaceDefaults.shape(RoundedCornerShape(8.dp)),
                     colors = ClickableSurfaceDefaults.colors(
                         containerColor = Color.White.copy(alpha = 0.08f),
-                        focusedContainerColor = Color.White.copy(alpha = 0.22f)
+                        focusedContainerColor = NuvioTheme.colors.FocusBackground
                     ),
                     scale = ClickableSurfaceDefaults.scale(focusedScale = 1f),
                     border = ClickableSurfaceDefaults.border(
                         border = Border(BorderStroke(1.dp, Color.White.copy(alpha = 0.12f))),
-                        focusedBorder = Border(BorderStroke(2.dp, Color.White))
+                        focusedBorder = Border(BorderStroke(2.dp, NuvioTheme.colors.FocusRing))
                     ),
                     modifier = Modifier.focusRequester(initialFocusRequester)
                 ) {
@@ -426,12 +426,12 @@ private fun NotificationsDrawerContent(
                                 shape = ClickableSurfaceDefaults.shape(RoundedCornerShape(10.dp)),
                                 colors = ClickableSurfaceDefaults.colors(
                                     containerColor = Color.Transparent,
-                                    focusedContainerColor = Color.White.copy(alpha = 0.16f)
+                                    focusedContainerColor = NuvioTheme.colors.FocusBackground
                                 ),
                                 scale = ClickableSurfaceDefaults.scale(focusedScale = 1f),
                                 border = ClickableSurfaceDefaults.border(
                                     border = Border.None,
-                                    focusedBorder = Border(BorderStroke(2.dp, Color.White))
+                                    focusedBorder = Border(BorderStroke(2.dp, NuvioTheme.colors.FocusRing))
                                 )
                             ) {
                                 Column(
@@ -519,12 +519,12 @@ private fun NotificationsDrawerContent(
                                 shape = ClickableSurfaceDefaults.shape(RoundedCornerShape(8.dp)),
                                 colors = ClickableSurfaceDefaults.colors(
                                     containerColor = Color.White.copy(alpha = 0.08f),
-                                    focusedContainerColor = Color.White.copy(alpha = 0.35f)
+                                    focusedContainerColor = NuvioTheme.colors.FocusBackground
                                 ),
                                 scale = ClickableSurfaceDefaults.scale(focusedScale = 1.05f),
                                 border = ClickableSurfaceDefaults.border(
                                     border = Border(BorderStroke(1.dp, Color.White.copy(alpha = 0.1f))),
-                                    focusedBorder = Border(BorderStroke(2.dp, Color.White))
+                                    focusedBorder = Border(BorderStroke(2.dp, NuvioTheme.colors.FocusRing))
                                 )
                             ) {
                                 Box(
