@@ -1718,24 +1718,25 @@ private fun LiveTvGuideScreenBody(
                     ) {
                         when {
                             !ui.hasSources -> EmptyGuideMessage(
-                                title = "No playlists yet",
-                                body = "Add an M3U playlist, Xtream login or XMLTV guide in Settings › Live TV.",
-                                action = "Open Live TV settings",
+                                title = stringResource(R.string.iptv_guide_no_playlists),
+                                body = stringResource(R.string.iptv_guide_add_playlist_help),
+                                action = stringResource(R.string.iptv_guide_open_settings),
                                 onAction = onOpenSettings
                             )
                             channels.isEmpty() && status.loading -> EmptyGuideMessage(
-                                title = status.message ?: "Loading…",
-                                body = "Large playlists and guides can take several minutes the first time. It keeps going if you leave this screen, and next time it opens straight away.",
+                                title = status.message ?: stringResource(R.string.iptv_guide_loading),
+                                body = stringResource(R.string.iptv_guide_loading_help),
                                 action = null
                             )
                             channels.isEmpty() && ui.selectedGroupId == ChannelGroup.SEARCH -> EmptyGuideMessage(
-                                title = if (ui.searchQuery.isBlank()) "Search channels" else "No channels match \"${ui.searchQuery}\"",
-                                body = "Press OK on Search in the group list, or the search key on your remote.",
+                                title = if (ui.searchQuery.isBlank()) stringResource(R.string.iptv_guide_search_channels)
+                                else stringResource(R.string.iptv_guide_no_channels_match, ui.searchQuery),
+                                body = stringResource(R.string.iptv_guide_search_help),
                                 action = null
                             )
                             channels.isEmpty() -> EmptyGuideMessage(
-                                title = "No channels in this group",
-                                body = "Press left to pick another group.",
+                                title = stringResource(R.string.iptv_guide_no_channels_group),
+                                body = stringResource(R.string.iptv_guide_pick_another_group),
                                 action = null
                             )
                             else -> {
@@ -1914,8 +1915,8 @@ private fun LiveTvGuideScreenBody(
             val text = when {
                 playback.channelKey == null -> stringResource(R.string.iptv_guide_press_ok_preview)
                 playback.error != null -> null // shown with its reason below
-                recStarting -> "Starting the recording…"
-                showLoading -> "Loading…"
+                recStarting -> stringResource(R.string.iptv_guide_starting_recording)
+                showLoading -> stringResource(R.string.iptv_guide_loading)
                 else -> null
             }
             with(density) {
@@ -2771,7 +2772,7 @@ private fun GuideHeader(
                 val overlay = when {
                     playingKey == null -> stringResource(R.string.iptv_guide_press_ok_preview)
                     playbackError != null -> null // shown with its reason below
-                    playbackBuffering -> "Loading…"
+                    playbackBuffering -> stringResource(R.string.iptv_guide_loading)
                     else -> null
                 }
                 overlay?.let {
@@ -4281,10 +4282,10 @@ private fun EpgSidePanel(
         if (rows.isEmpty()) {
             LiveText(
                 when {
-                    loading && sources.isEmpty() -> "Guides are still loading…"
-                    rowsReady == null && sources.isNotEmpty() -> "Loading guide channels…"
-                    sources.isEmpty() -> "No guides loaded. Add an EPG source in Live TV settings."
-                    else -> "No guide channels match."
+                    loading && sources.isEmpty() -> stringResource(R.string.iptv_guide_loading)
+                    rowsReady == null && sources.isNotEmpty() -> stringResource(R.string.iptv_guide_loading)
+                    sources.isEmpty() -> stringResource(R.string.iptv_guide_no_guides_loaded)
+                    else -> stringResource(R.string.iptv_guide_no_guide_channels_match)
                 },
                 modifier = Modifier.padding(12.dp),
                 color = NuvioTheme.colors.TextSecondary,

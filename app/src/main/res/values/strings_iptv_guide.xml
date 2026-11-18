@@ -56,4 +56,17 @@
     <string name="iptv_guide_stop">"Stop"</string>
     <string name="iptv_guide_description">"Description"</string>
     <string name="iptv_guide_record">"Record"</string>
+    <string name="iptv_guide_search_help">"Press OK on Search in the group list, or the search key on your remote."</string>
+    <string name="iptv_guide_open_settings">"Open Live TV settings"</string>
+    <string name="iptv_guide_add_playlist_help">"Add an M3U playlist, Xtream login or XMLTV guide in Settings → Live TV."</string>
+    <string name="iptv_guide_loading">"Loading…"</string>
+    <string name="iptv_guide_loading_help">"Large playlists and guides can take several minutes the first time. It keeps going if you leave this screen, and next time it opens straight away."</string>
+    <string name="iptv_guide_no_channels_match">"No channels match: %1$s"</string>
+    <string name="iptv_guide_no_playlists">"No playlists yet"</string>
+    <string name="iptv_guide_starting_recording">"Starting the recording…"</string>
+    <string name="iptv_guide_pick_another_group">"Press left to pick another group."</string>
+    <string name="iptv_guide_no_guides_loaded">"No guides loaded. Add an EPG source in Live TV settings."</string>
+    <string name="iptv_guide_nothing_playing">"Nothing playing"</string>
+    <string name="iptv_guide_no_channels_group">"No channels in this group"</string>
+    <string name="iptv_guide_no_guide_channels_match">"No guide channels match."</string>
 </resources>

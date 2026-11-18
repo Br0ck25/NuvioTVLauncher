@@ -56,4 +56,17 @@
     <string name="iptv_guide_stop">"Detener"</string>
     <string name="iptv_guide_description">"Descripción"</string>
     <string name="iptv_guide_record">"Grabar"</string>
+    <string name="iptv_guide_search_help">"Pulsa OK en Buscar en la lista de grupos o la tecla de búsqueda del mando."</string>
+    <string name="iptv_guide_open_settings">"Abrir ajustes de Live TV"</string>
+    <string name="iptv_guide_add_playlist_help">"Añade una lista M3U, un inicio de sesión Xtream o una guía XMLTV en Ajustes → Live TV."</string>
+    <string name="iptv_guide_loading">"Cargando…"</string>
+    <string name="iptv_guide_loading_help">"Las listas y guías grandes pueden tardar varios minutos la primera vez. Sigue cargando si sales de esta pantalla y la próxima vez se abre enseguida."</string>
+    <string name="iptv_guide_no_channels_match">"Ningún canal coincide con «%1$s»"</string>
+    <string name="iptv_guide_no_playlists">"No hay listas todavía"</string>
+    <string name="iptv_guide_starting_recording">"Iniciando la grabación…"</string>
+    <string name="iptv_guide_pick_another_group">"Pulsa izquierda para elegir otro grupo."</string>
+    <string name="iptv_guide_no_guides_loaded">"No hay guías cargadas. Añade una fuente EPG en los ajustes de Live TV."</string>
+    <string name="iptv_guide_nothing_playing">"No se está reproduciendo nada"</string>
+    <string name="iptv_guide_no_channels_group">"No hay canales en este grupo"</string>
+    <string name="iptv_guide_no_guide_channels_match">"Ningún canal de la guía coincide."</string>
 </resources>

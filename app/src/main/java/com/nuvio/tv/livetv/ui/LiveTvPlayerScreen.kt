@@ -865,10 +865,10 @@ fun LiveTvPlayerScreen(
         val slowLoading = rememberDelayedTrue(playback.isBuffering, 1_200)
         val recStarting by viewModel.playback.recordingStarting.collectAsStateWithLifecycle()
         val centerMessage = when {
-            current == null -> "Nothing playing"
+            current == null -> stringResource(R.string.iptv_guide_nothing_playing)
             playback.error != null -> null // shown with its reason below
-            recStarting -> "Starting the recording…"
-            else -> if (slowLoading) "Loading…" else null
+            recStarting -> stringResource(R.string.iptv_guide_starting_recording)
+            else -> if (slowLoading) stringResource(R.string.iptv_guide_loading) else null
         }
         // A problem: what's happening, and why underneath (wrapped, so it isn't cut off).
         playback.error?.let { reason ->

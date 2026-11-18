@@ -56,4 +56,17 @@
     <string name="iptv_guide_stop">"Durdur"</string>
     <string name="iptv_guide_description">"Açıklama"</string>
     <string name="iptv_guide_record">"Kaydet"</string>
+    <string name="iptv_guide_search_help">"Grup listesindeki Ara’da OK’a veya kumandanızın arama tuşuna basın."</string>
+    <string name="iptv_guide_open_settings">"Live TV ayarlarını aç"</string>
+    <string name="iptv_guide_add_playlist_help">"Ayarlar → Live TV bölümüne bir M3U oynatma listesi, Xtream girişi veya XMLTV rehberi ekleyin."</string>
+    <string name="iptv_guide_loading">"Yükleniyor…"</string>
+    <string name="iptv_guide_loading_help">"Büyük oynatma listeleri ve rehberler ilk seferde birkaç dakika sürebilir. Bu ekrandan çıksanız bile devam eder ve bir sonraki açılışta hemen açılır."</string>
+    <string name="iptv_guide_no_channels_match">"«%1$s» ile eşleşen kanal yok"</string>
+    <string name="iptv_guide_no_playlists">"Henüz oynatma listesi yok"</string>
+    <string name="iptv_guide_starting_recording">"Kayıt başlatılıyor…"</string>
+    <string name="iptv_guide_pick_another_group">"Başka bir grup seçmek için sola basın."</string>
+    <string name="iptv_guide_no_guides_loaded">"Rehber yüklenmedi. Live TV ayarlarına bir EPG kaynağı ekleyin."</string>
+    <string name="iptv_guide_nothing_playing">"Hiçbir şey oynatılmıyor"</string>
+    <string name="iptv_guide_no_channels_group">"Bu grupta kanal yok"</string>
+    <string name="iptv_guide_no_guide_channels_match">"Rehberde eşleşen kanal yok."</string>
 </resources>

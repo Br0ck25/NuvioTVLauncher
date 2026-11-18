@@ -56,4 +56,17 @@
     <string name="iptv_guide_stop">"Ferma"</string>
     <string name="iptv_guide_description">"Descrizione"</string>
     <string name="iptv_guide_record">"Registra"</string>
+    <string name="iptv_guide_search_help">"Premi OK su Cerca nell’elenco dei gruppi o il tasto di ricerca del telecomando."</string>
+    <string name="iptv_guide_open_settings">"Apri impostazioni Live TV"</string>
+    <string name="iptv_guide_add_playlist_help">"Aggiungi una playlist M3U, un accesso Xtream o una guida XMLTV in Impostazioni → Live TV."</string>
+    <string name="iptv_guide_loading">"Caricamento…"</string>
+    <string name="iptv_guide_loading_help">"Playlist e guide di grandi dimensioni possono richiedere diversi minuti la prima volta. Continua se esci da questa schermata e la prossima volta si aprirà subito."</string>
+    <string name="iptv_guide_no_channels_match">"Nessun canale corrisponde a «%1$s»"</string>
+    <string name="iptv_guide_no_playlists">"Nessuna playlist"</string>
+    <string name="iptv_guide_starting_recording">"Avvio della registrazione…"</string>
+    <string name="iptv_guide_pick_another_group">"Premi sinistra per scegliere un altro gruppo."</string>
+    <string name="iptv_guide_no_guides_loaded">"Nessuna guida caricata. Aggiungi una fonte EPG nelle impostazioni Live TV."</string>
+    <string name="iptv_guide_nothing_playing">"Niente in riproduzione"</string>
+    <string name="iptv_guide_no_channels_group">"Nessun canale in questo gruppo"</string>
+    <string name="iptv_guide_no_guide_channels_match">"Nessun canale della guida corrisponde."</string>
 </resources>

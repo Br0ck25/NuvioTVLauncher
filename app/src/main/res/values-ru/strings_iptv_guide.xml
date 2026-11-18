@@ -56,4 +56,17 @@
     <string name="iptv_guide_stop">"Остановить"</string>
     <string name="iptv_guide_description">"Описание"</string>
     <string name="iptv_guide_record">"Записать"</string>
+    <string name="iptv_guide_search_help">"Нажмите OK на «Поиск» в списке групп или кнопку поиска на пульте."</string>
+    <string name="iptv_guide_open_settings">"Открыть настройки Live TV"</string>
+    <string name="iptv_guide_add_playlist_help">"Добавьте плейлист M3U, вход Xtream или гид XMLTV в Настройки → Live TV."</string>
+    <string name="iptv_guide_loading">"Загрузка…"</string>
+    <string name="iptv_guide_loading_help">"Большие плейлисты и гиды могут в первый раз загружаться несколько минут. Загрузка продолжится, если вы покинете экран, а в следующий раз он откроется сразу."</string>
+    <string name="iptv_guide_no_channels_match">"Нет каналов, соответствующих «%1$s»"</string>
+    <string name="iptv_guide_no_playlists">"Плейлистов пока нет"</string>
+    <string name="iptv_guide_starting_recording">"Запуск записи…"</string>
+    <string name="iptv_guide_pick_another_group">"Нажмите влево, чтобы выбрать другую группу."</string>
+    <string name="iptv_guide_no_guides_loaded">"Гиды не загружены. Добавьте источник EPG в настройках Live TV."</string>
+    <string name="iptv_guide_nothing_playing">"Ничего не воспроизводится"</string>
+    <string name="iptv_guide_no_channels_group">"В этой группе нет каналов"</string>
+    <string name="iptv_guide_no_guide_channels_match">"Нет каналов гида."</string>
 </resources>

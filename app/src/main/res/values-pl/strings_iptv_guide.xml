@@ -56,4 +56,17 @@
     <string name="iptv_guide_stop">"Zatrzymaj"</string>
     <string name="iptv_guide_description">"Opis"</string>
     <string name="iptv_guide_record">"Nagraj"</string>
+    <string name="iptv_guide_search_help">"Naciśnij OK na Szukaj na liście grup lub przycisk wyszukiwania na pilocie."</string>
+    <string name="iptv_guide_open_settings">"Otwórz ustawienia Live TV"</string>
+    <string name="iptv_guide_add_playlist_help">"Dodaj playlistę M3U, login Xtream lub przewodnik XMLTV w Ustawienia → Live TV."</string>
+    <string name="iptv_guide_loading">"Ładowanie…"</string>
+    <string name="iptv_guide_loading_help">"Duże playlisty i przewodniki mogą za pierwszym razem trwać kilka minut. Ładowanie trwa po opuszczeniu tego ekranu, a następnym razem otworzy się od razu."</string>
+    <string name="iptv_guide_no_channels_match">"Brak kanałów pasujących do: %1$s"</string>
+    <string name="iptv_guide_no_playlists">"Brak playlist"</string>
+    <string name="iptv_guide_starting_recording">"Rozpoczynanie nagrywania…"</string>
+    <string name="iptv_guide_pick_another_group">"Naciśnij w lewo, aby wybrać inną grupę."</string>
+    <string name="iptv_guide_no_guides_loaded">"Nie wczytano przewodników. Dodaj źródło EPG w ustawieniach Live TV."</string>
+    <string name="iptv_guide_nothing_playing">"Nic nie jest odtwarzane"</string>
+    <string name="iptv_guide_no_channels_group">"Brak kanałów w tej grupie"</string>
+    <string name="iptv_guide_no_guide_channels_match">"Brak kanałów w przewodniku."</string>
 </resources>

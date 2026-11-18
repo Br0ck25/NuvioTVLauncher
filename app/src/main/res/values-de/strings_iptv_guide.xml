@@ -56,4 +56,17 @@
     <string name="iptv_guide_stop">"Stopp"</string>
     <string name="iptv_guide_description">"Beschreibung"</string>
     <string name="iptv_guide_record">"Aufnehmen"</string>
+    <string name="iptv_guide_search_help">"Drücken Sie OK auf Suchen in der Gruppenliste oder die Suchtaste Ihrer Fernbedienung."</string>
+    <string name="iptv_guide_open_settings">"Live-TV-Einstellungen öffnen"</string>
+    <string name="iptv_guide_add_playlist_help">"Fügen Sie eine M3U-Wiedergabeliste, einen Xtream-Login oder eine XMLTV-Guide in Einstellungen → Live TV hinzu."</string>
+    <string name="iptv_guide_loading">"Wird geladen…"</string>
+    <string name="iptv_guide_loading_help">"Große Wiedergabelisten und Guides können beim ersten Mal mehrere Minuten dauern. Es läuft weiter, wenn Sie diesen Bildschirm verlassen, und öffnet sich beim nächsten Mal sofort."</string>
+    <string name="iptv_guide_no_channels_match">"Keine Sender entsprechen: %1$s"</string>
+    <string name="iptv_guide_no_playlists">"Noch keine Wiedergabelisten"</string>
+    <string name="iptv_guide_starting_recording">"Aufnahme wird gestartet…"</string>
+    <string name="iptv_guide_pick_another_group">"Links drücken, um eine andere Gruppe zu wählen."</string>
+    <string name="iptv_guide_no_guides_loaded">"Keine Guides geladen. Fügen Sie eine EPG-Quelle in den Live-TV-Einstellungen hinzu."</string>
+    <string name="iptv_guide_nothing_playing">"Nichts wird abgespielt"</string>
+    <string name="iptv_guide_no_channels_group">"Keine Sender in dieser Gruppe"</string>
+    <string name="iptv_guide_no_guide_channels_match">"Keine Guide-Sender entsprechen."</string>
 </resources>
