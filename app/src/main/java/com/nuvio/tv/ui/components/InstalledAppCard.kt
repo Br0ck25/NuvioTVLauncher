@@ -73,7 +73,11 @@ fun InstalledAppCard(
     /** Another app is being carried: no focus ring or zoom here, so only the carried app is highlighted. */
     quietFocus: Boolean = false,
     /** Applied to the whole tile (e.g. Modifier.animateItem() so a reorder slides it), not just its card. */
-    rootModifier: Modifier = Modifier
+    rootModifier: Modifier = Modifier,
+    /** The same corner, focus ring and focus zoom as the poster cards, so an app tile is not bigger than its neighbours. */
+    cornerRadius: Dp = PosterCardDefaults.Style.cornerRadius,
+    focusedBorderWidth: Dp = PosterCardDefaults.Style.focusedBorderWidth,
+    focusedScale: Float = PosterCardDefaults.Style.focusedScale
 ) {
     val image by produceState<Bitmap?>(initialValue = null, app.packageName, app.iconKey) { value = loadImage(app) }
     Column(modifier = rootModifier.width(width)) {
@@ -83,16 +87,16 @@ fun InstalledAppCard(
             modifier = modifier
                 .fillMaxSize()
                 .aspectRatio(16f / 9f),
-            shape = CardDefaults.shape(RoundedCornerShape(10.dp)),
+            shape = CardDefaults.shape(RoundedCornerShape(cornerRadius)),
             colors = CardDefaults.colors(containerColor = NuvioTheme.colors.BackgroundCard),
             border = CardDefaults.border(
-                border = if (moving) Border(BorderStroke(4.dp, NuvioTheme.colors.Secondary), shape = RoundedCornerShape(10.dp)) else Border.None,
+                border = if (moving) Border(BorderStroke(4.dp, NuvioTheme.colors.Secondary), shape = RoundedCornerShape(cornerRadius)) else Border.None,
                 focusedBorder = if (quietFocus) Border.None else Border(
-                    BorderStroke(if (moving) 4.dp else 3.dp, if (moving) NuvioTheme.colors.Secondary else NuvioTheme.colors.FocusRing),
-                    shape = RoundedCornerShape(10.dp)
+                    BorderStroke(if (moving) 4.dp else focusedBorderWidth, if (moving) NuvioTheme.colors.Secondary else NuvioTheme.colors.FocusRing),
+                    shape = RoundedCornerShape(cornerRadius)
                 )
             ),
-            scale = CardDefaults.scale(focusedScale = if (quietFocus) 1f else if (moving) 1.14f else 1.06f)
+            scale = CardDefaults.scale(focusedScale = if (quietFocus) 1f else if (moving) 1.14f else focusedScale)
         ) {
             Box(Modifier.fillMaxSize(), contentAlignment = Alignment.Center) {
                 image?.let {

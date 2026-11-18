@@ -1086,6 +1086,8 @@ internal fun ModernRowSection(
                                         .onFocusChanged { if (it.isFocused) onFocused() },
                                     width = com.nuvio.tv.ui.components.rememberHomeTile()?.width ?: 160.dp,
                                     showLabel = false,
+                                    // The same corner as the poster cards in this row (the setting), so the tiles match.
+                                    cornerRadius = posterCardCornerRadius,
                                     moving = appMove.carrying == payload.app.packageName,
                                     quietFocus = appMove.carrying != null && appMove.carrying != payload.app.packageName,
                                     // Tiles slide to their new place when the order changes (no fade in or out).

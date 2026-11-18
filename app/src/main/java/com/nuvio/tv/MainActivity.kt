@@ -1839,22 +1839,8 @@ open class MainActivity : ComponentActivity() {
      * sidebar is open.
      */
     private fun handleAppExit() {
-        // The launcher is the device's Home screen: Back never leaves it.
-        if (nuvioHandlesHomeKey) return
-        val confirm = runCatching { profileManager.confirmExitEnabled.value }.getOrDefault(true)
-        if (!confirm || confirmExitPressedOnce) {
-            finishAffinity()
-            finishAndRemoveTask()
-            if (confirm) {
-                // Kill the process to free RAM on low-memory devices.
-                android.os.Process.killProcess(android.os.Process.myPid())
-            }
-        } else {
-            confirmExitPressedOnce = true
-            Toast.makeText(this, getString(R.string.confirm_exit_toast), Toast.LENGTH_SHORT).show()
-            confirmExitHandler.removeCallbacks(confirmExitReset)
-            confirmExitHandler.postDelayed(confirmExitReset, 2000L)
-        }
+        // This is the launcher: Back never leaves it, and there is no "press back again to exit" prompt.
+        // (The menu and the pages still use Back to go back, open and close; only leaving the app is gone.)
     }
 
     private val ambientIdleController = AmbientIdleController()
