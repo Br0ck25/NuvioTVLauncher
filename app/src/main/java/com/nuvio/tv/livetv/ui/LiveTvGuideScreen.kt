@@ -145,16 +145,27 @@ private fun rememberGuidePrograms(ch: LiveChannel?, list: List<EpgProgram>, nowM
     }
 
 /** "Today", "Tomorrow", "Yesterday", or the day ("Sat, Oct 10") for the guide's time ruler. */
+@Composable
 private fun guideDayLabel(windowStart: Long, now: Long): String {
     val dayOf = { ms: Long -> java.util.Calendar.getInstance().apply { timeInMillis = ms }.let { it.get(java.util.Calendar.YEAR) * 1000 + it.get(java.util.Calendar.DAY_OF_YEAR) } }
     val shown = dayOf(windowStart)
     val today = dayOf(now)
     return when (shown) {
-        today -> "Today"
-        dayOf(now + 24 * 3_600_000L) -> "Tomorrow"
-        dayOf(now - 24 * 3_600_000L) -> "Yesterday"
+        today -> stringResource(R.string.iptv_guide_today)
+        dayOf(now + 24 * 3_600_000L) -> stringResource(R.string.iptv_guide_tomorrow)
+        dayOf(now - 24 * 3_600_000L) -> stringResource(R.string.iptv_guide_yesterday)
         else -> java.text.SimpleDateFormat("EEE, MMM d", java.util.Locale.getDefault()).format(java.util.Date(windowStart))
     }
+}
+
+/** The built-in group names follow the app language; your own group names stay as they are. */
+@Composable
+private fun guideGroupTitle(group: ChannelGroup): String = when (group.id) {
+    ChannelGroup.FAVORITES -> stringResource(R.string.iptv_guide_favorites)
+    ChannelGroup.RECENT -> stringResource(R.string.iptv_guide_recently_watched)
+    ChannelGroup.ALL -> stringResource(R.string.iptv_guide_all_channels)
+    ChannelGroup.SEARCH -> stringResource(R.string.nav_search)
+    else -> group.title
 }
 
 /** The first midnight (device time) after [ms]. */
@@ -526,7 +537,7 @@ private fun LiveTvGuideScreenBody(
             runCatching { groupsFocus.requestFocus() }
         }
     }
-    val selectedGroupTitle = ui.groups.firstOrNull { it.id == ui.selectedGroupId }?.title ?: "All channels"
+    val selectedGroupTitle = ui.groups.firstOrNull { it.id == ui.selectedGroupId }?.let { guideGroupTitle(it) } ?: stringResource(R.string.iptv_guide_all_channels)
     // The group on screen gets its listings for every day ahead (Guide Days Ahead), in the
     // background, so scrolling ahead in it doesn't run out after half a day.
     // Also after a guide update, which keeps only the hours around now in memory.
@@ -1901,7 +1912,7 @@ private fun LiveTvGuideScreenBody(
             val showLoading = rememberDelayedTrue(playback.isBuffering && playback.error == null, 1_200)
             val recStarting by viewModel.playback.recordingStarting.collectAsStateWithLifecycle()
             val text = when {
-                playback.channelKey == null -> "Press OK on a channel to preview"
+                playback.channelKey == null -> stringResource(R.string.iptv_guide_press_ok_preview)
                 playback.error != null -> null // shown with its reason below
                 recStarting -> "Starting the recording…"
                 showLoading -> "Loading…"
@@ -2726,7 +2737,7 @@ private fun GuideHeader(
                     val lines = (maxHeight / lineHeight).toInt().coerceIn(1, 8)
                     ScrollingDescription(
                         text = about?.description?.takeIf { it.isNotBlank() }
-                            ?: p?.description ?: if (p == null) "No program information" else "",
+                            ?: p?.description ?: if (p == null) stringResource(R.string.iptv_guide_no_program_information) else "",
                         color = NuvioTheme.colors.TextSecondary,
                         size = textSize,
                         maxLines = lines
@@ -2758,7 +2769,7 @@ private fun GuideHeader(
                 Box(Modifier.fillMaxSize().onGloballyPositioned { onPreviewBounds(it.boundsInRoot()) })
                 androidx.compose.runtime.DisposableEffect(Unit) { onDispose { onPreviewBounds(null) } }
                 val overlay = when {
-                    playingKey == null -> "Press OK on a channel to preview"
+                    playingKey == null -> stringResource(R.string.iptv_guide_press_ok_preview)
                     playbackError != null -> null // shown with its reason below
                     playbackBuffering -> "Loading…"
                     else -> null
@@ -3027,7 +3038,7 @@ private fun GuideRow(
                     if (gw > 4.dp) strip += StripItem(
                         x = gx, width = gw,
                         // Something is on; the guide just doesn't say what.
-                        title = if (gw > 90.dp) "No information" else "",
+                        title = if (gw > 90.dp) stringResource(R.string.iptv_guide_no_information) else "",
                         subtitle = null,
                         fill = gapFill, edge = Color.White.copy(alpha = 0.09f),
                         text = NuvioTheme.colors.TextTertiary, italic = true
@@ -3097,7 +3108,7 @@ private fun GuideRow(
                 val x = xOf(focusedBlock.startMs)
                 val w = (xOf(focusedBlock.stopMs) - x).coerceAtLeast(2.dp)
                 ProgramBlock(
-                    title = "No information", subtitle = null, x = x, width = w,
+                    title = stringResource(R.string.iptv_guide_no_information), subtitle = null, x = x, width = w,
                     colors = liveCellColors(focused = true, idle = guideSurface()),
                     focused = true, progress = null, continuesLeft = false
                 )
@@ -3825,7 +3836,7 @@ private fun GroupItem(
     ) {
         Spacer(Modifier.width(12.dp))
         LiveText(
-            group.title,
+            guideGroupTitle(group),
             modifier = Modifier.weight(1f),
             color = colors.text,
             size = gsp(14f),
@@ -4557,7 +4568,7 @@ internal fun GroupPickerDialog(
         Spacer(Modifier.height(14.dp))
         LazyColumn(verticalArrangement = Arrangement.spacedBy(4.dp)) {
             item { MenuItem("+ New group", Modifier.focusRequester(first), onNewGroup) }
-            items(groups, key = { it.id }) { g -> MenuItem(g.title, onClick = { onPick(g) }) }
+            items(groups, key = { it.id }) { g -> MenuItem(guideGroupTitle(g), onClick = { onPick(g) }) }
         }
     }
     LaunchedEffect(Unit) { delay(60); runCatching { first.requestFocus() } }

@@ -31,4 +31,13 @@
     <string name="iptv_guide_change_logo">"Cambiar logotipo"</string>
     <string name="iptv_guide_locked">"Bloqueado"</string>
     <string name="iptv_guide_search_channels">"Buscar canales"</string>
+    <string name="iptv_guide_today">"Hoy"</string>
+    <string name="iptv_guide_no_information">"Sin información"</string>
+    <string name="iptv_guide_favorites">"Favoritos"</string>
+    <string name="iptv_guide_tomorrow">"Mañana"</string>
+    <string name="iptv_guide_press_ok_preview">"Pulsa OK en un canal para previsualizarlo"</string>
+    <string name="iptv_guide_yesterday">"Ayer"</string>
+    <string name="iptv_guide_all_channels">"Todos los canales"</string>
+    <string name="iptv_guide_recently_watched">"Vistos recientemente"</string>
+    <string name="iptv_guide_no_program_information">"No hay información del programa"</string>
 </resources>

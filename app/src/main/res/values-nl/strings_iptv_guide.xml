@@ -31,4 +31,13 @@
     <string name="iptv_guide_change_logo">"Logo wijzigen"</string>
     <string name="iptv_guide_locked">"Vergrendeld"</string>
     <string name="iptv_guide_search_channels">"Zenders zoeken"</string>
+    <string name="iptv_guide_today">"Vandaag"</string>
+    <string name="iptv_guide_no_information">"Geen informatie"</string>
+    <string name="iptv_guide_favorites">"Favorieten"</string>
+    <string name="iptv_guide_tomorrow">"Morgen"</string>
+    <string name="iptv_guide_press_ok_preview">"Druk op OK op een zender voor een voorbeeld"</string>
+    <string name="iptv_guide_yesterday">"Gisteren"</string>
+    <string name="iptv_guide_all_channels">"Alle zenders"</string>
+    <string name="iptv_guide_recently_watched">"Onlangs bekeken"</string>
+    <string name="iptv_guide_no_program_information">"Geen programma-informatie"</string>
 </resources>

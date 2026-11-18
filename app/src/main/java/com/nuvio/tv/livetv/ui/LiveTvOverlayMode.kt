@@ -37,6 +37,8 @@ import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.layout.onSizeChanged
+import androidx.compose.ui.res.stringResource
+import com.nuvio.tv.R
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.focus.FocusRequester
 import androidx.compose.ui.focus.focusRequester
@@ -708,7 +710,7 @@ private fun ChannelsPanel(
                             if (ch.key in favorites) LiveText("  ★", color = if (onSolid) Color.White else NuvioTheme.colors.Rating, size = osp(12f))
                         }
                         LiveText(
-                            p?.title ?: "No program information",
+                            p?.title ?: stringResource(R.string.iptv_guide_no_program_information),
                             color = when {
                                 p == null -> if (onSolid) Color.White.copy(alpha = 0.8f) else NuvioTheme.colors.TextTertiary
                                 else -> accent
@@ -842,7 +844,7 @@ private fun SchedulePreview(channel: LiveChannel, list: List<EpgProgram>, now: L
         }
         Spacer(Modifier.height(8.dp))
         if (shown.isEmpty()) {
-            LiveText("No program information", color = NuvioTheme.colors.TextSecondary, modifier = Modifier.padding(18.dp))
+            LiveText(stringResource(R.string.iptv_guide_no_program_information), color = NuvioTheme.colors.TextSecondary, modifier = Modifier.padding(18.dp))
         }
         shown.forEach { p ->
             val live = now >= p.startMs && now < p.stopMs
@@ -884,7 +886,7 @@ private fun SchedulePanel(
             }
         }
         if (rows.isEmpty()) {
-            LiveText("No program information for this channel", color = NuvioTheme.colors.TextSecondary, modifier = Modifier.padding(18.dp))
+            LiveText(stringResource(R.string.iptv_guide_no_program_information), color = NuvioTheme.colors.TextSecondary, modifier = Modifier.padding(18.dp))
         }
         LazyColumn(state = state, modifier = Modifier.fillMaxSize()) {
             itemsIndexed(rows) { i, row ->
@@ -1171,7 +1173,7 @@ private fun BackupFlyoutContent(
                             color = dim, size = osp(12f), maxLines = 1
                         )
                         LiveText(
-                            p?.title ?: "No program information",
+                            p?.title ?: stringResource(R.string.iptv_guide_no_program_information),
                             color = if (p == null) (if (onSolid) Color.White.copy(alpha = 0.8f) else NuvioTheme.colors.TextTertiary) else accent,
                             size = osp(13f),
                             marquee = isFocused && i == restingIndex

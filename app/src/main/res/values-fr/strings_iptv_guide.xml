@@ -31,4 +31,13 @@
     <string name="iptv_guide_change_logo">"Changer le logo"</string>
     <string name="iptv_guide_locked">"Verrouillé"</string>
     <string name="iptv_guide_search_channels">"Rechercher des chaînes"</string>
+    <string name="iptv_guide_today">"Aujourd’hui"</string>
+    <string name="iptv_guide_no_information">"Aucune information"</string>
+    <string name="iptv_guide_favorites">"Favoris"</string>
+    <string name="iptv_guide_tomorrow">"Demain"</string>
+    <string name="iptv_guide_press_ok_preview">"Appuyez sur OK sur une chaîne pour l’aperçu"</string>
+    <string name="iptv_guide_yesterday">"Hier"</string>
+    <string name="iptv_guide_all_channels">"Toutes les chaînes"</string>
+    <string name="iptv_guide_recently_watched">"Récemment regardés"</string>
+    <string name="iptv_guide_no_program_information">"Aucune information sur l’émission"</string>
 </resources>
