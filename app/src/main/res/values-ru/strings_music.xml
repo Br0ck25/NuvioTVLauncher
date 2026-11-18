@@ -348,4 +348,16 @@
     <string name="music_party_step_add_help">"Она попадает в общую очередь."</string>
     <string name="music_party_clear_up_next">"Очистить очередь"</string>
     <string name="music_party_approval_off">"Подтверждение: выключено"</string>
+    <string name="music_video_load_failed">"Не удалось загрузить этот музыкальный клип."</string>
+    <string name="music_video_unavailable">"Видео недоступно"</string>
+    <string name="music_video_previous_track">"Предыдущий трек"</string>
+    <string name="music_video_back_resumes">"Назад продолжает песню"</string>
+    <string name="music_video_forward_10">"Вперёд на 10 секунд"</string>
+    <string name="music_video_switch_audio">"Переключить на аудио"</string>
+    <string name="music_video_play_failed">"Не удалось воспроизвести этот музыкальный клип."</string>
+    <string name="music_video_back_10">"Назад на 10 секунд"</string>
+    <string name="music_video_back_song">"Назад к песне"</string>
+    <string name="music_video_label">"МУЗЫКАЛЬНЫЙ КЛИП"</string>
+    <string name="music_video_next_track">"Следующий трек"</string>
+    <string name="music_video_back_now_playing">"Назад к воспроизведению"</string>
 </resources>

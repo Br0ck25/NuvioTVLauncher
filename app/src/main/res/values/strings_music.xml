@@ -355,4 +355,16 @@
     <string name="music_party_step_add_help">"It lands in the shared queue."</string>
     <string name="music_party_clear_up_next">"Clear up next"</string>
     <string name="music_party_approval_off">"Approval: Off"</string>
+    <string name="music_video_load_failed">"This music video couldn't be loaded."</string>
+    <string name="music_video_unavailable">"Video unavailable"</string>
+    <string name="music_video_previous_track">"Previous track"</string>
+    <string name="music_video_back_resumes">"Back resumes the song"</string>
+    <string name="music_video_forward_10">"Forward 10 seconds"</string>
+    <string name="music_video_switch_audio">"Switch to audio"</string>
+    <string name="music_video_play_failed">"This music video couldn't be played."</string>
+    <string name="music_video_back_10">"Back 10 seconds"</string>
+    <string name="music_video_back_song">"Back to song"</string>
+    <string name="music_video_label">"MUSIC VIDEO"</string>
+    <string name="music_video_next_track">"Next track"</string>
+    <string name="music_video_back_now_playing">"Back to Now Playing"</string>
 </resources>

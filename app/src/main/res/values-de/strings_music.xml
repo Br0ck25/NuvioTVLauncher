@@ -348,4 +348,16 @@
     <string name="music_party_step_add_help">"Er landet in der gemeinsamen Warteschlange."</string>
     <string name="music_party_clear_up_next">"Warteschlange leeren"</string>
     <string name="music_party_approval_off">"Genehmigung: Aus"</string>
+    <string name="music_video_load_failed">"Dieses Musikvideo konnte nicht geladen werden."</string>
+    <string name="music_video_unavailable">"Video nicht verfügbar"</string>
+    <string name="music_video_previous_track">"Vorheriger Titel"</string>
+    <string name="music_video_back_resumes">"Zurück setzt den Song fort"</string>
+    <string name="music_video_forward_10">"10 Sekunden vor"</string>
+    <string name="music_video_switch_audio">"Zu Audio wechseln"</string>
+    <string name="music_video_play_failed">"Dieses Musikvideo konnte nicht abgespielt werden."</string>
+    <string name="music_video_back_10">"10 Sekunden zurück"</string>
+    <string name="music_video_back_song">"Zurück zum Song"</string>
+    <string name="music_video_label">"MUSIKVIDEO"</string>
+    <string name="music_video_next_track">"Nächster Titel"</string>
+    <string name="music_video_back_now_playing">"Zurück zur Wiedergabe"</string>
 </resources>

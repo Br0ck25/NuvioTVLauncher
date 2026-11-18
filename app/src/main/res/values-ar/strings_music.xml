@@ -348,4 +348,16 @@
     <string name="music_party_step_add_help">"تصل إلى قائمة الانتظار المشتركة."</string>
     <string name="music_party_clear_up_next">"مسح التالي"</string>
     <string name="music_party_approval_off">"الموافقة: متوقفة"</string>
+    <string name="music_video_load_failed">"تعذّر تحميل فيديو الموسيقى هذا."</string>
+    <string name="music_video_unavailable">"الفيديو غير متاح"</string>
+    <string name="music_video_previous_track">"المقطع السابق"</string>
+    <string name="music_video_back_resumes">"الرجوع يستأنف الأغنية"</string>
+    <string name="music_video_forward_10">"التقدم 10 ثوانٍ"</string>
+    <string name="music_video_switch_audio">"التبديل إلى الصوت"</string>
+    <string name="music_video_play_failed">"تعذّر تشغيل فيديو الموسيقى هذا."</string>
+    <string name="music_video_back_10">"الرجوع 10 ثوانٍ"</string>
+    <string name="music_video_back_song">"العودة إلى الأغنية"</string>
+    <string name="music_video_label">"فيديو موسيقي"</string>
+    <string name="music_video_next_track">"المقطع التالي"</string>
+    <string name="music_video_back_now_playing">"العودة إلى التشغيل الآن"</string>
 </resources>

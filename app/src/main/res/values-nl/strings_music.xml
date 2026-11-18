@@ -348,4 +348,16 @@
     <string name="music_party_step_add_help">"Het komt in de gedeelde wachtrij."</string>
     <string name="music_party_clear_up_next">"Wachtrij leegmaken"</string>
     <string name="music_party_approval_off">"Goedkeuring: uit"</string>
+    <string name="music_video_load_failed">"Deze videoclip kon niet worden geladen."</string>
+    <string name="music_video_unavailable">"Video niet beschikbaar"</string>
+    <string name="music_video_previous_track">"Vorig nummer"</string>
+    <string name="music_video_back_resumes">"Terug hervat het nummer"</string>
+    <string name="music_video_forward_10">"10 seconden vooruit"</string>
+    <string name="music_video_switch_audio">"Naar audio schakelen"</string>
+    <string name="music_video_play_failed">"Deze videoclip kon niet worden afgespeeld."</string>
+    <string name="music_video_back_10">"10 seconden terug"</string>
+    <string name="music_video_back_song">"Terug naar nummer"</string>
+    <string name="music_video_label">"MUZIEKVIDEO"</string>
+    <string name="music_video_next_track">"Volgend nummer"</string>
+    <string name="music_video_back_now_playing">"Terug naar Nu afspelen"</string>
 </resources>

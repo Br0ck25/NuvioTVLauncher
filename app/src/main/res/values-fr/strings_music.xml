@@ -348,4 +348,16 @@
     <string name="music_party_step_add_help">"Elle rejoint la file partagée."</string>
     <string name="music_party_clear_up_next">"Vider la file"</string>
     <string name="music_party_approval_off">"Approbation : désactivée"</string>
+    <string name="music_video_load_failed">"Impossible de charger ce clip."</string>
+    <string name="music_video_unavailable">"Vidéo indisponible"</string>
+    <string name="music_video_previous_track">"Piste précédente"</string>
+    <string name="music_video_back_resumes">"Retour reprend la chanson"</string>
+    <string name="music_video_forward_10">"Avancer de 10 secondes"</string>
+    <string name="music_video_switch_audio">"Passer à l’audio"</string>
+    <string name="music_video_play_failed">"Impossible de lire ce clip."</string>
+    <string name="music_video_back_10">"Reculer de 10 secondes"</string>
+    <string name="music_video_back_song">"Retour à la chanson"</string>
+    <string name="music_video_label">"CLIP"</string>
+    <string name="music_video_next_track">"Piste suivante"</string>
+    <string name="music_video_back_now_playing">"Retour à la lecture en cours"</string>
 </resources>

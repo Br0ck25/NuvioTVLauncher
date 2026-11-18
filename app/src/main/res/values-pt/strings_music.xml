@@ -348,4 +348,16 @@
     <string name="music_party_step_add_help">"Entra na fila partilhada."</string>
     <string name="music_party_clear_up_next">"Limpar a fila"</string>
     <string name="music_party_approval_off">"Aprovação: desativada"</string>
+    <string name="music_video_load_failed">"Não foi possível carregar este videoclipe."</string>
+    <string name="music_video_unavailable">"Vídeo indisponível"</string>
+    <string name="music_video_previous_track">"Faixa anterior"</string>
+    <string name="music_video_back_resumes">"Voltar retoma a música"</string>
+    <string name="music_video_forward_10">"Avançar 10 segundos"</string>
+    <string name="music_video_switch_audio">"Mudar para áudio"</string>
+    <string name="music_video_play_failed">"Não foi possível reproduzir este videoclipe."</string>
+    <string name="music_video_back_10">"Recuar 10 segundos"</string>
+    <string name="music_video_back_song">"Voltar à música"</string>
+    <string name="music_video_label">"VÍDEO MUSICAL"</string>
+    <string name="music_video_next_track">"Faixa seguinte"</string>
+    <string name="music_video_back_now_playing">"Voltar a Reproduzir agora"</string>
 </resources>

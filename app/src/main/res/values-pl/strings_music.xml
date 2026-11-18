@@ -348,4 +348,16 @@
     <string name="music_party_step_add_help">"Trafia do wspólnej kolejki."</string>
     <string name="music_party_clear_up_next">"Wyczyść kolejkę"</string>
     <string name="music_party_approval_off">"Zatwierdzanie: wyłączone"</string>
+    <string name="music_video_load_failed">"Nie udało się wczytać teledysku."</string>
+    <string name="music_video_unavailable">"Wideo niedostępne"</string>
+    <string name="music_video_previous_track">"Poprzedni utwór"</string>
+    <string name="music_video_back_resumes">"Wstecz wznawia utwór"</string>
+    <string name="music_video_forward_10">"Przewiń 10 sekund"</string>
+    <string name="music_video_switch_audio">"Przełącz na audio"</string>
+    <string name="music_video_play_failed">"Nie udało się odtworzyć teledysku."</string>
+    <string name="music_video_back_10">"Cofnij 10 sekund"</string>
+    <string name="music_video_back_song">"Wróć do utworu"</string>
+    <string name="music_video_label">"TELEDYSK"</string>
+    <string name="music_video_next_track">"Następny utwór"</string>
+    <string name="music_video_back_now_playing">"Wróć do odtwarzania"</string>
 </resources>

@@ -348,4 +348,16 @@
     <string name="music_party_step_add_help">"Paylaşılan sıraya girer."</string>
     <string name="music_party_clear_up_next">"Sırayı temizle"</string>
     <string name="music_party_approval_off">"Onay: kapalı"</string>
+    <string name="music_video_load_failed">"Bu müzik videosu yüklenemedi."</string>
+    <string name="music_video_unavailable">"Video kullanılamıyor"</string>
+    <string name="music_video_previous_track">"Önceki parça"</string>
+    <string name="music_video_back_resumes">"Geri, şarkıyı sürdürür"</string>
+    <string name="music_video_forward_10">"10 saniye ileri"</string>
+    <string name="music_video_switch_audio">"Sese geç"</string>
+    <string name="music_video_play_failed">"Bu müzik videosu oynatılamadı."</string>
+    <string name="music_video_back_10">"10 saniye geri"</string>
+    <string name="music_video_back_song">"Şarkıya dön"</string>
+    <string name="music_video_label">"MÜZİK VİDEOSU"</string>
+    <string name="music_video_next_track">"Sonraki parça"</string>
+    <string name="music_video_back_now_playing">"Şimdi Çalınan’a dön"</string>
 </resources>

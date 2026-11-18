@@ -348,4 +348,16 @@
     <string name="music_party_step_add_help">"Finisce nella coda condivisa."</string>
     <string name="music_party_clear_up_next">"Svuota la coda"</string>
     <string name="music_party_approval_off">"Approvazione: disattivata"</string>
+    <string name="music_video_load_failed">"Impossibile caricare questo video musicale."</string>
+    <string name="music_video_unavailable">"Video non disponibile"</string>
+    <string name="music_video_previous_track">"Brano precedente"</string>
+    <string name="music_video_back_resumes">"Indietro riprende il brano"</string>
+    <string name="music_video_forward_10">"Avanti di 10 secondi"</string>
+    <string name="music_video_switch_audio">"Passa all’audio"</string>
+    <string name="music_video_play_failed">"Impossibile riprodurre questo video musicale."</string>
+    <string name="music_video_back_10">"Indietro di 10 secondi"</string>
+    <string name="music_video_back_song">"Torna al brano"</string>
+    <string name="music_video_label">"VIDEO MUSICALE"</string>
+    <string name="music_video_next_track">"Brano successivo"</string>
+    <string name="music_video_back_now_playing">"Torna alla riproduzione"</string>
 </resources>
