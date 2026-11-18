@@ -1,6 +1,9 @@
-# Nuvio One 1.2.0-beta.1.17.1
+# Nuvio One 1.2.0-beta.1.17.2
 
-## Music
+## OneTube
 
-- Hotfix: moved the Now Playing pill back to the top-right and shifted the Music navigation so it fits, making the pill easier to reach and focus.
-- The Music header and content now clear Nuvio's side menu, so the logo and the left edge are no longer cut off.
+- The first poster and the row titles now clear Nuvio's side menu instead of being cut off at the left edge.
+
+## Playback
+
+- Fixed: pressing Back while watching could leave a black or grey screen and require restarting the app. The player now releases its video surface cleanly and returns to the previous screen.
