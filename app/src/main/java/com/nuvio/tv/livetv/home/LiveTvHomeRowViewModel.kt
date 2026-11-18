@@ -4,6 +4,7 @@ import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
 import com.nuvio.tv.livetv.data.LiveTvPreferences
 import com.nuvio.tv.livetv.data.LiveTvRepository
+import com.nuvio.tv.livetv.model.ChannelGroup
 import com.nuvio.tv.livetv.model.EpgProgram
 import com.nuvio.tv.livetv.model.LiveChannel
 import com.nuvio.tv.livetv.model.LiveTvSettings
@@ -81,7 +82,9 @@ class LiveTvHomeRowViewModel @Inject constructor(
             val nxt = l.firstOrNull { it.startMs >= (cur?.stopMs ?: at) }
             LiveTvViewModel.HomeRowEntry(ch, moved(cur), moved(nxt))
         }
-        if (s.homeRowHidePlaceholders) {
+        // Favorites are the viewer's own picks: a favorite whose guide has nothing listed right now must not drop out
+        // of the row (3 favorites showed as 2), so only the other sources hide channels with nothing on.
+        if (s.homeRowHidePlaceholders && homeRowGroup(s) != ChannelGroup.FAVORITES) {
             entries = entries.filter { e -> e.now != null && !LiveTvRepository.isPlaceholderTitle(e.now.title) }
         }
         entries = when (s.homeRowSort) {
