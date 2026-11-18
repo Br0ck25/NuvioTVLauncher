@@ -77,6 +77,7 @@ class LayoutPreferenceDataStore @Inject constructor(
     private val disabledHomeCatalogKeysKey = stringPreferencesKey("disabled_home_catalog_keys")
     private val customCatalogTitlesKey = stringPreferencesKey("custom_catalog_titles")
     private val sidebarCollapsedKey = booleanPreferencesKey("sidebar_collapsed_by_default")
+    private val floatingPillShowsProfileKey = booleanPreferencesKey("floating_pill_shows_profile")
     private val modernSidebarEnabledKey = booleanPreferencesKey("modern_sidebar_enabled")
     private val legacyModernSidebarEnabledKey = booleanPreferencesKey("glass_sidepanel_enabled")
     private val modernSidebarBlurEnabledKey = booleanPreferencesKey("modern_sidebar_blur_enabled")
@@ -231,6 +232,11 @@ class LayoutPreferenceDataStore @Inject constructor(
 
     val sidebarCollapsedByDefault: Flow<Boolean> = profileFlow { prefs ->
         prefs[sidebarCollapsedKey] ?: false
+    }
+
+    /** The floating pill (Modern sidebar) shows the profile's picture and name instead of the page's icon and name. */
+    val floatingPillShowsProfile: Flow<Boolean> = profileFlow { prefs ->
+        prefs[floatingPillShowsProfileKey] ?: false
     }
 
     val modernSidebarEnabled: Flow<Boolean> = profileFlow { prefs ->
@@ -576,6 +582,10 @@ class LayoutPreferenceDataStore @Inject constructor(
         store().edit { prefs ->
             prefs[sidebarCollapsedKey] = collapsed
         }
+    }
+
+    suspend fun setFloatingPillShowsProfile(enabled: Boolean) {
+        store().edit { prefs -> prefs[floatingPillShowsProfileKey] = enabled }
     }
 
     suspend fun setModernSidebarEnabled(enabled: Boolean) {
