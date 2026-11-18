@@ -156,7 +156,7 @@ object MusicSpotifyImport {
         runCatching {
             MusicLibrary.init(context)
             val app = context.applicationContext
-            val store = app.getSharedPreferences(SYNC_PREFS, Context.MODE_PRIVATE)
+            val store = com.nuvio.tv.core.profile.ActiveProfile.prefs(app, SYNC_PREFS)
             val playlistMap = loadStringMap(store.getString(KEY_PLAYLIST_MAP, null))
             val trackMap = loadTrackMap(store.getString(KEY_TRACK_MAP, null))
 
