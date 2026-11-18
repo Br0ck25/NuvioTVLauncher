@@ -11,6 +11,6 @@
 
 ## Localization
 
-- Live TV settings and the guide's main actions now follow the app language in German, Spanish, French, Italian, Dutch, Polish, Portuguese, Russian and Turkish.
+- Live TV settings, the guide (group list, day labels, loading and empty states) and the player's main actions now follow the app language in German, Spanish, French, Italian, Dutch, Polish, Portuguese, Russian and Turkish.
 - OneTube and Music now follow the app language in those languages plus Arabic.
 - The Music Sources screen is translated too.
