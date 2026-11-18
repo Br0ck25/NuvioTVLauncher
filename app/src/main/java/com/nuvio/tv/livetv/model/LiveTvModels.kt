@@ -410,6 +410,8 @@ data class LiveTvSettings(
     val resumeLastInPreview: Boolean = true,
     /** Show how many channels each group has in the guide's group list. */
     val showGroupCounts: Boolean = true,
+    /** Hold Up or Down this long in the group list to jump to the top or bottom (2–5 seconds). */
+    val groupHoldJumpMs: Int = 3_500,
     /** Smaller info panel and preview at the top of the guide, so more channels fit. */
     val smallHeader: Boolean = false,
     /** Full-screen picture size, using Nuvio's own modes (Fit, Crop, Stretch, Cinema Zoom, …). */

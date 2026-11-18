@@ -196,6 +196,10 @@ private fun clockPositions(context: Context) = listOf(
 )
 private fun padLabel(context: Context, minutes: Int): String = if (minutes <= 0) context.getString(R.string.playback_afr_off) else context.resources.getQuantityString(R.plurals.iptv_settings_minutes_short, minutes, minutes)
 
+/** "3.5 s" for the group list's hold-to-jump time. */
+private fun holdSecondsLabel(context: Context, ms: Int): String =
+    context.getString(R.string.iptv_settings_seconds_short, String.format(context.settingsLocale, "%.1f", ms / 1000f))
+
 private fun clockSizes(context: Context) = listOf("small" to context.getString(R.string.iptv_settings_small), "medium" to context.getString(R.string.iptv_settings_medium), "large" to context.getString(R.string.iptv_settings_large))
 
 private sealed interface LiveDialog {
@@ -232,6 +236,7 @@ private sealed interface LiveDialog {
     data object PastHours : LiveDialog
     data object SortChoice : LiveDialog
     data object GroupSortChoice : LiveDialog
+    data object GroupHoldChoice : LiveDialog
     data object HighlightChoice : LiveDialog
     data object CustomGroups : LiveDialog
     data object ChannelRow : LiveDialog
@@ -256,6 +261,7 @@ private sealed interface LiveDialog {
 private val EPG_OFFSETS = (-48..48).map { it * 30 }
 private val REFRESH_HOURS = listOf(3, 6, 12, 24, 48, 72, 168)
 private val BANNER_SECONDS = listOf(3, 5, 8, 10, 15)
+private val GROUP_HOLD_MS = (4..10).map { it * 500 }
 private val FUTURE_DAYS = listOf(1, 2, 3, 5, 7, 10, 14)
 private val PAST_HOURS = listOf(6, 12, 24, 48, 72, 168)
 
@@ -745,6 +751,12 @@ internal fun LiveTvSettingsContent(
                         subtitle = context.getString(R.string.iptv_settings_how_the_group_list_is_sorted_your_order),
                         value = when (s.groupSort) { "playlist" -> context.getString(R.string.iptv_settings_playlist_order); "name" -> context.getString(R.string.iptv_settings_name_a_z); else -> context.getString(R.string.iptv_settings_your_order) },
                         onClick = { dialog = LiveDialog.GroupSortChoice }
+                    )
+                    SettingsActionRow(
+                        title = context.getString(R.string.iptv_settings_hold_to_jump_to_the_ends),
+                        subtitle = context.getString(R.string.iptv_settings_how_long_to_hold_up_or_down_in_the_group_list),
+                        value = holdSecondsLabel(context, s.groupHoldJumpMs),
+                        onClick = { dialog = LiveDialog.GroupHoldChoice }
                     )
                     SubHeading(context.getString(R.string.iptv_settings_channels_in_a_group))
                     SettingsActionRow(
@@ -2235,6 +2247,13 @@ internal fun LiveTvSettingsContent(
             ),
             selectedValue = s.groupSort.takeIf { it == "playlist" || it == "name" } ?: "custom",
             onOptionSelected = { v -> update { it.copy(groupSort = v) }; close() },
+            onDismiss = close
+        )
+        LiveDialog.GroupHoldChoice -> SettingsSingleChoiceDialog(
+            title = context.getString(R.string.iptv_settings_hold_to_jump_to_the_ends),
+            options = GROUP_HOLD_MS.map { SettingsPickerOption(it, holdSecondsLabel(context, it)) },
+            selectedValue = s.groupHoldJumpMs,
+            onOptionSelected = { v -> update { it.copy(groupHoldJumpMs = v) }; close() },
             onDismiss = close
         )
         LiveDialog.SortChoice -> SettingsSingleChoiceDialog(

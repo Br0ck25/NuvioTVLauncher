@@ -1268,6 +1268,7 @@ private fun LiveTvGuideScreenBody(
                     visibilityLastRowFocus = groupVisibilityLastRowFocus,
                     playlistNames = playlistNames,
                     showPlaylistHeadings = settings.groupPlaylistHeadings,
+                    holdJumpMs = settings.groupHoldJumpMs.toLong(),
                     collapsed = collapsedPlaylists,
                     onToggleCollapse = { viewModel.togglePlaylistCollapsed(it) },
                     reorderingId = groupReorderId,
@@ -3387,6 +3388,8 @@ private fun GroupColumn(
     hiddenPending: Set<String>? = null,
     /** With several playlists, show each playlist's groups under its own heading (setting). */
     showPlaylistHeadings: Boolean = false,
+    /** Hold Up or Down this long (ms) to jump to the first or last group (setting). */
+    holdJumpMs: Long = 3_500L,
     onToggleGroupVisible: (String) -> Unit = {},
     onHideAllGroups: () -> Unit = {},
     onShowAllGroups: () -> Unit = {},
@@ -3544,7 +3547,7 @@ private fun GroupColumn(
                             groupHoldStartedAt = native.downTime
                             groupHoldJumped = false
                         } else if (!groupHoldJumped && groupHoldKey == e.key &&
-                            native.eventTime - groupHoldStartedAt >= 1_800L
+                            native.eventTime - groupHoldStartedAt >= holdJumpMs
                         ) {
                             groupHoldJumped = true
                             jumpToGroup(
@@ -3557,7 +3560,7 @@ private fun GroupColumn(
                     } else if (e.type == KeyEventType.KeyUp) {
                         val wasJumped = groupHoldJumped
                         val heldLongEnough = !wasJumped && groupHoldKey == e.key &&
-                            e.nativeKeyEvent.eventTime - groupHoldStartedAt >= 1_800L
+                            e.nativeKeyEvent.eventTime - groupHoldStartedAt >= holdJumpMs
                         groupHoldKey = null
                         groupHoldJumped = false
                         when {

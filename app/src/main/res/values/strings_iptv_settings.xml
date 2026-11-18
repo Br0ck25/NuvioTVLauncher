@@ -162,6 +162,9 @@
     <string name="iptv_settings_the_number_of_channels_next_to_each_group">"The number of channels next to each group"</string>
     <string name="iptv_settings_group_order">"Group Order"</string>
     <string name="iptv_settings_how_the_group_list_is_sorted_your_order">"How the group list is sorted. Your order follows Reorder Groups; anything you haven\'t moved stays in playlist order."</string>
+    <string name="iptv_settings_hold_to_jump_to_the_ends">"Hold to Jump to the Ends"</string>
+    <string name="iptv_settings_how_long_to_hold_up_or_down_in_the_group_list">"How long to hold Up or Down in the group list to jump to the top or bottom. A normal scroll isn\'t affected."</string>
+    <string name="iptv_settings_seconds_short">"%1$s s"</string>
     <string name="iptv_settings_playlist_order">"Playlist order"</string>
     <string name="iptv_settings_name_a_z">"Name (A–Z)"</string>
     <string name="iptv_settings_your_order">"Your order"</string>
