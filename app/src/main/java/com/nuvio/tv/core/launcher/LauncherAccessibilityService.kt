@@ -96,7 +96,7 @@ class LauncherAccessibilityService : AccessibilityService() {
         }
         // Consume the whole sequence, but only forward uncanceled releases, never held-key DOWNs.
         if (delivery.acceptKeyRelease(event.eventTime, event.action == KeyEvent.ACTION_UP, event.isCanceled)) {
-            launchHome(event.eventTime)
+            launchHome(event.eventTime, fromKeyPress = true)
             // Not tied to a stock-launcher window event: re-fronting its existing task may not emit one.
             scheduleHomeRecheck()
         }
@@ -236,17 +236,25 @@ class LauncherAccessibilityService : AccessibilityService() {
     /** When the service last started the launcher, to spot a loop (see [launchHome]). */
     private val recentLaunches = ArrayDeque<Long>()
 
-    private fun launchHome(pressedAtMs: Long) {
+    /**
+     * [fromKeyPress]: the start was asked for by a real Home button release. Those are already spaced out
+     * ([HomeFallbackPolicy.acceptKeyRelease]) and are never a loop, so they are neither counted nor refused;
+     * otherwise three quick presses in five seconds made the next one do nothing. Only starts the service
+     * decides on its own (window events, re-checks, after boot) are counted against the loop limit.
+     */
+    private fun launchHome(pressedAtMs: Long, fromKeyPress: Boolean = false) {
         // A window that closes itself and is reopened by Android (Google's setup recovery screen when the TV's own
-        // launcher is gone) would make this start Nuvio again and again until the system crashed. Three starts
-        // within five seconds is a loop, not a Home press: stop and let it settle.
+        // launcher is gone) would make this start Nuvio again and again until the system crashed. Three automatic
+        // starts within five seconds is a loop, not a Home press: stop and let it settle.
         val now = SystemClock.uptimeMillis()
-        while (recentLaunches.isNotEmpty() && now - recentLaunches.first() > 5_000L) recentLaunches.removeFirst()
-        if (recentLaunches.size >= 3) {
-            Log.w(TAG, "Takeover loop: ${recentLaunches.size} starts in 5 s; skipping")
-            return
+        if (!fromKeyPress) {
+            while (recentLaunches.isNotEmpty() && now - recentLaunches.first() > 5_000L) recentLaunches.removeFirst()
+            if (recentLaunches.size >= 3) {
+                Log.w(TAG, "Takeover loop: ${recentLaunches.size} starts in 5 s; skipping")
+                return
+            }
+            recentLaunches.addLast(now)
         }
-        recentLaunches.addLast(now)
         try {
             if (!HomeForegroundDelivery.deliver(pressedAtMs)) {
                 val intent = Intent(this, MainActivity::class.java).apply {
