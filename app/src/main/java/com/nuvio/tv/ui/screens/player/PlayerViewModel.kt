@@ -243,6 +243,14 @@ class PlayerViewModel @Inject constructor(
 
     fun stopAndRelease() {
         postPlayRecommendationController.stop()
+        // Detach the view before the player is released. On some TV boxes (Xiaomi/Amlogic
+        // Android 11) a PlayerView that still points at a released player can leave its
+        // SurfaceView on screen, so the next screen stays black or grey until the app is
+        // restarted. Hiding it drops the surface before the next screen draws.
+        controller.exoPlayerView?.let { view ->
+            runCatching { view.player = null }
+            runCatching { view.visibility = android.view.View.GONE }
+        }
         controller.stopAndRelease()
     }
 

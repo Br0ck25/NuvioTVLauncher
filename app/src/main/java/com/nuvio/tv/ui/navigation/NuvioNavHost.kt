@@ -1444,6 +1444,14 @@ private fun PlaybackNavHost(
                         }
                     }
 
+                    fun popPlayerOrFinish() {
+                        if (!navController.popBackStack()) {
+                            // No screen underneath (launcher or deep-link playback). Close the
+                            // player instead of leaving a released player on a black screen.
+                            playerContext.findHostActivity()?.finish()
+                        }
+                    }
+
                     when {
                         playbackCompleted && contentId.isNotBlank() -> {
                             returnToDetail()
@@ -1467,7 +1475,7 @@ private fun PlaybackNavHost(
                                         state["returnFocusEpisode"] = focusEpisode
                                     }
                             } else {
-                                navController.popBackStack()
+                                popPlayerOrFinish()
                             }
                         }
                         playerBackOpensCurrentEpisodeStreams(episodeChangedInPlace, autoPlayEnabled) -> {
@@ -1497,7 +1505,7 @@ private fun PlaybackNavHost(
                                     launchSingleTop = true
                                 }
                             } else {
-                                navController.popBackStack()
+                                popPlayerOrFinish()
                             }
                         }
                         else -> {
@@ -1506,7 +1514,7 @@ private fun PlaybackNavHost(
                                 if (returnToDetailOnBack && contentType.equals("series", ignoreCase = true) && contentId.isNotBlank()) {
                                     returnToDetail()
                                 } else {
-                                    navController.popBackStack()
+                                    popPlayerOrFinish()
                                 }
                             }
                         }
@@ -2378,4 +2386,10 @@ private fun PlaybackNavHost(
             )
         }
     }
+}
+
+private tailrec fun android.content.Context.findHostActivity(): android.app.Activity? = when (this) {
+    is android.app.Activity -> this
+    is android.content.ContextWrapper -> baseContext.findHostActivity()
+    else -> null
 }
