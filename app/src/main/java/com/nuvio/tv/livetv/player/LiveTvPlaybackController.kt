@@ -933,6 +933,12 @@ class LiveTvPlaybackController @Inject constructor(
             !url.substringBefore('?').endsWith(".m3u8", ignoreCase = true) && startReplayCache(channel, url)
         ) return
         archiveStartPending = catchupTitle != null
+        // A different channel: clear the old frame and decoder before the new source is
+        // attached. Some Amlogic boxes otherwise keep the previous channel's frame and show
+        // it with a green tint while the new channel starts.
+        if (previousChannelKey != channel.key) {
+            p.stop()
+        }
         p.setMediaSource(buildMediaSource(url, channel.headers, isLive = catchupTitle == null))
         p.prepare()
         p.playWhenReady = true
