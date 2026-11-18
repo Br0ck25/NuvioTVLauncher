@@ -3465,4 +3465,7 @@
     <string name="autosync_label_synced">Đã tự động đồng bộ</string>
     <string name="stream_resume_from_time">Xem tiếp từ %1$s</string>
     <string name="stream_resume_from_percent">Xem tiếp từ %1$d%%</string>
+    <!-- Launcher (ported from the Nuvio TV Launcher fork) -->
+    <string name="update_ready_closes">Tải xuống hoàn tất. Ứng dụng sẽ đóng trong khi cài đặt bản cập nhật, quá trình này có thể mất một phút. Vui lòng mở lại ứng dụng sau đó.</string>
+    <string name="update_ready_closes_and_reopens">Tải xuống hoàn tất. Ứng dụng sẽ đóng trong khi cài đặt bản cập nhật và tự mở lại, quá trình này có thể mất một phút.</string>
 </resources>

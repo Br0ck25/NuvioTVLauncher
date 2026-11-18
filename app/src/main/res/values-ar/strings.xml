@@ -3028,4 +3028,7 @@
     <string name="web_stream_badge_imported">استُورد رابط الشارة.</string>
     <string name="web_stream_badge_importing">جارٍ الاستيراد\u2026</string>
     <string name="web_stream_badge_load_error">تعذر تحميل إعدادات شارات البث</string>
+    <!-- Launcher (ported from the Nuvio TV Launcher fork) -->
+    <string name="update_ready_closes">اكتمل التنزيل. يُغلق التطبيق أثناء تثبيت التحديث، وقد يستغرق ذلك دقيقة. افتحه مجددًا بعد ذلك.</string>
+    <string name="update_ready_closes_and_reopens">اكتمل التنزيل. يُغلق التطبيق أثناء تثبيت التحديث ويُعاد فتحه تلقائيًا، وقد يستغرق ذلك دقيقة.</string>
 </resources>

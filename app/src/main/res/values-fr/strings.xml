@@ -3465,4 +3465,7 @@
     <string name="autosync_label_synced">Synchronisé automatiquement</string>
     <string name="stream_resume_from_time">Reprendre à %1$s</string>
     <string name="stream_resume_from_percent">Reprendre à %1$d&#160;%%</string>
+    <!-- Launcher (ported from the Nuvio TV Launcher fork) -->
+    <string name="update_ready_closes">Téléchargement terminé. L’application se ferme pendant l’installation de la mise à jour, ce qui peut prendre une minute. Rouvrez-la ensuite.</string>
+    <string name="update_ready_closes_and_reopens">Téléchargement terminé. L’application se ferme pendant l’installation de la mise à jour puis se rouvre d’elle-même, ce qui peut prendre une minute.</string>
 </resources>

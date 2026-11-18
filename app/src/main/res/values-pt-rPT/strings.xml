@@ -2574,4 +2574,7 @@
     <string name="profile_default_name">Perfil %1$d</string>
     <string name="detail_tmdb_fallback_title">TMDB %1$d</string>
     <string name="collections_editor_tmdb_collection_fallback">Coleção TMDB %1$d</string>
+    <!-- Launcher (ported from the Nuvio TV Launcher fork) -->
+    <string name="update_ready_closes">Transferência concluída. A aplicação vai fechar enquanto a atualização é instalada, o que pode demorar cerca de um minuto. Abre-a novamente a seguir.</string>
+    <string name="update_ready_closes_and_reopens">Transferência concluída. A aplicação vai fechar enquanto a atualização é instalada e reabrirá automaticamente, o que pode demorar cerca de um minuto.</string>
 </resources>
