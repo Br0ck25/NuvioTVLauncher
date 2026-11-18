@@ -114,7 +114,7 @@ fun HomeTopBarHeader(
                 modifier = Modifier.size(36.dp),
                 shape = ClickableSurfaceDefaults.shape(RoundedCornerShape(10.dp)),
                 colors = ClickableSurfaceDefaults.colors(
-                    containerColor = Color.White.copy(alpha = 0.08f),
+                    containerColor = Color.Black.copy(alpha = 0.35f),
                     focusedContainerColor = NuvioTheme.colors.FocusBackground,
                     pressedContainerColor = NuvioTheme.colors.FocusBackground
                 ),
@@ -146,7 +146,7 @@ fun HomeTopBarHeader(
                 .wrapContentWidth(),
             shape = ClickableSurfaceDefaults.shape(RoundedCornerShape(10.dp)),
             colors = ClickableSurfaceDefaults.colors(
-                containerColor = Color.White.copy(alpha = 0.08f),
+                containerColor = Color.Black.copy(alpha = 0.35f),
                 focusedContainerColor = NuvioTheme.colors.FocusBackground,
                     pressedContainerColor = NuvioTheme.colors.FocusBackground
             ),
@@ -199,7 +199,7 @@ fun HomeTopBarHeader(
             modifier = Modifier.size(36.dp),
             shape = ClickableSurfaceDefaults.shape(RoundedCornerShape(10.dp)),
             colors = ClickableSurfaceDefaults.colors(
-                containerColor = Color.White.copy(alpha = 0.08f),
+                containerColor = Color.Black.copy(alpha = 0.35f),
                 focusedContainerColor = NuvioTheme.colors.FocusBackground,
                     pressedContainerColor = NuvioTheme.colors.FocusBackground
             ),
