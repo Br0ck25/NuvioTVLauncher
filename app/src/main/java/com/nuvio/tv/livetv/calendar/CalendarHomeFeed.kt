@@ -35,7 +35,7 @@ object CalendarHomeFeed {
 
     fun init(context: Context) {
         if (prefs != null) return
-        val p = context.applicationContext.getSharedPreferences("calendar_home", Context.MODE_PRIVATE)
+        val p = com.nuvio.tv.core.profile.ActiveProfile.prefs(context, "calendar_home")
         prefs = p
         synchronized(dismissed) { dismissed += p.getStringSet("dismissed", emptySet()).orEmpty() }
         synchronized(snoozed) {

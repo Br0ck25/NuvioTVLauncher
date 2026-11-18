@@ -279,11 +279,13 @@ class LiveTvPreferences @Inject constructor(
     private val personalStringKeys: List<Preferences.Key<String>> = listOf(
         Keys.favorites, Keys.recent, Keys.recentGroups, Keys.lastChannel, Keys.previousChannel, Keys.lastGroup,
         Keys.groupOrder, Keys.customGroups, Keys.channelOrder, Keys.channelCopies, Keys.reminders,
-        Keys.vodGroupOrder, Keys.vodSorts, Keys.sportsMine
+        Keys.vodGroupOrder, Keys.vodSorts, Keys.sportsMine,
+        Keys.sports, Keys.channelNames, Keys.channelLogos, Keys.channelNumbers, Keys.groupNames, Keys.epgOverrides,
+        Keys.channelAudio, Keys.channelCaptions, Keys.vodGroupNames, Keys.pictureShapes, Keys.calendarChannelPicks, Keys.calendarPlans
     )
     private val personalSetKeys: List<Preferences.Key<Set<String>>> = listOf(
         Keys.hiddenChannels, Keys.hiddenGroups, Keys.hiddenPlaylists, Keys.groupTagFilters,
-        Keys.vodHiddenCategories
+        Keys.vodHiddenCategories, Keys.lockedGroups
     )
 
     @JvmName("myString")
@@ -322,10 +324,15 @@ class LiveTvPreferences @Inject constructor(
      */
     private suspend fun seedProfile(id: Int) {
         if (id <= 1) return
+        com.nuvio.tv.core.profile.ActiveProfile.baselineReady.await()
+        val legacy = com.nuvio.tv.core.profile.ActiveProfile.isLegacy(id)
         store.edit { p ->
             if (p[seededKey(id)] == true) return@edit
-            personalStringKeys.forEach { k -> if (p[my(k, id)] == null) p[k]?.let { p[my(k, id)] = it } }
-            personalSetKeys.forEach { k -> if (p[my(k, id)] == null) p[k]?.let { p[my(k, id)] = it } }
+            // Only a profile that existed before per-profile settings takes a one-time copy; a new one starts empty.
+            if (legacy) {
+                personalStringKeys.forEach { k -> if (p[my(k, id)] == null) p[k]?.let { p[my(k, id)] = it } }
+                personalSetKeys.forEach { k -> if (p[my(k, id)] == null) p[k]?.let { p[my(k, id)] = it } }
+            }
             p[seededKey(id)] = true
         }
     }
@@ -335,7 +342,10 @@ class LiveTvPreferences @Inject constructor(
             runCatching { turnOnPlaylistGroupsOnce() }
         }
         CoroutineScope(Dispatchers.IO + SupervisorJob()).launch {
-            profileManager.activeProfileId.collect { id -> runCatching { seedProfile(id) } }
+            profileManager.activeProfileId.collect { id ->
+                runCatching { seedProfile(id) }
+                runCatching { seedProfileSettings(id) }
+            }
         }
     }
 
@@ -379,13 +389,15 @@ class LiveTvPreferences @Inject constructor(
     private val settingsMemo = SnapshotMemo<LiveTvSettings>()
     private val userStateMemo = SnapshotMemo<LiveUserState>()
 
-    val playlists: Flow<List<PlaylistSource>> = store.data
-        .map { p -> playlistsMemo.get(p, null, 0) { decodePlaylists(p[Keys.playlists]) } }
-        .distinctUntilChanged()
+    // Playlists and guides are per profile too (each profile is a different user): the first profile keeps the original keys,
+    // another profile starts with a copy of them (see seedProfileSettings) and then has its own.
+    val playlists: Flow<List<PlaylistSource>> = kotlinx.coroutines.flow.combine(store.data, profileManager.activeProfileId) { p, id ->
+        playlistsMemo.get(p, null, id) { decodePlaylists(p[my(Keys.playlists, id)]) }
+    }.distinctUntilChanged()
 
-    val epgSources: Flow<List<EpgSource>> = store.data
-        .map { p -> epgsMemo.get(p, null, 0) { decodeEpgs(p[Keys.epgs]) } }
-        .distinctUntilChanged()
+    val epgSources: Flow<List<EpgSource>> = kotlinx.coroutines.flow.combine(store.data, profileManager.activeProfileId) { p, id ->
+        epgsMemo.get(p, null, id) { decodeEpgs(p[my(Keys.epgs, id)]) }
+    }.distinctUntilChanged()
 
     val addonChannelSources: Flow<List<AddonChannelSource>> = store.data
         .map { decodeAddonChannels(it[Keys.addonChannels]) }
@@ -404,8 +416,76 @@ class LiveTvPreferences @Inject constructor(
         return m
     }
 
+    // ---------- per-profile settings ----------
+    // Every setting (the side menu, the Live TV row, the guide, IPTV options...) is kept per Nuvio profile: changing one in a
+    // profile never changes another's. The first profile keeps the original keys. Another profile starts as a copy of the
+    // first profile's settings (so nobody loses their set-up) and from then on changes only its own copies, stored under the
+    // same names with "_p<id>" on the end. Playlists and guides stay shared, and so do the parental lock settings: a profile
+    // must not be able to switch the lock off for the others.
+
+    // Nothing is shared between profiles any more (the parental lock included: it belongs to the profile that set it).
+    private val sharedSettingKeyNames = emptySet<String>()
+
+    /** The names of the settings keys: whatever [writeSettings] writes, minus the ones every profile shares. */
+    private val settingsKeyNames: Set<String> by lazy {
+        val tmp = androidx.datastore.preferences.core.mutablePreferencesOf()
+        writeSettings(tmp, LiveTvSettings())
+        tmp.asMap().keys.map { it.name }.filter { it !in sharedSettingKeyNames }.toSet()
+    }
+
+    private fun ownName(name: String, id: Int) = "${name}_p$id"
+
+    private fun settingsSeededKey(id: Int) = booleanPreferencesKey("settings_seeded_p$id")
+
+    /** A key called [name] of the same type as [sample]; null for a type settings never use. */
+    @Suppress("UNCHECKED_CAST")
+    private fun typedKey(name: String, sample: Any): Preferences.Key<Any>? = when (sample) {
+        is Boolean -> booleanPreferencesKey(name)
+        is Int -> intPreferencesKey(name)
+        is String -> stringPreferencesKey(name)
+        is Long -> androidx.datastore.preferences.core.longPreferencesKey(name)
+        is Float -> androidx.datastore.preferences.core.floatPreferencesKey(name)
+        is Double -> androidx.datastore.preferences.core.doublePreferencesKey(name)
+        is Set<*> -> stringSetPreferencesKey(name)
+        else -> null
+    } as Preferences.Key<Any>?
+
+    /** The stored data as profile [id] sees its settings: its own copies in place of the first profile's. */
+    private fun settingsView(p: Preferences, id: Int): Preferences {
+        if (id <= 1 || p[settingsSeededKey(id)] != true) return p
+        val byName = p.asMap().entries.associateBy { it.key.name }
+        val m = p.toMutablePreferences()
+        for (name in settingsKeyNames) {
+            val mine = byName[ownName(name, id)]
+            if (mine != null) typedKey(name, mine.value)?.let { m[it] = mine.value }
+            else byName[name]?.let { m.remove(it.key) }
+        }
+        return m
+    }
+
+    /** The first time a profile is used, it takes a copy of the first profile's settings (never over its own choices). */
+    private suspend fun seedProfileSettings(id: Int) {
+        if (id <= 1) return
+        com.nuvio.tv.core.profile.ActiveProfile.baselineReady.await()
+        val legacy = com.nuvio.tv.core.profile.ActiveProfile.isLegacy(id)
+        store.edit { p ->
+            if (p[settingsSeededKey(id)] == true) return@edit
+            if (legacy) {
+                val byName = p.asMap().entries.associateBy { it.key.name }
+                for (name in settingsKeyNames) {
+                    val base = byName[name] ?: continue
+                    if (byName[ownName(name, id)] == null) typedKey(ownName(name, id), base.value)?.let { p[it] = base.value }
+                }
+                for (k in listOf(Keys.playlists, Keys.epgs)) {
+                    if (p[my(k, id)] == null) p[k]?.let { p[my(k, id)] = it }
+                }
+            }
+            p[settingsSeededKey(id)] = true
+        }
+    }
+
     val settings: Flow<LiveTvSettings> = kotlinx.coroutines.flow.combine(store.data, profileManager.activeProfileId) { p0, id ->
-        settingsMemo.get(p0, null, id) { buildSettings(withMyMenu(p0, id)) }
+        settingsMemo.get(p0, null, id) { buildSettings(withMyMenu(settingsView(p0, id), id)) }
     }.distinctUntilChanged()
 
     private fun buildSettings(p: Preferences): LiveTvSettings {
@@ -636,10 +716,11 @@ class LiveTvPreferences @Inject constructor(
     suspend fun updatePlaylists(transform: (List<PlaylistSource>) -> List<PlaylistSource>) = sourceMutations.withLock {
         var removed = emptySet<String>()
         store.edit { p ->
-            val before = decodePlaylists(p[Keys.playlists])
+            val key = my(Keys.playlists)
+            val before = decodePlaylists(p[key])
             val after = transform(before)
             removed = before.map { it.id }.toSet() - after.map { it.id }.toSet()
-            p[Keys.playlists] = encodePlaylists(after)
+            p[key] = encodePlaylists(after)
         }
         noteRemovedSources(removed)
     }
@@ -653,10 +734,11 @@ class LiveTvPreferences @Inject constructor(
     suspend fun updateEpgSources(transform: (List<EpgSource>) -> List<EpgSource>) {
         var removed = emptySet<String>()
         store.edit { p ->
-            val before = decodeEpgs(p[Keys.epgs])
+            val key = my(Keys.epgs)
+            val before = decodeEpgs(p[key])
             val after = transform(before)
             removed = before.map { it.id }.toSet() - after.map { it.id }.toSet()
-            p[Keys.epgs] = encodeEpgs(after)
+            p[key] = encodeEpgs(after)
         }
         noteRemovedSources(removed)
     }
@@ -739,24 +821,44 @@ class LiveTvPreferences @Inject constructor(
     suspend fun editCalendarHiddenShows(transform: (String) -> String) = editMine(Keys.calendarHiddenShows, transform)
 
     /** The channel picked for each network ("Always use the channel I pick for FX"): a JSON object. */
-    val calendarChannelPicks: Flow<String> = store.data.map { it[Keys.calendarChannelPicks] ?: "" }.distinctUntilChanged()
+    val calendarChannelPicks: Flow<String> =
+        kotlinx.coroutines.flow.combine(store.data, profileManager.activeProfileId) { p, id -> mineOrShared(p, Keys.calendarChannelPicks, id) }.distinctUntilChanged()
 
     suspend fun editCalendarChannelPicks(transform: (String) -> String) {
-        store.edit { it[Keys.calendarChannelPicks] = transform(it[Keys.calendarChannelPicks] ?: "") }
+        editMine(Keys.calendarChannelPicks, transform)
     }
 
     /** The Calendar's Live TV plans ("record when it's in my guide", "record every new episode"), as JSON. */
-    val calendarPlans: Flow<String> = store.data.map { it[Keys.calendarPlans] ?: "" }.distinctUntilChanged()
+    val calendarPlans: Flow<String> =
+        kotlinx.coroutines.flow.combine(store.data, profileManager.activeProfileId) { p, id -> mineOrShared(p, Keys.calendarPlans, id) }.distinctUntilChanged()
 
     suspend fun editCalendarPlans(transform: (String) -> String) {
-        store.edit { it[Keys.calendarPlans] = transform(it[Keys.calendarPlans] ?: "") }
+        editMine(Keys.calendarPlans, transform)
     }
 
     // ---------- settings ----------
 
     suspend fun updateSettings(transform: (LiveTvSettings) -> LiveTvSettings) {
+        val me = currentProfile
+        if (me > 1) seedProfileSettings(me)
         val next = transform(currentSettings())
-        store.edit { p -> writeSettings(p, next) }
+        store.edit { p ->
+            if (me <= 1) {
+                writeSettings(p, next)
+            } else {
+                // Another profile: its own copies, never the first profile's keys (the shared ones stay shared).
+                val tmp = androidx.datastore.preferences.core.mutablePreferencesOf()
+                writeSettings(tmp, next)
+                for ((k, v) in tmp.asMap()) {
+                    if (k.name in sharedSettingKeyNames) p[typedKey(k.name, v) ?: continue] = v
+                    else typedKey(ownName(k.name, me), v)?.let { p[it] = v }
+                }
+                // Which pages are off: this profile's own copy, saved when it differs from what it sees now
+                // (its own choice, or else the first profile's). Even an empty list (everything on) is a choice.
+                val seen = p[my(Keys.sideMenuHidden, me)] ?: p[Keys.sideMenuHidden] ?: ""
+                if (next.sideMenuHidden != seen) p[my(Keys.sideMenuHidden, me)] = next.sideMenuHidden
+            }
+        }
     }
 
     private fun writeSettings(p: MutablePreferences, s: LiveTvSettings) {
@@ -825,13 +927,9 @@ class LiveTvPreferences @Inject constructor(
         p[Keys.onDemandHomeRowEnabled] = s.onDemandHomeRowEnabled
         p[Keys.recordingsInSidebar] = s.recordingsInSidebar
         p[Keys.sideMenuOrder] = s.sideMenuOrder
-        val me = currentProfile
-        if (me <= 1) {
-            p[Keys.sideMenuHidden] = s.sideMenuHidden
-        } else {
-            val seen = p[my(Keys.sideMenuHidden, me)] ?: p[Keys.sideMenuHidden] ?: ""
-            if (s.sideMenuHidden != seen) p[my(Keys.sideMenuHidden, me)] = s.sideMenuHidden
-        }
+        // The first profile owns this key. Another profile's copy is written by updateSettings (it needs the
+        // stored value to compare with), so it is not written here.
+        if (currentProfile <= 1) p[Keys.sideMenuHidden] = s.sideMenuHidden
         p[Keys.calendarInMenu] = s.calendarInMenu
         p[Keys.sideMenuLine] = s.sideMenuLine
         p[Keys.sideMenuFit] = s.sideMenuFit
@@ -908,26 +1006,26 @@ class LiveTvPreferences @Inject constructor(
 
     suspend fun setChannelName(key: String, name: String?) {
         store.edit { p ->
-            val m = decodeStringMap(p[Keys.channelNames]).toMutableMap()
+            val m = decodeStringMap(p[my(Keys.channelNames)]).toMutableMap()
             if (name.isNullOrBlank()) m.remove(key) else m[key] = name.trim()
-            p[Keys.channelNames] = encodeStringMap(m)
+            p[my(Keys.channelNames)] = encodeStringMap(m)
         }
     }
 
     /** The logo picked for a channel ("Change Logo"); null puts its own back. */
     suspend fun setChannelLogo(key: String, url: String?) {
         store.edit { p ->
-            val m = decodeStringMap(p[Keys.channelLogos]).toMutableMap()
+            val m = decodeStringMap(p[my(Keys.channelLogos)]).toMutableMap()
             if (url.isNullOrBlank()) m.remove(key) else m[key] = url.trim()
-            p[Keys.channelLogos] = encodeStringMap(m)
+            p[my(Keys.channelLogos)] = encodeStringMap(m)
         }
     }
 
     suspend fun setChannelNumber(key: String, number: Int?) {
         store.edit { p ->
-            val m = decodeStringMap(p[Keys.channelNumbers]).toMutableMap()
+            val m = decodeStringMap(p[my(Keys.channelNumbers)]).toMutableMap()
             if (number == null) m.remove(key) else m[key] = number.toString()
-            p[Keys.channelNumbers] = encodeStringMap(m)
+            p[my(Keys.channelNumbers)] = encodeStringMap(m)
         }
     }
 
@@ -937,9 +1035,9 @@ class LiveTvPreferences @Inject constructor(
             return
         }
         store.edit { p ->
-            val m = decodeStringMap(p[Keys.groupNames]).toMutableMap()
+            val m = decodeStringMap(p[my(Keys.groupNames)]).toMutableMap()
             if (name.isNullOrBlank()) m.remove(groupId) else m[groupId] = name.trim()
-            p[Keys.groupNames] = encodeStringMap(m)
+            p[my(Keys.groupNames)] = encodeStringMap(m)
         }
     }
 
@@ -991,20 +1089,24 @@ class LiveTvPreferences @Inject constructor(
 
     suspend fun setEpgOverride(key: String, assignment: com.nuvio.tv.livetv.model.EpgAssignment?) {
         store.edit { p ->
-            val m = decodeStringMap(p[Keys.epgOverrides]).toMutableMap()
+            val m = decodeStringMap(p[my(Keys.epgOverrides)]).toMutableMap()
             if (assignment == null) m.remove(key) else m[key] = assignment.sourceId + EPG_SEP + assignment.xmltvId
-            p[Keys.epgOverrides] = encodeStringMap(m)
+            p[my(Keys.epgOverrides)] = encodeStringMap(m)
         }
     }
 
     /** Picture shape chosen per channel (channels left on Auto aren't listed). */
-    val pictureShapes: Flow<Map<String, String>> = store.data.map { decodeStringMap(it[Keys.pictureShapes]) }
+    val pictureShapes: Flow<Map<String, String>> =
+        kotlinx.coroutines.flow.combine(store.data, profileManager.activeProfileId) { p, id -> decodeStringMap(profileView(p, id)[Keys.pictureShapes]) }
+            .distinctUntilChanged()
 
     // ---------- Sports ----------
     // Kept with Live TV's settings so Google Drive sync carries them to your other TVs too.
 
     /** Sports settings and channel fixes (JSON, read by the Sports page). */
-    val sportsSettingsJson: Flow<String?> = store.data.map { it[Keys.sports] }.distinctUntilChanged()
+    val sportsSettingsJson: Flow<String?> =
+        kotlinx.coroutines.flow.combine(store.data, profileManager.activeProfileId) { p, id -> profileView(p, id)[Keys.sports] }
+            .distinctUntilChanged()
 
     /** What this profile follows in Sports (JSON). */
     val sportsMineJson: Flow<String?> =
@@ -1012,7 +1114,10 @@ class LiveTvPreferences @Inject constructor(
             .distinctUntilChanged()
 
     suspend fun editSportsSettings(transform: (String?) -> String) {
-        store.edit { p -> p[Keys.sports] = transform(p[Keys.sports]) }
+        store.edit { p ->
+            val id = currentProfile
+            p[my(Keys.sports, id)] = transform(profileView(p, id)[Keys.sports])
+        }
     }
 
     suspend fun editSportsMine(transform: (String?) -> String) {
@@ -1024,22 +1129,22 @@ class LiveTvPreferences @Inject constructor(
 
     suspend fun setPictureShape(key: String, shape: com.nuvio.tv.livetv.player.PictureShape) {
         store.edit { p ->
-            val m = decodeStringMap(p[Keys.pictureShapes]).toMutableMap()
+            val m = decodeStringMap(p[my(Keys.pictureShapes)]).toMutableMap()
             if (shape == com.nuvio.tv.livetv.player.PictureShape.AUTO) m.remove(key) else m[key] = shape.name
-            p[Keys.pictureShapes] = encodeStringMap(m)
+            p[my(Keys.pictureShapes)] = encodeStringMap(m)
         }
     }
 
     suspend fun clearEpgOverrides() {
-        store.edit { it[Keys.epgOverrides] = encodeStringMap(emptyMap()) }
+        store.edit { it[my(Keys.epgOverrides)] = encodeStringMap(emptyMap()) }
     }
 
     // ---------- parental controls, reminders, quality, On Demand ----------
 
     suspend fun setGroupLocked(groupId: String, locked: Boolean) {
         store.edit { p ->
-            val cur = p[Keys.lockedGroups] ?: emptySet()
-            p[Keys.lockedGroups] = if (locked) cur + groupId else cur - groupId
+            val cur = p[my(Keys.lockedGroups)] ?: emptySet()
+            p[my(Keys.lockedGroups)] = if (locked) cur + groupId else cur - groupId
         }
     }
 
@@ -1070,18 +1175,18 @@ class LiveTvPreferences @Inject constructor(
     /** The audio track picked on a channel, used every time it plays (null forgets it). */
     suspend fun setChannelAudio(key: String, audio: String?) {
         store.edit { p ->
-            val m = decodeStringMap(p[Keys.channelAudio]).toMutableMap()
+            val m = decodeStringMap(p[my(Keys.channelAudio)]).toMutableMap()
             if (audio == null) m.remove(key) else m[key] = audio
-            p[Keys.channelAudio] = encodeStringMap(m)
+            p[my(Keys.channelAudio)] = encodeStringMap(m)
         }
     }
 
     /** The caption choice made on a channel, used every time it plays (null forgets it). */
     suspend fun setChannelCaptions(key: String, captions: String?) {
         store.edit { p ->
-            val m = decodeStringMap(p[Keys.channelCaptions]).toMutableMap()
+            val m = decodeStringMap(p[my(Keys.channelCaptions)]).toMutableMap()
             if (captions == null) m.remove(key) else m[key] = captions
-            p[Keys.channelCaptions] = encodeStringMap(m)
+            p[my(Keys.channelCaptions)] = encodeStringMap(m)
         }
     }
 
@@ -1116,7 +1221,7 @@ class LiveTvPreferences @Inject constructor(
         store.edit { p ->
             p[my(Keys.vodHiddenCategories)] = hidden
             p[my(Keys.vodGroupOrder)] = encodeStringList(order)
-            p[Keys.vodGroupNames] = encodeStringMap(names.filterValues { it.isNotBlank() })
+            p[my(Keys.vodGroupNames)] = encodeStringMap(names.filterValues { it.isNotBlank() })
         }
     }
 
@@ -1245,14 +1350,14 @@ class LiveTvPreferences @Inject constructor(
 
     suspend fun resetChannelEdits() {
         store.edit {
-            it[Keys.channelNames] = encodeStringMap(emptyMap())
-            it[Keys.channelNumbers] = encodeStringMap(emptyMap())
+            it[my(Keys.channelNames)] = encodeStringMap(emptyMap())
+            it[my(Keys.channelNumbers)] = encodeStringMap(emptyMap())
         }
     }
 
     suspend fun resetGroupEdits() {
         store.edit {
-            it[Keys.groupNames] = encodeStringMap(emptyMap())
+            it[my(Keys.groupNames)] = encodeStringMap(emptyMap())
             it[my(Keys.groupOrder)] = encodeStringList(emptyList())
         }
     }

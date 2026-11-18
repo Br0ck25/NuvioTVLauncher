@@ -281,6 +281,14 @@ You need JDK 17 and the Android SDK. Copy `local.example.properties` to `local.p
 ./gradlew :app:assembleFullDebug
 ```
 
+## Releasing
+
+Releases are built by the **Release** workflow (Actions tab → Release → Run workflow): pick the branch, type the version (higher than the last release, `1.2.4-beta.6` for a beta) and tick **Pre-release** for the Beta update channel. It signs the APKs and publishes them as a GitHub release; the in-app updater reads this repo's releases.
+
+It needs these repository secrets: `NUVIO_RELEASE_KEYSTORE_BASE64`, `NUVIO_RELEASE_KEY_ALIAS`, `NUVIO_RELEASE_KEY_PASSWORD`, `NUVIO_RELEASE_STORE_PASSWORD` (or the `LAUNCHER_*` equivalents), and `TMDB_API_KEY` for artwork and logos, plus `NUVIO_BACKEND_URL` / `NUVIO_BACKEND_KEY` for the Nuvio account. Without `TMDB_API_KEY` the app shows titles as plain text instead of logos.
+
+The **Sync upstream** workflow tries merging [Nuvio One](https://github.com/zoga2o3-ops/Nuvio-One)'s `main` into this repo every 6 hours and pushes a clean merge to `sync/nuvioone` for review.
+
 ## Legal
 
 This app is a client-side player. It does not host, store or distribute any media, and it ships with no channels, playlists or content sources. Only use sources you own or are authorized to access. See Nuvio's [legal and DMCA information](https://github.com/NuvioMedia/NuvioTV#legal--dmca), which applies here as well.
