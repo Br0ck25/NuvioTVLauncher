@@ -129,9 +129,8 @@ private val YtRed = Color(0xFFFF0033)
 private val CardBg = Color(0xFF1C1C1E)
 /** The page is laid out at 90% density, so the same number of dp covers more of the screen. */
 private const val YouTubeContentScale = 0.90f
-/** Left and right inset shared by the header and every card. The collapsed side rail is 72dp at
- *  the app's density; this page draws at 90% density, so 80dp here clears it (72 / 0.9). */
-private val YouTubePageInset = 80.dp
+/** Small edge margin for the page. The side menu's own room comes from LocalForkPageInset. */
+private val YouTubeEdgeInset = 28.dp
 
 /**
  * The YouTube page: its own section in the side menu, laid out like the YouTube app: feeds along
@@ -270,6 +269,10 @@ fun YouTubeScreen(
     val focusManager = LocalFocusManager.current
     val sidebarExpanded = com.nuvio.tv.LocalSidebarExpanded.current
     val openNuvioSidebar = com.nuvio.tv.LocalOpenSidebar.current
+    // Room for the side menu only while it is showing, plus a small edge margin. This keeps
+    // the first poster clear of the rail without leaving black bands when the menu is hidden.
+    val pageStartInset = com.nuvio.tv.LocalForkPageInset.current + YouTubeEdgeInset
+    val pageEndInset = YouTubeEdgeInset
 
     // Leaving the search behind (another tab, a card, settings) should put the magnifier back,
     // not leave a text box sitting in the header of the next page.
@@ -325,7 +328,7 @@ fun YouTubeScreen(
     }
 
     CompositionLocalProvider(LocalDensity provides contentDensity) {
-    Column(Modifier.fillMaxSize().padding(start = YouTubePageInset, end = YouTubePageInset, top = 16.dp)) {
+    Column(Modifier.fillMaxSize().padding(start = pageStartInset, end = pageEndInset, top = 16.dp)) {
         // The header and tab strip share one collapsing band, so the cards get the full screen
         // height while browsing and the whole header comes back on one press.
         AnimatedVisibility(
@@ -674,6 +677,8 @@ fun YouTubeScreen(
             state = state,
             account = account,
             viewModel = viewModel,
+            pageStartInset = pageStartInset,
+            pageEndInset = pageEndInset,
             onPlay = { playable ->
                 collapseSearch()
                 onPlay(playable)
@@ -762,6 +767,8 @@ private fun Content(
     onSelectAccount: (Int) -> Unit,
     onAddAccount: () -> Unit,
     onSignOut: () -> Unit,
+    pageStartInset: androidx.compose.ui.unit.Dp,
+    pageEndInset: androidx.compose.ui.unit.Dp,
     tabsFocus: FocusRequester? = null,
     firstCardFocus: FocusRequester? = null,
     feedScrollToTopTick: Int = 0,
@@ -777,7 +784,7 @@ private fun Content(
     // affect only grids, so changing it from 5 to 3 or 4 left the Home rows looking identical.
     val rowCardWidth = run {
         val gapDp = 16f * (columnCount - 1).coerceAtLeast(0)
-        ((screenWidthDp - YouTubePageInset.value * 2f - gapDp) / columnCount.toFloat())
+        ((screenWidthDp - (pageStartInset + pageEndInset).value - gapDp) / columnCount.toFloat())
             .coerceIn(150f, 340f)
             .dp
     }
