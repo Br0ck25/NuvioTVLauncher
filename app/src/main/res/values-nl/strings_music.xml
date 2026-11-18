@@ -360,4 +360,10 @@
     <string name="music_video_label">"MUZIEKVIDEO"</string>
     <string name="music_video_next_track">"Volgend nummer"</string>
     <string name="music_video_back_now_playing">"Terug naar Nu afspelen"</string>
+    <string name="music_new_qr">"Nieuwe QR"</string>
+    <string name="music_phone_wifi_help">"Alleen bereikbaar op dezelfde Wi-Fi. Deze link verloopt na vijf minuten."</string>
+    <string name="music_done">"Klaar"</string>
+    <string name="music_phone_scan_help">"Scan de code en vul het formulier op je telefoon in. De tv bewaart het ingevulde formulier ook."</string>
+    <string name="music_phone_link_target">"%1$s met telefoon koppelen"</string>
+    <string name="music_phone_qr">"QR-code voor telefoonkoppeling"</string>
 </resources>

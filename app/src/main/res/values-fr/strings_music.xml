@@ -360,4 +360,10 @@
     <string name="music_video_label">"CLIP"</string>
     <string name="music_video_next_track">"Piste suivante"</string>
     <string name="music_video_back_now_playing">"Retour à la lecture en cours"</string>
+    <string name="music_new_qr">"Nouveau QR"</string>
+    <string name="music_phone_wifi_help">"Accessible uniquement sur le même Wi-Fi. Ce lien expire après cinq minutes."</string>
+    <string name="music_done">"Terminé"</string>
+    <string name="music_phone_scan_help">"Scannez le code et remplissez le formulaire sur votre téléphone. Le téléviseur conserve aussi le formulaire saisi."</string>
+    <string name="music_phone_link_target">"Lier %1$s au téléphone"</string>
+    <string name="music_phone_qr">"Code QR de liaison du téléphone"</string>
 </resources>

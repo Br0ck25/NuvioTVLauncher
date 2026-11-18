@@ -360,4 +360,10 @@
     <string name="music_video_label">"VÍDEO MUSICAL"</string>
     <string name="music_video_next_track">"Pista siguiente"</string>
     <string name="music_video_back_now_playing">"Volver a Reproduciendo ahora"</string>
+    <string name="music_new_qr">"Nuevo QR"</string>
+    <string name="music_phone_wifi_help">"Solo accesible en la misma Wi-Fi. Este enlace caduca a los cinco minutos."</string>
+    <string name="music_done">"Listo"</string>
+    <string name="music_phone_scan_help">"Escanea el código y rellena el formulario en tu teléfono. El televisor también conserva el formulario escrito."</string>
+    <string name="music_phone_link_target">"Vincular %1$s con el teléfono"</string>
+    <string name="music_phone_qr">"Código QR de vinculación del teléfono"</string>
 </resources>

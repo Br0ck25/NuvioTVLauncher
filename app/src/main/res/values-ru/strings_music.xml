@@ -360,4 +360,10 @@
     <string name="music_video_label">"МУЗЫКАЛЬНЫЙ КЛИП"</string>
     <string name="music_video_next_track">"Следующий трек"</string>
     <string name="music_video_back_now_playing">"Назад к воспроизведению"</string>
+    <string name="music_new_qr">"Новый QR-код"</string>
+    <string name="music_phone_wifi_help">"Доступно только в той же сети Wi-Fi. Ссылка действует пять минут."</string>
+    <string name="music_done">"Готово"</string>
+    <string name="music_phone_scan_help">"Отсканируйте код и заполните форму на телефоне. Телевизор также сохраняет введённую форму."</string>
+    <string name="music_phone_link_target">"Связать %1$s с телефоном"</string>
+    <string name="music_phone_qr">"QR-код подключения телефона"</string>
 </resources>

@@ -360,4 +360,10 @@
     <string name="music_video_label">"فيديو موسيقي"</string>
     <string name="music_video_next_track">"المقطع التالي"</string>
     <string name="music_video_back_now_playing">"العودة إلى التشغيل الآن"</string>
+    <string name="music_new_qr">"رمز QR جديد"</string>
+    <string name="music_phone_wifi_help">"يمكن الوصول فقط عبر نفس شبكة Wi-Fi. تنتهي صلاحية هذا الرابط بعد خمس دقائق."</string>
+    <string name="music_done">"تم"</string>
+    <string name="music_phone_scan_help">"امسح الرمز واملأ النموذج على هاتفك. يحتفظ التلفاز بالنموذج المكتوب أيضًا."</string>
+    <string name="music_phone_link_target">"ربط %1$s بالهاتف"</string>
+    <string name="music_phone_qr">"رمز QR لربط الهاتف"</string>
 </resources>

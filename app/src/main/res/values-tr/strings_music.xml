@@ -360,4 +360,10 @@
     <string name="music_video_label">"MÜZİK VİDEOSU"</string>
     <string name="music_video_next_track">"Sonraki parça"</string>
     <string name="music_video_back_now_playing">"Şimdi Çalınan’a dön"</string>
+    <string name="music_new_qr">"Yeni QR"</string>
+    <string name="music_phone_wifi_help">"Yalnızca aynı Wi-Fi’de erişilebilir. Bu bağlantı beş dakika sonra sona erer."</string>
+    <string name="music_done">"Bitti"</string>
+    <string name="music_phone_scan_help">"Kodu tarayın ve formu telefonunuzda doldurun. Televizyon yazılan formu da saklar."</string>
+    <string name="music_phone_link_target">"%1$s öğesini telefonla bağla"</string>
+    <string name="music_phone_qr">"Telefon bağlantısı QR kodu"</string>
 </resources>

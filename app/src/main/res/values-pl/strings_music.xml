@@ -360,4 +360,10 @@
     <string name="music_video_label">"TELEDYSK"</string>
     <string name="music_video_next_track">"Następny utwór"</string>
     <string name="music_video_back_now_playing">"Wróć do odtwarzania"</string>
+    <string name="music_new_qr">"Nowy kod QR"</string>
+    <string name="music_phone_wifi_help">"Dostępne tylko w tej samej sieci Wi-Fi. Link wygasa po pięciu minutach."</string>
+    <string name="music_done">"Gotowe"</string>
+    <string name="music_phone_scan_help">"Zeskanuj kod i wypełnij formularz na telefonie. Telewizor zachowuje także wpisany formularz."</string>
+    <string name="music_phone_link_target">"Połącz %1$s z telefonem"</string>
+    <string name="music_phone_qr">"Kod QR łączenia telefonu"</string>
 </resources>
