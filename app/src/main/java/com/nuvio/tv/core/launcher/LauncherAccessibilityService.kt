@@ -163,6 +163,8 @@ class LauncherAccessibilityService : AccessibilityService() {
         if (nativeHome || !LauncherSetup.accessibilityFallbackAllowed(this)) return
         // Fast path: a known stock launcher's window. Start Nuvio straight away, with no further
         // package-manager scans, so the takeover is not delayed by anything else.
+        // Google's setup recovery screen is not a launcher to take over from: it closes itself at once.
+        if (pkg == "com.google.android.tungsten.setupwraith" || pkg == "com.google.android.setupwraith") return
         if (pkg in KNOWN_STOCK_LAUNCHERS) {
             val now = SystemClock.uptimeMillis()
             if (delivery.acceptLauncherWindow(now)) {
@@ -231,7 +233,20 @@ class LauncherAccessibilityService : AccessibilityService() {
         super.onDestroy()
     }
 
+    /** When the service last started the launcher, to spot a loop (see [launchHome]). */
+    private val recentLaunches = ArrayDeque<Long>()
+
     private fun launchHome(pressedAtMs: Long) {
+        // A window that closes itself and is reopened by Android (Google's setup recovery screen when the TV's own
+        // launcher is gone) would make this start Nuvio again and again until the system crashed. Three starts
+        // within five seconds is a loop, not a Home press: stop and let it settle.
+        val now = SystemClock.uptimeMillis()
+        while (recentLaunches.isNotEmpty() && now - recentLaunches.first() > 5_000L) recentLaunches.removeFirst()
+        if (recentLaunches.size >= 3) {
+            Log.w(TAG, "Takeover loop: ${recentLaunches.size} starts in 5 s; skipping")
+            return
+        }
+        recentLaunches.addLast(now)
         try {
             if (!HomeForegroundDelivery.deliver(pressedAtMs)) {
                 val intent = Intent(this, MainActivity::class.java).apply {
