@@ -310,6 +310,8 @@ private fun categoryKeywords(category: SettingsCategory): String = when (categor
     SettingsCategory.PLAYBACK -> "playback player video audio subtitles buffer network"
     SettingsCategory.LIVE_TV -> "live tv playlists m3u xtream guide epg recordings"
     SettingsCategory.ON_DEMAND -> "on demand vod movies series"
+    SettingsCategory.DEFAULT_LAUNCHER -> "default launcher home screen home button override accessibility setup phone adb"
+    SettingsCategory.REMOTE_BUTTONS -> "remote buttons button mapper keys shortcuts"
     SettingsCategory.SPORTS -> "sports teams leagues games"
     SettingsCategory.YOUTUBE -> "onetube youtube account playback history"
     SettingsCategory.CALENDAR -> "calendar schedule"

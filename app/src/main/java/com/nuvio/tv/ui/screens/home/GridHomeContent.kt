@@ -343,6 +343,7 @@ fun GridHomeContent(
                 is GridItem.SeeAll -> "see_all_${item.addonBaseUrl.hashCode()}_${item.catalogId}_${item.addonId}_${item.type}"
                 is GridItem.CollectionHeader -> "col_header_${item.collectionId}"
                 is GridItem.CollectionFolder -> "col_folder_${item.collectionId}_${item.folder.id}"
+                is GridItem.InstalledAppsRow -> "installed_apps_row"
             }
             item to key
         }
@@ -483,7 +484,7 @@ fun GridHomeContent(
                     key = { it.second },
                     span = { pair ->
                         val spanCount = when (pair.first) {
-                            is GridItem.Hero, is GridItem.SectionDivider, is GridItem.CollectionHeader -> maxLineSpan
+                            is GridItem.Hero, is GridItem.SectionDivider, is GridItem.CollectionHeader, is GridItem.InstalledAppsRow -> maxLineSpan
                             else -> 1
                         }
                         GridItemSpan(spanCount)
@@ -496,6 +497,7 @@ fun GridHomeContent(
                             is GridItem.SeeAll -> "see_all"
                             is GridItem.CollectionHeader -> "collection_header"
                             is GridItem.CollectionFolder -> "collection_folder"
+                            is GridItem.InstalledAppsRow -> "installed_apps"
                         }
                     }
                 ) { (gridItem, itemKey) ->
@@ -728,7 +730,7 @@ fun GridHomeContent(
                     key = { it.second },
                     span = { pair ->
                         val spanCount = when (pair.first) {
-                            is GridItem.Hero, is GridItem.SectionDivider, is GridItem.CollectionHeader -> maxLineSpan
+                            is GridItem.Hero, is GridItem.SectionDivider, is GridItem.CollectionHeader, is GridItem.InstalledAppsRow -> maxLineSpan
                             else -> 1
                         }
                         GridItemSpan(spanCount)
@@ -741,6 +743,7 @@ fun GridHomeContent(
                             is GridItem.SeeAll -> "see_all"
                             is GridItem.CollectionHeader -> "collection_header"
                             is GridItem.CollectionFolder -> "collection_folder"
+                            is GridItem.InstalledAppsRow -> "installed_apps"
                         }
                     }
                 ) { (gridItem, itemKey) ->
@@ -881,6 +884,10 @@ fun GridHomeContent(
                         SectionDivider(catalogName = gridItem.title)
                     }
 
+                    is GridItem.InstalledAppsRow -> {
+                        // Launcher: the installed apps, placed like any other row.
+                        com.nuvio.tv.ui.components.InstalledAppsHomeRow(startPadding = 0.dp, titleStyle = MaterialTheme.typography.headlineMedium)
+                    }
                     is GridItem.CollectionFolder -> {
                         GridCollectionFolderCard(
                             folder = gridItem.folder,

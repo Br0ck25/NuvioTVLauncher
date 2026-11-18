@@ -425,7 +425,7 @@ fun ModernHomeContent(
                         (item.payload as? ModernPayload.CollectionFolder)?.focusKey == selection.focusKey
                     }
                 }
-                is ModernPayload.ContinueWatching -> true
+                is ModernPayload.ContinueWatching, is ModernPayload.InstalledApp -> true
             }
         } ?: false
         if (staleSelection) {

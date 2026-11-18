@@ -1,5 +1,7 @@
 package com.nuvio.tv
 
+import androidx.compose.material.icons.filled.Apps
+import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import android.content.Context
 import android.content.Intent
 import android.content.res.Configuration
@@ -203,6 +205,18 @@ import com.nuvio.tv.ui.membership.LocalMemberAccess
 import com.nuvio.tv.ui.screens.account.AuthQrSignInScreen
 import com.nuvio.tv.ui.screens.addon.EssentialAddonSetupScreen
 import com.nuvio.tv.ui.screens.profile.ProfileSelectionScreen
+import com.nuvio.tv.core.launcher.AndroidButtonActionPlatformBridge
+import com.nuvio.tv.core.launcher.ButtonAction
+import com.nuvio.tv.core.launcher.ButtonEventSource
+import com.nuvio.tv.core.launcher.ButtonKeyEventHandler
+import com.nuvio.tv.core.launcher.ForegroundButtonActionHandler
+import com.nuvio.tv.core.launcher.HomeForegroundDelivery
+import com.nuvio.tv.ui.screens.setup.LauncherSetupWizard
+import com.nuvio.tv.ui.screens.setup.LauncherSetupWizardPrefs
+import com.nuvio.tv.core.launcher.HomeKeyGesture
+import com.nuvio.tv.core.launcher.HomeKeyPress
+import com.nuvio.tv.core.launcher.LauncherHomeRequest
+import com.nuvio.tv.core.launcher.LauncherSetup
 import com.nuvio.tv.ui.theme.NuvioComponents
 import com.nuvio.tv.ui.theme.NuvioLayout
 import com.nuvio.tv.ui.theme.NuvioMotion
@@ -234,15 +248,15 @@ import kotlinx.coroutines.flow.map
 import kotlinx.coroutines.launch
 
 val LocalSidebarExpanded = compositionLocalOf { false }
-val LocalRootContentInset = compositionLocalOf { 0.dp }
-
-/** Live TV fork pages' room for the older side menu (only while the menu is showing). */
-val LocalForkPageInset = compositionLocalOf { 0.dp }
 
 /** Opens Nuvio's side menu from a screen (used by Live TV's back button). */
 val LocalOpenSidebar = compositionLocalOf<() -> Unit> { {} }
 /** Shows the shared "press back again to exit" prompt at the app root. */
 val LocalRequestAppExit = compositionLocalOf<() -> Unit> { {} }
+val LocalRootContentInset = compositionLocalOf { 0.dp }
+
+/** Live TV fork pages' room for the older side menu (the launcher uses LocalRootContentInset instead). */
+val LocalForkPageInset = compositionLocalOf { 0.dp }
 val LocalContentFocusRequester = compositionLocalOf { FocusRequester.Default }
 
 data class SplashBackground(
@@ -393,8 +407,46 @@ open class MainActivity : ComponentActivity() {
     @Inject
     lateinit var partyRepository: PartyRepository
 
+    // The remote Button Mapper. Lazy: nothing about it is built until the activity is up (or a mapped
+    // button asks for it), so it adds nothing to the launcher's start-up.
+    @Inject
+    lateinit var buttonMapperProvider: dagger.Lazy<ButtonKeyEventHandler>
+
+    private val pendingMappedRouteRequest = MutableStateFlow<String?>(null)
+    private val pendingMappedRouteNonce = MutableStateFlow(0)
+
     private val pendingDeepLinkUrl = MutableStateFlow<String?>(null)
     private val pendingLaunchIntent = MutableStateFlow<Intent?>(null)
+
+    /**
+     * Incremented on every HOME request (the Home key via the Home app role or the launcher's
+     * accessibility service, or a plain HOME-category launch). Navigation observes it and returns to the
+     * top of Home.
+     */
+    private val pendingHomeRequestNonce = MutableStateFlow(0)
+
+    /** Set when Home is double-tapped; consumed once the profile switcher is shown. */
+    private val pendingProfileSwitchRequest = MutableStateFlow(false)
+
+    /** Bumped when the remote's Apps button (or an ALL_APPS intent) asks for the Apps page. */
+    private val pendingOpenAppsNonce = MutableStateFlow(0)
+
+    /** Single vs. double tap detection for Home pressed while the launcher is in front. */
+    private val homeKeyGesture = HomeKeyGesture()
+
+    /**
+     * True while this app is the device's launcher: the system's Home app, or the accessibility
+     * override is on. Then Back must never leave the app, and Home is handled here.
+     */
+    @Volatile private var nuvioHandlesHomeKey = false
+
+    /** One-time offer of the native Home role after an update; the result is re-checked, never trusted. */
+    private val homeRoleOfferLauncher = registerForActivityResult(
+        androidx.activity.result.contract.ActivityResultContracts.StartActivityForResult()
+    ) {
+        LauncherSetup.recordRoleRequestResult(this)
+        refreshHomeRole()
+    }
 
     private lateinit var jankStats: JankStats
 
@@ -832,7 +884,22 @@ open class MainActivity : ComponentActivity() {
                     val surfaceContentReady = hasSeenAuthQrOnFirstLaunch != null &&
                         authState !is AuthState.Loading
 
-                    if (!surfaceContentReady) {
+                    // Launcher: the first-run setup (Home app, Home button, notifications) comes before sign-in.
+                    // An update can quietly switch the Home button override off: if it was on and is off now,
+                    // reopen the setup at the checklist with a notice instead of leaving Home on the stock launcher.
+                    var showLauncherSetup by remember {
+                        com.nuvio.tv.core.launcher.LauncherSetup.checkOverrideLost(this@MainActivity)
+                        mutableStateOf(!LauncherSetupWizardPrefs.isDone(this@MainActivity))
+                    }
+                    if (showLauncherSetup) {
+                        startupDestination = StartupDestination.Setup
+                        LauncherSetupWizard(
+                            onFinished = {
+                                LauncherSetupWizardPrefs.markDone(this@MainActivity)
+                                showLauncherSetup = false
+                            }
+                        )
+                    } else if (!surfaceContentReady) {
                         // Still loading auth state; nothing to show yet.
                     } else if (
                         hasSeenAuthQrOnFirstLaunch == false &&
@@ -975,21 +1042,59 @@ open class MainActivity : ComponentActivity() {
                         ambientIdleController.onInteraction()
                     }
 
-                    // The player and home are routes inside this activity, so leaving the
-                    // player or returning home never reaches onResume. Ask for the same
-                    // throttled watch state pull a foreground return gets.
-                    LaunchedEffect(navController) {
-                        var previousRoute: String? = null
-                        navController.currentBackStackEntryFlow.collect { entry ->
-                            val route = entry.destination.route
-                            if (route == previousRoute) return@collect
-                            val leftPlayer = previousRoute == Screen.Player.route
-                            val returnedHome = previousRoute != null && route == Screen.Home.route
-                            if (leftPlayer || returnedHome) {
-                                startupSyncService.requestNavigationSync()
-                            }
-                            previousRoute = route
+                    // Launcher: the Home key / a HOME launch always lands on Home, scrolled to the top,
+                    // whatever screen (tab, detail page, search, settings, player) is showing.
+                    val homeRequestNonce by pendingHomeRequestNonce.collectAsStateWithLifecycle()
+                    var pendingHomeScrollReset by remember { mutableStateOf(false) }
+                    LaunchedEffect(homeRequestNonce, layoutChosen) {
+                        if (homeRequestNonce == 0 || layoutChosen != true) return@LaunchedEffect
+                        if (navController.currentDestination?.route == Screen.Home.route) {
+                            requestHomeScrollToTop(navController)
+                            return@LaunchedEffect
                         }
+                        // Reset only once Home is the current destination; Home restores its own saved
+                        // scroll position, so the reset has to land after that restore.
+                        pendingHomeScrollReset = true
+                        val popped = navController.popBackStack(Screen.Home.route, inclusive = false)
+                        if (!popped) {
+                            navController.navigate(Screen.Home.route) {
+                                popUpTo(navController.graph.startDestinationId) { saveState = true }
+                                launchSingleTop = true
+                                restoreState = true
+                            }
+                        }
+                    }
+                    val openAppsNonce by pendingOpenAppsNonce.collectAsStateWithLifecycle()
+                    LaunchedEffect(openAppsNonce, layoutChosen) {
+                        if (openAppsNonce == 0 || layoutChosen != true) return@LaunchedEffect
+                        if (navController.currentDestination?.route == Screen.Apps.route) return@LaunchedEffect
+                        navController.navigate(Screen.Apps.route) {
+                            popUpTo(navController.graph.startDestinationId) { saveState = true }
+                            launchSingleTop = true
+                            restoreState = true
+                        }
+                    }
+                    // A remote button mapped to open a page (Search, Library, Settings, the TV guide).
+                    val mappedRoute by pendingMappedRouteRequest.collectAsStateWithLifecycle()
+                    val mappedRouteNonce by pendingMappedRouteNonce.collectAsStateWithLifecycle()
+                    LaunchedEffect(mappedRoute, mappedRouteNonce, layoutChosen) {
+                        val targetRoute = mappedRoute ?: return@LaunchedEffect
+                        if (layoutChosen != true) return@LaunchedEffect
+                        pendingMappedRouteRequest.value = null
+                        if (navController.currentDestination?.route == targetRoute) return@LaunchedEffect
+                        if (!navController.popBackStack(targetRoute, inclusive = false)) {
+                            navController.navigate(targetRoute) {
+                                popUpTo(navController.graph.startDestinationId) { saveState = true }
+                                launchSingleTop = true
+                                restoreState = true
+                            }
+                        }
+                    }
+                    LaunchedEffect(pendingHomeScrollReset, actualRoute) {
+                        if (!pendingHomeScrollReset || actualRoute != Screen.Home.route) return@LaunchedEffect
+                        repeat(2) { withFrameNanos { } }
+                        requestHomeScrollToTop(navController)
+                        pendingHomeScrollReset = false
                     }
 
                     // Auto-play next episode for EXTERNAL players: the tracker resolves the
@@ -1229,6 +1334,7 @@ open class MainActivity : ComponentActivity() {
                             add(Screen.Calendar.route)
                             add(Screen.Search.route)
                             add(Screen.Library.route)
+                            add(Screen.Apps.route)
                             add(Screen.Settings.route)
                             if (discoverLocation == DiscoverLocation.IN_SIDEBAR) {
                                 add(Screen.Discover.route)
@@ -1241,6 +1347,7 @@ open class MainActivity : ComponentActivity() {
                     val strNavSearch = stringResource(R.string.nav_search)
                     val strNavLibrary = stringResource(R.string.nav_library)
                     val strNavSettings = stringResource(R.string.nav_settings)
+                    val strNavApps = stringResource(R.string.apps_title)
                     // Live TV fork: Home first and Settings at the bottom; the pages between in the
                     // order set in Settings → Menu & Features, with a thin line above Live TV's own pages.
                     val drawerItems = remember(
@@ -1249,6 +1356,7 @@ open class MainActivity : ComponentActivity() {
                         strNavSearch,
                         strNavLibrary,
                         strNavSettings,
+                        strNavApps,
                         discoverLocation,
                         liveTvInSidebar,
                         onDemandInSidebar,
@@ -1270,6 +1378,7 @@ open class MainActivity : ComponentActivity() {
                             } else null
                             pages.SEARCH -> if (id !in hiddenPages) DrawerItem(route = Screen.Search.route, label = strNavSearch, iconRes = R.raw.sidebar_search) else null
                             pages.LIBRARY -> if (id !in hiddenPages) DrawerItem(route = Screen.Library.route, label = strNavLibrary, iconRes = R.raw.sidebar_library) else null
+                            pages.APPS -> if (id !in hiddenPages) DrawerItem(route = Screen.Apps.route, label = strNavApps, icon = Icons.Default.Apps) else null
                             pages.CALENDAR -> if (calendarInSidebar && id !in hiddenPages) DrawerItem(route = Screen.Calendar.route, label = "Calendar", icon = Icons.Default.DateRange) else null
                             // Live TV's dot: something is recording (Recordings opens from the guide).
                             pages.LIVE_TV -> if (liveTvInSidebar) DrawerItem(route = Screen.LiveTv.route, label = "Live TV", icon = Icons.Default.LiveTv, badge = recordingNow && !recordingsInSidebar) else null
@@ -1308,13 +1417,18 @@ open class MainActivity : ComponentActivity() {
                     }?.route
                     val selectedDrawerItem = drawerItems.firstOrNull { it.route == selectedDrawerRoute } ?: drawerItems.first()
 
-                    val handleExitApp: () -> Unit = { this@MainActivity.handleAppExit() }
+                    val handleExitApp: () -> Unit = {
+                        // The launcher is the device's Home screen: Back never leaves it.
+                        if (!nuvioHandlesHomeKey) this@MainActivity.handleAppExit()
+                    }
 
                     val updateViewModel: UpdateViewModel = hiltViewModel(this@MainActivity)
                     val updateState by updateViewModel.uiState.collectAsState()
                     val updateBannerState = updateState.copy(
+                        // Not over the first-run launcher setup: the banner used to sit on top of its screens.
                         showBanner = updateState.showBanner && currentRoute?.startsWith("player/") != true &&
-                            currentRoute != Screen.LiveTvMultiview.route && currentRoute != Screen.SportsMultiview.route
+                            currentRoute != Screen.LiveTvMultiview.route && currentRoute != Screen.SportsMultiview.route &&
+                            LauncherSetupWizardPrefs.isDone(this@MainActivity)
                     )
                     // Live TV fork: the Live TV row on Home lets Up through to the banner while it shows.
                     LaunchedEffect(updateBannerState.showBanner, updateBannerState.update != null) {
@@ -1368,6 +1482,7 @@ open class MainActivity : ComponentActivity() {
                                         onSwitchProfile = handleSwitchProfile,
                                         onNavigate = { optimisticRoute = it },
                                         onExitApp = handleExitApp,
+                                        launcherMode = { nuvioHandlesHomeKey },
                                         onToggleLiveTvGroup = { liveTvGroupOpen = !liveTvGroupOpen },
                                         onSidebarExpandedChange = { expanded ->
                                             sidebarOpenNow = expanded
@@ -1394,6 +1509,7 @@ open class MainActivity : ComponentActivity() {
                                         onSwitchProfile = handleSwitchProfile,
                                         onNavigate = { optimisticRoute = it },
                                         onExitApp = handleExitApp,
+                                        launcherMode = { nuvioHandlesHomeKey },
                                         onToggleLiveTvGroup = { liveTvGroupOpen = !liveTvGroupOpen },
                                         onSidebarExpandedChange = { expanded ->
                                             sidebarOpenNow = expanded
@@ -1504,6 +1620,17 @@ open class MainActivity : ComponentActivity() {
     override fun onResume() {
         super.onResume()
         ambientIdleController.dismiss()
+        refreshHomeRole()
+        LauncherSetup.takePendingRoleOffer(this)?.let { offer ->
+            runCatching { homeRoleOfferLauncher.launch(offer) }
+                .onFailure { LauncherSetup.recordRoleRequestResult(this, launchFailed = true) }
+        }
+        HomeForegroundDelivery.attach(this, ::handleHomeKeyPress)
+        // After the first frame, so the Button Mapper is never built on the way to the launcher showing.
+        window?.decorView?.post {
+            if (isFinishing || isDestroyed) return@post
+            runCatching { buttonMapperProvider.get().actionExecutor.attachForegroundHandler(this, foregroundButtonHandler) }
+        }
         if (::jankStats.isInitialized) jankStats.isTrackingEnabled = true
         memberAccessRepository.refreshIfStale()
         lifecycleScope.launch {
@@ -1526,6 +1653,111 @@ open class MainActivity : ComponentActivity() {
         setIntent(intent)
         captureDeepLinkIntent(intent)
         captureLaunchIntent(intent)
+        captureHomeRequestIntent(intent)
+        captureAppsRequest(intent)
+    }
+
+    /** Home pressed while the launcher is already in front: a single tap goes to the top of Home, two open the profile switcher. */
+    private fun handleHomeKeyPress(pressedAtMs: Long) {
+        // A Home button the user changed in Button Mapper runs their actions; otherwise it is the usual
+        // tap (top of Home) / double tap (profiles).
+        val mapper = customHomeMapper()
+        if (mapper != null) {
+            mapper.onHomePress(pressedAtMs = pressedAtMs, source = ButtonEventSource.FOREGROUND)
+            return
+        }
+        applyHomeKeyPress(homeKeyGesture.onPress(pressedAtMs))
+    }
+
+    /** The Button Mapper, once it has been built; it is never built by asking. */
+    private fun builtMapper(): ButtonKeyEventHandler? = ButtonKeyEventHandler.currentInstance()
+
+    /** The Button Mapper, but only when the user has changed what the Home button does. */
+    private fun customHomeMapper(): ButtonKeyEventHandler? {
+        val mapper = builtMapper() ?: return null
+        val mapping = mapper.repository.activeMappingFor(KeyEvent.KEYCODE_HOME, isGlobal = false) ?: return null
+        return if (mapping.matchesFactoryHomeDefaults()) null else mapper
+    }
+
+    /** What a mapped button asks the launcher to do while it is in front. */
+    private val foregroundButtonHandler = object : ForegroundButtonActionHandler {
+        override fun onExecuteAction(action: ButtonAction): Boolean = executeForegroundButtonAction(action)
+    }
+
+    private fun openMappedRoute(route: String) {
+        pendingMappedRouteRequest.value = route
+        pendingMappedRouteNonce.value += 1
+    }
+
+    private fun executeForegroundButtonAction(action: ButtonAction): Boolean {
+        ambientIdleController.dismiss()
+        return when (action) {
+            ButtonAction.GoToTopOfHome -> {
+                pendingHomeRequestNonce.value += 1
+                true
+            }
+            ButtonAction.OpenProfileSwitcher -> {
+                pendingHomeRequestNonce.value += 1
+                pendingProfileSwitchRequest.value = true
+                true
+            }
+            ButtonAction.OpenHome -> { openMappedRoute(Screen.Home.route); true }
+            ButtonAction.OpenSearch -> { openMappedRoute(Screen.Search.route); true }
+            ButtonAction.OpenLibrary -> { openMappedRoute(Screen.Library.route); true }
+            ButtonAction.OpenSettings -> { openMappedRoute(Screen.Settings.route); true }
+            ButtonAction.OpenApps,
+            ButtonAction.OpenAppDrawer -> {
+                pendingOpenAppsNonce.value += 1
+                true
+            }
+            ButtonAction.OpenTvGuide -> { openMappedRoute(Screen.LiveTv.route); true }
+            ButtonAction.OpenLiveTv -> {
+                com.nuvio.tv.livetv.calendar.CalendarNav.openLiveTv()
+                true
+            }
+            else -> false
+        }
+    }
+
+    private fun applyHomeKeyPress(press: HomeKeyPress, openProfileSelection: Boolean = false) {
+        if (press == HomeKeyPress.IGNORED) return
+        ambientIdleController.dismiss()
+        pendingHomeRequestNonce.value += 1
+        if (press == HomeKeyPress.DOUBLE || openProfileSelection) {
+            pendingProfileSwitchRequest.value = true
+        }
+    }
+
+    private fun captureAppsRequest(intent: Intent?) {
+        if (LauncherHomeRequest.isAppsRequest(intent)) {
+            ambientIdleController.dismiss()
+            pendingOpenAppsNonce.value += 1
+        }
+    }
+
+    private fun refreshHomeRole() {
+        nuvioHandlesHomeKey = runCatching { LauncherSetup.handlesHome(this) }.getOrDefault(false)
+    }
+
+    /**
+     * Raw keys, native HOME launches and accessibility requests all use the same tap detector. A cold
+     * native HOME launch records the first press but leaves startup/onboarding alone.
+     */
+    private fun captureHomeRequestIntent(intent: Intent?, fromNewIntent: Boolean = true) {
+        // A mapped button pressed in another app asked the launcher to do something (open Search ...).
+        if (!intent?.getStringExtra(AndroidButtonActionPlatformBridge.EXTRA_BUTTON_MAPPER_ACTION).isNullOrBlank()) {
+            val handled = runCatching {
+                buttonMapperProvider.get().onActivityIntent(intent, android.os.SystemClock.uptimeMillis(), fromNewIntent)
+            }.getOrDefault(false)
+            if (handled) return
+        }
+        val press = LauncherHomeRequest.onIntent(
+            intent = intent,
+            gesture = homeKeyGesture,
+            nowMs = android.os.SystemClock.uptimeMillis(),
+            fromNewIntent = fromNewIntent
+        )
+        applyHomeKeyPress(press, LauncherHomeRequest.isProfileSelectionRequested(intent))
     }
 
     private fun captureDeepLinkIntent(intent: Intent?) {
@@ -1541,6 +1773,11 @@ open class MainActivity : ComponentActivity() {
     }
 
     override fun onPause() {
+        HomeForegroundDelivery.detach(this)
+        builtMapper()?.let {
+            it.actionExecutor.detachForegroundHandler(this)
+            it.cancelPendingGestures()
+        }
         super.onPause()
         if (::jankStats.isInitialized) jankStats.isTrackingEnabled = false
     }
@@ -1589,10 +1826,48 @@ open class MainActivity : ComponentActivity() {
         ambientIdleController.onInteraction()
     }
 
+    override fun onWindowFocusChanged(hasFocus: Boolean) {
+        super.onWindowFocusChanged(hasFocus)
+        if (!hasFocus) builtMapper()?.cancelPendingGestures()
+    }
+
     override fun dispatchKeyEvent(event: KeyEvent): Boolean {
+        // Button Mapper: while the user is teaching it a button (Settings), that press belongs to it.
+        val mapper = builtMapper()
+        if (mapper != null && mapper.captureController.isListening()) {
+            if (mapper.onKeyEvent(
+                    event = event,
+                    source = ButtonEventSource.FOREGROUND,
+                    accessibilityEnabled = com.nuvio.tv.core.launcher.LauncherAccessibilityService.isServiceEnabled(this),
+                    nativeHomeActive = LauncherSetup.isDefaultHome(this)
+                )
+            ) return true
+        }
         // Live TV fork: remember when the remote was last used (the home screen's Live TV row
         // only claims the first highlight while nobody has pressed anything yet).
         if (event.action == KeyEvent.ACTION_DOWN) com.nuvio.tv.livetv.home.LiveTvHomeFocus.lastKeyAt = android.os.SystemClock.uptimeMillis()
+        // HOME is checked before the ambient handler: while the slideshow is up a Home press should end it
+        // and go home. Some firmware delivers raw HOME keys; most send a HOME intent or let the
+        // accessibility service filter the key, so this is a fallback, not the only path.
+        // The remote's Apps button opens the launcher's own Apps page instead of the TV's app list.
+        if (com.nuvio.tv.core.launcher.AppsKeyStore.matches(this, event.keyCode)) {
+            if (event.action == KeyEvent.ACTION_UP && !event.isCanceled) {
+                ambientIdleController.dismiss()
+                pendingOpenAppsNonce.value += 1
+            }
+            return true
+        }
+        if (event.keyCode == KeyEvent.KEYCODE_HOME) refreshHomeRole()
+        if (event.keyCode == KeyEvent.KEYCODE_HOME && nuvioHandlesHomeKey) {
+            ambientIdleController.onInteraction()
+            if (event.action == KeyEvent.ACTION_DOWN && ambientIdleController.isShowing.value) {
+                ambientIdleController.dismiss()
+            }
+            if (event.action == KeyEvent.ACTION_UP && !event.isCanceled) {
+                handleHomeKeyPress(event.eventTime)
+            }
+            return true
+        }
         if (ambientIdleController.consumeKeyEvent(event)) return true
         if (event.keyCode == KeyEvent.KEYCODE_BACK) {
             if (longPressBackHeld.value) {
@@ -1625,6 +1900,16 @@ open class MainActivity : ComponentActivity() {
             }
             return true
         }
+        // Button Mapper: a remote button the user gave actions to (only when that button has an enabled mapping).
+        if (mapper != null && event.keyCode != KeyEvent.KEYCODE_HOME &&
+            mapper.repository.activeMappingFor(event.keyCode, isGlobal = false) != null &&
+            mapper.onKeyEvent(
+                event = event,
+                source = ButtonEventSource.FOREGROUND,
+                accessibilityEnabled = com.nuvio.tv.core.launcher.LauncherAccessibilityService.isServiceEnabled(this),
+                nativeHomeActive = LauncherSetup.isDefaultHome(this)
+            )
+        ) return true
         return super.dispatchKeyEvent(event)
     }
 
@@ -1704,6 +1989,7 @@ private fun LegacySidebarScaffold(
     onSwitchProfile: () -> Unit,
     onNavigate: (String) -> Unit,
     onExitApp: () -> Unit,
+    launcherMode: () -> Boolean = { false },
     onToggleLiveTvGroup: () -> Unit = {},
     onSidebarExpandedChange: (Boolean) -> Unit = {}
 ) {
@@ -1756,7 +2042,13 @@ private fun LegacySidebarScaffold(
 
     BackHandler(enabled = currentRoute in rootRoutes && drawerState.currentValue == DrawerValue.Open) {
         if (longPressBackHeld.value) return@BackHandler
-        onExitApp()
+        if (launcherMode()) {
+            // As the Home app, Back must never leave: just close the sidebar.
+            pendingContentFocusTransfer = true
+            drawerState.setValue(DrawerValue.Closed)
+        } else {
+            onExitApp()
+        }
     }
 
     // Live TV fork: back from the menu to Home, the Live TV row gets the highlight back only if
@@ -2281,8 +2573,11 @@ private fun ModernSidebarScaffold(
     onSwitchProfile: () -> Unit,
     onNavigate: (String) -> Unit,
     onExitApp: () -> Unit,
+    launcherMode: () -> Boolean = { false },
     onToggleLiveTvGroup: () -> Unit = {},
-    onSidebarExpandedChange: (Boolean) -> Unit = {}
+    onSidebarExpandedChange: (Boolean) -> Unit = {},
+    /** The floating pill shows the profile (picture and name) instead of the page (Settings → Layout). */
+    floatingPillShowsProfile: Boolean = false
 ) {
     // Live TV fork: full screen now happens inside the Live TV screen (one video view that just
     // grows), which is one of the menu's pages, so the menu has to step aside for it.
@@ -2366,7 +2661,12 @@ private fun ModernSidebarScaffold(
 
     BackHandler(enabled = currentRoute in rootRoutes && isSidebarExpanded && !sidebarCollapsePending) {
         if (longPressBackHeld.value) return@BackHandler
-        onExitApp()
+        if (launcherMode()) {
+            // As the Home app, Back must never leave: just collapse the sidebar.
+            sidebarCollapsePending = true
+        } else {
+            onExitApp()
+        }
     }
 
     LaunchedEffect(sidebarCollapsePending, isSidebarExpanded, showSidebar) {
@@ -2990,4 +3290,36 @@ object LocaleCache {
 
     @Volatile
     var localeTag: String = UNSET
+}
+
+/**
+ * Asks Home to drop its saved scroll/focus state and scroll back to the first row. Safe to call when Home
+ * is not the current destination: the reset is stored on the Home ViewModel and applied the next time its
+ * content is composed.
+ */
+private fun requestHomeScrollToTop(navController: NavHostController) {
+    val homeEntry = try {
+        navController.getBackStackEntry(Screen.Home.route)
+    } catch (_: IllegalArgumentException) {
+        // "home" not yet on the back stack (e.g. nav graph not fully initialized).
+        return
+    }
+    // HomeViewModel is @HiltViewModel, so it must come from Hilt's factory: a plain
+    // ViewModelProvider(entry) only works if the Home screen already created the instance.
+    var context = navController.context
+    while (context is android.content.ContextWrapper && context !is androidx.activity.ComponentActivity) {
+        context = context.baseContext
+    }
+    val activity = context as? androidx.activity.ComponentActivity ?: return
+    val factory = dagger.hilt.android.internal.lifecycle.HiltViewModelFactory.createInternal(
+        activity,
+        homeEntry,
+        homeEntry.arguments,
+        homeEntry.defaultViewModelProviderFactory,
+    )
+    androidx.lifecycle.ViewModelProvider(
+        homeEntry.viewModelStore,
+        factory,
+        homeEntry.defaultViewModelCreationExtras,
+    )[com.nuvio.tv.ui.screens.home.HomeViewModel::class.java].requestScrollToTop()
 }

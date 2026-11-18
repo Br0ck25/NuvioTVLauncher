@@ -424,6 +424,7 @@ private fun PlaybackNavHost(
                 )
             ) {
             HomeScreen(
+                onNavigateToSettings = { navController.navigate(Screen.Settings.route) { launchSingleTop = true } },
                 onNavigateToDetail = { itemId, itemType, addonBaseUrl ->
                     val heroBackdrop = HeroBackdropState.consumeAndClear()
                     navController.navigate(
@@ -1882,6 +1883,11 @@ private fun PlaybackNavHost(
             // Music fork: YouTube Music browsing and the audio-first player. The host rail is
             // hidden behind Music's own rail, and Left opens Nuvio's menu over it.
             com.nuvio.tv.music.MusicScreen()
+        }
+
+        // Launcher: every app installed on the TV.
+        rootComposable(Screen.Apps.route) {
+            com.nuvio.tv.ui.screens.apps.AppsScreen()
         }
 
         forkPageComposable(Screen.Calendar.route) {
