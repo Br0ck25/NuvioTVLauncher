@@ -449,7 +449,19 @@ private fun HomeCard(
                 .background(Color.Black.copy(alpha = 0.35f)),
             contentAlignment = Alignment.Center
         ) {
-            ChannelLogo(entry.channel.logo, if (compact) 36.dp else 50.dp)
+            // A channel made from a Home list has no logo of its own: show the artwork of what's on it now, filling the
+            // tile like an Upcoming poster, instead of an empty box.
+            val art = p?.icon?.takeIf { it.isNotBlank() }
+            if (entry.channel.logo.isNullOrBlank() && art != null) {
+                coil3.compose.AsyncImage(
+                    model = art,
+                    contentDescription = null,
+                    contentScale = androidx.compose.ui.layout.ContentScale.Crop,
+                    modifier = Modifier.fillMaxSize()
+                )
+            } else {
+                ChannelLogo(entry.channel.logo, if (compact) 36.dp else 50.dp)
+            }
         }
         Column(
             modifier = Modifier.weight(1f).fillMaxHeight().padding(start = 12.dp, end = 6.dp),
