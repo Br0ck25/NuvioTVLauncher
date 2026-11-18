@@ -2,6 +2,8 @@
 
 package com.nuvio.tv.ui.components
 
+import androidx.compose.foundation.rememberScrollState
+import androidx.compose.foundation.verticalScroll
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.fillMaxWidth
@@ -66,8 +68,13 @@ fun InstalledAppActionsDialog(
     // The app's own menu look (NuvioDialog, like a poster's options). It also ignores the select key
     // that is still down from the long-press, so letting go doesn't pick the first option.
     NuvioDialog(onDismiss = onDismiss, title = app.label, width = 420.dp) {
+        // Up to eight buttons: more than fits under the title on a TV, so the list takes what room the dialog has
+        // and scrolls (focus carries it) instead of cutting the last buttons off.
         Column(
-            modifier = Modifier.onPreviewKeyEvent { event ->
+            modifier = Modifier
+                .weight(1f, fill = false)
+                .verticalScroll(rememberScrollState())
+                .onPreviewKeyEvent { event ->
                 val native = event.nativeKeyEvent
                 if (native.keyCode == AndroidKeyEvent.KEYCODE_HOME) {
                     if (native.action == AndroidKeyEvent.ACTION_UP) onHome()
@@ -75,7 +82,7 @@ fun InstalledAppActionsDialog(
                 }
                 false
             },
-            verticalArrangement = Arrangement.spacedBy(NuvioTheme.spacing.lg)
+            verticalArrangement = Arrangement.spacedBy(NuvioTheme.spacing.sm)
         ) {
             AppMenuButton(stringResource(R.string.app_action_open), onClick = { onDismiss(); onOpen() }, modifier = Modifier.focusRequester(first))
             AppMenuButton(stringResource(R.string.app_action_move), enabled = canMove, onClick = { onDismiss(); onMove() })
