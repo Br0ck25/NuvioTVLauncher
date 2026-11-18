@@ -1,0 +1,34 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <string name="iptv_guide_remind_me">"Bana hatırlat"</string>
+    <string name="iptv_guide_logo_sources_help">"Logoyu değiştir’in baktığı yerler. Listede istemediklerinizi kapatın."</string>
+    <string name="iptv_guide_moving">"Taşınıyor"</string>
+    <string name="iptv_guide_channel_name_or_number">"Kanal adı veya numarası"</string>
+    <string name="iptv_guide_play_from_archive">"Arşivden oynat"</string>
+    <string name="iptv_guide_assign_epg">"EPG ata"</string>
+    <string name="iptv_guide_cancel_reminder">"Hatırlatıcıyı iptal et"</string>
+    <string name="iptv_guide_logo_sources">"Logo kaynakları"</string>
+    <string name="iptv_guide_catch_up">"Geri izleme"</string>
+    <string name="iptv_guide_bell">"Zil"</string>
+    <string name="iptv_guide_logo_from_phone">"Telefonunuzdan logo"</string>
+    <string name="iptv_guide_watch_channel_now">"Kanalı şimdi izle"</string>
+    <string name="iptv_guide_watch_from_beginning">"Baştan izle"</string>
+    <string name="iptv_guide_shown">"Görünür"</string>
+    <string name="iptv_guide_looking_in_logo_libraries">"Logo kitaplıklarında ve TMDB’de aranıyor…"</string>
+    <string name="iptv_guide_bell_on">"Zil açık"</string>
+    <string name="iptv_guide_hidden">"Gizli"</string>
+    <string name="iptv_guide_reminder_set">"Hatırlatıcı ayarlandı"</string>
+    <string name="iptv_guide_logo_from_phone_help">"Telefonunuzdan logo göndermek için bu televizyonu Wi-Fi’ye bağlayın."</string>
+    <string name="iptv_guide_find_and_stream">"Nuvio’da ara ve yayınla"</string>
+    <string name="iptv_guide_finding_logos">"Logolar aranıyor…"</string>
+    <string name="iptv_guide_using_your_pick">"Seçiminiz kullanılıyor"</string>
+    <string name="iptv_guide_no_description">"Açıklama yok."</string>
+    <string name="iptv_guide_can_be_moved">"Taşınabilir"</string>
+    <string name="iptv_guide_deselect_all">"Tüm seçimi kaldır"</string>
+    <string name="iptv_guide_on_calendar">"Takviminizde"</string>
+    <string name="iptv_guide_using_own_logo">"Kendi logosu kullanılıyor"</string>
+    <string name="iptv_guide_watch">"İzle"</string>
+    <string name="iptv_guide_change_logo">"Logoyu değiştir"</string>
+    <string name="iptv_guide_locked">"Kilitli"</string>
+    <string name="iptv_guide_search_channels">"Kanal ara"</string>
+</resources>

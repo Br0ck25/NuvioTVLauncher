@@ -1,0 +1,34 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <string name="iptv_guide_remind_me">"Me rappeler"</string>
+    <string name="iptv_guide_logo_sources_help">"Où cherche Changer le logo. Désactivez celles que vous ne voulez pas dans la liste."</string>
+    <string name="iptv_guide_moving">"Déplacement"</string>
+    <string name="iptv_guide_channel_name_or_number">"Nom ou numéro de chaîne"</string>
+    <string name="iptv_guide_play_from_archive">"Lire depuis l’archive"</string>
+    <string name="iptv_guide_assign_epg">"Assigner l’EPG"</string>
+    <string name="iptv_guide_cancel_reminder">"Annuler le rappel"</string>
+    <string name="iptv_guide_logo_sources">"Sources de logos"</string>
+    <string name="iptv_guide_catch_up">"Replay"</string>
+    <string name="iptv_guide_bell">"Cloche"</string>
+    <string name="iptv_guide_logo_from_phone">"Logo depuis votre téléphone"</string>
+    <string name="iptv_guide_watch_channel_now">"Regarder la chaîne maintenant"</string>
+    <string name="iptv_guide_watch_from_beginning">"Regarder depuis le début"</string>
+    <string name="iptv_guide_shown">"Visible"</string>
+    <string name="iptv_guide_looking_in_logo_libraries">"Recherche dans les bibliothèques de logos et TMDB…"</string>
+    <string name="iptv_guide_bell_on">"Cloche activée"</string>
+    <string name="iptv_guide_hidden">"Masqué"</string>
+    <string name="iptv_guide_reminder_set">"Rappel activé"</string>
+    <string name="iptv_guide_logo_from_phone_help">"Connectez ce téléviseur au Wi-Fi pour envoyer un logo depuis votre téléphone."</string>
+    <string name="iptv_guide_find_and_stream">"Rechercher et lire dans Nuvio"</string>
+    <string name="iptv_guide_finding_logos">"Recherche de logos…"</string>
+    <string name="iptv_guide_using_your_pick">"Votre choix est utilisé"</string>
+    <string name="iptv_guide_no_description">"Aucune description disponible."</string>
+    <string name="iptv_guide_can_be_moved">"Peut être déplacé"</string>
+    <string name="iptv_guide_deselect_all">"Tout désélectionner"</string>
+    <string name="iptv_guide_on_calendar">"Dans votre calendrier"</string>
+    <string name="iptv_guide_using_own_logo">"Son propre logo est utilisé"</string>
+    <string name="iptv_guide_watch">"Regarder"</string>
+    <string name="iptv_guide_change_logo">"Changer le logo"</string>
+    <string name="iptv_guide_locked">"Verrouillé"</string>
+    <string name="iptv_guide_search_channels">"Rechercher des chaînes"</string>
+</resources>

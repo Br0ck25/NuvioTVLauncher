@@ -1,0 +1,34 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <string name="iptv_guide_remind_me">"Напомнить"</string>
+    <string name="iptv_guide_logo_sources_help">"Где ищет «Изменить логотип». Отключите ненужные источники в списке."</string>
+    <string name="iptv_guide_moving">"Перемещение"</string>
+    <string name="iptv_guide_channel_name_or_number">"Название или номер канала"</string>
+    <string name="iptv_guide_play_from_archive">"Воспроизвести из архива"</string>
+    <string name="iptv_guide_assign_epg">"Назначить EPG"</string>
+    <string name="iptv_guide_cancel_reminder">"Отменить напоминание"</string>
+    <string name="iptv_guide_logo_sources">"Источники логотипов"</string>
+    <string name="iptv_guide_catch_up">"Архив"</string>
+    <string name="iptv_guide_bell">"Уведомления"</string>
+    <string name="iptv_guide_logo_from_phone">"Логотип с телефона"</string>
+    <string name="iptv_guide_watch_channel_now">"Смотреть канал"</string>
+    <string name="iptv_guide_watch_from_beginning">"Смотреть с начала"</string>
+    <string name="iptv_guide_shown">"Показан"</string>
+    <string name="iptv_guide_looking_in_logo_libraries">"Поиск в библиотеках логотипов и TMDB…"</string>
+    <string name="iptv_guide_bell_on">"Уведомления включены"</string>
+    <string name="iptv_guide_hidden">"Скрыт"</string>
+    <string name="iptv_guide_reminder_set">"Напоминание установлено"</string>
+    <string name="iptv_guide_logo_from_phone_help">"Подключите телевизор к Wi-Fi, чтобы отправить логотип с телефона."</string>
+    <string name="iptv_guide_find_and_stream">"Найти и воспроизвести в Nuvio"</string>
+    <string name="iptv_guide_finding_logos">"Поиск логотипов…"</string>
+    <string name="iptv_guide_using_your_pick">"Используется ваш выбор"</string>
+    <string name="iptv_guide_no_description">"Описание недоступно."</string>
+    <string name="iptv_guide_can_be_moved">"Можно переместить"</string>
+    <string name="iptv_guide_deselect_all">"Снять выделение"</string>
+    <string name="iptv_guide_on_calendar">"В вашем календаре"</string>
+    <string name="iptv_guide_using_own_logo">"Используется собственный логотип"</string>
+    <string name="iptv_guide_watch">"Смотреть"</string>
+    <string name="iptv_guide_change_logo">"Изменить логотип"</string>
+    <string name="iptv_guide_locked">"Заблокировано"</string>
+    <string name="iptv_guide_search_channels">"Поиск каналов"</string>
+</resources>

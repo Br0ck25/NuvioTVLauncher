@@ -1,0 +1,34 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <string name="iptv_guide_remind_me">"Remind me"</string>
+    <string name="iptv_guide_logo_sources_help">"Where Change Logo looks. Turn off the ones you don\'t want in the list."</string>
+    <string name="iptv_guide_moving">"Moving"</string>
+    <string name="iptv_guide_channel_name_or_number">"Channel name or number"</string>
+    <string name="iptv_guide_play_from_archive">"Play from archive"</string>
+    <string name="iptv_guide_assign_epg">"Assign EPG"</string>
+    <string name="iptv_guide_cancel_reminder">"Cancel reminder"</string>
+    <string name="iptv_guide_logo_sources">"Logo Sources"</string>
+    <string name="iptv_guide_catch_up">"Catch-up"</string>
+    <string name="iptv_guide_bell">"Bell"</string>
+    <string name="iptv_guide_logo_from_phone">"Logo from your phone"</string>
+    <string name="iptv_guide_watch_channel_now">"Watch channel now"</string>
+    <string name="iptv_guide_watch_from_beginning">"Watch from the beginning"</string>
+    <string name="iptv_guide_shown">"Shown"</string>
+    <string name="iptv_guide_looking_in_logo_libraries">"Looking in the logo libraries and TMDB…"</string>
+    <string name="iptv_guide_bell_on">"Bell on"</string>
+    <string name="iptv_guide_hidden">"Hidden"</string>
+    <string name="iptv_guide_reminder_set">"Reminder set"</string>
+    <string name="iptv_guide_logo_from_phone_help">"Connect this TV to Wi-Fi to send a logo from your phone."</string>
+    <string name="iptv_guide_find_and_stream">"Find &amp; stream in Nuvio"</string>
+    <string name="iptv_guide_finding_logos">"Finding logos…"</string>
+    <string name="iptv_guide_using_your_pick">"Using your pick"</string>
+    <string name="iptv_guide_no_description">"No description available."</string>
+    <string name="iptv_guide_can_be_moved">"Can be moved"</string>
+    <string name="iptv_guide_deselect_all">"Deselect all"</string>
+    <string name="iptv_guide_on_calendar">"On your Calendar"</string>
+    <string name="iptv_guide_using_own_logo">"Using its own logo"</string>
+    <string name="iptv_guide_watch">"Watch"</string>
+    <string name="iptv_guide_change_logo">"Change Logo"</string>
+    <string name="iptv_guide_locked">"Locked"</string>
+    <string name="iptv_guide_search_channels">"Search channels"</string>
+</resources>
