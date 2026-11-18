@@ -1439,8 +1439,8 @@ open class MainActivity : ComponentActivity() {
                     val selectedDrawerItem = drawerItems.firstOrNull { it.route == selectedDrawerRoute } ?: drawerItems.first()
 
                     val handleExitApp: () -> Unit = {
-                        // The launcher is the device's Home screen: Back never leaves it.
-                        if (!nuvioHandlesHomeKey) this@MainActivity.handleAppExit()
+                        // handleAppExit does nothing while the launcher is the device's Home screen.
+                        this@MainActivity.handleAppExit()
                     }
 
                     val updateViewModel: UpdateViewModel = hiltViewModel(this@MainActivity)
@@ -1839,6 +1839,8 @@ open class MainActivity : ComponentActivity() {
      * sidebar is open.
      */
     private fun handleAppExit() {
+        // The launcher is the device's Home screen: Back never leaves it.
+        if (nuvioHandlesHomeKey) return
         val confirm = runCatching { profileManager.confirmExitEnabled.value }.getOrDefault(true)
         if (!confirm || confirmExitPressedOnce) {
             finishAffinity()
@@ -1920,7 +1922,7 @@ open class MainActivity : ComponentActivity() {
             }
             // While the menu is open, Back is the exit prompt. Handling it here keeps the
             // drawer's own Back handler from closing the sidebar first.
-            if (sidebarOpenForBack) {
+            if (sidebarOpenForBack && !nuvioHandlesHomeKey) {
                 if (event.action == KeyEvent.ACTION_DOWN && event.repeatCount == 0) {
                     handleAppExit()
                 }
@@ -2072,7 +2074,7 @@ private fun LegacySidebarScaffold(
         }
         // Home: Back is the app-exit prompt. Every other section: Back opens the side menu
         // first; with the menu open, the next Back is the exit prompt.
-        if (currentRoute == Screen.Home.route) {
+        if (currentRoute == Screen.Home.route && !launcherMode()) {
             onExitApp()
         } else {
             pendingSidebarFocusRequest = true
