@@ -37,6 +37,8 @@ import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.remember
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.res.stringResource
+import com.nuvio.tv.R
 import androidx.compose.ui.focus.FocusRequester
 import androidx.compose.ui.focus.focusRequester
 import androidx.compose.ui.graphics.Color
@@ -133,7 +135,7 @@ internal fun GuideGearPanel(
                 }
                 Row(horizontalArrangement = Arrangement.spacedBy(6.dp)) {
                     part(Modifier.weight(1f), GuideInfoPart.PROGRESS, "Progress bar")
-                    part(Modifier.weight(1f), GuideInfoPart.DESCRIPTION, "Description")
+                    part(Modifier.weight(1f), GuideInfoPart.DESCRIPTION, stringResource(R.string.iptv_guide_description))
                 }
                 heading("Layout")
                 Row(horizontalArrangement = Arrangement.spacedBy(6.dp)) {
@@ -295,7 +297,7 @@ internal fun GuideRecordingsButton(modifier: Modifier = Modifier, onOpen: () -> 
     ) {
         androidx.tv.material3.Icon(
             androidx.compose.material.icons.Icons.Default.RadioButtonChecked,
-            contentDescription = "Recordings",
+            contentDescription = stringResource(R.string.iptv_guide_recordings),
             tint = if (recordingNow) LIVE_RED else focusedTextColor(focused),
             modifier = Modifier.size(18.dp)
         )

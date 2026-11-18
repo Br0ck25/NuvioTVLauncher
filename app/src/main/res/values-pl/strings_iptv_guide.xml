@@ -40,4 +40,20 @@
     <string name="iptv_guide_all_channels">"Wszystkie kanały"</string>
     <string name="iptv_guide_recently_watched">"Ostatnio oglądane"</string>
     <string name="iptv_guide_no_program_information">"Brak informacji o programie"</string>
+    <string name="iptv_guide_stream_info">"Informacje o strumieniu"</string>
+    <string name="iptv_guide_built_in">"Wbudowane"</string>
+    <string name="iptv_guide_record_until">"Nagraj do"</string>
+    <string name="iptv_guide_recording">"Nagrywanie"</string>
+    <string name="iptv_guide_recordings">"Nagrania"</string>
+    <string name="iptv_guide_on_it">"Dodano"</string>
+    <string name="iptv_guide_favorite">"Ulubione"</string>
+    <string name="iptv_guide_saved">"Zapisano"</string>
+    <string name="iptv_guide_hold_record_time">"◀ ▶ zmień czas"</string>
+    <string name="iptv_guide_add">"Dodaj"</string>
+    <string name="iptv_guide_channel">"Kanał"</string>
+    <string name="iptv_guide_hold_record_skip">"Przytrzymaj Nagraj, aby pominąć"</string>
+    <string name="iptv_guide_calendar">"Kalendarz"</string>
+    <string name="iptv_guide_stop">"Zatrzymaj"</string>
+    <string name="iptv_guide_description">"Opis"</string>
+    <string name="iptv_guide_record">"Nagraj"</string>
 </resources>

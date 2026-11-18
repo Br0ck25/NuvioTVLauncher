@@ -40,4 +40,20 @@
     <string name="iptv_guide_all_channels">"Alle zenders"</string>
     <string name="iptv_guide_recently_watched">"Onlangs bekeken"</string>
     <string name="iptv_guide_no_program_information">"Geen programma-informatie"</string>
+    <string name="iptv_guide_stream_info">"Streaminfo"</string>
+    <string name="iptv_guide_built_in">"Ingebouwd"</string>
+    <string name="iptv_guide_record_until">"Opnemen tot"</string>
+    <string name="iptv_guide_recording">"Opname"</string>
+    <string name="iptv_guide_recordings">"Opnames"</string>
+    <string name="iptv_guide_on_it">"Toegevoegd"</string>
+    <string name="iptv_guide_favorite">"Favoriet"</string>
+    <string name="iptv_guide_saved">"Opgeslagen"</string>
+    <string name="iptv_guide_hold_record_time">"◀ ▶ tijd wijzigen"</string>
+    <string name="iptv_guide_add">"Toevoegen"</string>
+    <string name="iptv_guide_channel">"Zender"</string>
+    <string name="iptv_guide_hold_record_skip">"Houd Opnemen ingedrukt om dit over te slaan"</string>
+    <string name="iptv_guide_calendar">"Agenda"</string>
+    <string name="iptv_guide_stop">"Stoppen"</string>
+    <string name="iptv_guide_description">"Beschrijving"</string>
+    <string name="iptv_guide_record">"Opnemen"</string>
 </resources>

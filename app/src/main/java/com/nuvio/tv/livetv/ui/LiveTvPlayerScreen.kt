@@ -44,6 +44,8 @@ import androidx.compose.runtime.rememberCoroutineScope
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.res.stringResource
+import com.nuvio.tv.R
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.focus.FocusRequester
 import androidx.compose.ui.focus.focusRequester
@@ -205,11 +207,13 @@ fun LiveTvPlayerScreen(
 
     // ---- the Channel Row under the full bar: its lists (switched on and still there), the one
     // showing, and that list's channels (only worked out while the full bar is up).
-    val rowTabs: List<PanelRowTab> = remember(settings.panelRowLists, settings.panelRow, ui.groups) {
+    val recentRowLabel = stringResource(R.string.iptv_guide_recently_watched)
+    val favoritesRowLabel = stringResource(R.string.iptv_guide_favorites)
+    val rowTabs: List<PanelRowTab> = remember(settings.panelRowLists, settings.panelRow, ui.groups, recentRowLabel, favoritesRowLabel) {
         PanelRowLists.parse(settings).filter { it.on }.mapNotNull { l ->
             when (l.id) {
-                PanelRowLists.RECENT -> PanelRowTab(l.id, "Recently Watched", PanelRowTab.Kind.RECENT)
-                PanelRowLists.FAVORITES -> PanelRowTab(l.id, "Favorites", PanelRowTab.Kind.FAVORITES)
+                PanelRowLists.RECENT -> PanelRowTab(l.id, recentRowLabel, PanelRowTab.Kind.RECENT)
+                PanelRowLists.FAVORITES -> PanelRowTab(l.id, favoritesRowLabel, PanelRowTab.Kind.FAVORITES)
                 else -> ui.groups.firstOrNull { it.id == l.id && !it.special && !it.locked }
                     ?.let { PanelRowTab(it.id, it.title, PanelRowTab.Kind.GROUP) }
             }
@@ -1424,7 +1428,15 @@ fun LiveTvPlayerScreen(
                     dialog = PlayerDialog.NONE
                     viewModel.previousChannel()?.let { viewModel.preview(it) }
                 },
-                bell = liveBell?.let { b -> Triple(if (b.isMovie) "Calendar" else "Bell", if (b.isMovie) (if (b.on) "On it" else "Add") else b.value, b.toggle) },
+                bell = liveBell?.let { b ->
+                    Triple(
+                        stringResource(if (b.isMovie) R.string.iptv_guide_calendar else R.string.iptv_guide_bell),
+                        if (b.isMovie) {
+                            if (b.on) stringResource(R.string.iptv_guide_on_it) else stringResource(R.string.iptv_guide_add)
+                        } else b.value,
+                        b.toggle
+                    )
+                },
                 onSearch = viewModel.currentProgram(ch.key)
                     ?.let { com.nuvio.tv.livetv.data.LiveTvPosterResolver.searchTitleFor(it, ch) }
                     ?.let { title ->

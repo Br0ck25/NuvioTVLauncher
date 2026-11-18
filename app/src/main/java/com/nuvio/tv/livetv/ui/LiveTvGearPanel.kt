@@ -40,6 +40,8 @@ import androidx.compose.runtime.remember
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.res.stringResource
+import com.nuvio.tv.R
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.focus.FocusRequester
 import androidx.compose.ui.focus.focusRequester
@@ -169,11 +171,15 @@ internal fun GearPanel(
                 // ---- Audio, Subtitles, Sleep timer, Stream info: one page each, like the others
                 val title = when (page) {
                     "audio" -> "Audio"; "subs" -> "Subtitles"; "sleep" -> "Sleep timer"
-                    "record" -> "Record"; "recordTime" -> "Record until"; else -> "Stream info"
+                    "record" -> stringResource(R.string.iptv_guide_record)
+                    "recordTime" -> stringResource(R.string.iptv_guide_record_until)
+                    else -> stringResource(R.string.iptv_guide_stream_info)
                 }
                 val hint = when (page) {
                     "sleep" -> "Stops playback after"; "audio" -> "Applies to this channel"
-                    "record" -> "Hold Record to skip this"; "recordTime" -> "◀ ▶ change the time"; else -> null
+                    "record" -> stringResource(R.string.iptv_guide_hold_record_skip)
+                    "recordTime" -> stringResource(R.string.iptv_guide_hold_record_time)
+                    else -> null
                 }
                 Row(verticalAlignment = Alignment.CenterVertically, modifier = Modifier.padding(horizontal = 6.dp, vertical = 2.dp)) {
                     LiveText("‹  $title", size = 14.sp, weight = FontWeight.Bold, modifier = Modifier.weight(1f))
@@ -300,7 +306,9 @@ internal fun GearPanel(
                     var firstSet = false
                     fun f(): Modifier = if (!firstSet) { firstSet = true; Modifier.focusRequester(first) } else Modifier
                     if (onRecord != null) GearTile(
-                        Icons.Default.FiberManualRecord, if (recording) "Stop" else "Record", if (recording) "Recording" else null,
+                        Icons.Default.FiberManualRecord,
+                        if (recording) stringResource(R.string.iptv_guide_stop) else stringResource(R.string.iptv_guide_record),
+                        if (recording) stringResource(R.string.iptv_guide_recording) else null,
                         Modifier.weight(1f).then(f()), iconTint = LIVE_RED,
                         // Recording: stops it. Otherwise: how long to record; held, until you stop it.
                         onClick = if (recording) onRecord else ({ page = "record" }),
@@ -309,7 +317,9 @@ internal fun GearPanel(
                     GearTile(Icons.Default.VolumeUp, "Audio", audioLabel.ifBlank { null }, Modifier.weight(1f).then(f()), onClick = { page = "audio" })
                     GearTile(Icons.Default.ClosedCaption, "Subtitles", if (captionsOn) "On" else "Off", Modifier.weight(1f).then(f()), onClick = { page = "subs" })
                     GearTile(
-                        if (isFavorite) Icons.Default.Star else Icons.Default.StarBorder, "Favorite", if (isFavorite) "Saved" else null,
+                        if (isFavorite) Icons.Default.Star else Icons.Default.StarBorder,
+                        stringResource(R.string.iptv_guide_favorite),
+                        if (isFavorite) stringResource(R.string.iptv_guide_saved) else null,
                         Modifier.weight(1f).then(f()), iconTint = if (isFavorite) Color(0xFFF5C400) else null, onClick = onFavorite
                     )
                 }
@@ -583,8 +593,8 @@ private fun QuickChannelsPages(
         // list that took its place, where a second press moved that one back).
         lists.forEachIndexed { index, l -> androidx.compose.runtime.key(l.id) {
             val (title, subtitle) = when (l.id) {
-                PanelRowLists.RECENT -> "Recently Watched" to "Built in"
-                PanelRowLists.FAVORITES -> "Favorites" to "Built in"
+                PanelRowLists.RECENT -> stringResource(R.string.iptv_guide_recently_watched) to stringResource(R.string.iptv_guide_built_in)
+                PanelRowLists.FAVORITES -> stringResource(R.string.iptv_guide_favorites) to stringResource(R.string.iptv_guide_built_in)
                 else -> names[l.id]?.let { g -> g.name to (g.playlist?.let { "$it · playlist group" } ?: "Your group") }
                     ?: ("Group not found" to "Not in your playlists right now")
             }
