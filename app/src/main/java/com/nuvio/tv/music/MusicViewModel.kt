@@ -19,6 +19,8 @@ import kotlinx.coroutines.async
 import kotlinx.coroutines.coroutineScope
 import kotlinx.coroutines.delay
 import kotlinx.coroutines.flow.MutableStateFlow
+import androidx.annotation.StringRes
+import com.nuvio.tv.R
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.asStateFlow
 import kotlinx.coroutines.flow.collectLatest
@@ -30,13 +32,13 @@ import kotlinx.coroutines.withContext
 import javax.inject.Inject
 
 /** The top tabs of the Music section. Library and Settings join these in a later wave. */
-enum class MusicTab(val title: String) {
-    HOME("Home"),
-    DISCOVER("Discover"),
-    EXPLORE("Explore"),
-    LIBRARY("Library"),
-    LOCAL("Local"),
-    SEARCH("Search")
+enum class MusicTab(val title: String, @StringRes val titleRes: Int) {
+    HOME("Home", R.string.music_tab_home),
+    DISCOVER("Discover", R.string.music_tab_discover),
+    EXPLORE("Explore", R.string.music_tab_explore),
+    LIBRARY("Library", R.string.music_tab_library),
+    LOCAL("Local", R.string.music_tab_local),
+    SEARCH("Search", R.string.music_tab_search)
 }
 
 data class MusicHomeState(

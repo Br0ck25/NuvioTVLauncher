@@ -56,6 +56,8 @@ import com.music.bitchord.data.model.SearchFilter
 import com.music.bitchord.data.model.SearchResult
 import com.music.bitchord.data.model.ShelfItem
 import com.music.bitchord.data.model.Song
+import androidx.compose.ui.res.stringResource
+import com.nuvio.tv.R
 
 @Composable
 internal fun MusicSearchScreen(
@@ -159,7 +161,7 @@ internal fun MusicSearchScreen(
                     decorationBox = { inner ->
                         if (state.query.isEmpty()) {
                             Text(
-                                text = "Search songs, albums, artists and playlists",
+                                text = stringResource(R.string.music_p2_search_songs_albums_artists_and),
                                 color = MusicPalette.textMuted,
                                 fontSize = 16.sp
                             )
@@ -244,8 +246,8 @@ internal fun MusicSearchScreen(
             // Addon answers can arrive before YouTube's; show them instead of hiding the list.
             state.loading && state.rows.isEmpty() -> MusicLoading(Modifier.weight(1f).fillMaxWidth())
             !state.submitted -> MusicEmptyState(
-                title = "Search music",
-                message = "Find a song, an album, an artist or a playlist.",
+                title = stringResource(R.string.music_p2_search_music),
+                message = stringResource(R.string.music_p2_find_a_song_an_album),
                 modifier = Modifier.weight(1f)
             )
             state.error != null && state.rows.isEmpty() -> MusicErrorState(
@@ -254,7 +256,7 @@ internal fun MusicSearchScreen(
                 modifier = Modifier.weight(1f)
             )
             state.rows.isEmpty() -> MusicEmptyState(
-                title = "No results",
+                title = stringResource(R.string.music_p2_no_results),
                 message = "Nothing matched \"${state.query}\". Try another spelling.",
                 modifier = Modifier.weight(1f)
             )
@@ -267,7 +269,7 @@ internal fun MusicSearchScreen(
                         verticalAlignment = Alignment.CenterVertically
                     ) {
                         Text(
-                            text = "Results",
+                            text = stringResource(R.string.music_p2_results),
                             color = MusicPalette.text,
                             fontFamily = MusicDisplay,
                             fontSize = 21.sp,

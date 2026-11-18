@@ -57,7 +57,9 @@ import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
+import androidx.compose.ui.res.stringResource
 import coil3.compose.AsyncImage
+import com.nuvio.tv.R
 
 private enum class PanelMode { HOME, MAIN, PLAYLISTS, COMMENTS, REPLIES, RELATED }
 
@@ -202,7 +204,7 @@ fun BoxScope.YouTubePlayerPanel(
 
             // The heading for this level. The list below it is always there, so it always owns the remote.
             when (mode) {
-                PanelMode.HOME -> Text("Chapters & recommendations", color = Color.White, fontSize = 18.sp, fontWeight = FontWeight.Bold)
+                PanelMode.HOME -> Text(stringResource(R.string.onetube_chapters_recommendations), color = Color.White, fontSize = 18.sp, fontWeight = FontWeight.Bold)
                 PanelMode.MAIN -> {
                     Text(
                         info?.title ?: "OneTube",
@@ -216,11 +218,11 @@ fun BoxScope.YouTubePlayerPanel(
                         )
                     }
                 }
-                PanelMode.PLAYLISTS -> Text("Save to playlist", color = Color.White, fontSize = 18.sp, fontWeight = FontWeight.Bold)
-                PanelMode.COMMENTS -> Text("Comments", color = Color.White, fontSize = 18.sp, fontWeight = FontWeight.Bold)
-                PanelMode.RELATED -> Text("Related videos", color = Color.White, fontSize = 18.sp, fontWeight = FontWeight.Bold)
+                PanelMode.PLAYLISTS -> Text(stringResource(R.string.onetube_save_to_playlist), color = Color.White, fontSize = 18.sp, fontWeight = FontWeight.Bold)
+                PanelMode.COMMENTS -> Text(stringResource(R.string.onetube_comments), color = Color.White, fontSize = 18.sp, fontWeight = FontWeight.Bold)
+                PanelMode.RELATED -> Text(stringResource(R.string.onetube_related_videos), color = Color.White, fontSize = 18.sp, fontWeight = FontWeight.Bold)
                 PanelMode.REPLIES -> {
-                    Text("Replies", color = Color.White, fontSize = 18.sp, fontWeight = FontWeight.Bold)
+                    Text(stringResource(R.string.onetube_replies), color = Color.White, fontSize = 18.sp, fontWeight = FontWeight.Bold)
                     replyingTo?.let {
                         Text(
                             "${it.author}: ${it.text}",
@@ -246,10 +248,10 @@ fun BoxScope.YouTubePlayerPanel(
                 PanelMode.HOME -> buildList {
                     val chapters = info?.chapters.orEmpty()
                     if (chapters.isEmpty() && state.related.isEmpty() && !state.relatedLoading) {
-                        add(PanelEntry("No chapters or recommendations to show.", null))
+                        add(PanelEntry(stringResource(R.string.onetube_no_chapters), null))
                     }
                     if (chapters.isNotEmpty()) {
-                        add(PanelEntry("CHAPTERS", null))
+                        add(PanelEntry(stringResource(R.string.onetube_chapters_label), null))
                         chapters.forEach { (title, startMs) ->
                             add(PanelEntry(title, formatChapterTime(startMs)) {
                                 onSeekTo(startMs)
@@ -257,7 +259,7 @@ fun BoxScope.YouTubePlayerPanel(
                             })
                         }
                     }
-                    add(PanelEntry("Related videos", null))
+                    add(PanelEntry(stringResource(R.string.onetube_related_videos), null))
                     state.related.forEach { item ->
                         add(PanelEntry(
                             title = item.title,
@@ -265,30 +267,30 @@ fun BoxScope.YouTubePlayerPanel(
                             onClick = { onPlayVideo(item) }
                         ))
                     }
-                    add(PanelEntry("Video actions, comments & playlists", null) { mode = PanelMode.MAIN })
+                    add(PanelEntry(stringResource(R.string.onetube_video_actions), null) { mode = PanelMode.MAIN })
                 }
                 PanelMode.MAIN -> if (info == null) emptyList() else buildList {
-                    add(PanelEntry(if (info.liked) "Liked   ✓" else "Like", info.likeCount) { viewModel.toggleLike() })
-                    add(PanelEntry(if (info.disliked) "Disliked   ✓" else "Dislike", null) { viewModel.toggleDislike() })
-                    add(PanelEntry(if (info.subscribed) "Subscribed   ✓" else "Subscribe", info.author.takeIf(String::isNotBlank)) {
+                    add(PanelEntry(if (info.liked) stringResource(R.string.onetube_liked) else stringResource(R.string.onetube_like), info.likeCount) { viewModel.toggleLike() })
+                    add(PanelEntry(if (info.disliked) stringResource(R.string.onetube_disliked) else stringResource(R.string.onetube_dislike), null) { viewModel.toggleDislike() })
+                    add(PanelEntry(if (info.subscribed) stringResource(R.string.onetube_subscribed) else stringResource(R.string.onetube_subscribe), info.author.takeIf(String::isNotBlank)) {
                         viewModel.toggleSubscribe()
                     })
-                    add(PanelEntry("Save to playlist", null) {
+                    add(PanelEntry(stringResource(R.string.onetube_save_to_playlist), null) {
                         mode = PanelMode.PLAYLISTS
                         viewModel.loadPlaylists()
                     })
-                    add(PanelEntry("Comments", null) {
+                    add(PanelEntry(stringResource(R.string.onetube_comments), null) {
                         commentsIndex = 0
                         mode = PanelMode.COMMENTS
                         viewModel.loadComments()
                     })
-                    add(PanelEntry("Related videos", null) {
+                    add(PanelEntry(stringResource(R.string.onetube_related_videos), null) {
                         mode = PanelMode.RELATED
                         viewModel.loadRelated()
                     })
                     info.channelId?.let { channel ->
-                        add(PanelEntry("Open channel", info.author.takeIf(String::isNotBlank)) { onOpenChannel(channel, info.author) })
-                        add(PanelEntry("Hide this channel", "Keeps it off the OneTube page") { viewModel.hideChannel() })
+                        add(PanelEntry(stringResource(R.string.onetube_open_channel), info.author.takeIf(String::isNotBlank)) { onOpenChannel(channel, info.author) })
+                        add(PanelEntry(stringResource(R.string.onetube_hide_channel), stringResource(R.string.onetube_hide_channel_sub)) { viewModel.hideChannel() })
                     }
                 }
                 PanelMode.PLAYLISTS -> state.playlists.orEmpty().map { row ->
@@ -342,12 +344,12 @@ fun BoxScope.YouTubePlayerPanel(
             if (!busy && entries.isEmpty()) {
                 Text(
                     when (mode) {
-                        PanelMode.HOME -> if (state.relatedLoading) "Loading recommendations…" else "No chapters or recommendations to show."
-                        PanelMode.MAIN -> "Couldn't load this video's details."
-                        PanelMode.PLAYLISTS -> "You have no playlists."
-                        PanelMode.COMMENTS -> "No comments to show."
-                        PanelMode.REPLIES -> "No replies to show."
-                        PanelMode.RELATED -> "No related videos to show."
+                        PanelMode.HOME -> if (state.relatedLoading) stringResource(R.string.onetube_loading_recommendations) else stringResource(R.string.onetube_no_chapters)
+                        PanelMode.MAIN -> stringResource(R.string.onetube_details_failed)
+                        PanelMode.PLAYLISTS -> stringResource(R.string.onetube_no_playlists)
+                        PanelMode.COMMENTS -> stringResource(R.string.onetube_no_comments)
+                        PanelMode.REPLIES -> stringResource(R.string.onetube_no_replies)
+                        PanelMode.RELATED -> stringResource(R.string.onetube_no_related)
                     },
                     color = Color.Gray, fontSize = 14.sp
                 )
@@ -384,11 +386,11 @@ fun BoxScope.YouTubePlayerPanel(
                 Text(it, color = Color(0xFFFFC107), fontSize = 13.sp)
             }
             if (mode == PanelMode.MAIN && !state.signedIn && info != null) {
-                Text("Sign in on the OneTube page to like, subscribe or save.", color = Color.Gray, fontSize = 12.sp)
+                Text(stringResource(R.string.onetube_sign_in_actions), color = Color.Gray, fontSize = 12.sp)
             }
             if (mode == PanelMode.COMMENTS && entries.isNotEmpty()) {
                 Text(
-                    if (state.signedIn) "Hold OK on a comment to like it." else "Sign in on the OneTube page to like comments.",
+                    if (state.signedIn) stringResource(R.string.onetube_hold_ok_like) else stringResource(R.string.onetube_sign_in_like_comments),
                     color = Color.Gray, fontSize = 12.sp
                 )
             }
@@ -413,7 +415,7 @@ private fun RecommendationsContent(
     Column(Modifier.fillMaxSize(), verticalArrangement = Arrangement.spacedBy(12.dp)) {
         Row(verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(12.dp)) {
             Text(
-                text = title.ifBlank { "Up next" },
+                text = title.ifBlank { stringResource(R.string.onetube_up_next) },
                 color = Color.White,
                 fontSize = 18.sp,
                 fontWeight = FontWeight.Bold,
@@ -421,7 +423,7 @@ private fun RecommendationsContent(
                 overflow = TextOverflow.Ellipsis,
                 modifier = Modifier.weight(1f)
             )
-            Text("BACK  Return to video", color = Color.Gray, fontSize = 12.sp)
+            Text(stringResource(R.string.onetube_back_return), color = Color.Gray, fontSize = 12.sp)
         }
 
         LazyColumn(
@@ -430,7 +432,7 @@ private fun RecommendationsContent(
         ) {
             if (chapters.isNotEmpty()) {
                 item {
-                    Text("Chapters", color = Color.White, fontSize = 15.sp, fontWeight = FontWeight.SemiBold)
+                    Text(stringResource(R.string.onetube_chapters), color = Color.White, fontSize = 15.sp, fontWeight = FontWeight.SemiBold)
                 }
                 item {
                     LazyRow(horizontalArrangement = Arrangement.spacedBy(12.dp)) {
@@ -450,12 +452,12 @@ private fun RecommendationsContent(
             }
 
             item {
-                Text("Related videos & suggestions", color = Color.White, fontSize = 15.sp, fontWeight = FontWeight.SemiBold)
+                Text(stringResource(R.string.onetube_related_suggestions), color = Color.White, fontSize = 15.sp, fontWeight = FontWeight.SemiBold)
             }
             if (related.isEmpty() && loading) {
-                item { Text("Loading recommendations…", color = Color.Gray, fontSize = 13.sp) }
+                item { Text(stringResource(R.string.onetube_loading_recommendations), color = Color.Gray, fontSize = 13.sp) }
             } else if (related.isEmpty()) {
-                item { Text("No recommendations available.", color = Color.Gray, fontSize = 13.sp) }
+                item { Text(stringResource(R.string.onetube_no_recommendations), color = Color.Gray, fontSize = 13.sp) }
             } else {
                 item {
                     LazyRow(horizontalArrangement = Arrangement.spacedBy(12.dp)) {
@@ -495,7 +497,7 @@ private fun RecommendationsContent(
                         .focusable()
                         .padding(horizontal = 16.dp, vertical = 10.dp)
                 ) {
-                    Text("Video actions, comments & playlists", color = Color.White, fontSize = 14.sp)
+                    Text(stringResource(R.string.onetube_video_actions), color = Color.White, fontSize = 14.sp)
                 }
             }
         }
@@ -593,7 +595,7 @@ private fun ChannelRecommendationCard(
                 )
             }
             Text(
-                "CHANNEL",
+                stringResource(R.string.onetube_channel_tag),
                 color = Color.White,
                 fontSize = 10.sp,
                 fontWeight = FontWeight.Bold,
@@ -636,8 +638,8 @@ private fun SortBar(sort: Int, focused: Boolean) {
         horizontalArrangement = Arrangement.spacedBy(8.dp),
         verticalAlignment = Alignment.CenterVertically
     ) {
-        Text("Sort by", color = Color.Gray, fontSize = 13.sp)
-        listOf("Top", "Newest").forEachIndexed { index, label ->
+        Text(stringResource(R.string.onetube_sort_by), color = Color.Gray, fontSize = 13.sp)
+        listOf(stringResource(R.string.onetube_top), stringResource(R.string.onetube_newest)).forEachIndexed { index, label ->
             Text(
                 label,
                 color = Color.White,
@@ -649,7 +651,7 @@ private fun SortBar(sort: Int, focused: Boolean) {
                     .padding(horizontal = 14.dp, vertical = 6.dp)
             )
         }
-        if (focused) Text("◀ ▶ to switch", color = Color.Gray, fontSize = 11.sp)
+        if (focused) Text(stringResource(R.string.onetube_switch_hint), color = Color.Gray, fontSize = 11.sp)
     }
 }
 

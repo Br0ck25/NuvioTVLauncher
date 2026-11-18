@@ -108,6 +108,7 @@ import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.input.ImeAction
 import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.text.style.TextOverflow
+import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.unit.Density
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
@@ -373,7 +374,7 @@ fun YouTubeScreen(
                         if (!searchExpanded) {
                             IconChip(
                                 Icons.Default.Search,
-                                "Search",
+                                stringResource(R.string.onetube_search),
                                 searchIconFocus,
                                 downFocusRequester = headerDownFocus
                             ) {
@@ -502,7 +503,7 @@ fun YouTubeScreen(
                                                 }
                                             },
                                         decorationBox = { inner ->
-                                            if (query.isEmpty()) Text("Search OneTube", color = Color.Gray, fontSize = 18.sp)
+                                            if (query.isEmpty()) Text(stringResource(R.string.onetube_search_hint), color = Color.Gray, fontSize = 18.sp)
                                             inner()
                                         }
                                     )
@@ -531,7 +532,7 @@ fun YouTubeScreen(
                                         ) {
                                             Icon(
                                                 Icons.Default.Close,
-                                                contentDescription = "Clear search",
+                                                contentDescription = stringResource(R.string.onetube_clear_search),
                                                 tint = if (clearFocused) Color.White else Color.Gray,
                                                 modifier = Modifier.size(16.dp)
                                             )
@@ -542,7 +543,7 @@ fun YouTubeScreen(
                         }
                         IconChip(
                             Icons.Default.Settings,
-                            "OneTube settings",
+                            stringResource(R.string.onetube_settings_title),
                             downFocusRequester = headerDownFocus
                         ) {
                             collapseSearch()
@@ -550,7 +551,7 @@ fun YouTubeScreen(
                         }
                         IconChip(
                             Icons.Default.BugReport,
-                            "Send debug report",
+                            stringResource(R.string.onetube_send_debug_report),
                             downFocusRequester = headerDownFocus
                         ) {
                             collapseSearch()
@@ -561,9 +562,9 @@ fun YouTubeScreen(
                         if (!searchExpanded) {
                             AccountChip(
                                 label = when {
-                                    account.signedIn -> account.accountName ?: "Account"
-                                    !account.checked -> "Account"
-                                    else -> "Sign in"
+                                    account.signedIn -> account.accountName ?: stringResource(R.string.onetube_account)
+                                    !account.checked -> stringResource(R.string.onetube_account)
+                                    else -> stringResource(R.string.onetube_sign_in)
                                 },
                                 signedIn = account.signedIn,
                                 downFocusRequester = headerDownFocus
@@ -595,7 +596,7 @@ fun YouTubeScreen(
                         ) {
                             tabs.forEach { tab ->
                                 TabChip(
-                                    tab.title,
+                                    stringResource(tab.titleRes),
                                     selected = state.tab == tab && state.subTitle == null,
                                     focusRequester = if (state.tab == tab) selectedTabFocus else null,
                                     downFocusRequester = tabsDownFocus,
@@ -629,7 +630,7 @@ fun YouTubeScreen(
                 verticalAlignment = Alignment.CenterVertically
             ) {
                 item {
-                    Text("Pinned", color = Color.Gray, fontSize = 14.sp)
+                    Text(stringResource(R.string.onetube_pinned), color = Color.Gray, fontSize = 14.sp)
                 }
                 items(pinnedPlaylists) { (id, title) ->
                     TabChip(
@@ -804,7 +805,7 @@ private fun Content(
     val restoredGridIndex = state.grid.indexOfFirst { it.kind == YtKind.VIDEO && it.videoId == restoreId }
     val targetGridIndex = if (restoredGridIndex >= 0) restoredGridIndex else state.grid.indexOfFirst { it.kind == YtKind.VIDEO }
     // Down from the tabs always goes to the first row on the page, even when that row is not
-    // made of videos (Gaming's "Top Live Games", for example). Use its first video if it has
+    // made of videos (Gaming's "Top live games", for example). Use its first video if it has
     // one, otherwise its first card.
     val firstRowIndex = state.rows.indexOfFirst { it.items.isNotEmpty() }.takeIf { it >= 0 } ?: 0
     val firstRowCardIndex = state.rows.getOrNull(firstRowIndex)?.items?.let { items ->
@@ -823,17 +824,17 @@ private fun Content(
             Box(Modifier.fillMaxSize(), Alignment.Center) { CircularProgressIndicator(color = YtRed) }
 
         state.tab.needsSignIn && !state.signedIn && state.subTitle == null -> Message(
-            "Sign in to see your ${state.tab.title.lowercase()}",
-            account.error ?: "You'll get a code to enter at ${account.url}.",
-            "Sign in",
+            stringResource(R.string.onetube_sign_in_to_see, stringResource(state.tab.titleRes)),
+            account.error ?: stringResource(R.string.onetube_code_hint, account.url),
+            stringResource(R.string.onetube_sign_in),
             upFocusRequester = tabsFocus,
             onAction = onSignIn
         )
 
         state.error != null && state.isEmpty -> Message(
             state.error,
-            "Check your connection and try again.",
-            "Try again",
+            stringResource(R.string.onetube_check_connection),
+            stringResource(R.string.onetube_try_again),
             upFocusRequester = tabsFocus
         ) {
             // Take the remote back to the content once it loads, rather than leaving it on the
@@ -843,17 +844,17 @@ private fun Content(
         }
 
         state.isEmpty && !state.signedIn && state.tab == YtTab.HOME && state.subTitle == null -> Message(
-            "Home is picked for you",
-            "OneTube only fills it once you sign in. Try Live, Music or Gaming above, or sign in.",
-            "Sign in",
+            stringResource(R.string.onetube_home_picked),
+            stringResource(R.string.onetube_home_picked_sub),
+            stringResource(R.string.onetube_sign_in),
             upFocusRequester = tabsFocus,
             onAction = onSignIn
         )
 
         state.isEmpty -> Message(
-            "Nothing here yet",
-            "OneTube didn't send this page. It can be busy for a moment.",
-            "Try again",
+            stringResource(R.string.onetube_nothing_here),
+            stringResource(R.string.onetube_nothing_here_sub),
+            stringResource(R.string.onetube_try_again),
             upFocusRequester = tabsFocus
         ) {
             needsInitialFocus = true
@@ -1095,7 +1096,7 @@ private fun ChannelsSplit(state: YtUiState, viewModel: YouTubeViewModel, onPlay:
                         .padding(horizontal = 14.dp, vertical = 8.dp),
                     verticalAlignment = Alignment.CenterVertically
                 ) {
-                    Text("←  Channels", color = Color.White, fontSize = 14.sp, fontWeight = FontWeight.SemiBold)
+                    Text(stringResource(R.string.onetube_channels_back), color = Color.White, fontSize = 14.sp, fontWeight = FontWeight.SemiBold)
                 }
             }
             Box(Modifier.weight(1f).fillMaxWidth()) {
@@ -1129,7 +1130,7 @@ private fun ChannelsSplit(state: YtUiState, viewModel: YouTubeViewModel, onPlay:
             }
             if (!preview.loading && preview.items.isEmpty()) {
                 Text(
-                    "Choose a channel and press OK to see its videos",
+                    stringResource(R.string.onetube_choose_channel),
                     color = Color.Gray,
                     fontSize = 16.sp,
                     modifier = Modifier.align(Alignment.Center)
@@ -1150,19 +1151,19 @@ private fun SignInPanel(account: YouTubeAccountState, onCancel: () -> Unit) {
     Box(Modifier.fillMaxSize(), Alignment.Center) {
         Row(horizontalArrangement = Arrangement.spacedBy(48.dp), verticalAlignment = Alignment.CenterVertically) {
             qr?.let {
-                Image(it, contentDescription = "QR code to sign in", modifier = Modifier.size(260.dp).clip(RoundedCornerShape(12.dp)))
+                Image(it, contentDescription = stringResource(R.string.onetube_qr_sign_in), modifier = Modifier.size(260.dp).clip(RoundedCornerShape(12.dp)))
             }
             Column(verticalArrangement = Arrangement.spacedBy(14.dp)) {
-                Text("Sign in to OneTube", color = Color.White, fontSize = 22.sp, fontWeight = FontWeight.SemiBold)
+                Text(stringResource(R.string.onetube_sign_in_title), color = Color.White, fontSize = 22.sp, fontWeight = FontWeight.SemiBold)
                 Text(
-                    if (qr != null) "Scan the code with your phone, or go to ${account.url} and enter:"
-                    else "On your phone or computer, go to ${account.url} and enter:",
+                    if (qr != null) stringResource(R.string.onetube_scan_code_hint, account.url)
+                    else stringResource(R.string.onetube_phone_code_hint, account.url),
                     color = Color.Gray,
                     fontSize = 16.sp
                 )
                 Text(account.code.orEmpty(), color = Color.White, fontSize = 40.sp, fontWeight = FontWeight.Bold)
-                Text("Waiting for you to approve it\u2026", color = Color.Gray, fontSize = 14.sp)
-                TabChip("Cancel", selected = false, onClick = onCancel)
+                Text(stringResource(R.string.onetube_waiting_approval), color = Color.Gray, fontSize = 14.sp)
+                TabChip(stringResource(R.string.action_cancel), selected = false, onClick = onCancel)
             }
         }
     }
@@ -1179,7 +1180,7 @@ private fun SuggestionList(
 ) {
     // A long history (or a long list of suggestions) scrolls instead of running off the bottom of the screen.
     Column(modifier.width(520.dp).padding(top = 4.dp), verticalArrangement = Arrangement.spacedBy(8.dp)) {
-        Text(if (recent) "Recent searches" else "Suggestions", color = Color.Gray, fontSize = 14.sp)
+        Text(if (recent) stringResource(R.string.onetube_recent_searches) else stringResource(R.string.onetube_suggestions), color = Color.Gray, fontSize = 14.sp)
         androidx.compose.foundation.lazy.LazyColumn(
             Modifier.weight(1f, fill = false),
             verticalArrangement = Arrangement.spacedBy(8.dp)
@@ -1188,7 +1189,7 @@ private fun SuggestionList(
                 AccountRow(text, null, null, if (i == 0) Modifier.focusRequester(first) else Modifier) { onPick(text) }
             }
             if (recent) item {
-                AccountRow("Clear search history", null, null, Modifier) { onClearHistory() }
+                AccountRow(stringResource(R.string.onetube_clear_search_history), null, null, Modifier) { onClearHistory() }
             }
         }
     }
@@ -1205,7 +1206,7 @@ private fun AccountsPanel(
     LaunchedEffect(Unit) { runCatching { first.requestFocus() } }
     Box(Modifier.fillMaxSize(), Alignment.TopCenter) {
         Column(Modifier.width(520.dp).padding(top = 12.dp), verticalArrangement = Arrangement.spacedBy(10.dp)) {
-            Text("Who's watching?", color = Color.White, fontSize = 22.sp, fontWeight = FontWeight.SemiBold)
+            Text(stringResource(R.string.onetube_whos_watching), color = Color.White, fontSize = 22.sp, fontWeight = FontWeight.SemiBold)
             account.accounts.forEachIndexed { i, a ->
                 AccountRow(
                     title = if (a.selected) "${a.name}   \u2713" else a.name,
@@ -1214,8 +1215,14 @@ private fun AccountsPanel(
                     modifier = if (i == 0) Modifier.focusRequester(first) else Modifier
                 ) { onSelect(a.id) }
             }
-            AccountRow("Add another account", null, null, Modifier) { onAdd() }
-            AccountRow("Sign out of ${account.accountName ?: "this account"}", null, null, Modifier) { onSignOut() }
+            AccountRow(stringResource(R.string.onetube_add_account), null, null, Modifier) { onAdd() }
+            AccountRow(
+                stringResource(
+                    R.string.onetube_sign_out_of,
+                    account.accountName ?: stringResource(R.string.onetube_this_account)
+                ),
+                null, null, Modifier
+            ) { onSignOut() }
         }
     }
 }
@@ -1355,7 +1362,7 @@ private fun HeaderClock(modifier: Modifier = Modifier) {
     )
 }
 
-/** The account pill at the end of the header: avatar, then the name or "Sign in". */
+/** The account pill at the end of the header: avatar, then the name or stringResource(R.string.onetube_sign_in). */
 @Composable
 private fun AccountChip(
     label: String,
@@ -1458,9 +1465,9 @@ private fun YouTubeItemMenuDialog(
 
     NuvioDialog(
         onDismiss = onClose,
-        title = if (creatingPlaylist) "New playlist" else menu.item.title,
+        title = if (creatingPlaylist) stringResource(R.string.onetube_new_playlist) else menu.item.title,
         subtitle = when {
-            creatingPlaylist -> "The video is added to it"
+            creatingPlaylist -> stringResource(R.string.onetube_video_added)
             // A channel card's own title is its channel name; videos carry the author.
             menu.item.kind == YtKind.CHANNEL ->
                 menu.item.author?.takeIf { it.isNotBlank() } ?: menu.item.title
@@ -1473,7 +1480,7 @@ private fun YouTubeItemMenuDialog(
                 value = newPlaylistName,
                 onValueChange = { newPlaylistName = it },
                 singleLine = true,
-                label = { Text("Playlist name") },
+                label = { Text(stringResource(R.string.onetube_playlist_name)) },
                 keyboardOptions = KeyboardOptions(imeAction = ImeAction.Done),
                 keyboardActions = KeyboardActions(onDone = { create() }),
                 colors = OutlinedTextFieldDefaults.colors(
@@ -1487,8 +1494,8 @@ private fun YouTubeItemMenuDialog(
                 ),
                 modifier = Modifier.fillMaxWidth().focusRequester(nameFocus)
             )
-            MenuRow("Save to new playlist", enabled = newPlaylistName.isNotBlank() && !menu.busy) { create() }
-            MenuRow("Cancel") {
+            MenuRow(stringResource(R.string.onetube_save_to_new_playlist), enabled = newPlaylistName.isNotBlank() && !menu.busy) { create() }
+            MenuRow(stringResource(R.string.action_cancel)) {
                 creatingPlaylist = false
                 newPlaylistName = ""
                 keyboard?.hide()
@@ -1499,12 +1506,12 @@ private fun YouTubeItemMenuDialog(
                 verticalArrangement = Arrangement.spacedBy(8.dp)
             ) {
                 Text(
-                    "Delete \"${menu.item.title}\" from your YouTube account? This can't be undone.",
+                    stringResource(R.string.onetube_delete_video_confirm, menu.item.title),
                     color = Color.White,
                     fontSize = 14.sp
                 )
-                MenuRow("Delete playlist", firstRow, enabled = !menu.busy, onClick = onDeletePlaylist)
-                MenuRow("Cancel") { confirmingDelete = false }
+                MenuRow(stringResource(R.string.onetube_delete_playlist), firstRow, enabled = !menu.busy, onClick = onDeletePlaylist)
+                MenuRow(stringResource(R.string.action_cancel)) { confirmingDelete = false }
             }
         } else {
             Column(
@@ -1512,36 +1519,36 @@ private fun YouTubeItemMenuDialog(
                 verticalArrangement = Arrangement.spacedBy(4.dp)
             ) {
                 if (isVideo && !hasChannel && menu.loadingChannel) {
-                    Text("Looking up the channel…", color = Color.Gray, fontSize = 14.sp)
+                    Text(stringResource(R.string.onetube_looking_up_channel), color = Color.Gray, fontSize = 14.sp)
                 }
                 if (isVideo && hasChannel) {
-                    MenuRow("Open channel", firstRow, onClick = onOpenChannel)
+                    MenuRow(stringResource(R.string.onetube_open_channel), firstRow, onClick = onOpenChannel)
                 }
                 if (menu.item.kind == YtKind.CHANNEL) {
-                    MenuRow("Open channel", firstRow, onClick = onOpenItem)
+                    MenuRow(stringResource(R.string.onetube_open_channel), firstRow, onClick = onOpenItem)
                 }
                 if (menu.item.kind == YtKind.PLAYLIST) {
-                    MenuRow("Open playlist", firstRow, onClick = onOpenItem)
+                    MenuRow(stringResource(R.string.onetube_open_playlist), firstRow, onClick = onOpenItem)
                     MenuRow(
-                        if (menu.pinned) "Unpin from the OneTube page" else "Pin to the OneTube page",
+                        if (menu.pinned) stringResource(R.string.onetube_unpin) else stringResource(R.string.onetube_pin),
                         enabled = !menu.busy,
                         onClick = onTogglePinned
                     )
-                    MenuRow("Delete playlist", enabled = !menu.busy) { confirmingDelete = true }
+                    MenuRow(stringResource(R.string.onetube_delete_playlist), enabled = !menu.busy) { confirmingDelete = true }
                 }
                 if ((isVideo || isChannel) && hasChannel && menu.subscribed != null) {
                     MenuRow(
-                        if (menu.subscribed == true) "Unsubscribe" else "Subscribe",
+                        if (menu.subscribed == true) stringResource(R.string.onetube_unsubscribe) else stringResource(R.string.onetube_subscribe),
                         enabled = !menu.busy,
                         onClick = onToggleSubscribe
                     )
                 }
                 if (isVideo) {
                     when {
-                        menu.loadingPlaylists -> Text("Loading playlists…", color = Color.Gray, fontSize = 14.sp)
+                        menu.loadingPlaylists -> Text(stringResource(R.string.onetube_loading_playlists), color = Color.Gray, fontSize = 14.sp)
                         menu.playlists != null -> {
                             MenuRow(
-                                if (showPlaylists) "Hide playlists" else "Add to playlist",
+                                if (showPlaylists) stringResource(R.string.onetube_hide_playlists) else stringResource(R.string.onetube_add_to_playlist),
                                 enabled = !menu.busy
                             ) { showPlaylists = !showPlaylists }
                             if (showPlaylists) {
@@ -1552,17 +1559,17 @@ private fun YouTubeItemMenuDialog(
                                     ) { onTogglePlaylist(row) }
                                 }
                             }
-                            MenuRow("New playlist", enabled = !menu.busy) {
+                            MenuRow(stringResource(R.string.onetube_new_playlist), enabled = !menu.busy) {
                                 creatingPlaylist = true
                             }
                         }
                     }
                 }
                 if ((isVideo || isChannel) && hasChannel) {
-                    MenuRow("Block this channel", enabled = !menu.busy, onClick = onBlockChannel)
+                    MenuRow(stringResource(R.string.onetube_block_channel), enabled = !menu.busy, onClick = onBlockChannel)
                 }
                 if (isVideo) {
-                    MenuRow("Not interested", enabled = !menu.busy, onClick = onNotInterested)
+                    MenuRow(stringResource(R.string.onetube_not_interested), enabled = !menu.busy, onClick = onNotInterested)
                 }
             }
         }
@@ -1651,7 +1658,7 @@ private fun looksLikeYouTubeTime(value: String): Boolean =
         value.contains("today", ignoreCase = true) ||
         Regex("\\b(19|20)\\d{2}\\b").containsMatchIn(value)
 
-/** Small edge chevrons, so a row with more cards off-screen says so without a "See all" button. */
+/** Small edge chevrons, so a row with more cards off-screen says so without a stringResource(R.string.onetube_see_all) button. */
 @Composable
 private fun BoxScope.RowScrollCues(state: LazyListState) {
     if (state.canScrollBackward) RowScrollCue(Alignment.CenterStart, Icons.AutoMirrored.Filled.KeyboardArrowLeft)
@@ -1796,7 +1803,7 @@ private fun ItemCard(item: YtItem, viewModel: YouTubeViewModel, modifier: Modifi
             }
             if (watched in 5..94 && item.kind == YtKind.VIDEO && !item.isLive) {
                 Text(
-                    "Resume",
+                    stringResource(R.string.onetube_resume),
                     color = Color.White,
                     fontSize = 11.sp,
                     fontWeight = FontWeight.SemiBold,
@@ -1820,8 +1827,8 @@ private fun ItemCard(item: YtItem, viewModel: YouTubeViewModel, modifier: Modifi
             }
             val badge = when {
                 item.isLive -> "LIVE"
-                item.kind == YtKind.CHANNEL -> "CHANNEL"
-                item.kind == YtKind.PLAYLIST -> "PLAYLIST"
+                item.kind == YtKind.CHANNEL -> stringResource(R.string.onetube_channel_tag)
+                item.kind == YtKind.PLAYLIST -> stringResource(R.string.onetube_playlist_tag)
                 else -> item.badge
             }
             if (!badge.isNullOrBlank()) {

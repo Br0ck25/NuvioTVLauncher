@@ -20,6 +20,8 @@ import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.platform.LocalContext
+import androidx.compose.ui.res.stringResource
+import com.nuvio.tv.R
 import com.nuvio.tv.youtube.YouTubeContentRegion
 import com.nuvio.tv.youtube.YouTubeSettings
 import com.nuvio.tv.youtube.YtTab
@@ -89,7 +91,7 @@ internal fun YouTubeSettingsContent(
             subtitle = "Sign in to see your subscriptions and watch history in the OneTube section"
         )
 
-        SettingsGroupCard(title = "Account") {
+        SettingsGroupCard(title = stringResource(R.string.onetube_settings_account)) {
             val first = if (initialFocusRequester != null) Modifier.focusRequester(initialFocusRequester) else Modifier
             when {
                 state.code != null -> {
@@ -139,7 +141,7 @@ internal fun YouTubeSettingsContent(
             }
         }
 
-        SettingsGroupCard(title = "Header") {
+        SettingsGroupCard(title = stringResource(R.string.onetube_settings_header)) {
             SettingsToggleRow(
                 title = "Clock",
                 subtitle = "Show the time in the OneTube header",
@@ -151,7 +153,7 @@ internal fun YouTubeSettingsContent(
             )
         }
 
-        SettingsGroupCard(title = "Playback") {
+        SettingsGroupCard(title = stringResource(R.string.onetube_settings_playback)) {
             SettingsToggleRow(
                 title = "Thumbnail previews with sound",
                 subtitle = "Play a preview when you pause on a OneTube video",
@@ -296,7 +298,7 @@ internal fun YouTubeSettingsContent(
         }
 
         SettingsGroupCard(
-            title = "Feeds",
+            title = stringResource(R.string.onetube_settings_feeds),
             subtitle = "Leave things out of the OneTube page. History always shows everything you've watched."
         ) {
             SettingsToggleRow(
@@ -407,7 +409,7 @@ internal fun YouTubeSettingsContent(
         }
 
         SettingsGroupCard(
-            title = "Tabs",
+            title = stringResource(R.string.onetube_settings_tabs),
             subtitle = "Choose which tabs show along the top of the OneTube page"
         ) {
             SettingsToggleRow(
@@ -440,7 +442,7 @@ internal fun YouTubeSettingsContent(
                 val shown = tab.name !in hiddenTabs
                 val onlyOneLeft = shown && YtTab.entries.count { it.name !in hiddenTabs } <= 1
                 SettingsToggleRow(
-                    title = tab.title,
+                    title = stringResource(tab.titleRes),
                     subtitle = when {
                         onlyOneLeft -> "At least one tab has to stay on"
                         tab.needsSignIn -> "Needs a signed-in account"
@@ -457,7 +459,7 @@ internal fun YouTubeSettingsContent(
         }
 
         SettingsGroupCard(
-            title = "SponsorBlock",
+            title = stringResource(R.string.onetube_settings_sponsorblock),
             subtitle = "Skips parts of videos that viewers have marked, such as sponsor reads"
         ) {
             SettingsToggleRow(

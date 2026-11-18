@@ -1240,6 +1240,7 @@ open class MainActivity : ComponentActivity() {
                     val strNavDiscover = stringResource(R.string.nav_discover)
                     val strNavSearch = stringResource(R.string.nav_search)
                     val strNavLibrary = stringResource(R.string.nav_library)
+                    val strNavMusic = stringResource(R.string.music_nav_label)
                     val strNavSettings = stringResource(R.string.nav_settings)
                     // Live TV fork: Home first and Settings at the bottom; the pages between in the
                     // order set in Settings → Menu & Features, with a thin line above Live TV's own pages.
@@ -1248,6 +1249,7 @@ open class MainActivity : ComponentActivity() {
                         strNavDiscover,
                         strNavSearch,
                         strNavLibrary,
+                        strNavMusic,
                         strNavSettings,
                         discoverLocation,
                         liveTvInSidebar,
@@ -1279,7 +1281,7 @@ open class MainActivity : ComponentActivity() {
                             // YouTube fork: OneTube and Music are ordinary menu pages now, so
                             // Menu & Features can switch them off and move them like the rest.
                             pages.YOUTUBE -> if (id !in hiddenPages) DrawerItem(route = Screen.YouTube.route, label = "OneTube", icon = Icons.Default.PlayCircle, sectionStart = true) else null
-                            pages.MUSIC -> if (id !in hiddenPages) DrawerItem(route = Screen.Music.route, label = "Music", icon = Icons.Default.LibraryMusic) else null
+                            pages.MUSIC -> if (id !in hiddenPages) DrawerItem(route = Screen.Music.route, label = strNavMusic, icon = Icons.Default.LibraryMusic) else null
                             else -> null
                         }
                         buildList {

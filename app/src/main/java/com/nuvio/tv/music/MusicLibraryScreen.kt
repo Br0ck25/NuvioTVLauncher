@@ -57,18 +57,20 @@ import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.graphicsLayer
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextOverflow
+import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.unit.Dp
 import androidx.compose.ui.unit.dp
+import com.nuvio.tv.R
 import androidx.compose.ui.unit.sp
 import androidx.tv.material3.Icon
 import androidx.tv.material3.Text
 import com.music.bitchord.data.model.Song
 
-private enum class LibraryFilter(val label: String) {
-    RECENTS("Recently played"),
-    LIKED("Liked Songs"),
-    PLAYLISTS("Playlists"),
-    DOWNLOADS("Downloads")
+private enum class LibraryFilter(@androidx.annotation.StringRes val labelRes: Int) {
+    RECENTS(R.string.music_section_recently_played),
+    LIKED(R.string.music_p2_liked_songs),
+    PLAYLISTS(R.string.music_section_playlists),
+    DOWNLOADS(R.string.music_downloads_title)
 }
 
 @Composable
@@ -115,7 +117,7 @@ internal fun MusicLibraryScreen(
     ) {
         Column(Modifier.width(330.dp).fillMaxHeight()) {
             Text(
-                text = "Library",
+                text = stringResource(R.string.music_tab_library),
                 color = MusicPalette.text,
                 fontFamily = MusicDisplay,
                 fontSize = 40.sp,
@@ -124,7 +126,7 @@ internal fun MusicLibraryScreen(
             )
             Spacer(Modifier.height(4.dp))
             Text(
-                text = "Your likes, playlists and listening history.",
+                text = stringResource(R.string.music_p2_your_likes_playlists_and_listening),
                 color = MusicPalette.textSecondary,
                 fontSize = 13.sp,
                 lineHeight = 18.sp
@@ -140,7 +142,7 @@ internal fun MusicLibraryScreen(
                 Spacer(Modifier.height(8.dp))
                 LibraryActionButton(
                     icon = Icons.Default.Refresh,
-                    label = if (accountLoading) "Refreshing..." else "Refresh YouTube Music",
+                    label = if (accountLoading) stringResource(R.string.music_p2_refreshing) else stringResource(R.string.music_p2_refresh_youtube_music),
                     modifier = Modifier.fillMaxWidth(),
                     onClick = onRefreshAccount
                 )
@@ -149,7 +151,7 @@ internal fun MusicLibraryScreen(
 
             LibraryFilterRow(
                 icon = Icons.Default.Schedule,
-                label = LibraryFilter.RECENTS.label,
+                label = stringResource(LibraryFilter.RECENTS.labelRes),
                 count = recents.size,
                 selected = filter == LibraryFilter.RECENTS,
                 modifier = Modifier.focusRequester(firstFilterFocus),
@@ -158,7 +160,7 @@ internal fun MusicLibraryScreen(
             Spacer(Modifier.height(6.dp))
             LibraryFilterRow(
                 icon = Icons.Default.Favorite,
-                label = LibraryFilter.LIKED.label,
+                label = stringResource(LibraryFilter.LIKED.labelRes),
                 count = likedCount,
                 selected = filter == LibraryFilter.LIKED,
                 onSelect = { filter = LibraryFilter.LIKED }
@@ -166,7 +168,7 @@ internal fun MusicLibraryScreen(
             Spacer(Modifier.height(6.dp))
             LibraryFilterRow(
                 icon = Icons.Default.PlaylistPlay,
-                label = LibraryFilter.PLAYLISTS.label,
+                label = stringResource(LibraryFilter.PLAYLISTS.labelRes),
                 count = playlistCount,
                 selected = filter == LibraryFilter.PLAYLISTS,
                 onSelect = { filter = LibraryFilter.PLAYLISTS }
@@ -174,7 +176,7 @@ internal fun MusicLibraryScreen(
             Spacer(Modifier.height(6.dp))
             LibraryFilterRow(
                 icon = Icons.Default.Download,
-                label = LibraryFilter.DOWNLOADS.label,
+                label = stringResource(LibraryFilter.DOWNLOADS.labelRes),
                 count = downloads.completed.size,
                 selected = filter == LibraryFilter.DOWNLOADS,
                 onSelect = { filter = LibraryFilter.DOWNLOADS }
@@ -188,7 +190,7 @@ internal fun MusicLibraryScreen(
                 text = if (downloads.totalBytes > 0L) {
                     "${formatDownloadBytes(downloads.totalBytes)} on this device"
                 } else {
-                    "Nothing downloaded yet"
+                    stringResource(R.string.music_p2_nothing_downloaded_yet)
                 },
                 color = MusicPalette.textMuted,
                 fontSize = 10.5.sp,
@@ -208,17 +210,17 @@ internal fun MusicLibraryScreen(
                     LibraryFilter.RECENTS -> {
                         val canPlay = recents.isNotEmpty()
                         LibraryHeroModel(
-                            badge = "YOUR HISTORY",
-                            title = "Jump back in",
+                            badge = stringResource(R.string.music_p2_your_history),
+                            title = stringResource(R.string.music_section_jump_back_in),
                             subtitle = if (canPlay) {
                                 "${recents.size} tracks · pick up where you left off"
                             } else {
-                                "Tracks you play will appear here."
+                                stringResource(R.string.music_p2_tracks_you_play_will_appear)
                             },
                             artworkUrl = recents.firstOrNull()?.thumbnailUrl,
-                            primaryLabel = "Play",
+                            primaryLabel = stringResource(R.string.music_action_play),
                             onPrimary = if (canPlay) ({ onPlayRecents(0) }) else null,
-                            secondaryLabel = if (recents.size > 1) "Shuffle" else null,
+                            secondaryLabel = if (recents.size > 1) stringResource(R.string.music_p2_shuffle) else null,
                             onSecondary = if (recents.size > 1) {
                                 ({ onPlayRecents(recents.indices.random()) })
                             } else {
@@ -233,33 +235,33 @@ internal fun MusicLibraryScreen(
                             else -> null
                         }
                         LibraryHeroModel(
-                            badge = "LIKED SONGS",
-                            title = "Songs you love",
+                            badge = stringResource(R.string.music_p2_liked_songs),
+                            title = stringResource(R.string.music_section_songs_you_love),
                             subtitle = if (likedCount > 0) {
                                 "$likedCount tracks · the ones you keep coming back to"
                             } else {
-                                "Songs you like will appear here."
+                                stringResource(R.string.music_p2_songs_you_like_will_appear)
                             },
                             artworkUrl = (accountLiked.firstOrNull() ?: liked.firstOrNull())?.thumbnailUrl,
-                            primaryLabel = "Play",
+                            primaryLabel = stringResource(R.string.music_action_play),
                             onPrimary = firstPlay
                         )
                     }
                     LibraryFilter.PLAYLISTS -> {
                         val firstLocal = playlists.firstOrNull()
                         LibraryHeroModel(
-                            badge = "COLLECTION",
-                            title = "Your collection",
+                            badge = stringResource(R.string.music_p2_collection),
+                            title = stringResource(R.string.music_section_your_collection),
                             subtitle = if (playlistCount > 0) {
                                 "$playlistCount playlists · on this device and YouTube Music"
                             } else {
-                                "Create a playlist, then add songs from Now Playing."
+                                stringResource(R.string.music_p2_create_a_playlist_then_add)
                             },
                             artworkUrl = accountPlaylists.firstOrNull()?.thumbnailUrl
                                 ?: playlists.firstOrNull()?.songs?.firstOrNull()?.thumbnailUrl,
-                            primaryLabel = "New playlist",
+                            primaryLabel = stringResource(R.string.music_action_new_playlist),
                             onPrimary = onCreatePlaylist,
-                            secondaryLabel = if (firstLocal != null) "Open first" else null,
+                            secondaryLabel = if (firstLocal != null) stringResource(R.string.music_p2_open_first) else null,
                             onSecondary = if (firstLocal != null) {
                                 ({ onOpenPlaylist(firstLocal) })
                             } else {
@@ -269,18 +271,18 @@ internal fun MusicLibraryScreen(
                     }
                     LibraryFilter.DOWNLOADS -> {
                         LibraryHeroModel(
-                            badge = "OFFLINE",
-                            title = "Offline library",
+                            badge = stringResource(R.string.music_p2_offline),
+                            title = stringResource(R.string.music_section_offline_library),
                             subtitle = if (downloadedSongs.isEmpty()) {
-                                "Save albums and playlists for offline listening."
+                                stringResource(R.string.music_p2_save_albums_and_playlists_for)
                             } else {
                                 "${downloadedSongs.size} tracks · " +
                                     "${formatDownloadBytes(downloads.totalBytes)} · plays offline"
                             },
                             artworkUrl = downloadedSongs.firstOrNull()?.thumbnailUrl,
-                            primaryLabel = "Open downloads",
+                            primaryLabel = stringResource(R.string.music_action_open_downloads),
                             onPrimary = onOpenDownloads,
-                            secondaryLabel = if (downloadedSongs.isNotEmpty()) "Play all" else null,
+                            secondaryLabel = if (downloadedSongs.isNotEmpty()) stringResource(R.string.music_action_play_all) else null,
                             onSecondary = if (downloadedSongs.isNotEmpty()) {
                                 ({ onPlayDownloaded(downloadedSongs, 0) })
                             } else {
@@ -297,7 +299,7 @@ internal fun MusicLibraryScreen(
                     item(key = "recents-header") {
                         LibrarySectionHeader(
                             icon = Icons.Default.Schedule,
-                            title = "Recently played",
+                            title = stringResource(R.string.music_section_recently_played),
                             count = recents.size,
                             horizontalPadding = 0.dp,
                             onPlayAll = if (recents.isNotEmpty()) {
@@ -311,7 +313,7 @@ internal fun MusicLibraryScreen(
                         item(key = "recents-empty") {
                             LibraryHint(
                                 icon = Icons.Default.Schedule,
-                                text = "Tracks you play will appear here.",
+                                text = stringResource(R.string.music_p2_tracks_you_play_will_appear),
                                 horizontalPadding = 0.dp
                             )
                         }
@@ -338,7 +340,7 @@ internal fun MusicLibraryScreen(
                         item(key = "account-liked-header") {
                             LibrarySectionHeader(
                                 icon = Icons.Default.Favorite,
-                                title = "Liked on YouTube Music",
+                                title = stringResource(R.string.music_section_liked_youtube),
                                 count = accountLiked.size,
                                 horizontalPadding = 0.dp,
                                 onPlayAll = if (accountLiked.isNotEmpty()) {
@@ -352,7 +354,7 @@ internal fun MusicLibraryScreen(
                             item(key = "account-liked-loading") {
                                 LibraryHint(
                                     icon = Icons.Default.AccountCircle,
-                                    text = "Loading your YouTube Music likes…",
+                                    text = stringResource(R.string.music_p2_loading_your_youtube_music_likes),
                                     horizontalPadding = 0.dp
                                 )
                             }
@@ -360,7 +362,7 @@ internal fun MusicLibraryScreen(
                             item(key = "account-liked-empty") {
                                 LibraryHint(
                                     icon = Icons.Default.Favorite,
-                                    text = "Songs you like on YouTube Music will appear here.",
+                                    text = stringResource(R.string.music_p2_songs_you_like_on_youtube),
                                     horizontalPadding = 0.dp
                                 )
                             }
@@ -384,7 +386,7 @@ internal fun MusicLibraryScreen(
                     item(key = "local-liked-header") {
                         LibrarySectionHeader(
                             icon = Icons.Default.Favorite,
-                            title = if (accountName != null) "Liked on this device" else "Liked Songs",
+                            title = if (accountName != null) stringResource(R.string.music_p2_liked_on_this_device) else stringResource(R.string.music_p2_liked_songs),
                             count = liked.size,
                             horizontalPadding = 0.dp,
                             onPlayAll = if (liked.isNotEmpty()) {
@@ -398,7 +400,7 @@ internal fun MusicLibraryScreen(
                         item(key = "local-liked-empty") {
                             LibraryHint(
                                 icon = Icons.Default.Favorite,
-                                text = "Songs you like will appear here. Use the heart on Now Playing.",
+                                text = stringResource(R.string.music_p2_songs_you_like_heart),
                                 horizontalPadding = 0.dp
                             )
                         }
@@ -424,7 +426,7 @@ internal fun MusicLibraryScreen(
                         item(key = "account-playlists-header") {
                             LibrarySectionHeader(
                                 icon = Icons.Default.PlaylistPlay,
-                                title = "From YouTube Music",
+                                title = stringResource(R.string.music_section_from_youtube),
                                 count = accountPlaylists.size,
                                 horizontalPadding = 0.dp
                             )
@@ -433,7 +435,7 @@ internal fun MusicLibraryScreen(
                             item(key = "account-playlists-empty") {
                                 LibraryHint(
                                     icon = Icons.Default.PlaylistPlay,
-                                    text = "Playlists from your YouTube Music account will appear here.",
+                                    text = stringResource(R.string.music_p2_playlists_from_your_youtube_music),
                                     horizontalPadding = 0.dp
                                 )
                             }
@@ -458,7 +460,7 @@ internal fun MusicLibraryScreen(
                     item(key = "local-playlists-header") {
                         LibrarySectionHeader(
                             icon = Icons.Default.PlaylistPlay,
-                            title = if (accountName != null) "On this device" else "Playlists",
+                            title = stringResource(if (accountName != null) R.string.music_section_on_this_device else R.string.music_section_playlists),
                             count = playlists.size,
                             horizontalPadding = 0.dp
                         )
@@ -475,8 +477,8 @@ internal fun MusicLibraryScreen(
                                 )
                             } + LibraryTile(
                                 artworkUrl = null,
-                                title = "New playlist",
-                                subtitle = "Create a playlist",
+                                title = stringResource(R.string.music_action_new_playlist),
+                                subtitle = stringResource(R.string.music_p2_create_a_playlist),
                                 isNew = true,
                                 onClick = onCreatePlaylist
                             )
@@ -497,7 +499,7 @@ internal fun MusicLibraryScreen(
                     item(key = "downloads-hint") {
                         LibraryHint(
                             icon = Icons.Default.Download,
-                            text = "Manage downloads, retry failures and free space in the Downloads screen.",
+                            text = stringResource(R.string.music_p2_manage_downloads_retry_failures_and),
                             horizontalPadding = 0.dp
                         )
                     }
@@ -505,7 +507,7 @@ internal fun MusicLibraryScreen(
                         item(key = "downloaded-tracks-header") {
                             LibrarySectionHeader(
                                 icon = Icons.Default.Download,
-                                title = "Downloaded tracks",
+                                title = stringResource(R.string.music_section_downloaded_tracks),
                                 count = downloadedSongs.size,
                                 horizontalPadding = 0.dp,
                                 onPlayAll = { onPlayDownloaded(downloadedSongs, 0) }
@@ -567,7 +569,7 @@ private fun LibraryRailAccount(
         }
         Column(Modifier.weight(1f)) {
             Text(
-                text = "YouTube Music account",
+                text = stringResource(R.string.music_p2_youtube_music_account),
                 color = MusicPalette.text,
                 fontSize = 13.5.sp,
                 fontWeight = FontWeight.SemiBold,
@@ -576,7 +578,7 @@ private fun LibraryRailAccount(
             )
             Spacer(Modifier.height(2.dp))
             Text(
-                text = if (accountName == null) "Sign in to YouTube Music" else accountName,
+                text = if (accountName == null) stringResource(R.string.music_p2_sign_in_to_youtube_music) else accountName,
                 color = MusicPalette.textSecondary,
                 fontSize = 11.5.sp,
                 maxLines = 1,
@@ -584,7 +586,7 @@ private fun LibraryRailAccount(
             )
         }
         Text(
-            text = if (accountName == null) "Sign in" else "Manage",
+            text = stringResource(if (accountName == null) R.string.music_account_sign_in else R.string.music_account_manage),
             color = if (focused) MusicPalette.text else MusicPalette.accent,
             fontSize = 10.5.sp,
             fontWeight = FontWeight.SemiBold
@@ -690,7 +692,7 @@ private fun RailNewPlaylistButton(onClick: () -> Unit) {
         )
         Spacer(Modifier.width(7.dp))
         Text(
-            text = "New playlist",
+            text = stringResource(R.string.music_action_new_playlist),
             color = if (focused) MusicPalette.background else MusicPalette.text,
             fontSize = 13.sp,
             fontWeight = FontWeight.SemiBold
@@ -926,7 +928,7 @@ private fun LibrarySectionHeader(
         if (onPlayAll != null) {
             LibraryActionButton(
                 icon = Icons.Default.PlayArrow,
-                label = "Play all",
+                label = stringResource(R.string.music_action_play_all),
                 onClick = onPlayAll
             )
         }
@@ -983,20 +985,20 @@ private fun AccountSignInCard(onSignIn: () -> Unit) {
         )
         Column(Modifier.weight(1f)) {
             Text(
-                text = "YouTube Music account",
+                text = stringResource(R.string.music_p2_youtube_music_account),
                 color = MusicPalette.text,
                 fontSize = 17.sp,
                 fontWeight = FontWeight.SemiBold
             )
             Text(
-                text = "Sign in to YouTube Music to see your liked songs and playlists.",
+                text = stringResource(R.string.music_p2_sign_in_to_see_liked),
                 color = MusicPalette.textSecondary,
                 fontSize = 13.sp
             )
         }
         LibraryActionButton(
             icon = Icons.Default.AccountCircle,
-            label = "Sign in",
+            label = stringResource(R.string.music_account_sign_in),
             onClick = onSignIn
         )
     }
@@ -1017,7 +1019,7 @@ private fun AccountHeader(accountName: String, onManage: () -> Unit) {
         )
         Column(Modifier.weight(1f)) {
             Text(
-                text = "YouTube Music account",
+                text = stringResource(R.string.music_p2_youtube_music_account),
                 color = MusicPalette.text,
                 fontSize = 22.sp,
                 fontWeight = FontWeight.Bold
@@ -1032,7 +1034,7 @@ private fun AccountHeader(accountName: String, onManage: () -> Unit) {
         }
         LibraryActionButton(
             icon = Icons.Default.Person,
-            label = "Manage",
+            label = stringResource(R.string.music_account_manage),
             onClick = onManage
         )
     }
@@ -1083,7 +1085,7 @@ private fun AccountPlaylistTile(
     val shape = RoundedCornerShape(12.dp)
     val subtitle = playlist.count?.let {
         "$it track" + if (it == 1) "" else "s"
-    } ?: "Music playlist"
+    } ?: stringResource(R.string.music_p2_music_playlist)
     Row(
         modifier
             .height(78.dp)
@@ -1175,7 +1177,7 @@ private fun DownloadsLibraryRow(
         }
         Column(Modifier.weight(1f)) {
             Text(
-                text = "Downloads",
+                text = stringResource(R.string.music_downloads_title),
                 color = MusicPalette.text,
                 fontSize = 15.5.sp,
                 fontWeight = FontWeight.SemiBold
@@ -1186,7 +1188,7 @@ private fun DownloadsLibraryRow(
                     active > 0 -> "$active downloading · $count on this device"
                     count > 0 -> "$count track" + (if (count == 1) "" else "s") +
                         " · ${formatDownloadBytes(bytes)} · plays offline"
-                    else -> "Save albums and playlists for offline listening"
+                    else -> stringResource(R.string.music_p2_save_albums_and_playlists_for)
                 },
                 color = if (count > 0) MusicPalette.accentTeal else MusicPalette.textSecondary,
                 fontSize = 11.5.sp,
@@ -1196,7 +1198,7 @@ private fun DownloadsLibraryRow(
         }
         Icon(
             Icons.AutoMirrored.Filled.KeyboardArrowRight,
-            contentDescription = "Open downloads",
+            contentDescription = stringResource(R.string.music_action_open_downloads),
             tint = if (focused) MusicPalette.text else MusicPalette.textMuted,
             modifier = Modifier.size(22.dp)
         )
@@ -1374,7 +1376,7 @@ internal fun MusicLocalPlaylistScreen(
                     ) {
                         Icon(
                             Icons.AutoMirrored.Filled.ArrowBack,
-                            contentDescription = "Back",
+                            contentDescription = stringResource(R.string.music_p2_back),
                             tint = if (backFocused) MusicPalette.background else MusicPalette.text,
                             modifier = Modifier.size(20.dp)
                         )
@@ -1408,13 +1410,13 @@ internal fun MusicLocalPlaylistScreen(
                 Row(horizontalArrangement = Arrangement.spacedBy(10.dp)) {
                     LibraryActionButton(
                         icon = Icons.Default.PlayArrow,
-                        label = "Play",
+                        label = stringResource(R.string.music_action_play),
                         modifier = Modifier.focusRequester(firstFocus),
                         onClick = { if (songs.isNotEmpty()) onPlay(0) }
                     )
                     LibraryActionButton(
                         icon = Icons.Default.Delete,
-                        label = "Delete playlist",
+                        label = stringResource(R.string.music_p2_delete_playlist),
                         onClick = onDelete
                     )
                 }
@@ -1424,8 +1426,8 @@ internal fun MusicLocalPlaylistScreen(
         if (songs.isEmpty()) {
             item(key = "local-playlist-empty") {
                 MusicEmptyState(
-                    title = "No songs yet",
-                    message = "Add songs from Now Playing → Playlist.",
+                    title = stringResource(R.string.music_p2_no_songs_yet),
+                    message = stringResource(R.string.music_p2_add_songs_from_now_playing),
                     modifier = Modifier.fillMaxWidth().height(280.dp)
                 )
             }

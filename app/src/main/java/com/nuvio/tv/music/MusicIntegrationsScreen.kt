@@ -57,7 +57,9 @@ import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.input.ImeAction
 import androidx.compose.ui.text.input.PasswordVisualTransformation
 import androidx.compose.ui.text.input.VisualTransformation
+import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.unit.dp
+import com.nuvio.tv.R
 import androidx.compose.ui.unit.sp
 import androidx.tv.material3.Icon
 import androidx.tv.material3.Text
@@ -160,7 +162,7 @@ internal fun MusicIntegrationsScreen(
                 IntegrationCard(
                     icon = Icons.Default.Album,
                     tint = MusicPalette.accentTeal,
-                    title = "Navidrome",
+                    title = stringResource(R.string.music_integrations_navidrome),
                     subtitle = if (navidrome.configured) {
                         "Connected to ${navidrome.url}"
                     } else {
@@ -178,7 +180,7 @@ internal fun MusicIntegrationsScreen(
                 IntegrationCard(
                     icon = Icons.Default.Favorite,
                     tint = MusicPalette.accentCoral,
-                    title = "Last.fm",
+                    title = stringResource(R.string.music_integrations_lastfm),
                     subtitle = when {
                         lastFm.configured && lastFm.enabled -> "Scrobbling as ${lastFm.username}."
                         lastFm.configured -> "Signed in as ${lastFm.username}, currently off."
@@ -209,7 +211,7 @@ internal fun MusicIntegrationsScreen(
                             )
                             IntegrationPill(
                                 icon = Icons.Default.Favorite,
-                                label = "Sign out",
+                                label = stringResource(R.string.music_account_sign_out),
                                 onClick = {
                                     MusicScrobbler.logout(context)
                                     lastFmUsername = ""
@@ -297,7 +299,7 @@ internal fun MusicIntegrationsScreen(
                 IntegrationCard(
                     icon = Icons.Default.Cloud,
                     tint = MusicPalette.accent,
-                    title = "Music sources",
+                    title = stringResource(R.string.music_integrations_sources),
                     subtitle = when {
                         addons.isEmpty() -> "Add BitChord-style addons to search their catalogues."
                         addons.count { it.enabled } == 0 -> "${addons.size} addon(s), all turned off."
@@ -315,11 +317,15 @@ internal fun MusicIntegrationsScreen(
                 IntegrationCard(
                     icon = Icons.Default.MusicNote,
                     tint = MusicPalette.accentTeal,
-                    title = "Spotify",
+                    title = stringResource(R.string.music_integrations_spotify),
                     subtitle = when {
                         spotifyWeb.connected ->
-                            "Connected as ${spotifyWeb.accountName ?: "your Spotify account"}."
-                        else -> "Sign in on this TV, or import a public playlist."
+                            stringResource(
+                                R.string.music_p2_connected_as,
+                                spotifyWeb.accountName
+                                    ?: stringResource(R.string.music_integrations_spotify_account)
+                            )
+                        else -> stringResource(R.string.music_integrations_spotify_subtitle)
                     }
                 ) {
                     if (spotifyWeb.connected) {
@@ -474,7 +480,7 @@ internal fun MusicIntegrationsScreen(
                 IntegrationCard(
                     icon = Icons.Default.Cloud,
                     tint = MusicPalette.accent,
-                    title = "WebDAV",
+                    title = stringResource(R.string.music_integrations_webdav),
                     subtitle = if (webDav.configured) {
                         "Connected to ${webDav.url}"
                     } else {
