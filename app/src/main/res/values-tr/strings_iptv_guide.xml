@@ -69,4 +69,16 @@
     <string name="iptv_guide_nothing_playing">"Hiçbir şey oynatılmıyor"</string>
     <string name="iptv_guide_no_channels_group">"Bu grupta kanal yok"</string>
     <string name="iptv_guide_no_guide_channels_match">"Rehberde eşleşen kanal yok."</string>
+    <string name="iptv_vod_save_title">"Değişiklikler kaydedilsin mi?"</string>
+    <string name="iptv_vod_movies">"Filmler"</string>
+    <string name="iptv_vod_dont_save">"Kaydetme"</string>
+    <string name="iptv_vod_manage_groups">"VOD gruplarını yönet"</string>
+    <string name="iptv_vod_default">"Varsayılan"</string>
+    <string name="iptv_vod_series">"Diziler"</string>
+    <string name="iptv_vod_reset_default">"Varsayılana sıfırla"</string>
+    <string name="iptv_vod_manage_help">"Bu sayfadaki grupları göster, gizle, sırala, yeniden adlandır ve yeniden düzenle."</string>
+    <string name="iptv_vod_save_body">"Bazı gruplarınızı değiştirdiniz. Çıkmadan önce kaydedilsin mi?"</string>
+    <string name="iptv_vod_rename_group">"Grubu yeniden adlandır"</string>
+    <string name="iptv_vod_sort_group">"%1$s sırala"</string>
+    <string name="iptv_vod_default_sort">"Varsayılan (%1$s)"</string>
 </resources>

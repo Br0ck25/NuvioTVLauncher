@@ -33,6 +33,8 @@ import androidx.compose.runtime.remember
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.res.stringResource
+import com.nuvio.tv.R
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.focus.FocusRequester
 import androidx.compose.ui.focus.focusRequester
@@ -186,10 +188,10 @@ internal fun ManageVodGroupsPanel(
                         }
                     }
             ) {
-                LiveText("Manage VOD Groups", size = 22.sp, weight = FontWeight.Bold, color = colors.TextPrimary)
+                LiveText(stringResource(R.string.iptv_vod_manage_groups), size = 22.sp, weight = FontWeight.Bold, color = colors.TextPrimary)
                 Spacer(Modifier.height(6.dp))
                 LiveText(
-                    "Show, hide, sort, rename and reorder the groups on this page.",
+                    stringResource(R.string.iptv_vod_manage_help),
                     size = 13.sp, color = colors.TextSecondary
                 )
                 Spacer(Modifier.height(14.dp))
@@ -213,10 +215,10 @@ internal fun ManageVodGroupsPanel(
                             Spacer(Modifier.width(12.dp))
                             Column(modifier = Modifier.weight(1f)) {
                                 LiveText(g.name, size = 15.sp, maxLines = 1, color = if (g.visible) colors.TextPrimary else colors.TextSecondary)
-                                LiveText(if (g.kind == VodKind.SERIES) "Series" else "Movies", size = 11.sp, color = colors.TextTertiary)
+                                LiveText(if (g.kind == VodKind.SERIES) stringResource(R.string.iptv_vod_series) else stringResource(R.string.iptv_vod_movies), size = 11.sp, color = colors.TextTertiary)
                             }
                             SortChip(
-                                label = sortLabel(g.sort) ?: "Default",
+                                label = sortLabel(g.sort) ?: stringResource(R.string.iptv_vod_default),
                                 custom = g.sort != null,
                                 focused = onLine && lineSpot?.control == GroupControl.SORT,
                                 onClick = { press(PanelSpot.Line(i, GroupControl.SORT)) }
@@ -232,13 +234,13 @@ internal fun ManageVodGroupsPanel(
                 }
                 Spacer(Modifier.height(14.dp))
                 Row(horizontalArrangement = Arrangement.spacedBy(12.dp)) {
-                    PanelButton("Select all", primary = false, focused = spot == PanelSpot.SelectAll, onClick = { press(PanelSpot.SelectAll) }, modifier = Modifier.weight(1f))
-                    PanelButton("Deselect all", primary = false, focused = spot == PanelSpot.DeselectAll, onClick = { press(PanelSpot.DeselectAll) }, modifier = Modifier.weight(1f))
+                    PanelButton(stringResource(R.string.action_select_all), primary = false, focused = spot == PanelSpot.SelectAll, onClick = { press(PanelSpot.SelectAll) }, modifier = Modifier.weight(1f))
+                    PanelButton(stringResource(R.string.iptv_guide_deselect_all), primary = false, focused = spot == PanelSpot.DeselectAll, onClick = { press(PanelSpot.DeselectAll) }, modifier = Modifier.weight(1f))
                 }
                 Spacer(Modifier.height(8.dp))
                 Row(horizontalArrangement = Arrangement.spacedBy(12.dp)) {
-                    PanelButton("Reset to Default", primary = false, focused = spot == PanelSpot.Reset, onClick = { press(PanelSpot.Reset) }, modifier = Modifier.weight(1f))
-                    PanelButton("Done", primary = true, focused = spot == PanelSpot.Done, onClick = { press(PanelSpot.Done) }, modifier = Modifier.weight(1f))
+                    PanelButton(stringResource(R.string.iptv_vod_reset_default), primary = false, focused = spot == PanelSpot.Reset, onClick = { press(PanelSpot.Reset) }, modifier = Modifier.weight(1f))
+                    PanelButton(stringResource(R.string.iptv_settings_done), primary = true, focused = spot == PanelSpot.Done, onClick = { press(PanelSpot.Done) }, modifier = Modifier.weight(1f))
                 }
             }
         }
@@ -252,18 +254,18 @@ internal fun ManageVodGroupsPanel(
         }
         com.nuvio.tv.ui.components.NuvioDialog(
             onDismiss = { confirmLeave = false; runCatching { keys.requestFocus() } },
-            title = "Save your changes?",
-            subtitle = "You changed some of your groups. Save them before you go?",
+            title = stringResource(R.string.iptv_vod_save_title),
+            subtitle = stringResource(R.string.iptv_vod_save_body),
             width = 520.dp
         ) {
             com.nuvio.tv.ui.screens.settings.SettingsDialogActionRow {
                 com.nuvio.tv.ui.screens.settings.SettingsDialogActionButton(
-                    text = "Don't Save",
+                    text = stringResource(R.string.iptv_vod_dont_save),
                     onClick = { confirmLeave = false; onDismiss() }
                 )
                 Box(Modifier.focusRequester(saveFocus)) {
                     com.nuvio.tv.ui.screens.settings.SettingsDialogActionButton(
-                        text = "Save",
+                        text = stringResource(R.string.action_save),
                         onClick = { confirmLeave = false; onDone(edited.toList()) },
                         primary = true
                     )
@@ -275,9 +277,9 @@ internal fun ManageVodGroupsPanel(
     sorting?.let { i ->
         val g = edited.getOrNull(i)
         if (g == null) { sorting = null } else VodSortPicker(
-            title = "Sort " + g.name,
+            title = stringResource(R.string.iptv_vod_sort_group, g.name),
             current = VodSort.parse(g.sort)?.first,
-            useDefaultLabel = "Default ($defaultSortLabel)",
+            useDefaultLabel = stringResource(R.string.iptv_vod_default_sort, defaultSortLabel),
             onPick = { picked ->
                 edited[i] = g.copy(sort = picked?.let { VodSort.encode(it) })
                 sorting = null
@@ -290,10 +292,10 @@ internal fun ManageVodGroupsPanel(
     renaming?.let { i ->
         val g = edited.getOrNull(i)
         if (g == null) { renaming = null } else com.nuvio.tv.livetv.ui.TextInputDialog(
-            title = "Rename group",
+            title = stringResource(R.string.iptv_vod_rename_group),
             initial = g.name,
             hint = g.defaultName,
-            confirmLabel = "Save",
+            confirmLabel = stringResource(R.string.action_save),
             onDismiss = { renaming = null; runCatching { keys.requestFocus() } },
             onConfirm = { name ->
                 edited[i] = g.copy(name = name.trim().ifBlank { g.defaultName })

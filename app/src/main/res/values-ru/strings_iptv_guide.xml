@@ -69,4 +69,16 @@
     <string name="iptv_guide_nothing_playing">"Ничего не воспроизводится"</string>
     <string name="iptv_guide_no_channels_group">"В этой группе нет каналов"</string>
     <string name="iptv_guide_no_guide_channels_match">"Нет каналов гида."</string>
+    <string name="iptv_vod_save_title">"Сохранить изменения?"</string>
+    <string name="iptv_vod_movies">"Фильмы"</string>
+    <string name="iptv_vod_dont_save">"Не сохранять"</string>
+    <string name="iptv_vod_manage_groups">"Управление группами VOD"</string>
+    <string name="iptv_vod_default">"По умолчанию"</string>
+    <string name="iptv_vod_series">"Сериалы"</string>
+    <string name="iptv_vod_reset_default">"Сбросить настройки"</string>
+    <string name="iptv_vod_manage_help">"Показывать, скрывать, сортировать, переименовывать и изменять порядок групп на этой странице."</string>
+    <string name="iptv_vod_save_body">"Вы изменили некоторые группы. Сохранить их перед выходом?"</string>
+    <string name="iptv_vod_rename_group">"Переименовать группу"</string>
+    <string name="iptv_vod_sort_group">"Сортировать %1$s"</string>
+    <string name="iptv_vod_default_sort">"По умолчанию (%1$s)"</string>
 </resources>

@@ -69,4 +69,16 @@
     <string name="iptv_guide_nothing_playing">"Nothing playing"</string>
     <string name="iptv_guide_no_channels_group">"No channels in this group"</string>
     <string name="iptv_guide_no_guide_channels_match">"No guide channels match."</string>
+    <string name="iptv_vod_save_title">"Save your changes?"</string>
+    <string name="iptv_vod_movies">"Movies"</string>
+    <string name="iptv_vod_dont_save">"Don't Save"</string>
+    <string name="iptv_vod_manage_groups">"Manage VOD Groups"</string>
+    <string name="iptv_vod_default">"Default"</string>
+    <string name="iptv_vod_series">"Series"</string>
+    <string name="iptv_vod_reset_default">"Reset to Default"</string>
+    <string name="iptv_vod_manage_help">"Show, hide, sort, rename and reorder the groups on this page."</string>
+    <string name="iptv_vod_save_body">"You changed some of your groups. Save them before you go?"</string>
+    <string name="iptv_vod_rename_group">"Rename group"</string>
+    <string name="iptv_vod_sort_group">"Sort %1$s"</string>
+    <string name="iptv_vod_default_sort">"Default (%1$s)"</string>
 </resources>
