@@ -44,13 +44,13 @@ import javax.inject.Inject
 @HiltAndroidApp
 class NuvioApplication : Application(), SingletonImageLoader.Factory {
 
-    @Inject lateinit var startupSyncService: StartupSyncService
-    // Lazy: these are only needed by the deferred start-up below, so Hilt does not build them (and everything
+    // Lazy: these are only needed by the deferred start-up below (or when the image loader is first built), so Hilt does not build them (and everything
     // they depend on) on the main thread before the launcher's accessibility service can bind.
     @Inject lateinit var androidTvChannelSyncService: dagger.Lazy<AndroidTvChannelSyncService>
     @Inject lateinit var sentrySettingsDataStore: dagger.Lazy<SentrySettingsDataStore>
-    @Inject lateinit var imagePerformancePreferences: ImagePerformancePreferences
-    @Inject lateinit var simklAnimeIdPreferenceHolder: SimklAnimeIdPreferenceHolder
+    @Inject lateinit var startupSyncService: dagger.Lazy<StartupSyncService>
+    @Inject lateinit var imagePerformancePreferences: dagger.Lazy<ImagePerformancePreferences>
+    @Inject lateinit var simklAnimeIdPreferenceHolder: dagger.Lazy<SimklAnimeIdPreferenceHolder>
     @Inject lateinit var serverUserStateProjection: dagger.Lazy<ServerUserStateProjection>
 
     companion object {
@@ -104,6 +104,9 @@ class NuvioApplication : Application(), SingletonImageLoader.Factory {
         // Anything the first frame and the takeover do not need runs on a background thread instead.
         kotlin.concurrent.thread(name = "app-startup", isDaemon = true) {
             runCatching { SentryInitializer.start(this, sentrySettingsDataStore.get()) }
+            // Creating these starts their own work (the account sync, the Simkl id flow), as it did when they were eager.
+            runCatching { startupSyncService.get() }
+            runCatching { simklAnimeIdPreferenceHolder.get() }
             runCatching { androidTvChannelSyncService.get().start() }
             runCatching { serverUserStateProjection.get().start() }
             // Launcher: keeps this app's own accessibility service switched on once the phone setup has
@@ -202,7 +205,7 @@ class NuvioApplication : Application(), SingletonImageLoader.Factory {
             .crossfade(false)
             .precision(coil3.size.Precision.INEXACT)
             .allowHardware(false)
-            .allowRgb565(imagePerformancePreferences.rgb565Enabled)
+            .allowRgb565(imagePerformancePreferences.get().rgb565Enabled)
             .bitmapFactoryMaxParallelism(4)
             .build()
     }
