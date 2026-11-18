@@ -3549,4 +3549,5 @@
     <string name="iptv_settings_continue_watching_on_home">Continue watching on Home</string>
     <string name="iptv_settings_show_on_demand_titles_you_started">Show the On Demand titles you started in a row on Nuvio\'s Home screen.</string>
     <string name="on_demand_continue_unavailable">This title is no longer in your provider\'s On Demand catalog.</string>
+    <string name="layout_tile_size">Tile size</string>
 </resources>

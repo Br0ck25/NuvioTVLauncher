@@ -131,20 +131,34 @@ fun ClassicHomeContent(
     val classicLandscapeCatalogWidth = classicCatalogPosterCardStyle.height
     val classicLandscapeCatalogHeight = classicLandscapeCatalogWidth / (16f / 9f)
     val globalLandscape = LocalLandscapePosterMode.current
-    val classicContinueWatchingCardWidth = remember(classicCatalogPosterCardStyle, classicSecondaryPosterCardStyle, uiState.continueWatchingCardStyle, globalLandscape) {
+    // The user's Tile size (Layout settings) applies to the tile every Home row shares.
+    val userTileScale = com.nuvio.tv.ui.components.rememberHomeTileScale()
+    val classicContinueWatchingCardWidth = remember(classicCatalogPosterCardStyle, classicSecondaryPosterCardStyle, uiState.continueWatchingCardStyle, globalLandscape, userTileScale) {
         when (uiState.continueWatchingCardStyle) {
             ContinueWatchingCardStyle.POSTER -> if (globalLandscape) classicLandscapeCatalogWidth else classicCatalogPosterCardStyle.width
-            ContinueWatchingCardStyle.WIDE -> if (globalLandscape) classicLandscapeCatalogWidth else classicSecondaryPosterCardStyle.width * 2.5f
-            ContinueWatchingCardStyle.CARD -> if (globalLandscape) classicLandscapeCatalogWidth else classicSecondaryPosterCardStyle.width * (16f / 9f)
+            ContinueWatchingCardStyle.WIDE -> (if (globalLandscape) classicLandscapeCatalogWidth else classicSecondaryPosterCardStyle.width * 2.5f) * userTileScale
+            ContinueWatchingCardStyle.CARD -> (if (globalLandscape) classicLandscapeCatalogWidth else classicSecondaryPosterCardStyle.width * (16f / 9f)) * userTileScale
         }
     }
-    val classicContinueWatchingImageHeight = remember(classicCatalogPosterCardStyle, classicSecondaryPosterCardStyle, uiState.continueWatchingCardStyle, globalLandscape) {
+    val classicContinueWatchingImageHeight = remember(classicCatalogPosterCardStyle, classicSecondaryPosterCardStyle, uiState.continueWatchingCardStyle, globalLandscape, userTileScale) {
         when (uiState.continueWatchingCardStyle) {
             ContinueWatchingCardStyle.POSTER -> if (globalLandscape) classicLandscapeCatalogHeight else classicCatalogPosterCardStyle.height
-            ContinueWatchingCardStyle.WIDE -> if (globalLandscape) classicLandscapeCatalogHeight else classicSecondaryPosterCardStyle.width * 2.5f * 0.4f
-            ContinueWatchingCardStyle.CARD -> if (globalLandscape) classicLandscapeCatalogHeight else classicSecondaryPosterCardStyle.width
+            ContinueWatchingCardStyle.WIDE -> (if (globalLandscape) classicLandscapeCatalogHeight else classicSecondaryPosterCardStyle.width * 2.5f * 0.4f) * userTileScale
+            ContinueWatchingCardStyle.CARD -> (if (globalLandscape) classicLandscapeCatalogHeight else classicSecondaryPosterCardStyle.width) * userTileScale
         }
     }
+    // The tile every row shares: Continue Watching's 16:9 card size, whatever style it is set to.
+    val classicTileGap = NuvioTheme.spacing.lg
+    val classicHomeTile = remember(classicSecondaryPosterCardStyle, classicLandscapeCatalogWidth, classicLandscapeCatalogHeight, globalLandscape, classicTileGap) {
+        if (globalLandscape) {
+            com.nuvio.tv.ui.components.HomeTile(classicLandscapeCatalogWidth, classicLandscapeCatalogHeight, classicTileGap)
+        } else {
+            com.nuvio.tv.ui.components.HomeTile(
+                classicSecondaryPosterCardStyle.width * (16f / 9f), classicSecondaryPosterCardStyle.width, classicTileGap
+            )
+        }
+    }
+    androidx.compose.runtime.SideEffect { com.nuvio.tv.ui.components.HomeTiles.publish(classicHomeTile) }
     // Match catalog poster label style so CW poster titles look the same as catalog ones.
     val classicPosterTitleStyle = if (uiState.continueWatchingCardStyle == ContinueWatchingCardStyle.POSTER) {
         MaterialTheme.typography.titleMedium

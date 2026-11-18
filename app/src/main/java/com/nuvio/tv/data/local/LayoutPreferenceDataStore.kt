@@ -2,6 +2,7 @@ package com.nuvio.tv.data.local
 
 import android.util.Log
 import androidx.datastore.preferences.core.booleanPreferencesKey
+import kotlinx.coroutines.launch
 import androidx.datastore.preferences.core.edit
 import androidx.datastore.preferences.core.intPreferencesKey
 import androidx.datastore.preferences.core.Preferences
@@ -93,6 +94,7 @@ class LayoutPreferenceDataStore @Inject constructor(
     private val focusedPosterBackdropTrailerPlaybackTargetKey =
         stringPreferencesKey("focused_poster_backdrop_trailer_playback_target")
     private val posterCardWidthDpKey = intPreferencesKey("poster_card_width_dp")
+    private val homeTileWidthDpKey = intPreferencesKey("home_tile_width_dp")
     private val posterCardHeightDpKey = intPreferencesKey("poster_card_height_dp")
     private val posterCardCornerRadiusDpKey = intPreferencesKey("poster_card_corner_radius_dp")
     private val cardDepthEnabledKey = booleanPreferencesKey("card_depth_enabled")
@@ -313,6 +315,22 @@ class LayoutPreferenceDataStore @Inject constructor(
 
     val posterCardWidthDp: Flow<Int> = profileFlow { prefs ->
         positiveOrDefault(prefs[posterCardWidthDpKey], DEFAULT_POSTER_CARD_WIDTH_DP)
+    }
+
+    /**
+     * The size for the Home tiles (Continue Watching and the other tile rows), as a poster width preset (104 to 140):
+     * a tile is the size of a landscape poster at that preset. Null follows the poster Width setting.
+     */
+    val homeTileWidthDp: Flow<Int?> = profileFlow { prefs -> prefs[homeTileWidthDpKey]?.takeIf { it > 0 } }
+
+    init {
+        // Home's tiles read the size from HomeTiles, which they share with the Apps page. The scale is the chosen
+        // preset against the poster width the layouts already size their tiles from, so "follow" is exactly 1.
+        scope.launch {
+            kotlinx.coroutines.flow.combine(posterCardWidthDp, homeTileWidthDp) { poster, tile ->
+                if (tile == null) 1f else tile / poster.toFloat()
+            }.collect { com.nuvio.tv.ui.components.HomeTiles.setScale(it) }
+        }
     }
 
     val posterCardHeightDp: Flow<Int> = profileFlow { prefs ->
@@ -686,6 +704,12 @@ class LayoutPreferenceDataStore @Inject constructor(
     suspend fun setPosterCardWidthDp(widthDp: Int) {
         store().edit { prefs ->
             prefs[posterCardWidthDpKey] = positiveOrDefault(widthDp, DEFAULT_POSTER_CARD_WIDTH_DP)
+        }
+    }
+
+    suspend fun setHomeTileWidthDp(widthDp: Int?) {
+        store().edit { prefs ->
+            if (widthDp == null) prefs.remove(homeTileWidthDpKey) else prefs[homeTileWidthDpKey] = widthDp
         }
     }
 
