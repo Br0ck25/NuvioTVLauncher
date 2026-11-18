@@ -3691,4 +3691,6 @@
     <string name="layout_pill_shows_profile">Floating Pill Shows Profile</string>
     <string name="layout_pill_shows_profile_sub">Show your profile picture and name in the floating pill instead of the page name, on Home only (other pages show no pill, so it never covers a title). It needs more than one profile.</string>
     <string name="layout_tile_size">Tile size</string>
+    <string name="update_ready_closes">Download complete. The app closes while the update installs, which can take a minute. Open it again afterwards.</string>
+    <string name="update_ready_closes_and_reopens">Download complete. The app closes while the update installs and opens again by itself, which can take a minute.</string>
 </resources>
