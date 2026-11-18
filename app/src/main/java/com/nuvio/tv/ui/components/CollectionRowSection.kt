@@ -253,10 +253,22 @@ private fun FolderCard(
     val tileWidth: Dp
     val tileHeight: Dp
     var isFocused by remember { mutableStateOf(false) }
+    // The row's height is the shared Home tile's; the folder's shape only decides how wide it is
+    // (landscape is the tile itself).
+    val homeTile = rememberHomeTile()
     when (folder.tileShape) {
-        PosterShape.POSTER -> { tileWidth = posterCardStyle.width; tileHeight = posterCardStyle.height }
-        PosterShape.LANDSCAPE -> { tileWidth = posterCardStyle.width * (16f / 9f); tileHeight = posterCardStyle.width }
-        PosterShape.SQUARE -> { tileWidth = posterCardStyle.width; tileHeight = posterCardStyle.width }
+        PosterShape.POSTER -> {
+            tileWidth = homeTile?.let { it.height * (2f / 3f) } ?: posterCardStyle.width
+            tileHeight = homeTile?.height ?: posterCardStyle.height
+        }
+        PosterShape.LANDSCAPE -> {
+            tileWidth = homeTile?.width ?: (posterCardStyle.width * (16f / 9f))
+            tileHeight = homeTile?.height ?: posterCardStyle.width
+        }
+        PosterShape.SQUARE -> {
+            tileWidth = homeTile?.height ?: posterCardStyle.width
+            tileHeight = homeTile?.height ?: posterCardStyle.width
+        }
     }
 
     val shape = RoundedCornerShape(posterCardStyle.cornerRadius)

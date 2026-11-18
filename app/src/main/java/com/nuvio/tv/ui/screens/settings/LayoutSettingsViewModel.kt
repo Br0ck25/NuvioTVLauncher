@@ -67,6 +67,8 @@ data class LayoutSettingsUiState(
     val focusedPosterBackdropTrailerPlaybackTarget: FocusedPosterTrailerPlaybackTarget =
         FocusedPosterTrailerPlaybackTarget.HERO_MEDIA,
     val posterCardWidthDp: Int = 126,
+    /** The chosen Tile size preset (a poster width in dp), or null while tiles follow the poster Width. */
+    val homeTileWidthDp: Int? = null,
     val posterCardHeightDp: Int = 189,
     val posterCardCornerRadiusDp: Int = 12,
     val cardDepthStyle: CardDepthStyle = CardDepthStyle(),
@@ -129,6 +131,7 @@ sealed class LayoutSettingsEvent {
         val target: FocusedPosterTrailerPlaybackTarget
     ) : LayoutSettingsEvent()
     data class SetPosterCardWidth(val widthDp: Int) : LayoutSettingsEvent()
+    data class SetHomeTileWidth(val widthDp: Int) : LayoutSettingsEvent()
     data class SetPosterCardCornerRadius(val cornerRadiusDp: Int) : LayoutSettingsEvent()
     data class SetCardDepthEnabled(val enabled: Boolean) : LayoutSettingsEvent()
     data class SetCardDepthEdgeStrength(val strength: Int) : LayoutSettingsEvent()
@@ -324,6 +327,11 @@ class LayoutSettingsViewModel @Inject constructor(
             }
         }
         viewModelScope.launch {
+            layoutPreferenceDataStore.homeTileWidthDp.distinctUntilChanged().collectLatest { widthDp ->
+                updateUiStateIfChanged { it.copy(homeTileWidthDp = widthDp) }
+            }
+        }
+        viewModelScope.launch {
             layoutPreferenceDataStore.posterCardCornerRadiusDp.distinctUntilChanged().collectLatest { cornerRadiusDp ->
                 updateUiStateIfChanged { it.copy(posterCardCornerRadiusDp = cornerRadiusDp) }
             }
@@ -500,6 +508,9 @@ class LayoutSettingsViewModel @Inject constructor(
             is LayoutSettingsEvent.SetFocusedPosterBackdropTrailerPlaybackTarget ->
                 setFocusedPosterBackdropTrailerPlaybackTarget(event.target)
             is LayoutSettingsEvent.SetPosterCardWidth -> setPosterCardWidth(event.widthDp)
+            is LayoutSettingsEvent.SetHomeTileWidth -> viewModelScope.launch {
+                layoutPreferenceDataStore.setHomeTileWidthDp(event.widthDp)
+            }
             is LayoutSettingsEvent.SetPosterCardCornerRadius -> setPosterCardCornerRadius(event.cornerRadiusDp)
             is LayoutSettingsEvent.SetCardDepthEnabled -> setCardDepthEnabled(event.enabled)
             is LayoutSettingsEvent.SetCardDepthEdgeStrength -> setCardDepthEdgeStrength(event.strength)
