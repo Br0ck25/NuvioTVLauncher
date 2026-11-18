@@ -78,9 +78,9 @@ internal fun ListChannelsDialog(onDismiss: () -> Unit) {
                 color = NuvioTheme.colors.TextSecondary
             )
         }
-        // Scrolls inside the dialog, so Close always stays on screen.
+        // Takes the space the title and Close leave (the dialog caps its own height), so Close is never squeezed out.
         LazyColumn(
-            modifier = Modifier.fillMaxWidth().heightIn(max = 360.dp),
+            modifier = Modifier.fillMaxWidth().weight(1f, fill = false),
             verticalArrangement = Arrangement.spacedBy(NuvioTheme.spacing.xxs)
         ) {
             item(key = "__new__") {
@@ -152,7 +152,7 @@ private fun ColumnScope.ListChannelEditor(initial: ListChannel, onDone: () -> Un
             val keys = lists.mapTo(HashSet()) { it.key }
             val rows = picked.filter { it.key !in keys } + lists
             LazyColumn(
-                modifier = Modifier.fillMaxWidth().heightIn(max = 280.dp),
+                modifier = Modifier.fillMaxWidth().weight(1f, fill = false),
                 verticalArrangement = Arrangement.spacedBy(NuvioTheme.spacing.xxs)
             ) {
                 items(rows, key = { it.key }) { ref ->
