@@ -752,7 +752,18 @@ class LiveTvDriveSync @Inject constructor(
         http.newCall(request).execute().use { r ->
             val text = r.body?.string().orEmpty()
             if (r.code == 404) store.edit().remove(KEY_FILE_ID).apply()
-            if (!r.isSuccessful) error("HTTP ${r.code}")
+            if (!r.isSuccessful) {
+                // Google's own reason (API not enabled, scope missing, quota...) so a 403 can be told apart.
+                val reason = runCatching {
+                    val e = JSONObject(text).optJSONObject("error")
+                    listOfNotNull(
+                        e?.optJSONArray("errors")?.optJSONObject(0)?.optString("reason")?.takeIf { it.isNotBlank() },
+                        e?.optString("status")?.takeIf { it.isNotBlank() }
+                    ).distinct().joinToString("/")
+                }.getOrNull().orEmpty()
+                Log.w(TAG, "Drive HTTP ${r.code}: ${text.take(300)}")
+                error(if (reason.isNotBlank()) "HTTP ${r.code} $reason" else "HTTP ${r.code}")
+            }
             text
         }
     }
