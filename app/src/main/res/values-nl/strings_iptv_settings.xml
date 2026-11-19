@@ -698,4 +698,23 @@
     <string name="iptv_settings_restore_file_empty">"Die back-up bevat geen afspeellijsten of gidsen."</string>
     <string name="iptv_settings_restore_file_done">"Live TV-instellingen hersteld."</string>
     <string name="iptv_settings_restore_file_failed">"Dat bestand kon niet worden gelezen."</string>
+    <string name="iptv_settings_restore_from_phone">"Herstellen vanaf telefoon"</string>
+    <string name="iptv_settings_restore_from_phone_hint">"Scan een QR-code en kies het back-upbestand op je telefoon — uit Google Drive, Downloads of Bestanden."</string>
+    <string name="iptv_settings_restore_phone_title">"Live TV herstellen"</string>
+    <string name="iptv_settings_restore_phone_heading">"Herstellen vanaf je telefoon"</string>
+    <string name="iptv_settings_restore_phone_instructions">"Kies het Live TV-back-upbestand. Je kunt het uit Google Drive, Downloads of Bestanden halen."</string>
+    <string name="iptv_settings_restore_phone_choose">"Back-upbestand kiezen"</string>
+    <string name="iptv_settings_restore_phone_send">"TV-instellingen herstellen"</string>
+    <string name="iptv_settings_restore_phone_replace">"Dit vervangt de Live TV-instellingen van de tv."</string>
+    <string name="iptv_settings_restore_phone_sending">"Versturen…"</string>
+    <string name="iptv_settings_restore_phone_received">"Verstuurd. Controleer je tv."</string>
+    <string name="iptv_settings_restore_phone_too_large">"Dat bestand is te groot."</string>
+    <string name="iptv_settings_restore_phone_unreachable">"Kan de tv niet bereiken."</string>
+    <string name="iptv_settings_restore_phone_nothing">"Kies eerst een back-upbestand."</string>
+    <string name="iptv_settings_restore_phone_network">"Telefoon en tv moeten op dezelfde wifi zitten."</string>
+    <string name="iptv_settings_restore_phone_waiting">"Wachten op je telefoon…"</string>
+    <string name="iptv_settings_restore_phone_received_tv">"Back-up ontvangen. Herstellen…"</string>
+    <string name="iptv_settings_restore_phone_tv_steps">"1. Zet je telefoon op dezelfde wifi als deze tv.
+2. Scan de code met de camera van je telefoon.
+3. Kies het back-upbestand en tik op TV-instellingen herstellen."</string>
 </resources>

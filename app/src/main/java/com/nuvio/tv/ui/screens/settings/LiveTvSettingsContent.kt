@@ -67,6 +67,8 @@ import androidx.compose.ui.input.key.key
 import androidx.compose.ui.input.key.KeyEventType
 import androidx.compose.ui.input.key.Key
 import kotlinx.coroutines.launch
+import kotlinx.coroutines.flow.MutableStateFlow
+import kotlinx.coroutines.flow.collect
 import androidx.compose.ui.unit.dp
 import androidx.hilt.navigation.compose.hiltViewModel
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
@@ -479,13 +481,7 @@ internal fun LiveTvSettingsContent(
                         ) { viewModel.driveSync.backUpNow() }
                     },
                     onRestore = { dialog = LiveDialog.ConfirmRestore },
-                    onRestoreFile = { uri ->
-                        confirm(
-                            context.getString(R.string.iptv_settings_restore_from_file),
-                            context.getString(R.string.iptv_settings_restore_from_file_confirm),
-                            context.getString(R.string.iptv_settings_restore)
-                        ) { viewModel.restoreFromFile(uri) }
-                    },
+                    onRestorePhone = { text -> viewModel.restoreFromBackupText(text) },
                     onDisconnect = {
                         confirm(
                             context.getString(R.string.iptv_settings_disconnect_google_drive),
@@ -2339,13 +2335,11 @@ private fun DriveSyncCard(
     onAutoSync: (Boolean) -> Unit,
     onBackUp: () -> Unit,
     onRestore: () -> Unit,
-    onRestoreFile: (android.net.Uri) -> Unit,
+    onRestorePhone: (String) -> Unit,
     onDisconnect: () -> Unit
 ) {
     val context = LocalContext.current
-    val restoreFile = androidx.activity.compose.rememberLauncherForActivityResult(
-        androidx.activity.result.contract.ActivityResultContracts.OpenDocument()
-    ) { uri -> uri?.let(onRestoreFile) }
+    var restorePhoneOpen by remember { mutableStateOf(false) }
     val status = when {
         !state.available -> context.getString(R.string.iptv_settings_not_available_in_this_build)
         !state.connected -> context.getString(R.string.playback_afr_off)
@@ -2393,14 +2387,16 @@ private fun DriveSyncCard(
                 Text(text = it, style = MaterialTheme.typography.bodySmall, color = NuvioTheme.colors.TextSecondary)
             }
             SettingsActionRow(
-                context.getString(R.string.iptv_settings_restore_from_file),
-                context.getString(R.string.iptv_settings_restore_from_file_hint),
-                onClick = {
-                    restoreFile.launch(
-                        arrayOf("application/json", "text/json", "text/plain", "application/octet-stream", "*/*")
-                    )
-                }
+                context.getString(R.string.iptv_settings_restore_from_phone),
+                context.getString(R.string.iptv_settings_restore_from_phone_hint),
+                onClick = { restorePhoneOpen = true }
             )
+            if (restorePhoneOpen) {
+                RestoreFromPhoneDialog(
+                    onDismiss = { restorePhoneOpen = false },
+                    onBackup = { text -> onRestorePhone(text) }
+                )
+            }
         }
     }
 }
@@ -2540,6 +2536,112 @@ private fun DriveSignInDialog(prompt: com.nuvio.tv.livetv.sync.SignInPrompt, onC
 }
 
 // ==================================================================== dialogs
+
+/**
+ * "Restore from your phone": the QR code opens a page on the home network where the phone's own
+ * file picker (Google Drive, Downloads, Files…) chooses a Live TV backup .json and sends it here.
+ * The TV validates and applies it; the server only runs while this dialog is open.
+ */
+@Composable
+private fun RestoreFromPhoneDialog(onDismiss: () -> Unit, onBackup: (String) -> Unit) {
+    val context = androidx.compose.ui.platform.LocalContext.current
+    val closeFocus = remember { FocusRequester() }
+    var handle by remember { mutableStateOf<com.nuvio.tv.livetv.crash.RestoreFromPhoneServer.Handle?>(null) }
+    var noNetwork by remember { mutableStateOf(false) }
+    var received by remember { mutableStateOf(false) }
+    val pending = remember { MutableStateFlow<String?>(null) }
+    val accentArgb = NuvioTheme.colors.Secondary.toArgb()
+    val tvName = remember(context) {
+        runCatching { android.provider.Settings.Global.getString(context.contentResolver, "device_name") }
+            .getOrNull()?.takeIf { it.isNotBlank() } ?: android.os.Build.MODEL
+            ?: context.getString(R.string.iptv_settings_your_tv)
+    }
+    val phoneTexts = remember(context, tvName) {
+        com.nuvio.tv.livetv.crash.RestoreFromPhoneServer.Texts.from(context.resources, tvName)
+    }
+    androidx.compose.runtime.DisposableEffect(phoneTexts, accentArgb) {
+        val h = com.nuvio.tv.livetv.crash.RestoreFromPhoneServer.start(
+            texts = phoneTexts,
+            accent = String.format(java.util.Locale.US, "#%06X", accentArgb and 0xFFFFFF)
+        ) { body ->
+            pending.value = body
+            phoneTexts.received
+        }
+        handle = h
+        noNetwork = h == null
+        onDispose { h?.stop() }
+    }
+    LaunchedEffect(Unit) {
+        pending.collect { body ->
+            if (body != null) {
+                received = true
+                onBackup(body)
+                delay(900)
+                onDismiss()
+            }
+        }
+    }
+    LaunchedEffect(Unit) {
+        delay(80)
+        runCatching { closeFocus.requestFocus() }
+    }
+    val qrBitmap = remember(handle?.url) {
+        handle?.url?.let { runCatching { com.nuvio.tv.core.qr.QrCodeGenerator.generate(it, 420, margin = 1) }.getOrNull() }
+    }
+    NuvioDialog(onDismiss = onDismiss, title = context.getString(R.string.iptv_settings_restore_from_phone), width = 620.dp) {
+        if (noNetwork) {
+            Text(
+                text = context.getString(R.string.iptv_settings_connect_this_tv_to_your_home_wi_fi),
+                style = MaterialTheme.typography.bodyMedium,
+                color = NuvioTheme.colors.TextSecondary,
+                modifier = Modifier.fillMaxWidth()
+            )
+        } else {
+            androidx.compose.foundation.layout.Row(
+                horizontalArrangement = Arrangement.spacedBy(NuvioTheme.spacing.lg),
+                verticalAlignment = Alignment.CenterVertically
+            ) {
+                qrBitmap?.let {
+                    androidx.compose.foundation.Image(
+                        bitmap = it.asImageBitmap(),
+                        contentDescription = context.getString(R.string.iptv_settings_qr_code),
+                        modifier = Modifier.size(196.dp),
+                        contentScale = androidx.compose.ui.layout.ContentScale.Fit
+                    )
+                }
+                Column(
+                    modifier = Modifier.weight(1f),
+                    verticalArrangement = Arrangement.spacedBy(NuvioTheme.spacing.sm)
+                ) {
+                    Text(
+                        text = context.getString(R.string.iptv_settings_restore_phone_tv_steps),
+                        style = MaterialTheme.typography.bodyMedium,
+                        color = NuvioTheme.colors.TextSecondary
+                    )
+                    handle?.url?.let {
+                        Text(
+                            text = context.getString(R.string.iptv_settings_phone_address, it.removePrefix("http://")),
+                            style = MaterialTheme.typography.bodySmall,
+                            color = NuvioTheme.colors.TextPrimary
+                        )
+                    }
+                }
+            }
+            Text(
+                text = if (received) context.getString(R.string.iptv_settings_restore_phone_received_tv)
+                else context.getString(R.string.iptv_settings_restore_phone_waiting),
+                style = MaterialTheme.typography.bodySmall,
+                color = if (received) NuvioTheme.colors.Secondary else NuvioTheme.colors.TextSecondary,
+                modifier = Modifier.fillMaxWidth()
+            )
+        }
+        SettingsDialogActionRow(horizontalAlignment = Alignment.CenterHorizontally) {
+            androidx.compose.foundation.layout.Box(Modifier.focusRequester(closeFocus)) {
+                SettingsDialogActionButton(text = context.getString(R.string.action_close), onClick = onDismiss)
+            }
+        }
+    }
+}
 
 /**
  * "Add from your phone": a QR code opens a page on the home network where a playlist link, an

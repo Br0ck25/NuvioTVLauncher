@@ -698,4 +698,23 @@
     <string name="iptv_settings_restore_file_empty">"Cette sauvegarde ne contient ni playlist ni guide."</string>
     <string name="iptv_settings_restore_file_done">"Configuration Live TV restaurée."</string>
     <string name="iptv_settings_restore_file_failed">"Impossible de lire ce fichier."</string>
+    <string name="iptv_settings_restore_from_phone">"Restaurer depuis le téléphone"</string>
+    <string name="iptv_settings_restore_from_phone_hint">"Scannez un QR code et choisissez le fichier de sauvegarde sur votre téléphone — Google Drive, Téléchargements ou Fichiers."</string>
+    <string name="iptv_settings_restore_phone_title">"Restaurer Live TV"</string>
+    <string name="iptv_settings_restore_phone_heading">"Restaurer depuis votre téléphone"</string>
+    <string name="iptv_settings_restore_phone_instructions">"Choisissez le fichier de sauvegarde Live TV. Vous pouvez le prendre dans Google Drive, Téléchargements ou Fichiers."</string>
+    <string name="iptv_settings_restore_phone_choose">"Choisir le fichier de sauvegarde"</string>
+    <string name="iptv_settings_restore_phone_send">"Restaurer la configuration TV"</string>
+    <string name="iptv_settings_restore_phone_replace">"Cela remplace la configuration Live TV du téléviseur."</string>
+    <string name="iptv_settings_restore_phone_sending">"Envoi…"</string>
+    <string name="iptv_settings_restore_phone_received">"Envoyé. Vérifiez votre téléviseur."</string>
+    <string name="iptv_settings_restore_phone_too_large">"Ce fichier est trop volumineux."</string>
+    <string name="iptv_settings_restore_phone_unreachable">"Impossible de joindre le téléviseur."</string>
+    <string name="iptv_settings_restore_phone_nothing">"Choisissez d’abord un fichier de sauvegarde."</string>
+    <string name="iptv_settings_restore_phone_network">"Le téléphone et le téléviseur doivent être sur le même Wi-Fi."</string>
+    <string name="iptv_settings_restore_phone_waiting">"En attente de votre téléphone…"</string>
+    <string name="iptv_settings_restore_phone_received_tv">"Sauvegarde reçue. Restauration…"</string>
+    <string name="iptv_settings_restore_phone_tv_steps">"1. Mettez votre téléphone sur le même Wi-Fi que ce téléviseur.
+2. Scannez le code avec l’appareil photo de votre téléphone.
+3. Choisissez le fichier de sauvegarde et touchez Restaurer la configuration TV."</string>
 </resources>

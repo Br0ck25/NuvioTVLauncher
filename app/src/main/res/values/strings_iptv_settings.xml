@@ -698,4 +698,23 @@
     <string name="iptv_settings_restore_file_empty">"That backup has no playlists or guides."</string>
     <string name="iptv_settings_restore_file_done">"Live TV setup restored."</string>
     <string name="iptv_settings_restore_file_failed">"Couldn't read that file."</string>
+    <string name="iptv_settings_restore_from_phone">"Restore from Phone"</string>
+    <string name="iptv_settings_restore_from_phone_hint">"Scan a QR code and pick the backup file on your phone — from Google Drive, Downloads or Files."</string>
+    <string name="iptv_settings_restore_phone_title">"Restore Live TV"</string>
+    <string name="iptv_settings_restore_phone_heading">"Restore from your phone"</string>
+    <string name="iptv_settings_restore_phone_instructions">"Choose the Live TV backup file. You can pick it from Google Drive, Downloads or Files."</string>
+    <string name="iptv_settings_restore_phone_choose">"Choose backup file"</string>
+    <string name="iptv_settings_restore_phone_send">"Restore TV setup"</string>
+    <string name="iptv_settings_restore_phone_replace">"This replaces the TV's Live TV setup."</string>
+    <string name="iptv_settings_restore_phone_sending">"Sending…"</string>
+    <string name="iptv_settings_restore_phone_received">"Sent. Check your TV."</string>
+    <string name="iptv_settings_restore_phone_too_large">"That file is too large."</string>
+    <string name="iptv_settings_restore_phone_unreachable">"Couldn't reach the TV."</string>
+    <string name="iptv_settings_restore_phone_nothing">"Choose a backup file first."</string>
+    <string name="iptv_settings_restore_phone_network">"Your phone and TV must be on the same Wi-Fi."</string>
+    <string name="iptv_settings_restore_phone_waiting">"Waiting for your phone…"</string>
+    <string name="iptv_settings_restore_phone_received_tv">"Backup received. Restoring…"</string>
+    <string name="iptv_settings_restore_phone_tv_steps">"1. Put your phone on the same Wi-Fi as this TV.
+2. Scan the code with your phone's camera.
+3. Choose the backup file and tap Restore TV setup."</string>
 </resources>
