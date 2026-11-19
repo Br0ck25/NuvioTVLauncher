@@ -43,6 +43,8 @@ import androidx.compose.runtime.rememberCoroutineScope
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.res.stringResource
+import com.nuvio.tv.R
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.focus.FocusRequester
 import androidx.compose.ui.focus.focusRequester
@@ -203,8 +205,9 @@ internal fun MultiviewChannelPicker(
     }
     val paneKeys = remember(state.panes) { state.panes.map { it.channelKey } }
 
+    val allChannelsLabel = stringResource(R.string.iptv_guide_all_channels)
     // The tree: All channels, your own groups, then each playlist with its groups; the open group's channels under it.
-    val tree = remember(groups, collapsed, openId, openChannels, optionsSource.size) {
+    val tree = remember(groups, collapsed, openId, openChannels, optionsSource.size, allChannelsLabel) {
         val loaded = openChannels?.takeIf { it.first == openId }?.second.orEmpty()
         buildList<TreeItem> {
             fun addGroup(id: String, title: String, count: Int) {
@@ -212,7 +215,7 @@ internal fun MultiviewChannelPicker(
                 add(TreeItem.Group(id, title, count, nowOpen))
                 if (nowOpen) loaded.forEach { add(TreeItem.Channel(it)) }
             }
-            addGroup(ALL_GROUP, "All channels", optionsSource.size)
+            addGroup(ALL_GROUP, allChannelsLabel, optionsSource.size)
             groups.filter { it.sourceId == null }.forEach { addGroup(it.id, it.title, it.count) }
             val byList = LinkedHashMap<String, MutableList<MultiviewGroup>>()
             groups.filter { it.sourceId != null }.forEach { byList.getOrPut(it.sourceId!!) { ArrayList() }.add(it) }
@@ -363,17 +366,17 @@ internal fun MultiviewChannelPicker(
     fun playGame(game: SportsWatchGame) {
         if (game.channels.isEmpty()) {
             com.nuvio.tv.livetv.record.LiveTvNotice.show(
-                "No matched channel for this game. Choose a broadcast on the Sports page first.")
+                context.getString(R.string.iptv_mv_no_matched_channel))
         } else if (onPlayGame(game)) onClose()
         else com.nuvio.tv.livetv.record.LiveTvNotice.show(
-            "No available stream for this game right now. Choose another game or check its broadcasts on the Sports page.")
+            context.getString(R.string.iptv_mv_no_stream_game))
     }
     fun openStreams(game: SportsWatchGame) {
         if (game.channels.isNotEmpty() && onGame(game)) {
             streamsGame = game
             streamIndex = game.channels.distinctBy { it.channel.key }
                 .indexOfFirst { it.channel.key == selectedPane?.channelKey }.coerceAtLeast(0)
-        } else com.nuvio.tv.livetv.record.LiveTvNotice.show("No other streams for this game right now.")
+        } else com.nuvio.tv.livetv.record.LiveTvNotice.show(context.getString(R.string.iptv_mv_no_other_streams))
     }
     fun back() {
         when {
@@ -387,7 +390,7 @@ internal fun MultiviewChannelPicker(
     val title = when {
         searching -> "Search"
         sportsMode && optionsGame != null -> optionsGame?.event?.title ?: "Game"
-        sportsMode -> streamsGame?.event?.title?.let { "Other streams" } ?: "Games"
+        sportsMode -> streamsGame?.event?.title?.let { stringResource(R.string.iptv_mv_other_streams) } ?: stringResource(R.string.iptv_mv_games)
         else -> "Channels"
     }
     val hint = when {
@@ -463,12 +466,12 @@ internal fun MultiviewChannelPicker(
                         ) {
                             Box(Modifier.weight(1f)) {
                                 LiveTextField(
-                                    value = query, onValueChange = { query = it }, hint = "Search channels",
+                                    value = query, onValueChange = { query = it }, hint = stringResource(R.string.iptv_guide_search_channels),
                                     focusRequester = fieldFocus,
                                     onDone = { if (results.isNotEmpty()) runCatching { listFocus.requestFocus() } }
                                 )
                             }
-                            MultiviewChip("Done", onClick = ::closeSearch)
+                            MultiviewChip(stringResource(R.string.iptv_settings_done), onClick = ::closeSearch)
                         }
                         LaunchedEffect(Unit) { runCatching { fieldFocus.requestFocus() } }
                     } else if (showActions) {
@@ -582,16 +585,16 @@ internal fun MultiviewChannelPicker(
                 ) {
                     when {
                         sportsMode && optionsGame != null -> Column(Modifier.fillMaxSize().padding(vertical = 4.dp)) {
-                            PickerOptionRow("Change stream", "Pick another broadcast of this game", optionIndex == 0, hasFocus) {
+                            PickerOptionRow(stringResource(R.string.iptv_mv_change_stream), stringResource(R.string.iptv_mv_pick_broadcast), optionIndex == 0, hasFocus) {
                                 optionsGame?.let { g -> optionsGame = null; openStreams(g) }
                             }
-                            PickerOptionRow("View in Sports hub", "Open the game's page; Back returns here", optionIndex == 1, hasFocus) {
+                            PickerOptionRow(stringResource(R.string.iptv_mv_view_sports), stringResource(R.string.iptv_mv_view_sports_help), optionIndex == 1, hasFocus) {
                                 optionsGame?.let(onGameInfo)
                             }
                         }
                         sportsMode && streamsGame != null -> {
                             if (streams.isEmpty()) {
-                                LiveText("No streams available for this game.", Modifier.padding(18.dp),
+                                LiveText(stringResource(R.string.iptv_mv_no_streams), Modifier.padding(18.dp),
                                     color = NuvioTheme.colors.TextSecondary, maxLines = 3)
                             } else LazyColumn(state = streamState, modifier = Modifier.fillMaxSize(), contentPadding = PaddingValues(vertical = 4.dp)) {
                                 itemsIndexed(streams, key = { _, m -> m.channel.key }) { i, match ->
@@ -610,12 +613,12 @@ internal fun MultiviewChannelPicker(
                             if (gameAt.isEmpty()) {
                                 Column(Modifier.padding(18.dp)) {
                                     if (loadingGames) {
-                                        LiveText("Loading games…", size = 15.sp, weight = FontWeight.SemiBold)
-                                        LiveText("Fetching today's games and finding their channels. The first time can take a moment.",
+                                        LiveText(stringResource(R.string.iptv_mv_loading_games), size = 15.sp, weight = FontWeight.SemiBold)
+                                        LiveText(stringResource(R.string.iptv_mv_loading_games_help),
                                             size = 12.sp, color = NuvioTheme.colors.TextSecondary, maxLines = 4)
                                     } else {
-                                        LiveText("No live games available", size = 15.sp, weight = FontWeight.SemiBold)
-                                        LiveText("Your Sports games appear here when they are live or about to start.",
+                                        LiveText(stringResource(R.string.iptv_mv_no_live_games), size = 15.sp, weight = FontWeight.SemiBold)
+                                        LiveText(stringResource(R.string.iptv_mv_no_live_games_help),
                                             size = 12.sp, color = NuvioTheme.colors.TextSecondary, maxLines = 3)
                                     }
                                 }
@@ -647,7 +650,7 @@ internal fun MultiviewChannelPicker(
                         }
                         searching -> {
                             if (results.isEmpty()) LiveText(
-                                if (optionsSource.isEmpty()) "No available channels. Add a playlist in Live TV settings." else "No matching channels.",
+                                if (optionsSource.isEmpty()) stringResource(R.string.iptv_mv_no_available_channels) else stringResource(R.string.iptv_mv_no_matching_channels),
                                 Modifier.padding(18.dp), color = NuvioTheme.colors.TextSecondary, maxLines = 3
                             ) else LazyColumn(state = searchState, modifier = Modifier.fillMaxSize(), contentPadding = PaddingValues(vertical = 4.dp)) {
                                 itemsIndexed(results, key = { _, option -> option.key }) { i, option ->
@@ -666,7 +669,7 @@ internal fun MultiviewChannelPicker(
                             }
                         }
                         optionsSource.isEmpty() -> LiveText(
-                            "No available channels. Add a playlist in Live TV settings.",
+                            stringResource(R.string.iptv_mv_no_available_channels),
                             Modifier.padding(18.dp), color = NuvioTheme.colors.TextSecondary, maxLines = 3
                         )
                         else -> LazyColumn(state = treeState, modifier = Modifier.fillMaxSize(), contentPadding = PaddingValues(vertical = 4.dp)) {
@@ -763,7 +766,7 @@ private fun PickerStreamRow(
             )
         }
         if (playing) SportsBadge("PLAYING", NuvioTheme.colors.Secondary, NuvioTheme.colors.OnSecondary)
-        else if (best) SportsBadge("BEST MATCH", MultiviewNeutralTag, NuvioTheme.colors.TextPrimary)
+        else if (best) SportsBadge(stringResource(R.string.iptv_mv_best_match), MultiviewNeutralTag, NuvioTheme.colors.TextPrimary)
     }
 }
 
@@ -800,14 +803,14 @@ private fun PickerChannelRow(
         Column(Modifier.weight(1f)) {
             LiveText(option.title, color = colors.text, size = 15.sp, marquee = selected && active)
             LiveText(
-                show?.title ?: "No program information",
+                show?.title ?: stringResource(R.string.iptv_guide_no_program_information),
                 color = if (show == null) NuvioTheme.colors.TextTertiary else accent,
                 size = 12.sp, marquee = selected && active
             )
             if (show != null) MultiviewProgress(show.progress(now), Modifier.padding(top = 3.dp))
         }
         when {
-            playingHere -> Icon(Icons.Default.PlayArrow, contentDescription = "Playing here", tint = accent, modifier = Modifier.size(20.dp))
+            playingHere -> Icon(Icons.Default.PlayArrow, contentDescription = stringResource(R.string.iptv_mv_playing_here), tint = accent, modifier = Modifier.size(20.dp))
             otherPane != null -> SportsBadge("P${otherPane + 1}", MultiviewNeutralTag, NuvioTheme.colors.TextPrimary)
         }
     }

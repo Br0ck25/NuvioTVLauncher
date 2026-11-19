@@ -27,6 +27,8 @@ import androidx.compose.runtime.remember
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.res.stringResource
+import com.nuvio.tv.R
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.draw.drawBehind
 import androidx.compose.ui.draw.drawWithContent
@@ -206,14 +208,14 @@ internal fun MultiviewPane(
                     }
                 }
                 LiveText(when {
-                    pane.error != null -> "Stream unavailable"
-                    pane.isBuffering -> "Loading…"
-                    else -> "Add a channel"
+                    pane.error != null -> stringResource(R.string.iptv_mv_stream_unavailable)
+                    pane.isBuffering -> stringResource(R.string.iptv_guide_loading)
+                    else -> stringResource(R.string.iptv_mv_add_channel)
                 }, size = 14.sp, weight = FontWeight.Bold)
                 if (empty) LiveText(emptyHint, color = NuvioTheme.colors.TextSecondary, size = 11.sp)
                 pane.error?.let { reason ->
                     LiveText(reason, color = NuvioTheme.colors.TextSecondary, size = 11.sp, maxLines = 3)
-                    LiveText(errorHint ?: "OK to replace or retry this pane", color = NuvioTheme.colors.TextPrimary,
+                    LiveText(errorHint ?: stringResource(R.string.iptv_mv_replace_retry), color = NuvioTheme.colors.TextPrimary,
                         size = 11.sp, weight = FontWeight.SemiBold, maxLines = 2)
                 }
             }

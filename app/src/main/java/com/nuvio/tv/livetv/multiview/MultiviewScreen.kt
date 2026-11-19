@@ -44,6 +44,8 @@ import androidx.compose.runtime.rememberUpdatedState
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.res.stringResource
+import com.nuvio.tv.R
 import androidx.compose.ui.focus.FocusRequester
 import androidx.compose.ui.focus.focusProperties
 import androidx.compose.ui.focus.focusRequester
@@ -410,7 +412,7 @@ fun MultiviewScreen(
                                 else -> "OK: try another stream · Next: ${it.first().channel.name} · ${it.size - 1} more"
                             }
                         },
-                        emptyHint = if (sportsMode) "OK to pick a game" else "OK to pick a channel",
+                        emptyHint = if (sportsMode) stringResource(R.string.iptv_mv_pick_game) else stringResource(R.string.iptv_mv_pick_channel),
                         modifier = Modifier.offset(availableWidth * rect.left, availableHeight * rect.top)
                             .width(availableWidth * (rect.right - rect.left))
                             .height(availableHeight * (rect.bottom - rect.top)).padding(4.dp)
@@ -466,7 +468,7 @@ fun MultiviewScreen(
             horizontalArrangement = Arrangement.spacedBy(7.dp), verticalAlignment = Alignment.CenterVertically
         ) {
             Column(Modifier.padding(end = 4.dp)) {
-                LiveText(if (startOnSports) "SPORTS" else "LIVE TV", size = 9.sp, color = NuvioTheme.colors.TextSecondary)
+                LiveText(if (startOnSports) stringResource(R.string.iptv_mv_sports) else stringResource(R.string.iptv_settings_live_tv), size = 9.sp, color = NuvioTheme.colors.TextSecondary)
                 LiveText("Multiview", size = 13.sp, weight = FontWeight.ExtraBold)
             }
             MultiviewLayoutButton(multiviewLayoutTitle(state.layout), state.layout) { layoutOpen = true }
@@ -481,7 +483,7 @@ fun MultiviewScreen(
                 size = 11.sp, color = NuvioTheme.colors.TextSecondary, modifier = Modifier.padding(end = 6.dp))
         }
         if (soundPaused) {
-            LiveText("Playback paused. Select a pane to retry sound.", size = 12.sp,
+            LiveText(stringResource(R.string.iptv_mv_playback_paused), size = 12.sp,
                 color = NuvioTheme.colors.TextSecondary,
                 modifier = Modifier.align(Alignment.BottomCenter).padding(bottom = 8.dp)
                     .background(Color.Black.copy(alpha = 0.72f)).padding(horizontal = 12.dp, vertical = 4.dp))
