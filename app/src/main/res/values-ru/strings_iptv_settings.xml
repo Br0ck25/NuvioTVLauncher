@@ -717,4 +717,5 @@
     <string name="iptv_settings_restore_phone_tv_steps">"1. Подключите телефон к той же Wi-Fi, что и этот телевизор.
 2. Отсканируйте код камерой телефона.
 3. Выберите файл копии и нажмите «Восстановить настройки ТВ»."</string>
+    <string name="iptv_settings_restore_phone_selected">"Выбранный файл: %1$s"</string>
 </resources>

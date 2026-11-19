@@ -717,4 +717,5 @@
     <string name="iptv_settings_restore_phone_tv_steps">"1. Telefonunuzu bu TV ile aynı Wi-Fi ağına bağlayın.
 2. Kodu telefonunuzun kamerasıyla tarayın.
 3. Yedek dosyayı seçin ve TV kurulumunu geri yükle'ye dokunun."</string>
+    <string name="iptv_settings_restore_phone_selected">"Seçilen dosya: %1$s"</string>
 </resources>

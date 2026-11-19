@@ -717,4 +717,5 @@
     <string name="iptv_settings_restore_phone_tv_steps">"1. Zet je telefoon op dezelfde wifi als deze tv.
 2. Scan de code met de camera van je telefoon.
 3. Kies het back-upbestand en tik op TV-instellingen herstellen."</string>
+    <string name="iptv_settings_restore_phone_selected">"Gekozen bestand: %1$s"</string>
 </resources>

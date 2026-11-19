@@ -717,4 +717,5 @@
     <string name="iptv_settings_restore_phone_tv_steps">"1. Verbinde dein Telefon mit demselben WLAN wie diesen TV.
 2. Scanne den Code mit der Kamera deines Telefons.
 3. Wähle die Sicherungsdatei und tippe auf TV-Setup wiederherstellen."</string>
+    <string name="iptv_settings_restore_phone_selected">"Gewählte Datei: %1$s"</string>
 </resources>

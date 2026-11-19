@@ -717,4 +717,5 @@
     <string name="iptv_settings_restore_phone_tv_steps">"1. Połącz telefon z tą samą siecią Wi-Fi co ten telewizor.
 2. Zeskanuj kod aparatem telefonu.
 3. Wybierz plik kopii i dotknij Przywróć konfigurację TV."</string>
+    <string name="iptv_settings_restore_phone_selected">"Wybrany plik: %1$s"</string>
 </resources>
