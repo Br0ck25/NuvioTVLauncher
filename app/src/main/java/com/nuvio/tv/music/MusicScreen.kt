@@ -346,13 +346,21 @@ fun MusicScreen(
     }
 
     MusicTextTheme {
-        Column(Modifier.fillMaxSize().background(MusicPalette.background)) {
+        Column(
+            Modifier
+                .fillMaxSize()
+                .background(MusicPalette.background)
+                // Clear Nuvio's collapsed side menu, which overlays the page's left edge.
+                .padding(start = 64.dp)
+        ) {
             MusicTopNavigation(
                 selectedTab = state.tab,
                 onTabSelected = ::selectTab,
+                playback = playback,
                 accountName = account.accountName,
                 accountAvatar = account.accounts.firstOrNull { it.selected }?.avatar,
                 partyRunning = party.running,
+                onOpenNowPlaying = { showNowPlaying = true },
                 onOpenAccount = { showAccount = true },
                 onOpenSettings = { showSettings = true },
                 onOpenParty = { showParty = true },
@@ -623,19 +631,6 @@ fun MusicScreen(
                         )
                     }
                 }
-                if (playback.song != null) {
-                    NowPlayingChip(
-                        playback = playback,
-                        onClick = { showNowPlaying = true },
-                        modifier = Modifier
-                            .align(Alignment.BottomEnd)
-                            .padding(
-                                end = 24.dp,
-                                // Keep the temporary Spotify sync pill above it, not on top.
-                                bottom = if (spotifySync.busy) 76.dp else 24.dp
-                            )
-                    )
-                }
             }
         }
     }
@@ -764,9 +759,11 @@ private fun MusicOverlayDialog(
 private fun MusicTopNavigation(
     selectedTab: MusicTab,
     onTabSelected: (MusicTab) -> Unit,
+    playback: MusicPlayer.State,
     accountName: String?,
     accountAvatar: String?,
     partyRunning: Boolean,
+    onOpenNowPlaying: () -> Unit,
     onOpenAccount: () -> Unit,
     onOpenSettings: () -> Unit,
     onOpenParty: () -> Unit,
@@ -790,7 +787,7 @@ private fun MusicTopNavigation(
         Box(
             Modifier
                 .fillMaxWidth()
-                .height(68.dp)
+                .height(96.dp)
                 .padding(horizontal = 24.dp)
         ) {
             MusicBrand(Modifier.align(Alignment.CenterStart))
@@ -802,19 +799,31 @@ private fun MusicTopNavigation(
                 onOpenIntegrations = onOpenIntegrations,
                 onOpenNuvioMenu = onOpenNuvioMenu,
                 initialFocus = initialFocus,
-                modifier = Modifier.align(Alignment.Center)
+                // Nudge left so the right-hand controls and Now Playing pill fit without overlap.
+                modifier = Modifier.align(Alignment.Center).offset(x = (-12).dp)
             )
-            Row(
+            Column(
                 modifier = Modifier.align(Alignment.CenterEnd),
-                verticalAlignment = Alignment.CenterVertically,
-                horizontalArrangement = Arrangement.spacedBy(7.dp)
+                horizontalAlignment = Alignment.End,
+                verticalArrangement = Arrangement.spacedBy(6.dp)
             ) {
-                MusicAccountButton(
-                    name = accountName,
-                    avatar = accountAvatar,
-                    onClick = onOpenAccount
-                )
-                MusicSettingsButton(onClick = onOpenSettings)
+                Row(
+                    verticalAlignment = Alignment.CenterVertically,
+                    horizontalArrangement = Arrangement.spacedBy(7.dp)
+                ) {
+                    MusicAccountButton(
+                        name = accountName,
+                        avatar = accountAvatar,
+                        onClick = onOpenAccount
+                    )
+                    MusicSettingsButton(onClick = onOpenSettings)
+                }
+                if (playback.song != null) {
+                    NowPlayingChip(
+                        playback = playback,
+                        onClick = onOpenNowPlaying
+                    )
+                }
             }
         }
     }

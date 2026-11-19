@@ -129,9 +129,9 @@ private val YtRed = Color(0xFFFF0033)
 private val CardBg = Color(0xFF1C1C1E)
 /** The page is laid out at 90% density, so the same number of dp covers more of the screen. */
 private const val YouTubeContentScale = 0.90f
-/** Left and right inset shared by the header and every card. It keeps the first poster clear of
- *  the TV's overscan and the side menu, the same way Home and Library keep theirs clear. */
-private val YouTubePageInset = 56.dp
+/** Left and right inset shared by the header and every card. The collapsed side rail is 72dp at
+ *  the app's density; this page draws at 90% density, so 80dp here clears it (72 / 0.9). */
+private val YouTubePageInset = 80.dp
 
 /**
  * The YouTube page: its own section in the side menu, laid out like the YouTube app: feeds along
