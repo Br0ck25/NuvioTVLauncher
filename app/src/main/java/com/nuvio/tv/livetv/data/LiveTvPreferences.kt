@@ -373,15 +373,11 @@ class LiveTvPreferences @Inject constructor(
      */
     private suspend fun seedProfile(id: Int) {
         if (id <= 1) return
-        com.nuvio.tv.core.profile.ActiveProfile.baselineReady.await()
-        val legacy = com.nuvio.tv.core.profile.ActiveProfile.isLegacy(id)
         store.edit { p ->
             if (p[seededKey(id)] == true) return@edit
-            // Only a profile that existed before per-profile settings takes a one-time copy; a new one starts empty.
-            if (legacy) {
-                personalStringKeys.forEach { k -> if (p[my(k, id)] == null) p[k]?.let { p[my(k, id)] = it } }
-                personalSetKeys.forEach { k -> if (p[my(k, id)] == null) p[k]?.let { p[my(k, id)] = it } }
-            }
+            if (groupsOf(p).groupOf(id) != null) return@edit
+            personalStringKeys.forEach { k -> if (p[my(k, id)] == null) p[k]?.let { p[my(k, id)] = it } }
+            personalSetKeys.forEach { k -> if (p[my(k, id)] == null) p[k]?.let { p[my(k, id)] = it } }
             p[seededKey(id)] = true
         }
     }
@@ -398,7 +394,13 @@ class LiveTvPreferences @Inject constructor(
     /** The choices matched profiles share (one copy per group). */
     private val matchedKeyNames: Set<String> =
         (copiedStringKeys + copiedCalendarKeys + Keys.sideMenuHidden).map { it.name }.toSet() +
-            personalSetKeys.map { it.name }
+            personalSetKeys.map { it.name } +
+            // Added by this fork: the profile's names, logos, numbers, guide fixes, playlists and guides.
+            listOf(
+                Keys.sports, Keys.channelNames, Keys.channelLogos, Keys.channelNumbers, Keys.groupNames, Keys.epgOverrides,
+                Keys.channelAudio, Keys.channelCaptions, Keys.vodGroupNames, Keys.pictureShapes, Keys.calendarChannelPicks,
+                Keys.calendarPlans, Keys.listChannels, Keys.playlists, Keys.epgs
+            ).map { it.name }
 
     /**
      * Writes profile [from]'s Live TV choices (as [before] shows them to it) into profile [to]'s own
@@ -592,12 +594,14 @@ class LiveTvPreferences @Inject constructor(
 
     // Nothing is shared between profiles any more (the parental lock included: it belongs to the profile that set it).
     private val sharedSettingKeyNames = emptySet<String>()
+    // Which side-menu pages are off follows Nuvio One's own (group-aware) handling in writeSettings.
+    private val handledElsewhereKeyNames = setOf(Keys.sideMenuHidden.name)
 
     /** The names of the settings keys: whatever [writeSettings] writes, minus the ones every profile shares. */
     private val settingsKeyNames: Set<String> by lazy {
         val tmp = androidx.datastore.preferences.core.mutablePreferencesOf()
         writeSettings(tmp, LiveTvSettings())
-        tmp.asMap().keys.map { it.name }.filter { it !in sharedSettingKeyNames }.toSet()
+        tmp.asMap().keys.map { it.name }.filter { it !in sharedSettingKeyNames && it !in handledElsewhereKeyNames }.toSet()
     }
 
     private fun ownName(name: String, id: Int) = "${name}_p$id"
@@ -618,7 +622,8 @@ class LiveTvPreferences @Inject constructor(
     } as Preferences.Key<Any>?
 
     /** The stored data as profile [id] sees its settings: its own copies in place of the first profile's. */
-    private fun settingsView(p: Preferences, id: Int): Preferences {
+    private fun settingsView(p: Preferences, profile: Int): Preferences {
+        val id = groupsOf(p).owner(profile) // matched profiles share one copy, kept under the group's lowest profile
         if (id <= 1 || p[settingsSeededKey(id)] != true) return p
         val byName = p.asMap().entries.associateBy { it.key.name }
         val m = p.toMutablePreferences()
@@ -631,21 +636,18 @@ class LiveTvPreferences @Inject constructor(
     }
 
     /** The first time a profile is used, it takes a copy of the first profile's settings (never over its own choices). */
-    private suspend fun seedProfileSettings(id: Int) {
-        if (id <= 1) return
-        com.nuvio.tv.core.profile.ActiveProfile.baselineReady.await()
-        val legacy = com.nuvio.tv.core.profile.ActiveProfile.isLegacy(id)
+    private suspend fun seedProfileSettings(profile: Int) {
+        if (profile <= 1) return
         store.edit { p ->
-            if (p[settingsSeededKey(id)] == true) return@edit
-            if (legacy) {
-                val byName = p.asMap().entries.associateBy { it.key.name }
-                for (name in settingsKeyNames) {
-                    val base = byName[name] ?: continue
-                    if (byName[ownName(name, id)] == null) typedKey(ownName(name, id), base.value)?.let { p[it] = base.value }
-                }
-                for (k in listOf(Keys.playlists, Keys.epgs)) {
-                    if (p[my(k, id)] == null) p[k]?.let { p[my(k, id)] = it }
-                }
+            val id = groupsOf(p).owner(profile)
+            if (id <= 1 || p[settingsSeededKey(id)] == true) return@edit
+            val byName = p.asMap().entries.associateBy { it.key.name }
+            for (name in settingsKeyNames) {
+                val base = byName[name] ?: continue
+                if (byName[ownName(name, id)] == null) typedKey(ownName(name, id), base.value)?.let { p[it] = base.value }
+            }
+            for (k in listOf(Keys.playlists, Keys.epgs)) {
+                if (p[my(k, id)] == null) p[k]?.let { p[my(k, id)] = it }
             }
             p[settingsSeededKey(id)] = true
         }
@@ -1021,10 +1023,11 @@ class LiveTvPreferences @Inject constructor(
     // ---------- settings ----------
 
     suspend fun updateSettings(transform: (LiveTvSettings) -> LiveTvSettings) {
-        val me = currentProfile
-        if (me > 1) seedProfileSettings(me)
+        val profile = currentProfile
+        if (profile > 1) seedProfileSettings(profile)
         val next = transform(currentSettings())
         store.edit { p ->
+            val me = groupsOf(p).owner(profile)
             if (me <= 1) {
                 writeSettings(p, next)
             } else {
@@ -1032,13 +1035,13 @@ class LiveTvPreferences @Inject constructor(
                 val tmp = androidx.datastore.preferences.core.mutablePreferencesOf()
                 writeSettings(tmp, next)
                 for ((k, v) in tmp.asMap()) {
+                    if (k.name in handledElsewhereKeyNames) continue
                     if (k.name in sharedSettingKeyNames) p[typedKey(k.name, v) ?: continue] = v
                     else typedKey(ownName(k.name, me), v)?.let { p[it] = v }
                 }
-                // Which pages are off: this profile's own copy, saved when it differs from what it sees now
-                // (its own choice, or else the first profile's). Even an empty list (everything on) is a choice.
-                val seen = p[my(Keys.sideMenuHidden, me)] ?: p[Keys.sideMenuHidden] ?: ""
-                if (next.sideMenuHidden != seen) p[my(Keys.sideMenuHidden, me)] = next.sideMenuHidden
+                // Which pages are off: the same group-aware rule as writeSettings (a copy is saved only when it differs).
+                val seenHidden = p[own(Keys.sideMenuHidden, me)] ?: p[Keys.sideMenuHidden] ?: ""
+                if (next.sideMenuHidden != seenHidden) p[own(Keys.sideMenuHidden, me)] = next.sideMenuHidden
             }
         }
     }
@@ -1110,9 +1113,13 @@ class LiveTvPreferences @Inject constructor(
         p[Keys.onDemandHomeRowEnabled] = s.onDemandHomeRowEnabled
         p[Keys.recordingsInSidebar] = s.recordingsInSidebar
         p[Keys.sideMenuOrder] = s.sideMenuOrder
-        // The first profile owns this key. Another profile's copy is written by updateSettings (it needs the
-        // stored value to compare with), so it is not written here.
-        if (currentProfile <= 1) p[Keys.sideMenuHidden] = s.sideMenuHidden
+        val me = groupsOf(p).owner(currentProfile)
+        if (me <= 1) {
+            p[Keys.sideMenuHidden] = s.sideMenuHidden
+        } else {
+            val seen = p[own(Keys.sideMenuHidden, me)] ?: p[Keys.sideMenuHidden] ?: ""
+            if (s.sideMenuHidden != seen) p[own(Keys.sideMenuHidden, me)] = s.sideMenuHidden
+        }
         p[Keys.calendarInMenu] = s.calendarInMenu
         p[Keys.sideMenuLine] = s.sideMenuLine
         p[Keys.sideMenuFit] = s.sideMenuFit
