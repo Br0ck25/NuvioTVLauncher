@@ -1,0 +1,27 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <string name="iptv_rec_recorded">"Grabadas"</string>
+    <string name="iptv_rec_recording_now">"Grabando ahora"</string>
+    <string name="iptv_rec_new_recording">"+ Nueva grabación"</string>
+    <string name="iptv_rec_nothing_recorded">"Aún no hay nada grabado"</string>
+    <string name="iptv_rec_series">"Series"</string>
+    <string name="iptv_rec_keep_last">"Guardar las últimas %1$d"</string>
+    <string name="iptv_rec_more_now">"Y %1$d grabaciones más en curso"</string>
+    <string name="iptv_rec_keep_all">"Guardar todas"</string>
+    <string name="iptv_rec_moving_progress">"Moviendo grabaciones (%1$d de %2$d)"</string>
+    <string name="iptv_rec_episodes_to_keep">"Episodios a guardar"</string>
+    <string name="iptv_rec_keep_detail">"%1$s: los episodios antiguos se eliminan a medida que se graban nuevos."</string>
+    <string name="iptv_rec_scheduled">"Programadas"</string>
+    <string name="iptv_rec_no_series">"No hay series programadas para grabar"</string>
+    <string name="iptv_rec_episodes_to_keep_value">"Episodios a guardar: %1$s"</string>
+    <string name="iptv_rec_series_detail">"Cada episodio nuevo en %1$s (se omiten las repeticiones de episodios ya grabados). Al detenerla también se cancelan las emisiones programadas que no han empezado; lo grabado se conserva."</string>
+    <string name="iptv_rec_keep_last_n">"Guardar los últimos %1$d"</string>
+    <string name="iptv_rec_cancel_recording">"Cancelar grabación"</string>
+    <string name="iptv_rec_empty_title">"Aún no hay grabaciones"</string>
+    <string name="iptv_rec_nothing_scheduled">"Nada programado"</string>
+    <string name="iptv_rec_keep_all_episodes">"Guardar todos los episodios"</string>
+    <string name="iptv_rec_moving">"Moviendo grabaciones"</string>
+    <string name="iptv_rec_stop_series">"Detener grabación de serie"</string>
+    <string name="iptv_rec_recording_from_playlist">"Grabación de la lista: %1$s"</string>
+    <string name="iptv_rec_empty_help">"En la guía de Live TV, mantén pulsado un programa y elige Grabar o Grabar serie. Mientras ves, abre el menú y elige Grabar este programa. Para un canal sin información, usa + Nueva grabación."</string>
+</resources>

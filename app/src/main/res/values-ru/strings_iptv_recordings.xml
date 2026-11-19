@@ -1,0 +1,27 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <string name="iptv_rec_recorded">"Записано"</string>
+    <string name="iptv_rec_recording_now">"Идёт запись"</string>
+    <string name="iptv_rec_new_recording">"+ Новая запись"</string>
+    <string name="iptv_rec_nothing_recorded">"Пока ничего не записано"</string>
+    <string name="iptv_rec_series">"Сериалы"</string>
+    <string name="iptv_rec_keep_last">"Хранить последние %1$d"</string>
+    <string name="iptv_rec_more_now">"И ещё %1$d записей идёт"</string>
+    <string name="iptv_rec_keep_all">"Хранить все"</string>
+    <string name="iptv_rec_moving_progress">"Перемещение записей (%1$d из %2$d)"</string>
+    <string name="iptv_rec_episodes_to_keep">"Сколько серий хранить"</string>
+    <string name="iptv_rec_keep_detail">"%1$s: старые серии удаляются по мере записи новых."</string>
+    <string name="iptv_rec_scheduled">"Запланировано"</string>
+    <string name="iptv_rec_no_series">"Нет сериалов для записи"</string>
+    <string name="iptv_rec_episodes_to_keep_value">"Сколько серий хранить: %1$s"</string>
+    <string name="iptv_rec_series_detail">"Каждая новая серия на %1$s (повторы уже записанных серий пропускаются). Остановка также отменяет запланированные показы, которые ещё не начались; записанное сохраняется."</string>
+    <string name="iptv_rec_keep_last_n">"Хранить последние %1$d"</string>
+    <string name="iptv_rec_cancel_recording">"Отменить запись"</string>
+    <string name="iptv_rec_empty_title">"Записей пока нет"</string>
+    <string name="iptv_rec_nothing_scheduled">"Ничего не запланировано"</string>
+    <string name="iptv_rec_keep_all_episodes">"Хранить все серии"</string>
+    <string name="iptv_rec_moving">"Перемещение записей"</string>
+    <string name="iptv_rec_stop_series">"Остановить запись сериала"</string>
+    <string name="iptv_rec_recording_from_playlist">"Запись из плейлиста: %1$s"</string>
+    <string name="iptv_rec_empty_help">"В гиде Live TV удерживайте передачу и выберите «Записать» или «Записать сериал». Во время просмотра откройте меню и выберите «Записать эту передачу». Для канала без программы используйте «+ Новая запись»."</string>
+</resources>

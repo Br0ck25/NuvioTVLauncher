@@ -1,0 +1,27 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <string name="iptv_rec_recorded">"Kaydedilenler"</string>
+    <string name="iptv_rec_recording_now">"Şimdi kaydediliyor"</string>
+    <string name="iptv_rec_new_recording">"+ Yeni kayıt"</string>
+    <string name="iptv_rec_nothing_recorded">"Henüz kayıt yok"</string>
+    <string name="iptv_rec_series">"Diziler"</string>
+    <string name="iptv_rec_keep_last">"Son %1$d kaydı tut"</string>
+    <string name="iptv_rec_more_now">"Ve %1$d kayıt daha sürüyor"</string>
+    <string name="iptv_rec_keep_all">"Tümünü tut"</string>
+    <string name="iptv_rec_moving_progress">"Kayıtlar taşınıyor (%1$d / %2$d)"</string>
+    <string name="iptv_rec_episodes_to_keep">"Tutulacak bölümler"</string>
+    <string name="iptv_rec_keep_detail">"%1$s: yeni bölümler kaydedildikçe eski bölümler silinir."</string>
+    <string name="iptv_rec_scheduled">"Planlananlar"</string>
+    <string name="iptv_rec_no_series">"Kaydedilecek dizi yok"</string>
+    <string name="iptv_rec_episodes_to_keep_value">"Tutulacak bölümler: %1$s"</string>
+    <string name="iptv_rec_series_detail">"%1$s üzerindeki her yeni bölüm (zaten kaydedilmiş bölümlerin tekrarları atlanır). Durdurmak, başlamamış planlı yayınları da iptal eder; kaydedilenler kalır."</string>
+    <string name="iptv_rec_keep_last_n">"Son %1$d bölümü tut"</string>
+    <string name="iptv_rec_cancel_recording">"Kaydı iptal et"</string>
+    <string name="iptv_rec_empty_title">"Henüz kayıt yok"</string>
+    <string name="iptv_rec_nothing_scheduled">"Planlanan yok"</string>
+    <string name="iptv_rec_keep_all_episodes">"Tüm bölümleri tut"</string>
+    <string name="iptv_rec_moving">"Kayıtlar taşınıyor"</string>
+    <string name="iptv_rec_stop_series">"Dizi kaydını durdur"</string>
+    <string name="iptv_rec_recording_from_playlist">"Oynatma listesinden kayıt: %1$s"</string>
+    <string name="iptv_rec_empty_help">"Live TV rehberinde bir programı basılı tutup Kaydet veya Diziyi kaydet seçin. İzlerken menüyü açıp Bu programı kaydet seçin. Rehberi olmayan bir kanal için + Yeni kayıt kullanın."</string>
+</resources>

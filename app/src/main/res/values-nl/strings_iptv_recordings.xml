@@ -1,0 +1,27 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <string name="iptv_rec_recorded">"Opgenomen"</string>
+    <string name="iptv_rec_recording_now">"Nu opnemen"</string>
+    <string name="iptv_rec_new_recording">"+ Nieuwe opname"</string>
+    <string name="iptv_rec_nothing_recorded">"Nog niets opgenomen"</string>
+    <string name="iptv_rec_series">"Series"</string>
+    <string name="iptv_rec_keep_last">"Laatste %1$d bewaren"</string>
+    <string name="iptv_rec_more_now">"En nog %1$d opnames bezig"</string>
+    <string name="iptv_rec_keep_all">"Alles bewaren"</string>
+    <string name="iptv_rec_moving_progress">"Opnames verplaatsen (%1$d van %2$d)"</string>
+    <string name="iptv_rec_episodes_to_keep">"Afleveringen bewaren"</string>
+    <string name="iptv_rec_keep_detail">"%1$s: oudere afleveringen worden verwijderd zodra er nieuwe worden opgenomen."</string>
+    <string name="iptv_rec_scheduled">"Gepland"</string>
+    <string name="iptv_rec_no_series">"Geen serie ingesteld om op te nemen"</string>
+    <string name="iptv_rec_episodes_to_keep_value">"Afleveringen bewaren: %1$s"</string>
+    <string name="iptv_rec_series_detail">"Elke nieuwe aflevering op %1$s (herhalingen van al opgenomen afleveringen worden overgeslagen). Stoppen annuleert ook geplande uitzendingen die nog niet begonnen zijn; wat is opgenomen blijft."</string>
+    <string name="iptv_rec_keep_last_n">"De laatste %1$d bewaren"</string>
+    <string name="iptv_rec_cancel_recording">"Opname annuleren"</string>
+    <string name="iptv_rec_empty_title">"Nog geen opnames"</string>
+    <string name="iptv_rec_nothing_scheduled">"Niets gepland"</string>
+    <string name="iptv_rec_keep_all_episodes">"Alle afleveringen bewaren"</string>
+    <string name="iptv_rec_moving">"Opnames verplaatsen"</string>
+    <string name="iptv_rec_stop_series">"Serie-opname stoppen"</string>
+    <string name="iptv_rec_recording_from_playlist">"Opname uit afspeellijst: %1$s"</string>
+    <string name="iptv_rec_empty_help">"Houd in de Live TV-gids een programma ingedrukt en kies Opnemen of Serie opnemen. Open tijdens het kijken het menu en kies Deze uitzending opnemen. Voor een zender zonder gids gebruik je + Nieuwe opname."</string>
+</resources>

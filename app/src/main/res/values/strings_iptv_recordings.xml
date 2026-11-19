@@ -1,0 +1,27 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <string name="iptv_rec_new_recording">"+ New Recording"</string>
+    <string name="iptv_rec_empty_title">"No recordings yet"</string>
+    <string name="iptv_rec_empty_help">"In the Live TV guide, long-press a show and choose Record or Record series. While watching, open the menu and choose Record this show. For a channel with no listings, use + New Recording."</string>
+    <string name="iptv_rec_recording_now">"Recording Now"</string>
+    <string name="iptv_rec_more_now">"And %1$d more recording now"</string>
+    <string name="iptv_rec_scheduled">"Scheduled"</string>
+    <string name="iptv_rec_nothing_scheduled">"Nothing scheduled"</string>
+    <string name="iptv_rec_series">"Series"</string>
+    <string name="iptv_rec_no_series">"No series set to record"</string>
+    <string name="iptv_rec_recorded">"Recorded"</string>
+    <string name="iptv_rec_nothing_recorded">"Nothing recorded yet"</string>
+    <string name="iptv_rec_keep_last">"Keep last %1$d"</string>
+    <string name="iptv_rec_keep_all">"Keep all"</string>
+    <string name="iptv_rec_moving">"Moving recordings"</string>
+    <string name="iptv_rec_moving_progress">"Moving recordings (%1$d of %2$d)"</string>
+    <string name="iptv_rec_cancel_recording">"Cancel Recording"</string>
+    <string name="iptv_rec_recording_from_playlist">"Recording from playlist: %1$s"</string>
+    <string name="iptv_rec_stop_series">"Stop Recording Series"</string>
+    <string name="iptv_rec_episodes_to_keep">"Episodes to Keep"</string>
+    <string name="iptv_rec_episodes_to_keep_value">"Episodes to Keep: %1$s"</string>
+    <string name="iptv_rec_keep_all_episodes">"Keep All Episodes"</string>
+    <string name="iptv_rec_keep_last_n">"Keep the Last %1$d"</string>
+    <string name="iptv_rec_series_detail">"Every new episode on %1$s (repeats of episodes already recorded are skipped). Stopping it also cancels the airings it set that haven\'t started; what\'s recorded is kept."</string>
+    <string name="iptv_rec_keep_detail">"%1$s: older episodes are deleted as new ones are recorded."</string>
+</resources>

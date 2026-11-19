@@ -1,0 +1,27 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <string name="iptv_rec_recorded">"Registrate"</string>
+    <string name="iptv_rec_recording_now">"Registrazione in corso"</string>
+    <string name="iptv_rec_new_recording">"+ Nuova registrazione"</string>
+    <string name="iptv_rec_nothing_recorded">"Niente di registrato"</string>
+    <string name="iptv_rec_series">"Serie"</string>
+    <string name="iptv_rec_keep_last">"Mantieni le ultime %1$d"</string>
+    <string name="iptv_rec_more_now">"E altre %1$d registrazioni in corso"</string>
+    <string name="iptv_rec_keep_all">"Mantieni tutte"</string>
+    <string name="iptv_rec_moving_progress">"Spostamento registrazioni (%1$d di %2$d)"</string>
+    <string name="iptv_rec_episodes_to_keep">"Episodi da mantenere"</string>
+    <string name="iptv_rec_keep_detail">"%1$s: gli episodi più vecchi vengono eliminati man mano che se ne registrano di nuovi."</string>
+    <string name="iptv_rec_scheduled">"Programmate"</string>
+    <string name="iptv_rec_no_series">"Nessuna serie impostata per la registrazione"</string>
+    <string name="iptv_rec_episodes_to_keep_value">"Episodi da mantenere: %1$s"</string>
+    <string name="iptv_rec_series_detail">"Ogni nuovo episodio su %1$s (le repliche di episodi già registrati vengono saltate). Interrompendola vengono annullate anche le messe in onda programmate non ancora iniziate; ciò che è registrato resta."</string>
+    <string name="iptv_rec_keep_last_n">"Mantieni gli ultimi %1$d"</string>
+    <string name="iptv_rec_cancel_recording">"Annulla registrazione"</string>
+    <string name="iptv_rec_empty_title">"Nessuna registrazione"</string>
+    <string name="iptv_rec_nothing_scheduled">"Niente in programma"</string>
+    <string name="iptv_rec_keep_all_episodes">"Mantieni tutti gli episodi"</string>
+    <string name="iptv_rec_moving">"Spostamento registrazioni"</string>
+    <string name="iptv_rec_stop_series">"Interrompi registrazione serie"</string>
+    <string name="iptv_rec_recording_from_playlist">"Registrazione dalla playlist: %1$s"</string>
+    <string name="iptv_rec_empty_help">"Nella guida Live TV, tieni premuto un programma e scegli Registra o Registra serie. Durante la visione, apri il menu e scegli Registra questo programma. Per un canale senza informazioni, usa + Nuova registrazione."</string>
+</resources>

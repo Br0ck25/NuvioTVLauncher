@@ -1,0 +1,27 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <string name="iptv_rec_recorded">"Enregistrés"</string>
+    <string name="iptv_rec_recording_now">"Enregistrement en cours"</string>
+    <string name="iptv_rec_new_recording">"+ Nouvel enregistrement"</string>
+    <string name="iptv_rec_nothing_recorded">"Rien d’enregistré pour l’instant"</string>
+    <string name="iptv_rec_series">"Séries"</string>
+    <string name="iptv_rec_keep_last">"Garder les %1$d derniers"</string>
+    <string name="iptv_rec_more_now">"Et %1$d autres enregistrements en cours"</string>
+    <string name="iptv_rec_keep_all">"Tout garder"</string>
+    <string name="iptv_rec_moving_progress">"Déplacement des enregistrements (%1$d sur %2$d)"</string>
+    <string name="iptv_rec_episodes_to_keep">"Épisodes à garder"</string>
+    <string name="iptv_rec_keep_detail">"%1$s : les anciens épisodes sont supprimés à mesure que de nouveaux sont enregistrés."</string>
+    <string name="iptv_rec_scheduled">"Programmés"</string>
+    <string name="iptv_rec_no_series">"Aucune série à enregistrer"</string>
+    <string name="iptv_rec_episodes_to_keep_value">"Épisodes à garder : %1$s"</string>
+    <string name="iptv_rec_series_detail">"Chaque nouvel épisode sur %1$s (les rediffusions d’épisodes déjà enregistrés sont ignorées). L’arrêter annule aussi les diffusions prévues qui n’ont pas commencé ; ce qui est enregistré est conservé."</string>
+    <string name="iptv_rec_keep_last_n">"Garder les %1$d derniers"</string>
+    <string name="iptv_rec_cancel_recording">"Annuler l’enregistrement"</string>
+    <string name="iptv_rec_empty_title">"Pas encore d’enregistrements"</string>
+    <string name="iptv_rec_nothing_scheduled">"Rien de programmé"</string>
+    <string name="iptv_rec_keep_all_episodes">"Garder tous les épisodes"</string>
+    <string name="iptv_rec_moving">"Déplacement des enregistrements"</string>
+    <string name="iptv_rec_stop_series">"Arrêter l’enregistrement de la série"</string>
+    <string name="iptv_rec_recording_from_playlist">"Enregistrement depuis la playlist : %1$s"</string>
+    <string name="iptv_rec_empty_help">"Dans le guide Live TV, maintenez une émission et choisissez Enregistrer ou Enregistrer la série. Pendant la lecture, ouvrez le menu et choisissez Enregistrer cette émission. Pour une chaîne sans programme, utilisez + Nouvel enregistrement."</string>
+</resources>

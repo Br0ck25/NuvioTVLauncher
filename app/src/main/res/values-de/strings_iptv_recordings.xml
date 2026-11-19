@@ -1,0 +1,27 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <string name="iptv_rec_recorded">"Aufgenommen"</string>
+    <string name="iptv_rec_recording_now">"Wird jetzt aufgenommen"</string>
+    <string name="iptv_rec_new_recording">"+ Neue Aufnahme"</string>
+    <string name="iptv_rec_nothing_recorded">"Noch nichts aufgenommen"</string>
+    <string name="iptv_rec_series">"Serien"</string>
+    <string name="iptv_rec_keep_last">"Letzte %1$d behalten"</string>
+    <string name="iptv_rec_more_now">"Und %1$d weitere Aufnahmen laufen"</string>
+    <string name="iptv_rec_keep_all">"Alle behalten"</string>
+    <string name="iptv_rec_moving_progress">"Aufnahmen werden verschoben (%1$d von %2$d)"</string>
+    <string name="iptv_rec_episodes_to_keep">"Episoden behalten"</string>
+    <string name="iptv_rec_keep_detail">"%1$s: Ältere Episoden werden gelöscht, wenn neue aufgenommen werden."</string>
+    <string name="iptv_rec_scheduled">"Geplant"</string>
+    <string name="iptv_rec_no_series">"Keine Serie zur Aufnahme eingestellt"</string>
+    <string name="iptv_rec_episodes_to_keep_value">"Episoden behalten: %1$s"</string>
+    <string name="iptv_rec_series_detail">"Jede neue Episode auf %1$s (Wiederholungen bereits aufgenommener Episoden werden übersprungen). Beim Stoppen werden auch geplante Ausstrahlungen abgesagt, die noch nicht begonnen haben; bereits Aufgenommenes bleibt."</string>
+    <string name="iptv_rec_keep_last_n">"Die letzten %1$d behalten"</string>
+    <string name="iptv_rec_cancel_recording">"Aufnahme abbrechen"</string>
+    <string name="iptv_rec_empty_title">"Noch keine Aufnahmen"</string>
+    <string name="iptv_rec_nothing_scheduled">"Nichts geplant"</string>
+    <string name="iptv_rec_keep_all_episodes">"Alle Episoden behalten"</string>
+    <string name="iptv_rec_moving">"Aufnahmen werden verschoben"</string>
+    <string name="iptv_rec_stop_series">"Serienaufnahme stoppen"</string>
+    <string name="iptv_rec_recording_from_playlist">"Aufnahme aus Wiedergabeliste: %1$s"</string>
+    <string name="iptv_rec_empty_help">"Halte in der Live-TV-Übersicht eine Sendung gedrückt und wähle Aufnehmen oder Serie aufnehmen. Öffne beim Zuschauen das Menü und wähle Diese Sendung aufnehmen. Für einen Sender ohne Programminformationen nutze + Neue Aufnahme."</string>
+</resources>

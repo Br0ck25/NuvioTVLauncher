@@ -36,6 +36,8 @@ import androidx.compose.runtime.remember
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.res.stringResource
+import com.nuvio.tv.R
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.focus.FocusRequester
 import androidx.compose.ui.focus.focusProperties
@@ -329,7 +331,7 @@ fun RecordingsScreen(
                 Spacer(Modifier.width(18.dp))
                 // Record a time you pick, on a channel with no listings (PPV events…).
                 PillButton(
-                    "+ New Recording",
+                    stringResource(R.string.iptv_rec_new_recording),
                     primary = false,
                     modifier = Modifier.focusRequester(newButton),
                     onFocus = {},
@@ -341,10 +343,10 @@ fun RecordingsScreen(
             if (recordings.isEmpty() && schedules.isEmpty() && seriesRules.isEmpty()) {
                 Box(Modifier.fillMaxSize(), contentAlignment = Alignment.Center) {
                     Column(horizontalAlignment = Alignment.CenterHorizontally) {
-                        LiveText("No recordings yet", size = 20.sp, weight = FontWeight.SemiBold)
+                        LiveText(stringResource(R.string.iptv_rec_empty_title), size = 20.sp, weight = FontWeight.SemiBold)
                         Spacer(Modifier.height(8.dp))
                         LiveText(
-                            "In the Live TV guide, long-press a show and choose Record or Record series. While watching, open the menu and choose Record this show. For a channel with no listings, use + New Recording.",
+                            stringResource(R.string.iptv_rec_empty_help),
                             size = 14.sp, color = colors.TextSecondary, maxLines = 3
                         )
                     }
@@ -354,7 +356,7 @@ fun RecordingsScreen(
 
             // ---- Recording now: a wide card each, across the top.
             if (now.isNotEmpty()) {
-                SectionTitle("Recording Now", color = LIVE_RED)
+                SectionTitle(stringResource(R.string.iptv_rec_recording_now), color = LIVE_RED)
                 Column(verticalArrangement = Arrangement.spacedBy(10.dp)) {
                     now.take(2).forEach { rec ->
                         RecordingNowCard(
@@ -368,7 +370,7 @@ fun RecordingsScreen(
                         )
                     }
                     if (now.size > 2) {
-                        LiveText("And ${now.size - 2} more recording now", size = 14.sp, color = colors.TextSecondary)
+                        LiveText(stringResource(R.string.iptv_rec_more_now, now.size - 2), size = 14.sp, color = colors.TextSecondary)
                     }
                 }
                 Spacer(Modifier.height(22.dp))
@@ -380,8 +382,8 @@ fun RecordingsScreen(
                 horizontalArrangement = Arrangement.spacedBy(24.dp)
             ) {
                 Column(Modifier.weight(1f)) {
-                    SectionTitle("Scheduled")
-                    if (schedules.isEmpty()) EmptyNote("Nothing scheduled")
+                    SectionTitle(stringResource(R.string.iptv_rec_scheduled))
+                    if (schedules.isEmpty()) EmptyNote(stringResource(R.string.iptv_rec_nothing_scheduled))
                     LazyColumn(
                         verticalArrangement = Arrangement.spacedBy(10.dp),
                         contentPadding = PaddingValues(bottom = 40.dp)
@@ -398,8 +400,8 @@ fun RecordingsScreen(
                     }
                 }
                 Column(Modifier.weight(1f)) {
-                    SectionTitle("Series")
-                    if (seriesRules.isEmpty()) EmptyNote("No series set to record")
+                    SectionTitle(stringResource(R.string.iptv_rec_series))
+                    if (seriesRules.isEmpty()) EmptyNote(stringResource(R.string.iptv_rec_no_series))
                     LazyColumn(
                         verticalArrangement = Arrangement.spacedBy(10.dp),
                         contentPadding = PaddingValues(bottom = 40.dp)
@@ -407,7 +409,10 @@ fun RecordingsScreen(
                         items(seriesRules, key = { it.id }) { r ->
                             InfoCard(
                                 title = r.title,
-                                line = withPlaylist(r.channel.name, r.channel.sourceId) + " · " + (if (r.keepLast > 0) "Keep last ${r.keepLast}" else "Keep all"),
+                                line = withPlaylist(r.channel.name, r.channel.sourceId) + " · " + (
+                                    if (r.keepLast > 0) stringResource(R.string.iptv_rec_keep_last, r.keepLast)
+                                    else stringResource(R.string.iptv_rec_keep_all)
+                                ),
                                 note = null,
                                 modifier = if (r.id == firstSeriesId) Modifier.focusRequester(first) else Modifier,
                                 onClick = { seriesMenu = r }
@@ -416,8 +421,8 @@ fun RecordingsScreen(
                     }
                 }
                 Column(Modifier.weight(1.4f)) {
-                    SectionTitle("Recorded")
-                    if (done.isEmpty()) EmptyNote("Nothing recorded yet")
+                    SectionTitle(stringResource(R.string.iptv_rec_recorded))
+                    if (done.isEmpty()) EmptyNote(stringResource(R.string.iptv_rec_nothing_recorded))
                     LazyVerticalGrid(
                         columns = GridCells.Fixed(2),
                         horizontalArrangement = Arrangement.spacedBy(14.dp),
@@ -494,7 +499,11 @@ fun RecordingsScreen(
                     .padding(horizontal = 16.dp, vertical = 12.dp),
                 verticalArrangement = Arrangement.spacedBy(6.dp)
             ) {
-                LiveText("Moving recordings" + if (m.count > 1) " (${m.index} of ${m.count})" else "", size = 14.sp, weight = FontWeight.Bold)
+                LiveText(
+                    if (m.count > 1) stringResource(R.string.iptv_rec_moving_progress, m.index, m.count)
+                    else stringResource(R.string.iptv_rec_moving),
+                    size = 14.sp, weight = FontWeight.Bold
+                )
                 LiveText(m.title, size = 13.sp, color = colors.TextSecondary)
                 ProgressLine(if (m.totalBytes > 0) m.doneBytes.toFloat() / m.totalBytes else 0f, colors.Secondary, Modifier.fillMaxWidth())
                 LiveText(sizeLabel(m.doneBytes) + " of " + sizeLabel(m.totalBytes), size = 12.sp, color = colors.TextTertiary)
@@ -512,10 +521,10 @@ fun RecordingsScreen(
         RecordingActionDialog(
             title = s.title,
             detail = s.channel.name + " · " + dateLabel(s.startMs) +
-                (playlistOf(s.channel.sourceId)?.let { "\nRecording from playlist: $it" } ?: ""),
+                (playlistOf(s.channel.sourceId)?.let { "\n" + stringResource(R.string.iptv_rec_recording_from_playlist, it) } ?: ""),
             actions = listOf(
-                "Cancel Recording" to { scheduleMenu = null; viewModel.scheduler.cancel(s.id) },
-                "Close" to { scheduleMenu = null }
+                stringResource(R.string.iptv_rec_cancel_recording) to { scheduleMenu = null; viewModel.scheduler.cancel(s.id) },
+                stringResource(R.string.action_close) to { scheduleMenu = null }
             ),
             onDismiss = { scheduleMenu = null }
         )
@@ -525,22 +534,27 @@ fun RecordingsScreen(
     seriesMenu?.let { r ->
         RecordingActionDialog(
             title = r.title,
-            detail = (playlistOf(r.channel.sourceId)?.let { "Recording from playlist: $it\n" } ?: "") +
-                "Every new episode on " + r.channel.name + " (repeats of episodes already recorded are skipped). Stopping it also cancels the airings it set that haven't started; what's recorded is kept.",
+            detail = (playlistOf(r.channel.sourceId)?.let { stringResource(R.string.iptv_rec_recording_from_playlist, it) + "\n" } ?: "") +
+                stringResource(R.string.iptv_rec_series_detail, r.channel.name),
             actions = listOf(
-                "Stop Recording Series" to { seriesMenu = null; viewModel.scheduler.removeSeries(r.id) },
-                ("Episodes to Keep: " + (if (r.keepLast == 0) "All" else "Last ${r.keepLast}")) to { seriesMenu = null; seriesKeepMenu = r },
-                "Close" to { seriesMenu = null }
+                stringResource(R.string.iptv_rec_stop_series) to { seriesMenu = null; viewModel.scheduler.removeSeries(r.id) },
+                stringResource(
+                    R.string.iptv_rec_episodes_to_keep_value,
+                    if (r.keepLast == 0) stringResource(R.string.iptv_rec_keep_all)
+                    else stringResource(R.string.iptv_rec_keep_last, r.keepLast)
+                ) to { seriesMenu = null; seriesKeepMenu = r },
+                stringResource(R.string.action_close) to { seriesMenu = null }
             ),
             onDismiss = { seriesMenu = null }
         )
     }
     seriesKeepMenu?.let { r ->
         RecordingActionDialog(
-            title = "Episodes to Keep",
-            detail = r.title + ": older episodes are deleted as new ones are recorded.",
+            title = stringResource(R.string.iptv_rec_episodes_to_keep),
+            detail = stringResource(R.string.iptv_rec_keep_detail, r.title),
             actions = listOf(0, 1, 3, 5, 10).map { n ->
-                val label = (if (n == 0) "Keep All Episodes" else "Keep the Last $n") + if (r.keepLast == n) "  ✓" else ""
+                val label = (if (n == 0) stringResource(R.string.iptv_rec_keep_all_episodes)
+                else stringResource(R.string.iptv_rec_keep_last_n, n)) + if (r.keepLast == n) "  ✓" else ""
                 label to { seriesKeepMenu = null; viewModel.scheduler.setKeep(r.id, n) }
             },
             onDismiss = { seriesKeepMenu = null }

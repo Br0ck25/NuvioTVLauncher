@@ -1,0 +1,27 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <string name="iptv_rec_recorded">"Nagrane"</string>
+    <string name="iptv_rec_recording_now">"Nagrywanie teraz"</string>
+    <string name="iptv_rec_new_recording">"+ Nowe nagranie"</string>
+    <string name="iptv_rec_nothing_recorded">"Nic jeszcze nie nagrano"</string>
+    <string name="iptv_rec_series">"Seriale"</string>
+    <string name="iptv_rec_keep_last">"Zachowaj ostatnie %1$d"</string>
+    <string name="iptv_rec_more_now">"I jeszcze %1$d nagrań trwa"</string>
+    <string name="iptv_rec_keep_all">"Zachowaj wszystkie"</string>
+    <string name="iptv_rec_moving_progress">"Przenoszenie nagrań (%1$d z %2$d)"</string>
+    <string name="iptv_rec_episodes_to_keep">"Odcinki do zachowania"</string>
+    <string name="iptv_rec_keep_detail">"%1$s: starsze odcinki są usuwane w miarę nagrywania nowych."</string>
+    <string name="iptv_rec_scheduled">"Zaplanowane"</string>
+    <string name="iptv_rec_no_series">"Brak seriali do nagrywania"</string>
+    <string name="iptv_rec_episodes_to_keep_value">"Odcinki do zachowania: %1$s"</string>
+    <string name="iptv_rec_series_detail">"Każdy nowy odcinek na %1$s (powtórki już nagranych odcinków są pomijane). Zatrzymanie anuluje też zaplanowane emisje, które się nie rozpoczęły; nagrane pozostaje."</string>
+    <string name="iptv_rec_keep_last_n">"Zachowaj ostatnie %1$d"</string>
+    <string name="iptv_rec_cancel_recording">"Anuluj nagrywanie"</string>
+    <string name="iptv_rec_empty_title">"Brak nagrań"</string>
+    <string name="iptv_rec_nothing_scheduled">"Nic nie zaplanowano"</string>
+    <string name="iptv_rec_keep_all_episodes">"Zachowaj wszystkie odcinki"</string>
+    <string name="iptv_rec_moving">"Przenoszenie nagrań"</string>
+    <string name="iptv_rec_stop_series">"Zatrzymaj nagrywanie serialu"</string>
+    <string name="iptv_rec_recording_from_playlist">"Nagranie z playlisty: %1$s"</string>
+    <string name="iptv_rec_empty_help">"W przewodniku Live TV przytrzymaj program i wybierz Nagraj lub Nagraj serial. Podczas oglądania otwórz menu i wybierz Nagraj ten program. Dla kanału bez przewodnika użyj + Nowe nagranie."</string>
+</resources>
