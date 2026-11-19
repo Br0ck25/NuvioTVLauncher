@@ -23,6 +23,7 @@ import androidx.compose.foundation.layout.wrapContentSize
 import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
+import androidx.compose.material.icons.filled.Cloud
 import androidx.compose.material.icons.filled.DeleteSweep
 import androidx.compose.material.icons.filled.FilterNone
 import androidx.compose.material.icons.filled.Forward30
@@ -73,7 +74,7 @@ internal enum class PanelMode { LIVE, CATCHUP, SHIFT }
  * the timeline, back 30, play/pause, forward 30 and the gear; the rest are kept for the keys
  * that still name them, and live in the gear panel.
  */
-internal enum class PanelControl { TIMELINE, BACK, PLAY, FORWARD, LIVE, CC, AUDIO, SIZE, SLEEP, PIN, BELL, BACKUPS, SPORTS, MORE }
+internal enum class PanelControl { TIMELINE, BACK, PLAY, FORWARD, LIVE, CC, AUDIO, SIZE, SLEEP, PIN, SOURCES, BELL, BACKUPS, SPORTS, MORE }
 
 /** Timeline: everything in wall-clock milliseconds. */
 internal data class PanelTimeline(
@@ -138,13 +139,15 @@ internal object BarPart {
 }
 
 /** Which controls the bar offers: back 30 / forward 30 only where you can skip, and the gear. */
-internal fun panelControls(mode: PanelMode, paused: Boolean, canSkip: Boolean, bell: Boolean = false, pin: Boolean = false, backups: Boolean = false, sports: Boolean = false): List<PanelControl> = buildList {
+internal fun panelControls(mode: PanelMode, paused: Boolean, canSkip: Boolean, bell: Boolean = false, pin: Boolean = false, backups: Boolean = false, sports: Boolean = false, sources: Boolean = false): List<PanelControl> = buildList {
     val transport = mode != PanelMode.LIVE || paused
     // The timeline itself can be grabbed (Up from the buttons) and moved with ◀ / ▶.
     if (transport && canSkip) add(PanelControl.TIMELINE)
     if (transport && canSkip) add(PanelControl.BACK)
     add(PanelControl.PLAY)
     if (transport && canSkip) add(PanelControl.FORWARD)
+    // A list channel's other sources, before the bell.
+    if (sources) add(PanelControl.SOURCES)
     // Sports: pin the live game's score to the corner.
     if (pin) add(PanelControl.PIN)
     // The Calendar's bell, beside the gear.
@@ -389,6 +392,10 @@ internal fun LiveTvPlayerPanel(
                             }
                             if (full) {
                                 Spacer(Modifier.width(10.dp))
+                                if (PanelControl.SOURCES in controls) {
+                                    RoundButton(Icons.Default.Cloud, focused = focused == PanelControl.SOURCES && !inRow, big = false)
+                                    Spacer(Modifier.width(8.dp))
+                                }
                                 if (PanelControl.PIN in controls) {
                                     RoundButton(
                                         if (pinOn) Icons.Default.PushPin else Icons.Outlined.PushPin,

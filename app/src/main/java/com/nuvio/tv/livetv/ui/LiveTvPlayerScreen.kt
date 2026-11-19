@@ -43,6 +43,7 @@ import androidx.compose.runtime.remember
 import androidx.compose.runtime.rememberCoroutineScope
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
+import com.nuvio.tv.livetv.lists.isListChannelUrl
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.focus.FocusRequester
@@ -72,7 +73,7 @@ import com.nuvio.tv.ui.theme.NuvioTheme
 import kotlinx.coroutines.delay
 import kotlinx.coroutines.launch
 
-private enum class PlayerDialog { NONE, OPTIONS, AUDIO, SUBTITLES, SCREEN_SIZE, STREAM_INFO, SLEEP, BACKUPS, BACKUP_FLYOUT }
+private enum class PlayerDialog { NONE, OPTIONS, AUDIO, SUBTITLES, SCREEN_SIZE, STREAM_INFO, SLEEP, BACKUPS, BACKUP_FLYOUT, SOURCES }
 
 /** Right twice within this long, in full screen: the backup channels flyout. */
 /** Seconds before the next episode of a recording starts by itself. */
@@ -420,6 +421,34 @@ fun LiveTvPlayerScreen(
     // The Calendar's bell for what's on (play bar and the full-screen menu).
     val liveBell = com.nuvio.tv.livetv.calendar.rememberLiveBell(nowProgram.takeIf { playback.catchupTitle == null }, current)
     val bellInBar = liveBell != null && BarPart.BELL !in BarPart.parse(settings.barHidden)
+    // A list channel (made from the viewer's lists) can switch to another source for what it is playing.
+    val listPlaying = current?.url.isListChannelUrl() && playback.catchupTitle == null
+    var sourcesUi by remember { mutableStateOf(com.nuvio.tv.ui.screens.player.PlayerUiState()) }
+    val sourcesFocus = remember { FocusRequester() }
+    fun sourcesState(streams: List<com.nuvio.tv.domain.model.Stream>, filter: String?, loading: Boolean, error: String? = null): com.nuvio.tv.ui.screens.player.PlayerUiState {
+        val slot = current?.let { com.nuvio.tv.livetv.lists.ListChannels.openedSlot(it.url) }
+        val addons = streams.map { it.addonName }.distinct()
+        return com.nuvio.tv.ui.screens.player.PlayerUiState(
+            title = slot?.title.orEmpty(),
+            currentSeason = slot?.season,
+            currentEpisode = slot?.episode,
+            isLoadingSourceStreams = loading,
+            sourceStreamsError = error,
+            sourceAllStreams = streams,
+            sourceSelectedAddonFilter = filter,
+            sourceFilteredStreams = if (filter == null) streams else streams.filter { it.addonName == filter },
+            sourceAvailableAddons = addons,
+            sourceChips = addons.map { com.nuvio.tv.ui.components.SourceChipItem(it, com.nuvio.tv.ui.components.SourceChipStatus.SUCCESS) }
+        )
+    }
+    fun openSources(ch: LiveChannel) {
+        dialog = PlayerDialog.SOURCES
+        sourcesUi = sourcesState(emptyList(), null, loading = true)
+        scope.launch {
+            val streams = com.nuvio.tv.livetv.lists.ListChannels.sourceStreams(ch.url)
+            sourcesUi = sourcesState(streams, null, loading = false, error = if (streams.isEmpty()) "No sources found" else null)
+        }
+    }
     // Sports: the live game on this channel, if it can be pinned to the corner.
     val pinGame = com.nuvio.tv.livetv.sports.rememberPinnableGame(current?.key).takeIf { playback.catchupTitle == null }
     val sportsEligible = current != null && playback.catchupTitle == null && !playingRecording && sportsSettings.showInSidebar
@@ -629,7 +658,7 @@ fun LiveTvPlayerScreen(
                         else if (shiftStartedAt != null || (ownTimeline && viewModel.playback.shiftIsBehind())) PanelMode.SHIFT
                         else PanelMode.LIVE
                     val paused = playback.userPaused
-                    val list = panelControls(mode, paused, canSkip = archive || viewModel.playback.shiftCanSeek(), bell = bellInBar, pin = pinGame != null, backups = backups.isNotEmpty(), sports = multiviewEligible)
+                    val list = panelControls(mode, paused, canSkip = archive || viewModel.playback.shiftCanSeek(), bell = bellInBar, pin = pinGame != null, backups = backups.isNotEmpty(), sports = multiviewEligible, sources = listPlaying)
                     if (e.type == KeyEventType.KeyUp) return@onPreviewKeyEvent isOk || e.key == Key.Back
                     showBanner()
                     val buttons = list.filter { it != PanelControl.TIMELINE }
@@ -706,6 +735,7 @@ fun LiveTvPlayerScreen(
                                     com.nuvio.tv.livetv.record.LiveTvNotice.show(if (pinned) "Score pinned to the corner" else "Score unpinned")
                                 }
                                 PanelControl.BACKUPS -> dialog = PlayerDialog.BACKUPS
+                                PanelControl.SOURCES -> current?.let { openSources(it) }
                                 PanelControl.SPORTS -> openMultiview()
                                 PanelControl.MORE -> openGear()
                                 PanelControl.TIMELINE, null -> Unit
@@ -1166,7 +1196,7 @@ fun LiveTvPlayerScreen(
                     showPosters = settings.showPosters,
                     timeline = timeline,
                     paused = paused,
-                    controls = panelControls(mode, paused, canSkip = archive || viewModel.playback.shiftCanSeek(), bell = bellInBar, pin = pinGame != null, backups = backups.isNotEmpty(), sports = multiviewEligible),
+                    controls = panelControls(mode, paused, canSkip = archive || viewModel.playback.shiftCanSeek(), bell = bellInBar, pin = pinGame != null, backups = backups.isNotEmpty(), sports = multiviewEligible, sources = listPlaying),
                     focused = controlFocus,
                     captionsOn = captionsOn,
                     audioLabel = remember(playback.channelKey, bannerVisible) { viewModel.playback.audioLabel() },
@@ -1475,6 +1505,38 @@ fun LiveTvPlayerScreen(
                 captions = viewModel.playback.captionsInfo(),
                 onDismiss = { dialog = PlayerDialog.NONE; scope.launch { delay(60); runCatching { rootFocus.requestFocus() } } }
             )
+        }
+        PlayerDialog.SOURCES -> {
+            val ch = current
+            val close = { dialog = PlayerDialog.NONE; scope.launch { delay(60); runCatching { rootFocus.requestFocus() } }; Unit }
+            BackHandler(onBack = close)
+            Box(Modifier.fillMaxSize()) {
+                com.nuvio.tv.ui.screens.player.StreamSourcesSidePanel(
+                    uiState = sourcesUi,
+                    currentFilename = null,
+                    streamsFocusRequester = sourcesFocus,
+                    onClose = close,
+                    onReload = { ch?.let { openSources(it) } },
+                    onAddonFilterSelected = { f -> sourcesUi = sourcesState(sourcesUi.sourceAllStreams, f, loading = false, error = sourcesUi.sourceStreamsError) },
+                    onStreamSelected = { stream ->
+                        close()
+                        if (ch != null) {
+                            toast = "Switching source…"
+                            scope.launch {
+                                try {
+                                    val playable = com.nuvio.tv.livetv.lists.ListChannels.resolveSource(ch, stream)
+                                    viewModel.playback.playListSource(ch, playable)
+                                } catch (cancel: kotlinx.coroutines.CancellationException) {
+                                    throw cancel
+                                } catch (error: Exception) {
+                                    toast = error.message ?: "Couldn't play that source"
+                                }
+                            }
+                        }
+                    },
+                    modifier = Modifier.align(Alignment.CenterEnd)
+                )
+            }
         }
         PlayerDialog.SLEEP -> SleepTimerDialog(
             onPick = { minutes ->

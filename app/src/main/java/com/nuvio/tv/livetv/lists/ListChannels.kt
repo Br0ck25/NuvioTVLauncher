@@ -910,6 +910,21 @@ internal object ListChannels {
             .filter { it.serverTarget == null && it.youTubeIdToResolve() == null && !it.isExternal() }
     }
 
+    /** Every source the viewer's addons have for what the channel is playing now (the bar's Sources panel). */
+    suspend fun sourceStreams(channelUrl: String): List<Stream> = withContext(Dispatchers.Default) {
+        val slot = opened[listChannelIdOf(channelUrl)] ?: return@withContext emptyList()
+        searchStreams(slot)
+    }
+
+    /** The playable link for [stream], one of [sourceStreams], for the channel being watched. */
+    suspend fun resolveSource(channel: LiveChannel, stream: Stream): LiveChannel = withContext(Dispatchers.Default) {
+        val slot = opened[listChannelIdOf(channel.url)] ?: throw ListChannelUnavailableException("The channel is not playing anything")
+        val playable = deps().directDebridResolver().resolveToPlayableStream(stream, slot.season, slot.episode)
+        val ready = (playable as? DirectDebridPlayableResult.Success)?.stream
+        val url = ready?.getStreamUrl() ?: throw ListChannelUnavailableException("That source is not ready (not cached on your debrid service)")
+        channel.copy(url = url, headers = ready.behaviorHints?.proxyHeaders?.request.orEmpty())
+    }
+
     private fun isDirectLink(stream: Stream): Boolean {
         val url = stream.getStreamUrl() ?: return false
         return (url.startsWith("http://", true) || url.startsWith("https://", true)) && !stream.isTorrent()

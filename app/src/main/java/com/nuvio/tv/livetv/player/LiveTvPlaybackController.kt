@@ -780,6 +780,23 @@ class LiveTvPlaybackController @Inject constructor(
         }
     }
 
+    /**
+     * Switches the list channel being watched to another source for the same programme, keeping
+     * the position: [playable] is from [com.nuvio.tv.livetv.lists.ListChannels.resolveSource].
+     */
+    fun playListSource(channel: LiveChannel, playable: LiveChannel) {
+        val resume = _player?.currentPosition ?: 0L
+        listJob?.cancel()
+        listChannelUrl = channel.url
+        listJob = scope.launch {
+            play(channel.copy(headers = playable.headers), overrideUrl = playable.url)
+            val p = _player ?: return@launch
+            var waited = 0
+            while (waited < 20_000 && p.playbackState != Player.STATE_READY && listChannelUrl == channel.url) { delay(150); waited += 150 }
+            if (listChannelUrl == channel.url && resume > 0) p.seekTo(resume)
+        }
+    }
+
     /** The list channel's programme ended: on to the next one. */
     private fun listChannelEnded() {
         val url = listChannelUrl ?: return
