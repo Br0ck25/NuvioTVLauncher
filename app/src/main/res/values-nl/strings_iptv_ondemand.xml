@@ -1,0 +1,13 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <string name="iptv_od_nothing">"Nog niets te tonen"</string>
+    <string name="iptv_od_nothing_help">"Zet On Demand aan voor een afspeellijst in Instellingen → Live TV, of toon groepen met de instellingenknop."</string>
+    <string name="iptv_od_see_all">"Alles bekijken"</string>
+    <string name="iptv_od_sort_group">"%1$s sorteren"</string>
+    <string name="iptv_od_this_group">"deze groep"</string>
+    <string name="iptv_od_fix_poster">"Poster herstellen"</string>
+    <string name="iptv_od_fix_poster_hint">"De film- of serienaam en, als je die kent, het jaar, zoals Dune (2021). Laat leeg om terug te gaan naar automatisch."</string>
+    <string name="iptv_od_loading_details">"Details worden geladen."</string>
+    <string name="iptv_od_choose_version">"Kies een versie"</string>
+    <string name="iptv_od_no_episodes">"De provider heeft geen afleveringen vermeld."</string>
+</resources>

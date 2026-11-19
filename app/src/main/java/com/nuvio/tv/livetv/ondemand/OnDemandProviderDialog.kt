@@ -48,6 +48,8 @@ import androidx.compose.runtime.setValue
 import androidx.compose.runtime.snapshotFlow
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.res.stringResource
+import com.nuvio.tv.R
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.focus.FocusRequester
 import androidx.compose.ui.focus.focusRequester
@@ -110,7 +112,7 @@ internal fun ProviderDetailDialog(
                 ).joinToString("  ·  ")
                 if (meta.isNotBlank()) LiveText(meta, color = NuvioTheme.colors.TextSecondary, size = 13.sp)
                 Spacer(Modifier.height(8.dp))
-                LiveText(info?.plot ?: if (info == null) "Loading details…" else "", color = NuvioTheme.colors.TextSecondary, size = 13.sp, maxLines = 6)
+                LiveText(info?.plot ?: if (info == null) stringResource(R.string.iptv_od_loading_details) else "", color = NuvioTheme.colors.TextSecondary, size = 13.sp, maxLines = 6)
                 Spacer(Modifier.height(12.dp))
                 if (item.kind == VodKind.MOVIE) {
                     val versions by produceState<List<OnDemandRepository.Version>>(initialValue = emptyList(), item.uid) {
@@ -118,7 +120,7 @@ internal fun ProviderDetailDialog(
                     }
                     if (versions.size > 1) {
                         // Several copies: pick one (best quality first).
-                        LiveText("Choose a version", color = NuvioTheme.colors.TextSecondary, size = 13.sp)
+                        LiveText(stringResource(R.string.iptv_od_choose_version), color = NuvioTheme.colors.TextSecondary, size = 13.sp)
                         Spacer(Modifier.height(4.dp))
                         LazyColumn(modifier = Modifier.heightIn(max = 220.dp), verticalArrangement = Arrangement.spacedBy(2.dp)) {
                             items(versions, key = { it.item.uid }) { v ->
@@ -155,7 +157,7 @@ internal fun ProviderDetailDialog(
                             }
                         }
                     } else if (info != null) {
-                        LiveText("The provider didn't list any episodes.", color = NuvioTheme.colors.TextSecondary, size = 13.sp)
+                        LiveText(stringResource(R.string.iptv_od_no_episodes), color = NuvioTheme.colors.TextSecondary, size = 13.sp)
                     }
                 }
             }

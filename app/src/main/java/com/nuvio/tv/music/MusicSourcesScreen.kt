@@ -43,11 +43,13 @@ import androidx.compose.ui.focus.focusRequester
 import androidx.compose.ui.focus.onFocusChanged
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.platform.LocalContext
+import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import androidx.tv.material3.Icon
 import androidx.tv.material3.Text
+import com.nuvio.tv.R
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.launch
 import kotlinx.coroutines.withContext
@@ -102,7 +104,7 @@ internal fun MusicSourcesScreen(onClose: () -> Unit) {
                 )
                 Column(Modifier.weight(1f)) {
                     Text(
-                        text = "Music sources",
+                        text = stringResource(R.string.music_integrations_sources),
                         color = MusicPalette.text,
                         fontFamily = MusicDisplay,
                         fontSize = 34.sp,
@@ -111,13 +113,14 @@ internal fun MusicSourcesScreen(onClose: () -> Unit) {
                     )
                     Spacer(Modifier.height(2.dp))
                     Text(
-                        text = "Add BitChord-style addons to search their catalogues here.",
+                        text = stringResource(R.string.music_sources_subtitle),
                         color = MusicPalette.textMuted,
                         fontSize = 13.sp
                     )
                 }
                 Text(
-                    text = if (addons.isEmpty()) "None added" else "${addons.size} added",
+                    text = if (addons.isEmpty()) stringResource(R.string.music_sources_none_added)
+                    else stringResource(R.string.music_sources_added_count, addons.size),
                     color = MusicPalette.textMuted,
                     fontSize = 12.sp
                 )
@@ -144,15 +147,15 @@ internal fun MusicSourcesScreen(onClose: () -> Unit) {
                 SourceCard(
                     icon = Icons.Default.Add,
                     tint = MusicPalette.accent,
-                    title = "Add an addon",
-                    subtitle = "Paste the address the addon's own page gives you."
+                    title = stringResource(R.string.music_sources_add_title),
+                    subtitle = stringResource(R.string.music_sources_add_subtitle)
                 ) {
                     Row(
                         verticalAlignment = Alignment.Bottom,
                         horizontalArrangement = Arrangement.spacedBy(12.dp)
                     ) {
                         MusicTextField(
-                            label = "Addon URL",
+                            label = stringResource(R.string.music_sources_addon_url),
                             value = url,
                             placeholder = "https://example.com/addon/",
                             onValueChange = { url = it },
@@ -161,13 +164,14 @@ internal fun MusicSourcesScreen(onClose: () -> Unit) {
                         )
                         SourcePill(
                             icon = Icons.Default.Add,
-                            label = if (working) "Checking..." else "Test & add",
+                            label = if (working) stringResource(R.string.music_sources_checking)
+                            else stringResource(R.string.music_sources_test_add),
                             modifier = Modifier.focusRequester(addFocus),
                             primary = true,
                             enabled = !working,
                             onClick = {
                                 if (url.isBlank()) {
-                                    report("Paste the addon URL first.", error = true)
+                                    report(context.getString(R.string.music_sources_paste_url_first), error = true)
                                 } else if (!working) {
                                     working = true
                                     report("")
@@ -178,11 +182,11 @@ internal fun MusicSourcesScreen(onClose: () -> Unit) {
                                         result.fold(
                                             onSuccess = { addon ->
                                                 url = ""
-                                                report("Added ${addon.name}.")
+                                                report(context.getString(R.string.music_sources_added_name, addon.name))
                                             },
                                             onFailure = { error ->
                                                 report(
-                                                    error.message ?: "That addon couldn't be added.",
+                                                    error.message ?: context.getString(R.string.music_sources_add_failed),
                                                     error = true
                                                 )
                                             }
@@ -195,8 +199,7 @@ internal fun MusicSourcesScreen(onClose: () -> Unit) {
                     }
                     Spacer(Modifier.height(8.dp))
                     Text(
-                        text = "The addon must answer /manifest.json, /search?q= and /stream/{id} " +
-                            "with JSON. No addon code runs on this TV.",
+                        text = stringResource(R.string.music_sources_protocol_help),
                         color = MusicPalette.textMuted,
                         fontSize = 10.sp,
                         lineHeight = 14.sp
@@ -206,30 +209,31 @@ internal fun MusicSourcesScreen(onClose: () -> Unit) {
                 SourceCard(
                     icon = Icons.Default.PlayArrow,
                     tint = MusicPalette.accentTeal,
-                    title = "Prefer addon playback",
+                    title = stringResource(R.string.music_sources_prefer_title),
                     subtitle = if (preferAddons) {
-                        "Addons are checked first for YouTube tracks."
+                        stringResource(R.string.music_sources_prefer_on_subtitle)
                     } else {
-                        "YouTube plays first; addons are only used in search results."
+                        stringResource(R.string.music_sources_prefer_off_subtitle)
                     }
                 ) {
                     SourcePill(
                         icon = Icons.Default.PlayArrow,
-                        label = if (preferAddons) "On" else "Off",
+                        label = if (preferAddons) stringResource(R.string.music_sources_on)
+                        else stringResource(R.string.music_sources_off),
                         primary = preferAddons,
                         onClick = {
                             MusicSettings.setPreferAddonSources(!preferAddons)
                             report(
-                                if (preferAddons) "Addon substitution is off."
-                                else "Addon substitution is on."
+                                context.getString(
+                                    if (preferAddons) R.string.music_sources_substitution_off
+                                    else R.string.music_sources_substitution_on
+                                )
                             )
                         }
                     )
                     Spacer(Modifier.height(8.dp))
                     Text(
-                        text = "When a YouTube track starts, Nuvio looks for the same title, " +
-                            "artist and length in your addons. If there is no confident match, " +
-                            "YouTube plays normally.",
+                        text = stringResource(R.string.music_sources_prefer_help),
                         color = MusicPalette.textMuted,
                         fontSize = 10.sp,
                         lineHeight = 14.sp
@@ -240,12 +244,11 @@ internal fun MusicSourcesScreen(onClose: () -> Unit) {
                     SourceCard(
                         icon = Icons.Default.Cloud,
                         tint = MusicPalette.accentTeal,
-                        title = "No sources yet",
-                        subtitle = "Search still works through YouTube Music."
+                        title = stringResource(R.string.music_sources_none_title),
+                        subtitle = stringResource(R.string.music_sources_none_subtitle)
                     ) {
                         Text(
-                            text = "Add a catalogue that speaks the BitChord addon protocol and " +
-                                "its tracks will appear first in Music search.",
+                            text = stringResource(R.string.music_sources_none_help),
                             color = MusicPalette.textSecondary,
                             fontSize = 12.sp,
                             lineHeight = 17.sp
@@ -269,19 +272,24 @@ internal fun MusicSourcesScreen(onClose: () -> Unit) {
                                         .coerceAtLeast(0)
                                     SourcePill(
                                         icon = Icons.Default.MusicNote,
-                                        label = "Quality: ${options[currentIndex].label}",
+                                        label = stringResource(R.string.music_sources_quality, options[currentIndex].label),
                                         onClick = {
                                             val next = options[(currentIndex + 1) % options.size]
                                             MusicAddonRegistry.setQuality(addon.id, next.value)
                                             report(
-                                                "${addon.name} will ask for ${next.label}."
+                                                context.getString(
+                                                    R.string.music_sources_quality_ask,
+                                                    addon.name,
+                                                    next.label
+                                                )
                                             )
                                         }
                                     )
                                 }
                                 SourcePill(
                                     icon = Icons.Default.Cloud,
-                                    label = if (testingId == addon.id) "Testing..." else "Test",
+                                    label = if (testingId == addon.id) stringResource(R.string.music_sources_checking)
+                                    else stringResource(R.string.plugin_test_btn),
                                     enabled = testingId == null,
                                     onClick = {
                                         testingId = addon.id
@@ -293,14 +301,23 @@ internal fun MusicSourcesScreen(onClose: () -> Unit) {
                                             result.fold(
                                                 onSuccess = { manifest ->
                                                     report(
-                                                        "${manifest.displayName} answered" +
-                                                            if (manifest.version.isBlank()) "."
-                                                            else " (v${manifest.version})."
+                                                        if (manifest.version.isBlank()) {
+                                                            context.getString(
+                                                                R.string.music_sources_answered,
+                                                                manifest.displayName
+                                                            )
+                                                        } else {
+                                                            context.getString(
+                                                                R.string.music_sources_answered_version,
+                                                                manifest.displayName,
+                                                                manifest.version
+                                                            )
+                                                        }
                                                     )
                                                 },
                                                 onFailure = { error ->
                                                     report(
-                                                        error.message ?: "The addon didn't answer.",
+                                                        error.message ?: context.getString(R.string.music_sources_no_answer),
                                                         error = true
                                                     )
                                                 }
@@ -311,29 +328,33 @@ internal fun MusicSourcesScreen(onClose: () -> Unit) {
                                 )
                                 SourcePill(
                                     icon = Icons.Default.MusicNote,
-                                    label = if (addon.enabled) "Turn off" else "Turn on",
+                                    label = if (addon.enabled) stringResource(R.string.sentry_turn_off)
+                                    else stringResource(R.string.sentry_turn_on),
                                     primary = !addon.enabled,
                                     onClick = {
                                         MusicAddonRegistry.setEnabled(addon.id, !addon.enabled)
                                         report(
-                                            if (addon.enabled) "${addon.name} is off."
-                                            else "${addon.name} is on."
+                                            context.getString(
+                                                if (addon.enabled) R.string.music_sources_is_off
+                                                else R.string.music_sources_is_on,
+                                                addon.name
+                                            )
                                         )
                                     }
                                 )
                                 SourcePill(
                                     icon = Icons.Default.Delete,
-                                    label = "Remove",
+                                    label = stringResource(R.string.web_btn_remove),
                                     onClick = {
                                         MusicAddonRegistry.remove(addon.id)
-                                        report("Removed ${addon.name}.")
+                                        report(context.getString(R.string.music_sources_removed, addon.name))
                                     }
                                 )
                             }
                             if (!addon.enabled) {
                                 Spacer(Modifier.height(8.dp))
                                 Text(
-                                    text = "This source is skipped in search and playback.",
+                                    text = stringResource(R.string.music_sources_skipped),
                                     color = MusicPalette.textMuted,
                                     fontSize = 10.sp
                                 )
@@ -342,9 +363,9 @@ internal fun MusicSourcesScreen(onClose: () -> Unit) {
                                 Spacer(Modifier.height(8.dp))
                                 Text(
                                     text = if (lossless.capable) {
-                                        "This source is only used on a lossless-capable output."
+                                        stringResource(R.string.music_sources_lossless_only)
                                     } else {
-                                        "Skipped: this source needs HDMI, USB or wired output."
+                                        stringResource(R.string.music_sources_lossless_needed)
                                     },
                                     color = if (lossless.capable) MusicPalette.textMuted
                                     else MusicPalette.error,
@@ -490,7 +511,7 @@ private fun SourceCloseButton(modifier: Modifier = Modifier, onClick: () -> Unit
     ) {
         Icon(
             Icons.AutoMirrored.Filled.ArrowBack,
-            contentDescription = "Close music sources",
+            contentDescription = stringResource(R.string.action_close),
             tint = if (focused) MusicPalette.background else MusicPalette.text,
             modifier = Modifier.size(20.dp)
         )

@@ -27,6 +27,8 @@ import androidx.compose.runtime.remember
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.res.stringResource
+import com.nuvio.tv.R
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.focus.FocusRequester
 import androidx.compose.ui.focus.focusRequester
@@ -110,9 +112,9 @@ internal fun RecordDialog(
     val startAt = if (live) System.currentTimeMillis() else ev.startMs - early
     val endAt = ev.startMs + minutes * 60_000L + postMin * 60_000L
     SportsDialog(onDismiss = onDismiss, width = 560.dp, header = { GameHeaderBands(ev, hideScores) }) {
-        LiveText("Record", color = Color.White, size = 18.sp, weight = FontWeight.Black)
+        LiveText(stringResource(R.string.iptv_guide_record), color = Color.White, size = 18.sp, weight = FontWeight.Black)
         Spacer(Modifier.height(10.dp))
-        LiveText("CHANNEL", color = SportsLook.Dim, size = 10.sp, weight = FontWeight.Black)
+        LiveText(stringResource(R.string.iptv_guide_channel).uppercase(), color = SportsLook.Dim, size = 10.sp, weight = FontWeight.Black)
         Spacer(Modifier.height(4.dp))
         LazyColumn(Modifier.heightIn(max = 210.dp), verticalArrangement = Arrangement.spacedBy(2.dp)) {
             itemsIndexed(channels, key = { _, m -> m.channel.key }) { i, m ->
@@ -171,7 +173,7 @@ private fun LengthPicker(minutes: Int, onChange: (Int) -> Unit) {
         verticalAlignment = Alignment.CenterVertically
     ) {
         val ink = Color.White
-        LiveText("Record for", color = ink, size = 15.sp, weight = FontWeight.Bold, modifier = Modifier.weight(1f))
+        LiveText(stringResource(R.string.iptv_sports_record_for), color = ink, size = 15.sp, weight = FontWeight.Bold, modifier = Modifier.weight(1f))
         LiveText("◂", color = if (focused) ink else SportsLook.Dim, size = 15.sp, weight = FontWeight.Black)
         Spacer(Modifier.width(10.dp))
         LiveText(SportsRecordings.label(minutes), color = ink, size = 16.sp, weight = FontWeight.Black)

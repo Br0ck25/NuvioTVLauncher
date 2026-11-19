@@ -2,6 +2,9 @@ package com.nuvio.tv.youtube
 
 import android.content.Context
 import android.util.Log
+import androidx.annotation.StringRes
+import com.nuvio.tv.R
+import com.nuvio.tv.core.util.withAppLocale
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
 import com.liskovsoft.mediaserviceinterfaces.data.CommentItem
@@ -124,6 +127,9 @@ class YouTubePlayerViewModel @Inject constructor(
         const val CHAT_LINES = 40
     }
 
+    private fun text(@StringRes id: Int, vararg args: Any): String =
+        context.withAppLocale().getString(id, *args)
+
     private val _state = MutableStateFlow(YtPlayerState())
     val state: StateFlow<YtPlayerState> = _state.asStateFlow()
 
@@ -170,7 +176,7 @@ class YouTubePlayerViewModel @Inject constructor(
                 onSuccess = { (meta, signed) -> _state.update { it.copy(info = toInfo(id, meta), loading = false, signedIn = signed) } },
                 onFailure = {
                     Log.e(TAG, "couldn't load details for $id", it)
-                    _state.update { s -> s.copy(loading = false, message = "Couldn't load this video's details.") }
+                    _state.update { s -> s.copy(loading = false, message = text(R.string.onetube_details_failed)) }
                 }
             )
         }
@@ -203,7 +209,7 @@ class YouTubePlayerViewModel @Inject constructor(
     private fun act(okMessage: String, call: (YtVideoInfo) -> Observable<Void>, apply: (YtVideoInfo) -> YtVideoInfo) {
         val info = _state.value.info ?: return
         if (!_state.value.signedIn) {
-            _state.update { it.copy(message = "Sign in to OneTube first, with the account button on the OneTube page.") }
+            _state.update { it.copy(message = text(R.string.onetube_sign_in_first)) }
             return
         }
         viewModelScope.launch {
@@ -212,7 +218,7 @@ class YouTubePlayerViewModel @Inject constructor(
                 onSuccess = { _state.update { s -> s.copy(info = s.info?.let(apply), message = okMessage) } },
                 onFailure = {
                     Log.e(TAG, "action failed", it)
-                    _state.update { s -> s.copy(message = "That didn't go through. Try again.") }
+                    _state.update { s -> s.copy(message = text(R.string.onetube_try_again)) }
                 }
             )
         }
@@ -233,14 +239,14 @@ class YouTubePlayerViewModel @Inject constructor(
 
     fun toggleLike() {
         val liked = _state.value.info?.liked == true
-        act(if (liked) "Like removed" else "Liked",
+        act(if (liked) text(R.string.onetube_like_removed) else text(R.string.onetube_liked),
             { if (liked) media.removeLikeObserve(item(it)) else media.setLikeObserve(item(it)) },
             { it.copy(liked = !liked, disliked = false).moveLikeCount(if (liked) -1 else 1) })
     }
 
     fun toggleDislike() {
         val disliked = _state.value.info?.disliked == true
-        act(if (disliked) "Dislike removed" else "Disliked",
+        act(if (disliked) text(R.string.onetube_dislike_removed) else text(R.string.onetube_disliked),
             { if (disliked) media.removeDislikeObserve(item(it)) else media.setDislikeObserve(item(it)) },
             {
                 // Disliking a video you liked takes that like away.
@@ -253,10 +259,10 @@ class YouTubePlayerViewModel @Inject constructor(
         val subscribed = _state.value.info?.subscribed == true
         val channel = _state.value.info?.channelId
         if (channel == null) {
-            _state.update { it.copy(message = "This video has no channel to subscribe to.") }
+            _state.update { it.copy(message = text(R.string.onetube_no_channel_sub)) }
             return
         }
-        act(if (subscribed) "Unsubscribed" else "Subscribed",
+        act(if (subscribed) text(R.string.onetube_unsubscribed) else text(R.string.onetube_subscribed),
             { if (subscribed) media.unsubscribeObserve(channel) else media.subscribeObserve(channel) },
             { it.copy(subscribed = !subscribed) })
     }
@@ -266,11 +272,11 @@ class YouTubePlayerViewModel @Inject constructor(
         val info = _state.value.info ?: return
         val id = info.channelId
         if (id == null) {
-            _state.update { it.copy(message = "This video has no channel to hide.") }
+            _state.update { it.copy(message = text(R.string.onetube_no_channel_hide)) }
             return
         }
-        YouTubeSettings.hideChannel(context, id, info.author.ifBlank { "This channel" })
-        _state.update { it.copy(message = "Hidden: ${info.author}. Bring it back in Settings, then OneTube.") }
+        YouTubeSettings.hideChannel(context, id, info.author.ifBlank { text(R.string.onetube_this_channel) })
+        _state.update { it.copy(message = text(R.string.onetube_hidden, info.author)) }
     }
 
     // ---- playlists ----
@@ -278,7 +284,7 @@ class YouTubePlayerViewModel @Inject constructor(
     fun loadPlaylists() {
         val info = _state.value.info ?: return
         if (!_state.value.signedIn) {
-            _state.update { it.copy(message = "Sign in to OneTube first, with the account button on the OneTube page.") }
+            _state.update { it.copy(message = text(R.string.onetube_sign_in_first)) }
             return
         }
         _state.update { it.copy(playlists = null, loading = true, message = null) }
@@ -290,7 +296,7 @@ class YouTubePlayerViewModel @Inject constructor(
                     playlists = result.getOrNull().orEmpty()
                         .withoutDuplicatePlaylists()
                         .map { YtPlaylistRow(it.playlistId.orEmpty(), it.title.orEmpty(), it.isSelected) },
-                    message = if (result.isFailure) "Couldn't load your playlists." else null
+                    message = if (result.isFailure) text(R.string.onetube_playlists_failed) else null
                 )
             }
         }
@@ -310,9 +316,9 @@ class YouTubePlayerViewModel @Inject constructor(
                 if (result.isSuccess) {
                     s.copy(
                         playlists = s.playlists?.map { if (it.id == row.id) it.copy(contains = !row.contains) else it },
-                        message = if (row.contains) "Removed from ${row.title}" else "Saved to ${row.title}"
+                        message = if (row.contains) text(R.string.onetube_removed_from, row.title) else text(R.string.onetube_saved_to, row.title)
                     )
-                } else s.copy(message = "That didn't go through. Try again.")
+                } else s.copy(message = text(R.string.onetube_try_again))
             }
         }
     }
@@ -337,7 +343,7 @@ class YouTubePlayerViewModel @Inject constructor(
         val key = if (newest) info.newestCommentsKey else info.commentsKey
         if (key.isNullOrBlank()) {
             _state.update {
-                it.copy(message = if (newest) "Newest first isn't available for this video." else "Comments are off for this video.")
+                it.copy(message = if (newest) text(R.string.onetube_comments_newest_off) else text(R.string.onetube_comments_off))
             }
             return
         }
@@ -353,12 +359,12 @@ class YouTubePlayerViewModel @Inject constructor(
      */
     fun toggleCommentLike(comment: YtComment) {
         if (!_state.value.signedIn) {
-            _state.update { it.copy(message = "Sign in to OneTube first, with the account button on the OneTube page.") }
+            _state.update { it.copy(message = text(R.string.onetube_sign_in_first)) }
             return
         }
         val key = comment.replyKey
         if (key == null) {
-            _state.update { it.copy(message = "This comment can't be liked from here.") }
+            _state.update { it.copy(message = text(R.string.onetube_comment_like_failed)) }
             return
         }
         viewModelScope.launch {
@@ -370,13 +376,13 @@ class YouTubePlayerViewModel @Inject constructor(
                     _state.update { s ->
                         s.copy(
                             comments = s.comments.map { if (it.replyKey == key) it.withLikeFlipped() else it },
-                            message = if (comment.liked) "Like removed" else "Liked"
+                            message = if (comment.liked) text(R.string.onetube_like_removed) else text(R.string.onetube_liked)
                         )
                     }
                 },
                 onFailure = {
                     Log.e(TAG, "comment like failed", it)
-                    _state.update { s -> s.copy(message = "That didn't go through. Try again.") }
+                    _state.update { s -> s.copy(message = text(R.string.onetube_try_again)) }
                 }
             )
         }
@@ -401,7 +407,7 @@ class YouTubePlayerViewModel @Inject constructor(
                     commentsLoading = false,
                     comments = s.comments + group?.comments.orEmpty().filter { !it.isEmpty }.map(::toComment),
                     canLoadMoreComments = group?.nextCommentsKey != null,
-                    message = if (result.isFailure) "Couldn't load comments." else null
+                    message = if (result.isFailure) text(R.string.onetube_comments_failed) else null
                 )
             }
         }
@@ -436,7 +442,7 @@ class YouTubePlayerViewModel @Inject constructor(
                             else -> "v:" + (item.videoId ?: item.title)
                         }
                     },
-                    message = if (result.isFailure) "Couldn't load related videos." else null
+                    message = if (result.isFailure) text(R.string.onetube_related_failed) else null
                 )
             }
         }
@@ -515,7 +521,7 @@ class YouTubePlayerViewModel @Inject constructor(
                     repliesLoading = false,
                     replies = s.replies + group?.comments.orEmpty().filter { !it.isEmpty }.map(::toComment),
                     canLoadMoreReplies = group?.nextCommentsKey != null,
-                    message = if (result.isFailure) "Couldn't load replies." else null
+                    message = if (result.isFailure) text(R.string.onetube_replies_failed) else null
                 )
             }
         }

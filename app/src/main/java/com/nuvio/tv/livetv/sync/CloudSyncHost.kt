@@ -10,6 +10,8 @@ import androidx.compose.runtime.collectAsState
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.remember
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.res.stringResource
+import com.nuvio.tv.R
 import androidx.compose.ui.focus.FocusRequester
 import androidx.compose.ui.focus.focusRequester
 import androidx.compose.ui.platform.LocalContext
@@ -52,32 +54,32 @@ fun CloudSyncHost() {
 
     when (prompt) {
         CloudPrompt.BackUp -> LiveDialog(onDismiss = { sync.answerBackUp(false) }, width = 520.dp) {
-            LiveText("Setup Sync", color = NuvioTheme.colors.Secondary, size = 13.sp, weight = FontWeight.SemiBold)
-            LiveText("Keep your Live TV setup on all your devices?", size = 22.sp, weight = FontWeight.Bold, maxLines = 3)
+            LiveText(stringResource(R.string.iptv_sync_host_title), color = NuvioTheme.colors.Secondary, size = 13.sp, weight = FontWeight.SemiBold)
+            LiveText(stringResource(R.string.iptv_sync_host_question), size = 22.sp, weight = FontWeight.Bold, maxLines = 3)
             Spacer(Modifier.height(6.dp))
             LiveText(
-                "Your playlists (including their logins), guides, favorites, Sports and Calendar choices and Live TV settings are saved, so every TV you sign in on has the same setup. A phone keeps its own look and layout. You can change what's included, or turn it off, any time in Settings → Live TV → Setup Sync.",
+                stringResource(R.string.iptv_sync_host_help),
                 color = NuvioTheme.colors.TextSecondary, size = 14.sp, maxLines = 6
             )
             Spacer(Modifier.height(14.dp))
             Column(verticalArrangement = Arrangement.spacedBy(4.dp)) {
-                MenuItem("Save My Setup", Modifier.focusRequester(first)) { sync.answerBackUp(true) }
-                MenuItem("Not Now") { sync.answerBackUp(false) }
+                MenuItem(stringResource(R.string.iptv_sync_host_save), Modifier.focusRequester(first)) { sync.answerBackUp(true) }
+                MenuItem(stringResource(R.string.iptv_sync_host_not_now)) { sync.answerBackUp(false) }
             }
         }
         CloudPrompt.Choose -> LiveDialog(onDismiss = { sync.answerChoose(CloudChoice.Later) }, width = 520.dp) {
-            LiveText("Setup Sync", color = NuvioTheme.colors.Secondary, size = 13.sp, weight = FontWeight.SemiBold)
-            LiveText("You have a saved Live TV setup", size = 22.sp, weight = FontWeight.Bold, maxLines = 3)
+            LiveText(stringResource(R.string.iptv_sync_host_title), color = NuvioTheme.colors.Secondary, size = 13.sp, weight = FontWeight.SemiBold)
+            LiveText(stringResource(R.string.iptv_sync_host_saved_title), size = 22.sp, weight = FontWeight.Bold, maxLines = 3)
             Spacer(Modifier.height(6.dp))
             LiveText(
-                "This TV has its own setup too. Combine keeps the playlists and guides from both. Use the saved setup replaces what is on this TV.",
+                stringResource(R.string.iptv_sync_host_choose_help),
                 color = NuvioTheme.colors.TextSecondary, size = 14.sp, maxLines = 6
             )
             Spacer(Modifier.height(14.dp))
             Column(verticalArrangement = Arrangement.spacedBy(4.dp)) {
-                MenuItem("Combine Both", Modifier.focusRequester(first)) { sync.answerChoose(CloudChoice.Combine) }
-                MenuItem("Use the Saved Setup") { sync.answerChoose(CloudChoice.UseSaved) }
-                MenuItem("Not Now") { sync.answerChoose(CloudChoice.Later) }
+                MenuItem(stringResource(R.string.iptv_sync_host_combine), Modifier.focusRequester(first)) { sync.answerChoose(CloudChoice.Combine) }
+                MenuItem(stringResource(R.string.iptv_sync_host_use_saved)) { sync.answerChoose(CloudChoice.UseSaved) }
+                MenuItem(stringResource(R.string.iptv_sync_host_not_now)) { sync.answerChoose(CloudChoice.Later) }
             }
         }
     }

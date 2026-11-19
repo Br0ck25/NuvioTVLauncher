@@ -40,6 +40,9 @@ import androidx.compose.runtime.remember
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.res.pluralStringResource
+import androidx.compose.ui.res.stringResource
+import com.nuvio.tv.R
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.focus.FocusRequester
 import androidx.compose.ui.focus.focusRequester
@@ -168,12 +171,16 @@ internal fun GearPanel(
             } else if (page != "") {
                 // ---- Audio, Subtitles, Sleep timer, Stream info: one page each, like the others
                 val title = when (page) {
-                    "audio" -> "Audio"; "subs" -> "Subtitles"; "sleep" -> "Sleep timer"
-                    "record" -> "Record"; "recordTime" -> "Record until"; else -> "Stream info"
+                    "audio" -> stringResource(R.string.iptv_gear_audio); "subs" -> stringResource(R.string.iptv_gear_subtitles); "sleep" -> stringResource(R.string.iptv_gear_sleep_timer)
+                    "record" -> stringResource(R.string.iptv_guide_record)
+                    "recordTime" -> stringResource(R.string.iptv_guide_record_until)
+                    else -> stringResource(R.string.iptv_guide_stream_info)
                 }
                 val hint = when (page) {
-                    "sleep" -> "Stops playback after"; "audio" -> "Applies to this channel"
-                    "record" -> "Hold Record to skip this"; "recordTime" -> "◀ ▶ change the time"; else -> null
+                    "sleep" -> stringResource(R.string.iptv_gear_sleep_hint); "audio" -> stringResource(R.string.iptv_gear_audio_hint)
+                    "record" -> stringResource(R.string.iptv_guide_hold_record_skip)
+                    "recordTime" -> stringResource(R.string.iptv_guide_hold_record_time)
+                    else -> null
                 }
                 Row(verticalAlignment = Alignment.CenterVertically, modifier = Modifier.padding(horizontal = 6.dp, vertical = 2.dp)) {
                     LiveText("‹  $title", size = 14.sp, weight = FontWeight.Bold, modifier = Modifier.weight(1f))
@@ -195,7 +202,7 @@ internal fun GearPanel(
                     }
                     when (page) {
                         "audio" -> {
-                            if (audioOptions.isEmpty()) LiveText("No tracks available", size = 13.sp, color = Color.White.copy(alpha = 0.7f), modifier = Modifier.padding(10.dp))
+                            if (audioOptions.isEmpty()) LiveText(stringResource(R.string.iptv_gear_no_tracks), size = 13.sp, color = Color.White.copy(alpha = 0.7f), modifier = Modifier.padding(10.dp))
                             val at = audioOptions.indexOfFirst { it.selected }.coerceAtLeast(0)
                             audioOptions.forEachIndexed { i, o -> choice(o.label, o.selected, i == at) { onPickAudio(o) } }
                         }
@@ -203,31 +210,36 @@ internal fun GearPanel(
                             subtitleNote?.let { LiveText(it, size = 12.sp, color = Color.White.copy(alpha = 0.7f), modifier = Modifier.padding(horizontal = 10.dp, vertical = 4.dp)) }
                             val anyOn = subtitleOptions.any { it.selected } || moreSubtitleOptions.any { it.selected }
                             var showMore by remember { mutableStateOf(moreSubtitleOptions.any { it.selected }) }
-                            choice("Off", !anyOn, !anyOn || subtitleOptions.none { it.selected }) { onPickSubtitle(null) }
+                            choice(stringResource(R.string.iptv_gear_off), !anyOn, !anyOn || subtitleOptions.none { it.selected }) { onPickSubtitle(null) }
                             subtitleOptions.forEach { o -> choice(o.label, o.selected, o.selected) { onPickSubtitle(o) } }
                             if (moreSubtitleOptions.isNotEmpty()) {
                                 GearRow(Modifier.fillMaxWidth(), onClick = { showMore = !showMore }) { focused ->
-                                    LiveText((if (showMore) "▾  " else "▸  ") + "More caption tracks", size = 13.sp, weight = FontWeight.Medium, color = gearText(focused), modifier = Modifier.weight(1f))
+                                    LiveText((if (showMore) "▾  " else "▸  ") + stringResource(R.string.iptv_gear_more_captions), size = 13.sp, weight = FontWeight.Medium, color = gearText(focused), modifier = Modifier.weight(1f))
                                 }
                                 if (showMore) moreSubtitleOptions.forEach { o -> choice(o.label, o.selected, false, indent = true) { onPickSubtitle(o) } }
                             }
                         }
                         "sleep" -> {
-                            choice("Off", false, true) { onPickSleep(null) }
+                            choice(stringResource(R.string.iptv_gear_off), false, true) { onPickSleep(null) }
                             listOf(15, 30, 45, 60, 90, 120).forEach { m ->
-                                choice(if (m < 60) "$m minutes" else if (m == 60) "1 hour" else "${m / 60.0} hours".replace(".0 ", " "), false, false) { onPickSleep(m) }
+                                val label = when {
+                                    m == 60 -> pluralStringResource(R.plurals.iptv_settings_hours, 1, 1)
+                                    m == 120 -> pluralStringResource(R.plurals.iptv_settings_hours, 2, 2)
+                                    else -> pluralStringResource(R.plurals.iptv_settings_minutes_short, m, m)
+                                }
+                                choice(label, false, false) { onPickSleep(m) }
                             }
                         }
                         "record" -> {
-                            choice("Until I stop it", false, true) { page = ""; onStartRecording(null) }
+                            choice(stringResource(R.string.iptv_gear_until_stop), false, true) { page = ""; onStartRecording(null) }
                             showEndStopMs?.let { end ->
                                 GearRow(Modifier.fillMaxWidth(), onClick = { page = ""; onStartRecording(end) }) { focused ->
-                                    LiveText("Until the show ends", size = 13.sp, weight = if (focused) FontWeight.Bold else FontWeight.Medium, color = gearText(focused), modifier = Modifier.weight(1f))
+                                    LiveText(stringResource(R.string.iptv_gear_until_show_ends), size = 13.sp, weight = if (focused) FontWeight.Bold else FontWeight.Medium, color = gearText(focused), modifier = Modifier.weight(1f))
                                     LiveText(formatClock(end, quickSettings.use24HourClock), size = 12.sp, color = gearText(focused, dim = true))
                                 }
                             }
                             GearRow(Modifier.fillMaxWidth(), onClick = { page = "recordTime" }) { focused ->
-                                LiveText("Until a set time", size = 13.sp, weight = if (focused) FontWeight.Bold else FontWeight.Medium, color = gearText(focused), modifier = Modifier.weight(1f))
+                                LiveText(stringResource(R.string.iptv_gear_until_time), size = 13.sp, weight = if (focused) FontWeight.Bold else FontWeight.Medium, color = gearText(focused), modifier = Modifier.weight(1f))
                                 LiveText("›", size = 15.sp, color = gearText(focused, dim = true))
                             }
                         }
@@ -248,20 +260,20 @@ internal fun GearPanel(
                                 },
                                 onClick = { page = ""; onStartRecording(stopAt) }
                             ) { focused ->
-                                LiveText("Stop at", size = 13.sp, weight = FontWeight.Medium, color = gearText(focused), modifier = Modifier.weight(1f))
+                                LiveText(stringResource(R.string.iptv_gear_stop_at), size = 13.sp, weight = FontWeight.Medium, color = gearText(focused), modifier = Modifier.weight(1f))
                                 LiveText(
                                     (if (focused) "◀  " else "") + formatClock(stopAt, quickSettings.use24HourClock) + (if (focused) "  ▶" else ""),
                                     size = 13.sp, weight = FontWeight.Bold, color = gearText(focused)
                                 )
                             }
                             GearRow(Modifier.fillMaxWidth(), onClick = { page = ""; onStartRecording(stopAt) }) { focused ->
-                                LiveText("Start recording", size = 13.sp, weight = if (focused) FontWeight.Bold else FontWeight.Medium, color = gearText(focused), modifier = Modifier.weight(1f))
+                                LiveText(stringResource(R.string.iptv_gear_start_recording), size = 13.sp, weight = if (focused) FontWeight.Bold else FontWeight.Medium, color = gearText(focused), modifier = Modifier.weight(1f))
                             }
                         }
                         else -> {
                             val rows = remember { streamInfo() }
                             GearRow(Modifier.fillMaxWidth().focusRequester(first), onClick = { page = "" }) { focused ->
-                                LiveText("Close", size = 13.sp, weight = FontWeight.Bold, color = gearText(focused), modifier = Modifier.weight(1f))
+                                LiveText(stringResource(R.string.action_close), size = 13.sp, weight = FontWeight.Bold, color = gearText(focused), modifier = Modifier.weight(1f))
                             }
                             rows.forEach { (k, v) ->
                                 Row(Modifier.padding(horizontal = 10.dp, vertical = 3.dp)) {
@@ -275,8 +287,8 @@ internal fun GearPanel(
             } else if (sizing) {
                 // ---- Screen size: the same choices as the movie player; the picture changes as you pick
                 Row(verticalAlignment = Alignment.CenterVertically, modifier = Modifier.padding(horizontal = 6.dp, vertical = 2.dp)) {
-                    LiveText("‹  Screen size", size = 14.sp, weight = FontWeight.Bold, modifier = Modifier.weight(1f))
-                    LiveText("Applies to every channel", size = 11.sp, color = Color.White.copy(alpha = 0.55f))
+                    LiveText("‹  " + stringResource(R.string.iptv_gear_screen_size), size = 14.sp, weight = FontWeight.Bold, modifier = Modifier.weight(1f))
+                    LiveText(stringResource(R.string.iptv_gear_size_hint), size = 11.sp, color = Color.White.copy(alpha = 0.55f))
                 }
                 Spacer(Modifier.height(6.dp))
                 var firstSet = false
@@ -300,16 +312,20 @@ internal fun GearPanel(
                     var firstSet = false
                     fun f(): Modifier = if (!firstSet) { firstSet = true; Modifier.focusRequester(first) } else Modifier
                     if (onRecord != null) GearTile(
-                        Icons.Default.FiberManualRecord, if (recording) "Stop" else "Record", if (recording) "Recording" else null,
+                        Icons.Default.FiberManualRecord,
+                        if (recording) stringResource(R.string.iptv_guide_stop) else stringResource(R.string.iptv_guide_record),
+                        if (recording) stringResource(R.string.iptv_guide_recording) else null,
                         Modifier.weight(1f).then(f()), iconTint = LIVE_RED,
                         // Recording: stops it. Otherwise: how long to record; held, until you stop it.
                         onClick = if (recording) onRecord else ({ page = "record" }),
                         onLongClick = if (recording) null else ({ onStartRecording(null) })
                     )
-                    GearTile(Icons.Default.VolumeUp, "Audio", audioLabel.ifBlank { null }, Modifier.weight(1f).then(f()), onClick = { page = "audio" })
-                    GearTile(Icons.Default.ClosedCaption, "Subtitles", if (captionsOn) "On" else "Off", Modifier.weight(1f).then(f()), onClick = { page = "subs" })
+                    GearTile(Icons.Default.VolumeUp, stringResource(R.string.iptv_gear_audio), audioLabel.ifBlank { null }, Modifier.weight(1f).then(f()), onClick = { page = "audio" })
+                    GearTile(Icons.Default.ClosedCaption, stringResource(R.string.iptv_gear_subtitles), if (captionsOn) stringResource(R.string.iptv_gear_on) else stringResource(R.string.iptv_gear_off), Modifier.weight(1f).then(f()), onClick = { page = "subs" })
                     GearTile(
-                        if (isFavorite) Icons.Default.Star else Icons.Default.StarBorder, "Favorite", if (isFavorite) "Saved" else null,
+                        if (isFavorite) Icons.Default.Star else Icons.Default.StarBorder,
+                        stringResource(R.string.iptv_guide_favorite),
+                        if (isFavorite) stringResource(R.string.iptv_guide_saved) else null,
                         Modifier.weight(1f).then(f()), iconTint = if (isFavorite) Color(0xFFF5C400) else null, onClick = onFavorite
                     )
                 }
@@ -319,14 +335,14 @@ internal fun GearPanel(
                     // Watch from the beginning / Go live: first, where it's easiest to reach.
                     timeAction?.let { add(Triple(it, null, onTimeAction)) }
                     bell?.let { (label, value, action) -> add(Triple(label, value, action)) }
-                    onMultiview?.let { add(Triple("Add to Multiview", null, it)) }
-                    add(Triple("Screen size", sizeLabel, { sizing = true }))
-                    add(Triple("Sleep timer", sleepLabel, { page = "sleep" }))
-                    add(Triple("Previous channel", null, onPrevious))
-                    add(Triple("Stream info", null, { page = "info" }))
-                    onSearch?.let { add(Triple("Search", null, it)) }
-                    add(Triple("Reload stream", null, onReload))
-                    add(Triple("Hide channel", null, onHide))
+                    onMultiview?.let { add(Triple(stringResource(R.string.iptv_gear_add_multiview), null, it)) }
+                    add(Triple(stringResource(R.string.iptv_gear_screen_size), sizeLabel, { sizing = true }))
+                    add(Triple(stringResource(R.string.iptv_gear_sleep_timer), sleepLabel, { page = "sleep" }))
+                    add(Triple(stringResource(R.string.iptv_gear_previous_channel), null, onPrevious))
+                    add(Triple(stringResource(R.string.iptv_gear_stream_info), null, { page = "info" }))
+                    onSearch?.let { add(Triple(stringResource(R.string.nav_search), null, it)) }
+                    add(Triple(stringResource(R.string.iptv_gear_reload_stream), null, onReload))
+                    add(Triple(stringResource(R.string.iptv_gear_hide_channel), null, onHide))
                 }
                 items.chunked(2).forEach { pair ->
                     Row(horizontalArrangement = Arrangement.spacedBy(6.dp)) {
@@ -342,19 +358,19 @@ internal fun GearPanel(
                 Box(Modifier.padding(vertical = 6.dp, horizontal = 4.dp).fillMaxWidth().height(1.dp).background(Color.White.copy(alpha = 0.10f)))
                 Row(horizontalArrangement = Arrangement.spacedBy(6.dp)) {
                     GearRow(Modifier.weight(1f), onClick = { customizing = true }) { focused ->
-                        LiveText("Play bar layout", size = 13.sp, weight = FontWeight.Medium, color = gearText(focused), modifier = Modifier.weight(1f))
+                        LiveText(stringResource(R.string.iptv_gear_play_bar_layout), size = 13.sp, weight = FontWeight.Medium, color = gearText(focused), modifier = Modifier.weight(1f))
                         LiveText("›", size = 15.sp, color = gearText(focused, dim = true))
                     }
                     GearRow(Modifier.weight(1f), onClick = onSettings) { focused ->
-                        LiveText("Settings", size = 13.sp, weight = FontWeight.Medium, color = gearText(focused), modifier = Modifier.weight(1f))
+                        LiveText(stringResource(R.string.iptv_gear_settings), size = 13.sp, weight = FontWeight.Medium, color = gearText(focused), modifier = Modifier.weight(1f))
                         LiveText("›", size = 15.sp, color = gearText(focused, dim = true))
                     }
                 }
             } else {
                 // ---- Play bar layout: a switch for each part; the bar below changes as you go
                 Row(verticalAlignment = Alignment.CenterVertically, modifier = Modifier.padding(horizontal = 6.dp, vertical = 2.dp)) {
-                    LiveText("‹  Play bar layout", size = 14.sp, weight = FontWeight.Bold, modifier = Modifier.weight(1f))
-                    LiveText("The bar changes as you go", size = 11.sp, color = Color.White.copy(alpha = 0.55f))
+                    LiveText("‹  " + stringResource(R.string.iptv_gear_play_bar_layout), size = 14.sp, weight = FontWeight.Bold, modifier = Modifier.weight(1f))
+                    LiveText(stringResource(R.string.iptv_gear_layout_hint), size = 11.sp, color = Color.White.copy(alpha = 0.55f))
                 }
                 Spacer(Modifier.height(6.dp))
                 val parts = BarPart.ALL
@@ -368,14 +384,14 @@ internal fun GearPanel(
                                 val on = key !in hidden
                                 GearRow(Modifier.weight(1f).then(f()), onClick = { onToggle(key) }) { focused ->
                                     Column(Modifier.weight(1f)) {
-                                        LiveText(entry.second as String, size = 13.sp, weight = if (focused) FontWeight.Bold else FontWeight.Medium, color = gearText(focused))
-                                        (entry.third as String?)?.let { LiveText(it, size = 10.sp, color = gearText(focused, dim = true)) }
+                                        LiveText(stringResource(entry.second as Int), size = 13.sp, weight = if (focused) FontWeight.Bold else FontWeight.Medium, color = gearText(focused))
+                                        (entry.third as Int?)?.let { LiveText(stringResource(it), size = 10.sp, color = gearText(focused, dim = true)) }
                                     }
                                     Switch(on, focused)
                                 }
                             } else {
                                 GearRow(Modifier.weight(1f), onClick = onReset) { focused ->
-                                    LiveText("Reset to default", size = 13.sp, weight = FontWeight.Medium, color = gearText(focused), modifier = Modifier.weight(1f))
+                                    LiveText(stringResource(R.string.iptv_gear_reset_default), size = 13.sp, weight = FontWeight.Medium, color = gearText(focused), modifier = Modifier.weight(1f))
                                 }
                             }
                         }
@@ -385,19 +401,23 @@ internal fun GearPanel(
                 // How dark the bar is (OK cycles it).
                 GearRow(Modifier.fillMaxWidth(), onClick = onBackground) { focused ->
                     Column(Modifier.weight(1f)) {
-                        LiveText("Bar darkness", size = 13.sp, weight = if (focused) FontWeight.Bold else FontWeight.Medium, color = gearText(focused))
-                        LiveText("How dark the play bar is", size = 10.sp, color = gearText(focused, dim = true))
+                        LiveText(stringResource(R.string.iptv_gear_bar_darkness), size = 13.sp, weight = if (focused) FontWeight.Bold else FontWeight.Medium, color = gearText(focused))
+                        LiveText(stringResource(R.string.iptv_gear_bar_darkness_help), size = 10.sp, color = gearText(focused, dim = true))
                     }
                     LiveText(
-                        when (background) { "darker" -> "Standard"; "solid" -> "Darkest"; else -> "Lightest" },
+                        when (background) {
+                            "darker" -> stringResource(R.string.iptv_gear_theme_standard)
+                            "solid" -> stringResource(R.string.iptv_gear_theme_darkest)
+                            else -> stringResource(R.string.iptv_gear_theme_lightest)
+                        },
                         size = 13.sp, weight = FontWeight.Medium, color = gearText(focused)
                     )
                 }
                 // Quick Channels (the row under the bar): its own page, the same choices as Settings.
                 GearRow(Modifier.fillMaxWidth(), onClick = { page = "quick" }) { focused ->
                     Column(Modifier.weight(1f)) {
-                        LiveText("Quick channels", size = 13.sp, weight = if (focused) FontWeight.Bold else FontWeight.Medium, color = gearText(focused))
-                        LiveText("What it shows and in what order", size = 10.sp, color = gearText(focused, dim = true))
+                        LiveText(stringResource(R.string.iptv_gear_quick_channels), size = 13.sp, weight = if (focused) FontWeight.Bold else FontWeight.Medium, color = gearText(focused))
+                        LiveText(stringResource(R.string.iptv_gear_quick_channels_help), size = 10.sp, color = gearText(focused, dim = true))
                     }
                     LiveText(
                         quickChannelsLabel(quickSettings),
@@ -477,10 +497,11 @@ internal fun Switch(on: Boolean, focused: Boolean) {
 }
 
 /** "Off", "1 list" or "N lists": what Quick Channels is set to. */
+@Composable
 internal fun quickChannelsLabel(s: com.nuvio.tv.livetv.model.LiveTvSettings): String {
-    if (!PanelRowLists.shown(s)) return "Off"
+    if (!PanelRowLists.shown(s)) return stringResource(R.string.iptv_gear_off)
     val n = PanelRowLists.parse(s).count { it.on }
-    return if (n == 1) "1 list" else "$n lists"
+    return pluralStringResource(R.plurals.iptv_gear_list_count, n, n)
 }
 
 /** How long the info bar stays up; OK on the gear panel's row steps through these. */
@@ -506,13 +527,13 @@ private fun QuickChannelsPages(
 
     if (adding) {
         Row(verticalAlignment = Alignment.CenterVertically, modifier = Modifier.padding(horizontal = 6.dp, vertical = 2.dp)) {
-            LiveText("‹  Add a playlist group", size = 14.sp, weight = FontWeight.Bold, modifier = Modifier.weight(1f))
-            LiveText("Ticked = in the row", size = 11.sp, color = Color.White.copy(alpha = 0.55f))
+            LiveText("‹  " + stringResource(R.string.iptv_gear_add_group), size = 14.sp, weight = FontWeight.Bold, modifier = Modifier.weight(1f))
+            LiveText(stringResource(R.string.iptv_gear_add_group_ticked), size = 11.sp, color = Color.White.copy(alpha = 0.55f))
         }
         Spacer(Modifier.height(6.dp))
         if (groups.isEmpty()) {
             GearRow(Modifier.fillMaxWidth().focusRequester(first), onClick = {}) { focused ->
-                LiveText("No groups yet. Add a playlist first.", size = 13.sp, color = gearText(focused), modifier = Modifier.weight(1f))
+                LiveText(stringResource(R.string.iptv_gear_no_groups), size = 13.sp, color = gearText(focused), modifier = Modifier.weight(1f))
             }
             return
         }
@@ -523,7 +544,7 @@ private fun QuickChannelsPages(
         ) {
             var lastHeading: String? = null
             groups.forEachIndexed { i, g ->
-                val heading = g.playlist ?: "My groups"
+                val heading = g.playlist ?: stringResource(R.string.iptv_settings_my_groups_2)
                 if (heading != lastHeading) {
                     lastHeading = heading
                     LiveText(
@@ -542,7 +563,7 @@ private fun QuickChannelsPages(
                 ) { focused ->
                     Column(Modifier.weight(1f)) {
                         LiveText(g.name, size = 13.sp, weight = if (focused) FontWeight.Bold else FontWeight.Medium, color = gearText(focused), maxLines = 1)
-                        LiveText(if (g.count == 1) "1 channel" else "${g.count} channels", size = 10.sp, color = gearText(focused, dim = true))
+                        LiveText(pluralStringResource(R.plurals.iptv_settings_channel_count, g.count, g.count), size = 10.sp, color = gearText(focused, dim = true))
                     }
                     Switch(on, focused)
                 }
@@ -554,8 +575,8 @@ private fun QuickChannelsPages(
     val names = remember(groups) { groups.associateBy { it.id } }
     val shown = PanelRowLists.shown(settings)
     Row(verticalAlignment = Alignment.CenterVertically, modifier = Modifier.padding(horizontal = 6.dp, vertical = 2.dp)) {
-        LiveText("‹  Quick channels", size = 14.sp, weight = FontWeight.Bold, modifier = Modifier.weight(1f))
-        LiveText("Changes show right away", size = 11.sp, color = Color.White.copy(alpha = 0.55f))
+        LiveText("‹  " + stringResource(R.string.iptv_gear_quick_channels), size = 14.sp, weight = FontWeight.Bold, modifier = Modifier.weight(1f))
+        LiveText(stringResource(R.string.iptv_gear_quick_hint), size = 11.sp, color = Color.White.copy(alpha = 0.55f))
     }
     Spacer(Modifier.height(6.dp))
     // Everything under the title scrolls, so a long list never pushes the panel off the top.
@@ -564,18 +585,18 @@ private fun QuickChannelsPages(
         verticalArrangement = Arrangement.spacedBy(2.dp)
     ) {
         GearRow(Modifier.fillMaxWidth().focusRequester(first), onClick = { onUpdate { PanelRowLists.setShown(it, !PanelRowLists.shown(it)) } }) { focused ->
-            LiveText("Show quick channels", size = 13.sp, weight = if (focused) FontWeight.Bold else FontWeight.Medium, color = gearText(focused), modifier = Modifier.weight(1f))
+            LiveText(stringResource(R.string.iptv_gear_show_quick_channels), size = 13.sp, weight = if (focused) FontWeight.Bold else FontWeight.Medium, color = gearText(focused), modifier = Modifier.weight(1f))
             Switch(shown, focused)
         }
         GearRow(Modifier.fillMaxWidth(), onClick = { onUpdate { it.copy(panelRowOpens = if (it.panelRowOpens == "first") "last" else "first") } }) { focused ->
             Column(Modifier.weight(1f)) {
-                LiveText("Opens on", size = 13.sp, weight = if (focused) FontWeight.Bold else FontWeight.Medium, color = gearText(focused))
-                LiveText("The list it shows first", size = 10.sp, color = gearText(focused, dim = true))
+                LiveText(stringResource(R.string.iptv_gear_opens_on), size = 13.sp, weight = if (focused) FontWeight.Bold else FontWeight.Medium, color = gearText(focused))
+                LiveText(stringResource(R.string.iptv_gear_quick_opens_hint), size = 10.sp, color = gearText(focused, dim = true))
             }
-            LiveText(if (settings.panelRowOpens == "first") "First list" else "Last one used", size = 13.sp, weight = FontWeight.Medium, color = gearText(focused))
+            LiveText(if (settings.panelRowOpens == "first") stringResource(R.string.iptv_gear_first_list) else stringResource(R.string.iptv_gear_last_used), size = 13.sp, weight = FontWeight.Medium, color = gearText(focused))
         }
         LiveText(
-            "LISTS · OK turns one on or off, the arrows move it",
+            stringResource(R.string.iptv_gear_quick_lists_header),
             size = 10.sp, weight = FontWeight.SemiBold, color = Color.White.copy(alpha = 0.55f),
             modifier = Modifier.padding(start = 10.dp, top = 8.dp, bottom = 2.dp)
         )
@@ -583,10 +604,12 @@ private fun QuickChannelsPages(
         // list that took its place, where a second press moved that one back).
         lists.forEachIndexed { index, l -> androidx.compose.runtime.key(l.id) {
             val (title, subtitle) = when (l.id) {
-                PanelRowLists.RECENT -> "Recently Watched" to "Built in"
-                PanelRowLists.FAVORITES -> "Favorites" to "Built in"
-                else -> names[l.id]?.let { g -> g.name to (g.playlist?.let { "$it · playlist group" } ?: "Your group") }
-                    ?: ("Group not found" to "Not in your playlists right now")
+                PanelRowLists.RECENT -> stringResource(R.string.iptv_guide_recently_watched) to stringResource(R.string.iptv_guide_built_in)
+                PanelRowLists.FAVORITES -> stringResource(R.string.iptv_guide_favorites) to stringResource(R.string.iptv_guide_built_in)
+                else -> names[l.id]?.let { g ->
+                    g.name to (g.playlist?.let { stringResource(R.string.iptv_gear_playlist_group, it) } ?: stringResource(R.string.iptv_gear_your_group))
+                }
+                    ?: (stringResource(R.string.iptv_gear_group_not_found) to stringResource(R.string.iptv_gear_group_missing))
             }
             fun move(by: Int) {
                 val j = index + by
@@ -603,14 +626,14 @@ private fun QuickChannelsPages(
                     }
                     Switch(l.on, focused)
                 }
-                GearArrow(Icons.Default.KeyboardArrowUp, "Move up", enabled = index > 0) { move(-1) }
-                GearArrow(Icons.Default.KeyboardArrowDown, "Move down", enabled = index < lists.lastIndex) { move(1) }
+                GearArrow(Icons.Default.KeyboardArrowUp, stringResource(R.string.iptv_settings_move_up), enabled = index > 0) { move(-1) }
+                GearArrow(Icons.Default.KeyboardArrowDown, stringResource(R.string.iptv_settings_move_down), enabled = index < lists.lastIndex) { move(1) }
             }
         } }
         GearRow(Modifier.fillMaxWidth(), onClick = onAdd) { focused ->
             Column(Modifier.weight(1f)) {
-                LiveText("+  Add a playlist group…", size = 13.sp, weight = if (focused) FontWeight.Bold else FontWeight.Medium, color = gearText(focused))
-                LiveText("Any group from any playlist, your own too", size = 10.sp, color = gearText(focused, dim = true))
+                LiveText("+  " + stringResource(R.string.iptv_gear_add_group), size = 13.sp, weight = if (focused) FontWeight.Bold else FontWeight.Medium, color = gearText(focused))
+                LiveText(stringResource(R.string.iptv_gear_any_group), size = 10.sp, color = gearText(focused, dim = true))
             }
             LiveText("›", size = 15.sp, color = gearText(focused, dim = true))
         }
@@ -624,10 +647,10 @@ private fun QuickChannelsPages(
             }
         ) { focused ->
             Column(Modifier.weight(1f)) {
-                LiveText("Info bar stays for", size = 13.sp, weight = if (focused) FontWeight.Bold else FontWeight.Medium, color = gearText(focused))
-                LiveText("After changing channel or pressing OK", size = 10.sp, color = gearText(focused, dim = true))
+                LiveText(stringResource(R.string.iptv_gear_info_bar), size = 13.sp, weight = if (focused) FontWeight.Bold else FontWeight.Medium, color = gearText(focused))
+                LiveText(stringResource(R.string.iptv_gear_info_bar_hint), size = 10.sp, color = gearText(focused, dim = true))
             }
-            LiveText("${settings.infoBannerSeconds} seconds", size = 13.sp, weight = FontWeight.Medium, color = gearText(focused))
+            LiveText(pluralStringResource(R.plurals.iptv_settings_seconds, settings.infoBannerSeconds, settings.infoBannerSeconds), size = 13.sp, weight = FontWeight.Medium, color = gearText(focused))
         }
     }
 }

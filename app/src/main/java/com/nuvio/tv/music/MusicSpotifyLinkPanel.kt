@@ -30,6 +30,8 @@ import androidx.compose.runtime.setValue
 import androidx.compose.runtime.withFrameNanos
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.res.stringResource
+import com.nuvio.tv.R
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.focus.FocusRequester
 import androidx.compose.ui.focus.focusRequester
@@ -187,20 +189,20 @@ internal fun MusicSpotifyLinkPanel(onClose: () -> Unit) {
                 if (state.connected) {
                     SpotifyLinkPill(
                         icon = Icons.Default.CheckCircle,
-                        label = "Done",
+                        label = stringResource(R.string.music_done),
                         primary = true,
                         onClick = onClose
                     )
                 } else {
                     SpotifyLinkPill(
                         icon = Icons.Default.QrCode2,
-                        label = if (state.error != null) "Show new QR" else "New QR",
+                        label = if (state.error != null) stringResource(R.string.music_spotify_show_new_qr) else stringResource(R.string.music_spotify_new_qr),
                         primary = state.error != null,
                         onClick = { MusicSpotifyLink.start(context) }
                     )
                     SpotifyLinkPill(
                         icon = Icons.Default.Close,
-                        label = "Cancel",
+                        label = stringResource(R.string.music_p2_cancel),
                         onClick = onClose
                     )
                 }

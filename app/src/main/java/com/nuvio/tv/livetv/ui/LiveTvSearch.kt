@@ -39,6 +39,8 @@ import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.res.stringResource
+import com.nuvio.tv.R
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.focus.onFocusChanged
 import androidx.compose.ui.text.font.FontWeight
@@ -270,7 +272,7 @@ fun LiveTvSearchRow(
         results.viewModel?.let { vm -> ChannelQuickMenu(hit.channel, vm, program = hit.program, onDismiss = { menuFor = null }) }
     }
     val previewOn = results.viewModel?.settings?.collectAsStateWithLifecycle()?.value?.searchPreview ?: false
-    SearchResultsRow(title = "Live TV", modifier = modifier) {
+    SearchResultsRow(title = stringResource(R.string.iptv_settings_live_tv), modifier = modifier) {
         itemsIndexed(results.hits, key = { _, h -> h.channel.key }) { index, hit ->
             LiveSearchCard(
                 hit = hit,
@@ -320,7 +322,7 @@ fun LiveTvSearchPreview(results: LiveTvSearchResults, modifier: Modifier = Modif
         Box(Modifier.fillMaxSize().background(Color.Black.copy(alpha = 0.62f)))
         playback.error?.let {
             PlayerStatusMessage(
-                "Reconnecting…", it,
+                stringResource(R.string.iptv_ge_reconnecting), it,
                 modifier = Modifier.align(Alignment.BottomCenter).padding(bottom = 24.dp),
                 compact = true
             )
@@ -357,7 +359,7 @@ private fun LiveSearchCard(
     val title = p?.title?.takeIf { !LiveTvRepository.isPlaceholderTitle(it) } ?: hit.channel.name
     SearchResultCard(
         title = title,
-        lines = listOfNotNull("CH: ${hit.channel.name}", playlistName),
+        lines = listOfNotNull(stringResource(R.string.iptv_ge_channel_prefix, hit.channel.name), playlistName),
         poster = poster,
         logo = hit.channel.logo,
         posterCardStyle = posterCardStyle,
@@ -366,9 +368,9 @@ private fun LiveSearchCard(
         onLongClick = onLongClick,
         badge = {
             val tag = when {
-                playing -> "PLAYING"
-                live -> "LIVE"
-                upcoming -> "UPCOMING"
+                playing -> stringResource(R.string.iptv_ge_playing)
+                live -> stringResource(R.string.iptv_ge_tag_live)
+                upcoming -> stringResource(R.string.iptv_ge_upcoming)
                 else -> null
             }
             tag?.let {
@@ -485,27 +487,27 @@ private fun ChannelQuickMenu(channel: LiveChannel, viewModel: LiveTvViewModel, p
     val first = remember { FocusRequester() }
     when (step) {
         "rename" -> TextInputDialog(
-            title = "Rename channel",
+            title = stringResource(R.string.iptv_ge_rename_channel),
             initial = channel.name,
-            hint = "Leave empty to use the playlist name",
-            confirmLabel = "Save",
+            hint = stringResource(R.string.iptv_ge_leave_name),
+            confirmLabel = stringResource(R.string.action_save),
             onDismiss = onDismiss,
             onConfirm = { viewModel.renameChannel(channel, it); onDismiss() }
         )
         "number" -> TextInputDialog(
-            title = "Channel number",
+            title = stringResource(R.string.iptv_ge_channel_number),
             initial = channel.number.toString(),
-            hint = "Leave empty to use the playlist number",
-            confirmLabel = "Save",
+            hint = stringResource(R.string.iptv_ge_leave_number),
+            confirmLabel = stringResource(R.string.action_save),
             numeric = true,
             onDismiss = onDismiss,
             onConfirm = { viewModel.setChannelNumber(channel, it.trim().toIntOrNull()); onDismiss() }
         )
         "newgroup" -> TextInputDialog(
-            title = "New group",
+            title = stringResource(R.string.iptv_ge_new_group),
             initial = "",
-            hint = "Group name",
-            confirmLabel = "Save",
+            hint = stringResource(R.string.iptv_ge_group_name),
+            confirmLabel = stringResource(R.string.action_save),
             onDismiss = onDismiss,
             onConfirm = { name -> viewModel.createGroupWith(name, channel); onDismiss() }
         )
@@ -525,7 +527,7 @@ private fun ChannelQuickMenu(channel: LiveChannel, viewModel: LiveTvViewModel, p
                 LiveText(channel.group, color = NuvioTheme.colors.TextSecondary, size = 13.sp)
                 Spacer(Modifier.height(14.dp))
                 Column(verticalArrangement = Arrangement.spacedBy(4.dp)) {
-                    MenuItem(if (isFavorite) "Remove from favorites" else "Add to favorites", Modifier.focusRequester(first)) {
+                    MenuItem(if (isFavorite) stringResource(R.string.iptv_ge_remove_favorites) else stringResource(R.string.iptv_ge_add_favorites), Modifier.focusRequester(first)) {
                         viewModel.toggleFavorite(channel)
                         onDismiss()
                     }
@@ -533,10 +535,10 @@ private fun ChannelQuickMenu(channel: LiveChannel, viewModel: LiveTvViewModel, p
                         bell.toggle()
                         onDismiss()
                     }
-                    MenuItem("Add to group…") { step = "group" }
-                    MenuItem("Rename channel") { step = "rename" }
-                    MenuItem("Change channel number") { step = "number" }
-                    MenuItem("Hide channel") {
+                    MenuItem(stringResource(R.string.iptv_ge_add_to_group)) { step = "group" }
+                    MenuItem(stringResource(R.string.iptv_ge_rename_channel)) { step = "rename" }
+                    MenuItem(stringResource(R.string.iptv_ge_change_number)) { step = "number" }
+                    MenuItem(stringResource(R.string.iptv_gear_hide_channel)) {
                         viewModel.hideChannel(channel)
                         onDismiss()
                     }

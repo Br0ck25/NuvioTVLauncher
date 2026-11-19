@@ -206,6 +206,7 @@ class LiveTvPreferences @Inject constructor(
         val homeRowCompact = booleanPreferencesKey("home_row_compact")
         val bufferSize = stringPreferencesKey("buffer_size")
         val groupSort = stringPreferencesKey("group_sort")
+        val groupHoldJumpMs = intPreferencesKey("group_hold_jump_ms")
         val timeshiftEnabled = booleanPreferencesKey("timeshift_enabled")
         val timeshiftMinutes = intPreferencesKey("timeshift_minutes")
         val rewindAlways = booleanPreferencesKey("rewind_always")
@@ -533,6 +534,7 @@ class LiveTvPreferences @Inject constructor(
             showAllChannelsGroup = p[Keys.showAllGroup] ?: d.showAllChannelsGroup,
             resumeLastInPreview = p[Keys.resumeInPreview] ?: d.resumeLastInPreview,
             showGroupCounts = p[Keys.showGroupCounts] ?: d.showGroupCounts,
+            groupHoldJumpMs = (p[Keys.groupHoldJumpMs] ?: d.groupHoldJumpMs).coerceIn(2_000, 5_000),
             smallHeader = p[Keys.smallHeader] ?: d.smallHeader,
             aspectMode = p[Keys.aspectMode] ?: d.aspectMode,
             sequentialNumbers = p[Keys.sequentialNumbers] ?: d.sequentialNumbers,
@@ -992,6 +994,7 @@ class LiveTvPreferences @Inject constructor(
         p[Keys.homeRowCompact] = s.homeRowCompact
         p[Keys.bufferSize] = s.bufferSize
         p[Keys.groupSort] = s.groupSort
+        p[Keys.groupHoldJumpMs] = s.groupHoldJumpMs
         p[Keys.timeshiftEnabled] = s.timeshiftEnabled
         p[Keys.timeshiftMinutes] = s.timeshiftMinutes
         p[Keys.rewindAlways] = s.rewindAlways

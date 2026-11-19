@@ -53,6 +53,8 @@ import androidx.compose.runtime.setValue
 import androidx.compose.runtime.withFrameNanos
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.res.stringResource
+import com.nuvio.tv.R
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.focus.FocusRequester
 import androidx.compose.ui.focus.focusRequester
@@ -176,7 +178,7 @@ internal fun MusicVideoPlayerScreen(
             runCatching { MusicStreamResolver.resolve(video.videoId) }.getOrNull()
         }
         if (stream == null) {
-            error = "This music video couldn't be loaded."
+            error = context.getString(R.string.music_video_load_failed)
             loading = false
             return@LaunchedEffect
         }
@@ -221,7 +223,7 @@ internal fun MusicVideoPlayerScreen(
                     }
 
                     override fun onPlayerError(e: PlaybackException) {
-                        error = e.message ?: "This music video couldn't be played."
+                        error = e.message ?: context.getString(R.string.music_video_play_failed)
                         loading = false
                     }
                 })
@@ -385,12 +387,12 @@ internal fun MusicVideoPlayerScreen(
             ) {
             VideoCircleButton(
                 icon = Icons.AutoMirrored.Filled.ArrowBack,
-                label = "Back to Now Playing",
+                label = stringResource(R.string.music_video_back_now_playing),
                 onClick = { onClose(positionMs) }
             )
             Column(Modifier.weight(1f)) {
                 Text(
-                    text = "MUSIC VIDEO",
+                    text = stringResource(R.string.music_video_label),
                     color = MusicPalette.accentTeal,
                     fontSize = 10.sp,
                     letterSpacing = 2.sp,
@@ -437,7 +439,7 @@ internal fun MusicVideoPlayerScreen(
                 horizontalAlignment = Alignment.CenterHorizontally
             ) {
                 Text(
-                    text = "Video unavailable",
+                    text = stringResource(R.string.music_video_unavailable),
                     color = Color.White,
                     fontFamily = MusicDisplay,
                     fontSize = 26.sp,
@@ -452,7 +454,7 @@ internal fun MusicVideoPlayerScreen(
                 Spacer(Modifier.height(18.dp))
                 LibraryActionButton(
                     icon = Icons.AutoMirrored.Filled.ArrowBack,
-                    label = "Back to song",
+                    label = stringResource(R.string.music_video_back_song),
                     onClick = { onClose(positionMs) }
                 )
             }
@@ -508,12 +510,12 @@ internal fun MusicVideoPlayerScreen(
             ) {
                 VideoCircleButton(
                     icon = Icons.Default.SkipPrevious,
-                    label = "Previous track",
+                    label = stringResource(R.string.music_video_previous_track),
                     onClick = { onSkip(-1) }
                 )
                 VideoCircleButton(
                     icon = Icons.Default.Replay10,
-                    label = "Back 10 seconds",
+                    label = stringResource(R.string.music_video_back_10),
                     onClick = {
                         player?.let {
                             it.seekTo((it.currentPosition - 10_000L).coerceAtLeast(0L))
@@ -522,7 +524,7 @@ internal fun MusicVideoPlayerScreen(
                 )
                 VideoCircleButton(
                     icon = if (isPlaying) Icons.Default.Pause else Icons.Default.PlayArrow,
-                    label = if (isPlaying) "Pause" else "Play",
+                    label = if (isPlaying) stringResource(R.string.music_p2_pause) else stringResource(R.string.music_action_play),
                     modifier = Modifier.focusRequester(playFocus),
                     onClick = {
                         player?.let {
@@ -539,7 +541,7 @@ internal fun MusicVideoPlayerScreen(
                 )
                 VideoCircleButton(
                     icon = Icons.Default.Forward10,
-                    label = "Forward 10 seconds",
+                    label = stringResource(R.string.music_video_forward_10),
                     onClick = {
                         player?.let {
                             val max = it.duration.takeIf { d -> d > 0L } ?: Long.MAX_VALUE
@@ -549,12 +551,13 @@ internal fun MusicVideoPlayerScreen(
                 )
                 VideoCircleButton(
                     icon = Icons.Default.SkipNext,
-                    label = "Next track",
+                    label = stringResource(R.string.music_video_next_track),
                     onClick = { onSkip(1) }
                 )
                 VideoCircleButton(
                     icon = Icons.Default.Shuffle,
-                    label = if (musicState.shuffle) "Shuffle on" else "Shuffle",
+                    label = if (musicState.shuffle) stringResource(R.string.music_p2_shuffle_on)
+                    else stringResource(R.string.music_p2_shuffle),
                     active = musicState.shuffle,
                     onClick = { MusicPlayer.setShuffle(!musicState.shuffle) }
                 )
@@ -565,9 +568,9 @@ internal fun MusicVideoPlayerScreen(
                         Icons.Default.Repeat
                     },
                     label = when (musicState.repeatMode) {
-                        RepeatMode.OFF -> "Repeat"
-                        RepeatMode.ALL -> "Repeat all"
-                        RepeatMode.ONE -> "Repeat one"
+                        RepeatMode.OFF -> stringResource(R.string.music_p2_repeat)
+                        RepeatMode.ALL -> stringResource(R.string.music_p2_repeat_all)
+                        RepeatMode.ONE -> stringResource(R.string.music_p2_repeat_one)
                     },
                     active = musicState.repeatMode != RepeatMode.OFF,
                     onClick = { MusicPlayer.cycleRepeat() }
@@ -575,19 +578,19 @@ internal fun MusicVideoPlayerScreen(
                 if (musicState.queue.isNotEmpty()) {
                     VideoCircleButton(
                         icon = Icons.Default.QueueMusic,
-                        label = "Up next",
+                        label = stringResource(R.string.music_p2_up_next),
                         onClick = { showQueue = true }
                     )
                 }
                 VideoCircleButton(
                     icon = Icons.Default.Headphones,
-                    label = "Switch to audio",
+                    label = stringResource(R.string.music_video_switch_audio),
                     onClick = { onClose(positionMs) }
                 )
             }
             Spacer(Modifier.height(10.dp))
             Text(
-                text = "Back resumes the song",
+                text = stringResource(R.string.music_video_back_resumes),
                 color = Color.White.copy(alpha = 0.34f),
                 fontSize = 10.sp
             )
@@ -609,14 +612,14 @@ internal fun MusicVideoPlayerScreen(
                         verticalAlignment = Alignment.CenterVertically
                     ) {
                         Text(
-                            text = "Up next",
+                            text = stringResource(R.string.music_p2_up_next),
                             color = Color.White,
                             fontFamily = MusicDisplay,
                             fontSize = 26.sp,
                             fontWeight = FontWeight.Bold
                         )
                         Text(
-                            text = "Close",
+                            text = stringResource(R.string.music_p2_close),
                             color = Color.White.copy(alpha = 0.7f),
                             fontSize = 13.sp,
                             modifier = Modifier

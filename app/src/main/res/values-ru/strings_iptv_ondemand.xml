@@ -1,0 +1,13 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <string name="iptv_od_nothing">"Пока нечего показывать"</string>
+    <string name="iptv_od_nothing_help">"Включите On Demand для плейлиста в Настройки → Live TV или покажите группы кнопкой настроек."</string>
+    <string name="iptv_od_see_all">"Посмотреть всё"</string>
+    <string name="iptv_od_sort_group">"Сортировать %1$s"</string>
+    <string name="iptv_od_this_group">"эту группу"</string>
+    <string name="iptv_od_fix_poster">"Исправить постер"</string>
+    <string name="iptv_od_fix_poster_hint">"Название фильма или сериала и, если знаете, год, например Dune (2021). Оставьте пустым для автоматического выбора."</string>
+    <string name="iptv_od_loading_details">"Загрузка подробностей."</string>
+    <string name="iptv_od_choose_version">"Выбрать версию"</string>
+    <string name="iptv_od_no_episodes">"Провайдер не указал ни одной серии."</string>
+</resources>

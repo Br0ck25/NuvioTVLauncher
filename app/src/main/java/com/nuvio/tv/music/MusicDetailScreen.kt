@@ -56,6 +56,8 @@ import androidx.tv.material3.Text
 import com.music.bitchord.data.model.BrowseType
 import com.music.bitchord.data.model.HomeShelf
 import kotlin.math.roundToInt
+import androidx.compose.ui.res.stringResource
+import com.nuvio.tv.R
 
 @Composable
 internal fun MusicDetailScreen(
@@ -150,7 +152,7 @@ internal fun MusicDetailScreen(
                     verticalAlignment = Alignment.CenterVertically
                 ) {
                     Text(
-                        text = "Popular",
+                        text = stringResource(R.string.music_p2_popular),
                         color = MusicPalette.text,
                         fontFamily = MusicDisplay,
                         fontSize = 21.sp,
@@ -178,8 +180,8 @@ internal fun MusicDetailScreen(
             }
             state.songs.isEmpty() && state.sections.isEmpty() -> item(key = "detail-empty") {
                 MusicEmptyState(
-                    title = "Nothing to play",
-                    message = "This page didn't list any tracks.",
+                    title = stringResource(R.string.music_p2_nothing_to_play),
+                    message = stringResource(R.string.music_p2_this_page_didn_t_list),
                     modifier = Modifier.fillMaxWidth().height(300.dp)
                 )
             }
@@ -278,7 +280,7 @@ private fun MusicDetailHeader(
             ) {
                 Icon(
                     Icons.AutoMirrored.Filled.ArrowBack,
-                    contentDescription = "Back",
+                    contentDescription = stringResource(R.string.music_p2_back),
                     tint = if (backFocused) MusicPalette.background else MusicPalette.text,
                     modifier = Modifier.size(20.dp)
                 )
@@ -286,8 +288,8 @@ private fun MusicDetailHeader(
             Spacer(Modifier.size(14.dp))
             Text(
                 text = when (state.type) {
-                    BrowseType.ALBUM -> "Album"
-                    BrowseType.ARTIST -> "Artist"
+                    BrowseType.ALBUM -> stringResource(R.string.music_p2_album)
+                    BrowseType.ARTIST -> stringResource(R.string.music_p2_artist)
                     BrowseType.PLAYLIST -> "Playlist"
                     BrowseType.OTHER -> "Music"
                 }.uppercase(),
@@ -385,7 +387,7 @@ private fun MusicDetailHeader(
                             modifier = Modifier.size(20.dp)
                         )
                         Text(
-                            text = "Play",
+                            text = stringResource(R.string.music_action_play),
                             color = if (playFocused) MusicPalette.background else Color.White,
                             fontSize = 15.sp,
                             fontWeight = FontWeight.Bold
@@ -457,17 +459,17 @@ private fun MusicDetailHeader(
                             )
                             Text(
                                 text = when {
-                                    allDownloaded -> "Downloaded"
+                                    allDownloaded -> stringResource(R.string.music_p2_downloaded)
                                     downloadActive -> {
                                         val percent = (downloadProgress * 100).roundToInt()
                                         if (percent > 0) {
                                             "Downloading $percent%"
                                         } else {
-                                            "Preparing…"
+                                            stringResource(R.string.music_p2_preparing)
                                         }
                                     }
-                                    downloadedCount > 0 -> "Download rest"
-                                    else -> "Download all"
+                                    downloadedCount > 0 -> stringResource(R.string.music_p2_download_rest)
+                                    else -> stringResource(R.string.music_p2_download_all)
                                 },
                                 color = when {
                                     downloadFocused -> MusicPalette.background

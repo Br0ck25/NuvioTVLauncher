@@ -21,6 +21,8 @@ import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.text.withStyle
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
+import androidx.compose.ui.res.stringResource
+import com.nuvio.tv.R
 
 /**
  * The live chat of a live stream, drawn over the picture as messages arrive, newest at the bottom.
@@ -66,7 +68,7 @@ fun BoxScope.YouTubeChatOverlay(viewModel: YouTubePlayerViewModel, appearance: C
             .padding(10.dp)
     ) {
         if (lines.isEmpty()) {
-            Text("Waiting for chat…", color = textColor.copy(alpha = 0.6f), fontSize = fontSize)
+            Text(stringResource(R.string.onetube_waiting_chat), color = textColor.copy(alpha = 0.6f), fontSize = fontSize)
         }
         lines.takeLast(visibleLines).forEach { line ->
             Text(

@@ -41,6 +41,8 @@ import androidx.compose.ui.focus.onFocusChanged
 import androidx.compose.ui.graphics.Brush
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.vector.ImageVector
+import androidx.compose.ui.res.stringResource
+import com.nuvio.tv.R
 import androidx.compose.ui.input.key.Key
 import androidx.compose.ui.input.key.KeyEventType
 import androidx.compose.ui.input.key.key
@@ -128,7 +130,7 @@ internal fun MusicSidebar(
 
         Column(verticalArrangement = Arrangement.spacedBy(4.dp)) {
             MusicSidebarItem(
-                label = "Home",
+                label = stringResource(R.string.music_tab_home),
                 icon = Icons.Default.Home,
                 selected = selectedTab == MusicTab.HOME,
                 modifier = if (selectedTab == MusicTab.HOME) {
@@ -139,7 +141,7 @@ internal fun MusicSidebar(
                 onClick = { onTabSelected(MusicTab.HOME) }
             )
             MusicSidebarItem(
-                label = "Discover",
+                label = stringResource(R.string.music_tab_discover),
                 icon = Icons.Default.AutoAwesome,
                 selected = selectedTab == MusicTab.DISCOVER,
                 modifier = if (selectedTab == MusicTab.DISCOVER) {
@@ -150,7 +152,7 @@ internal fun MusicSidebar(
                 onClick = { onTabSelected(MusicTab.DISCOVER) }
             )
             MusicSidebarItem(
-                label = "Explore",
+                label = stringResource(R.string.music_tab_explore),
                 icon = Icons.Default.Explore,
                 selected = selectedTab == MusicTab.EXPLORE,
                 modifier = if (selectedTab == MusicTab.EXPLORE) {
@@ -161,7 +163,7 @@ internal fun MusicSidebar(
                 onClick = { onTabSelected(MusicTab.EXPLORE) }
             )
             MusicSidebarItem(
-                label = "Library",
+                label = stringResource(R.string.music_tab_library),
                 icon = Icons.Default.LibraryMusic,
                 selected = selectedTab == MusicTab.LIBRARY,
                 modifier = if (selectedTab == MusicTab.LIBRARY) {
@@ -172,7 +174,7 @@ internal fun MusicSidebar(
                 onClick = { onTabSelected(MusicTab.LIBRARY) }
             )
             MusicSidebarItem(
-                label = "Local",
+                label = stringResource(R.string.music_tab_local),
                 icon = Icons.Default.Folder,
                 selected = selectedTab == MusicTab.LOCAL,
                 modifier = if (selectedTab == MusicTab.LOCAL) {
@@ -183,13 +185,13 @@ internal fun MusicSidebar(
                 onClick = { onTabSelected(MusicTab.LOCAL) }
             )
             MusicSidebarItem(
-                label = "WebDAV",
+                label = stringResource(R.string.music_sidebar_webdav),
                 icon = Icons.Default.Cloud,
                 selected = false,
                 onClick = onOpenWebDav
             )
             MusicSidebarItem(
-                label = "Search",
+                label = stringResource(R.string.music_tab_search),
                 icon = Icons.Default.Search,
                 selected = selectedTab == MusicTab.SEARCH,
                 modifier = if (selectedTab == MusicTab.SEARCH) {
@@ -200,14 +202,14 @@ internal fun MusicSidebar(
                 onClick = { onTabSelected(MusicTab.SEARCH) }
             )
             MusicSidebarItem(
-                label = "Party",
+                label = stringResource(R.string.music_sidebar_party),
                 icon = Icons.Default.Groups,
                 selected = false,
                 live = partyRunning,
                 onClick = onOpenParty
             )
             MusicSidebarItem(
-                label = "Integrations",
+                label = stringResource(R.string.music_sidebar_integrations),
                 icon = Icons.Default.Extension,
                 selected = false,
                 onClick = onOpenIntegrations
@@ -218,7 +220,7 @@ internal fun MusicSidebar(
 
         Spacer(Modifier.height(9.dp))
         MusicSidebarItem(
-            label = "Settings",
+            label = stringResource(R.string.music_sidebar_settings),
             icon = Icons.Default.Settings,
             selected = false,
             onClick = onOpenSettings

@@ -1,0 +1,13 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <string name="iptv_od_nothing">"Gösterilecek bir şey yok"</string>
+    <string name="iptv_od_nothing_help">"Ayarlar → Live TV’de bir oynatma listesi için On Demand’ı açın veya ayarlar düğmesiyle grupları gösterin."</string>
+    <string name="iptv_od_see_all">"Tümünü gör"</string>
+    <string name="iptv_od_sort_group">"%1$s sırala"</string>
+    <string name="iptv_od_this_group">"bu grup"</string>
+    <string name="iptv_od_fix_poster">"Posteri düzelt"</string>
+    <string name="iptv_od_fix_poster_hint">"Film veya dizi adı ve biliyorsanız yılı, örneğin Dune (2021). Otomatiğe dönmek için boş bırakın."</string>
+    <string name="iptv_od_loading_details">"Ayrıntılar yükleniyor."</string>
+    <string name="iptv_od_choose_version">"Bir sürüm seçin"</string>
+    <string name="iptv_od_no_episodes">"Sağlayıcı hiç bölüm listelemedi."</string>
+</resources>

@@ -57,7 +57,9 @@ import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.input.ImeAction
 import androidx.compose.ui.text.input.PasswordVisualTransformation
 import androidx.compose.ui.text.input.VisualTransformation
+import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.unit.dp
+import com.nuvio.tv.R
 import androidx.compose.ui.unit.sp
 import androidx.tv.material3.Icon
 import androidx.tv.material3.Text
@@ -131,7 +133,7 @@ internal fun MusicIntegrationsScreen(
                 )
                 Column(Modifier.weight(1f)) {
                     Text(
-                        text = "Integrations",
+                        text = stringResource(R.string.music_integrations_title),
                         color = MusicPalette.text,
                         fontFamily = MusicDisplay,
                         fontSize = 34.sp,
@@ -140,7 +142,7 @@ internal fun MusicIntegrationsScreen(
                     )
                     Spacer(Modifier.height(2.dp))
                     Text(
-                        text = "Scrobbling, playlist import and your own server.",
+                        text = stringResource(R.string.music_integrations_subtitle),
                         color = MusicPalette.textMuted,
                         fontSize = 13.sp
                     )
@@ -160,16 +162,17 @@ internal fun MusicIntegrationsScreen(
                 IntegrationCard(
                     icon = Icons.Default.Album,
                     tint = MusicPalette.accentTeal,
-                    title = "Navidrome",
+                    title = stringResource(R.string.music_integrations_navidrome),
                     subtitle = if (navidrome.configured) {
-                        "Connected to ${navidrome.url}"
+                        stringResource(R.string.music_integrations_connected_to, navidrome.url)
                     } else {
-                        "Link a Navidrome / Subsonic music server."
+                        stringResource(R.string.music_integrations_navidrome_help)
                     }
                 ) {
                     IntegrationPill(
                         icon = Icons.Default.Album,
-                        label = if (navidrome.configured) "Open Navidrome" else "Link Navidrome",
+                        label = if (navidrome.configured) stringResource(R.string.music_integrations_open_navidrome)
+                        else stringResource(R.string.music_integrations_link_navidrome),
                         primary = !navidrome.configured,
                         onClick = onOpenNavidrome
                     )
@@ -178,12 +181,12 @@ internal fun MusicIntegrationsScreen(
                 IntegrationCard(
                     icon = Icons.Default.Favorite,
                     tint = MusicPalette.accentCoral,
-                    title = "Last.fm",
+                    title = stringResource(R.string.music_integrations_lastfm),
                     subtitle = when {
                         lastFm.configured && lastFm.enabled -> "Scrobbling as ${lastFm.username}."
                         lastFm.configured -> "Signed in as ${lastFm.username}, currently off."
-                        !lastFm.available -> "Last.fm sign-in isn't configured in this build."
-                        else -> "Log in with your Last.fm account to scrobble."
+                        !lastFm.available -> stringResource(R.string.music_integrations_lastfm_unavailable)
+                        else -> stringResource(R.string.music_integrations_lastfm_help)
                     }
                 ) {
                     if (lastFm.configured) {
@@ -196,7 +199,8 @@ internal fun MusicIntegrationsScreen(
                         Row(horizontalArrangement = Arrangement.spacedBy(9.dp)) {
                             IntegrationPill(
                                 icon = Icons.Default.Favorite,
-                                label = if (lastFm.enabled) "Turn scrobbling off" else "Turn scrobbling on",
+                                label = if (lastFm.enabled) stringResource(R.string.music_integrations_turn_scrobbling_off)
+                                else stringResource(R.string.music_integrations_turn_scrobbling_on),
                                 primary = !lastFm.enabled,
                                 onClick = {
                                     MusicScrobbler.setEnabled(context, !lastFm.enabled)
@@ -209,7 +213,7 @@ internal fun MusicIntegrationsScreen(
                             )
                             IntegrationPill(
                                 icon = Icons.Default.Favorite,
-                                label = "Sign out",
+                                label = stringResource(R.string.music_account_sign_out),
                                 onClick = {
                                     MusicScrobbler.logout(context)
                                     lastFmUsername = ""
@@ -222,16 +226,16 @@ internal fun MusicIntegrationsScreen(
                     } else {
                         Row(horizontalArrangement = Arrangement.spacedBy(12.dp)) {
                             IntegrationField(
-                                label = "Username",
+                                label = stringResource(R.string.music_integrations_username),
                                 value = lastFmUsername,
-                                placeholder = "Last.fm username",
+                                placeholder = stringResource(R.string.music_integrations_lastfm_username),
                                 onValueChange = { lastFmUsername = it },
                                 modifier = Modifier.weight(1f)
                             )
                             IntegrationField(
-                                label = "Password",
+                                label = stringResource(R.string.music_integrations_password),
                                 value = lastFmPassword,
-                                placeholder = "Last.fm password",
+                                placeholder = stringResource(R.string.music_integrations_lastfm_password),
                                 onValueChange = { lastFmPassword = it },
                                 password = true,
                                 modifier = Modifier.weight(1f),
@@ -240,8 +244,7 @@ internal fun MusicIntegrationsScreen(
                         }
                         Spacer(Modifier.height(8.dp))
                         Text(
-                            text = "Your password is sent once to Last.fm and never stored. " +
-                                "Only the session key stays on this TV.",
+                            text = stringResource(R.string.music_integrations_lastfm_privacy),
                             color = MusicPalette.textMuted,
                             fontSize = 10.sp,
                             lineHeight = 14.sp
@@ -250,7 +253,8 @@ internal fun MusicIntegrationsScreen(
                         Row(horizontalArrangement = Arrangement.spacedBy(9.dp)) {
                             IntegrationPill(
                                 icon = Icons.Default.Favorite,
-                                label = if (lastFmSigningIn) "Signing in..." else "Log in",
+                                label = if (lastFmSigningIn) stringResource(R.string.auth_email_signing_in)
+                                else stringResource(R.string.music_integrations_log_in),
                                 modifier = Modifier.focusRequester(lastFmLoginFocus),
                                 primary = true,
                                 enabled = !lastFmSigningIn && lastFm.available,
@@ -279,7 +283,7 @@ internal fun MusicIntegrationsScreen(
                             )
                             IntegrationPill(
                                 icon = Icons.Default.QrCode2,
-                                label = "Link with phone",
+                                label = stringResource(R.string.music_link_with_phone),
                                 onClick = { phoneTarget = MusicPhoneTarget.LASTFM }
                             )
                         }
@@ -297,16 +301,17 @@ internal fun MusicIntegrationsScreen(
                 IntegrationCard(
                     icon = Icons.Default.Cloud,
                     tint = MusicPalette.accent,
-                    title = "Music sources",
+                    title = stringResource(R.string.music_integrations_sources),
                     subtitle = when {
-                        addons.isEmpty() -> "Add BitChord-style addons to search their catalogues."
+                        addons.isEmpty() -> stringResource(R.string.music_integrations_addons_help)
                         addons.count { it.enabled } == 0 -> "${addons.size} addon(s), all turned off."
                         else -> "${addons.count { it.enabled }} addon(s) connected."
                     }
                 ) {
                     IntegrationPill(
                         icon = Icons.Default.Cloud,
-                        label = if (addons.isEmpty()) "Add a source" else "Manage sources",
+                        label = if (addons.isEmpty()) stringResource(R.string.music_integrations_add_source)
+                        else stringResource(R.string.music_integrations_manage_sources),
                         primary = addons.isEmpty(),
                         onClick = onOpenSources
                     )
@@ -315,18 +320,23 @@ internal fun MusicIntegrationsScreen(
                 IntegrationCard(
                     icon = Icons.Default.MusicNote,
                     tint = MusicPalette.accentTeal,
-                    title = "Spotify",
+                    title = stringResource(R.string.music_integrations_spotify),
                     subtitle = when {
                         spotifyWeb.connected ->
-                            "Connected as ${spotifyWeb.accountName ?: "your Spotify account"}."
-                        else -> "Sign in on this TV, or import a public playlist."
+                            stringResource(
+                                R.string.music_p2_connected_as,
+                                spotifyWeb.accountName
+                                    ?: stringResource(R.string.music_integrations_spotify_account)
+                            )
+                        else -> stringResource(R.string.music_integrations_spotify_subtitle)
                     }
                 ) {
                     if (spotifyWeb.connected) {
                         Row(horizontalArrangement = Arrangement.spacedBy(9.dp)) {
                             IntegrationPill(
                                 icon = Icons.Default.Sync,
-                                label = if (webSync.busy) "Syncing…" else "Sync playlists & Liked Songs",
+                                label = if (webSync.busy) stringResource(R.string.music_integrations_syncing)
+                                else stringResource(R.string.music_integrations_sync_spotify),
                                 primary = true,
                                 // Keep it focusable while syncing: disabling it moved focus to Last.fm.
                                 enabled = true,
@@ -334,7 +344,7 @@ internal fun MusicIntegrationsScreen(
                             )
                             IntegrationPill(
                                 icon = Icons.Default.Login,
-                                label = "Re-link",
+                                label = stringResource(R.string.music_integrations_relink),
                                 enabled = !webSync.busy,
                                 onClick = {
                                     spotifyLoginLauncher.launch(
@@ -344,7 +354,7 @@ internal fun MusicIntegrationsScreen(
                             )
                             IntegrationPill(
                                 icon = Icons.Default.Logout,
-                                label = "Disconnect",
+                                label = stringResource(R.string.music_p2_disconnect),
                                 enabled = !webSync.busy,
                                 onClick = {
                                     MusicSpotifyWebSession.clear(context)
@@ -357,7 +367,7 @@ internal fun MusicIntegrationsScreen(
                         Row(horizontalArrangement = Arrangement.spacedBy(9.dp)) {
                             IntegrationPill(
                                 icon = Icons.Default.Login,
-                                label = "Sign in to Spotify on this TV",
+                                label = stringResource(R.string.music_integrations_spotify_sign_in_tv),
                                 primary = true,
                                 onClick = {
                                     spotifyLoginLauncher.launch(
@@ -368,7 +378,7 @@ internal fun MusicIntegrationsScreen(
                         }
                         Spacer(Modifier.height(8.dp))
                         Text(
-                            text = "The TV opens Spotify's real sign-in page. The session cookie stays encrypted on this TV.",
+                            text = stringResource(R.string.music_integrations_spotify_sign_in_help),
                             color = MusicPalette.textMuted,
                             fontSize = 10.sp,
                             lineHeight = 14.sp
@@ -392,13 +402,13 @@ internal fun MusicIntegrationsScreen(
                     }
                     Spacer(Modifier.height(12.dp))
                     Text(
-                        text = "Or import a public playlist",
+                        text = stringResource(R.string.music_integrations_or_import),
                         color = MusicPalette.textMuted,
                         fontSize = 10.sp
                     )
                     Spacer(Modifier.height(6.dp))
                     IntegrationField(
-                        label = "Playlist link",
+                        label = stringResource(R.string.music_integrations_playlist_link),
                         value = spotifyUrl,
                         placeholder = "https://open.spotify.com/playlist/…",
                         onValueChange = { spotifyUrl = it },
@@ -411,13 +421,14 @@ internal fun MusicIntegrationsScreen(
                     ) {
                         IntegrationPill(
                             icon = Icons.Default.MusicNote,
-                            label = if (importing) "Importing…" else "Import playlist",
+                            label = if (importing) stringResource(R.string.music_integrations_importing)
+                            else stringResource(R.string.music_integrations_import_playlist),
                             modifier = Modifier.focusRequester(spotifyImportFocus),
                             primary = true,
                             enabled = !importing,
                             onClick = {
                                 if (spotifyUrl.isBlank()) {
-                                    importError = "Paste a Spotify playlist link first."
+                                    importError = context.getString(R.string.music_integrations_paste_spotify_link)
                                 } else if (!importing) {
                                     importing = true
                                     importProgress = "Reading playlist…"
@@ -443,7 +454,7 @@ internal fun MusicIntegrationsScreen(
                                             onFailure = { error ->
                                                 importProgress = null
                                                 importError = error.message
-                                                    ?: "The playlist couldn't be imported."
+                                                    ?: context.getString(R.string.music_integrations_import_failed)
                                                 importing = false
                                             }
                                         )
@@ -453,7 +464,7 @@ internal fun MusicIntegrationsScreen(
                         )
                         IntegrationPill(
                             icon = Icons.Default.QrCode2,
-                            label = "Link with phone",
+                            label = stringResource(R.string.music_link_with_phone),
                             onClick = { phoneTarget = MusicPhoneTarget.SPOTIFY }
                         )
                     }
@@ -474,16 +485,17 @@ internal fun MusicIntegrationsScreen(
                 IntegrationCard(
                     icon = Icons.Default.Cloud,
                     tint = MusicPalette.accent,
-                    title = "WebDAV",
+                    title = stringResource(R.string.music_integrations_webdav),
                     subtitle = if (webDav.configured) {
-                        "Connected to ${webDav.url}"
+                        stringResource(R.string.music_integrations_connected_to, webDav.url)
                     } else {
-                        "Stream a music folder from your own server."
+                        stringResource(R.string.music_integrations_webdav_help)
                     }
                 ) {
                     IntegrationPill(
                         icon = Icons.Default.Cloud,
-                        label = if (webDav.configured) "Open WebDAV" else "Set up WebDAV",
+                        label = if (webDav.configured) stringResource(R.string.music_integrations_open_webdav)
+                        else stringResource(R.string.music_integrations_setup_webdav),
                         onClick = onOpenWebDav
                     )
                 }
@@ -633,7 +645,7 @@ private fun IntegrationCloseButton(modifier: Modifier = Modifier, onClick: () ->
     ) {
         Icon(
             Icons.AutoMirrored.Filled.ArrowBack,
-            contentDescription = "Close integrations",
+            contentDescription = stringResource(R.string.music_integrations_close),
             tint = if (focused) MusicPalette.background else MusicPalette.text,
             modifier = Modifier.size(20.dp)
         )

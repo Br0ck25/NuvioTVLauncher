@@ -27,6 +27,8 @@ import androidx.compose.runtime.rememberCoroutineScope
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.res.stringResource
+import com.nuvio.tv.R
 import androidx.compose.ui.focus.focusRequester
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.focus.onFocusChanged
@@ -339,10 +341,10 @@ fun OnDemandHomeScreen(
         when {
             state.loading && rows.isEmpty() -> Box(Modifier.fillMaxSize(), contentAlignment = Alignment.Center) { LoadingIndicator() }
             rows.isEmpty() -> Column(Modifier.fillMaxSize(), verticalArrangement = Arrangement.Center, horizontalAlignment = Alignment.CenterHorizontally) {
-                LiveText("Nothing to show yet", size = 20.sp, weight = FontWeight.SemiBold, color = NuvioTheme.colors.TextPrimary)
+                LiveText(stringResource(R.string.iptv_od_nothing), size = 20.sp, weight = FontWeight.SemiBold, color = NuvioTheme.colors.TextPrimary)
                 Spacer(Modifier.height(6.dp))
                 LiveText(
-                    "Turn on On Demand for a playlist in Settings → Live TV, or show some groups with the settings button.",
+                    stringResource(R.string.iptv_od_nothing_help),
                     size = 14.sp, color = NuvioTheme.colors.TextSecondary
                 )
             }
@@ -400,7 +402,7 @@ fun OnDemandHomeScreen(
                     onCatalogItemLongPress = onCatalogLongPress,
                     onRequestTrailerPreview = requestTrailerForItem,
                     onItemFocus = onItemFocus,
-                    catalogSeeAllLabel = "See all",
+                    catalogSeeAllLabel = stringResource(R.string.iptv_od_see_all),
                     onSaveFocusState = { vi, vo, rk, ikm, m, ma, ri, ii ->
                         focusState = focusState.copy(
                             verticalScrollIndex = vi, verticalScrollOffset = vo, focusedRowKey = rk,
@@ -428,7 +430,7 @@ fun OnDemandHomeScreen(
                     onCatalogItemLongPress = onCatalogLongPress,
                     posterCardStyle = posterCardStyle,
                     onItemFocus = onItemFocus,
-                    catalogSeeAllLabel = "See all",
+                    catalogSeeAllLabel = stringResource(R.string.iptv_od_see_all),
                     stickyTitle = homeHeader,
                     onSaveGridFocusState = { vi, vo, _ ->
                         gridFocusState = gridFocusState.copy(verticalScrollIndex = vi, verticalScrollOffset = vo, hasSavedFocus = true)
@@ -506,7 +508,10 @@ fun OnDemandHomeScreen(
     sortingUid?.let { uid ->
         val saved = state.groups.firstOrNull { it.uid == uid }?.sort
         VodSortPicker(
-            title = "Sort " + (state.rows.firstOrNull { it.catalogId == uid }?.catalogName ?: "this group"),
+            title = stringResource(
+                R.string.iptv_od_sort_group,
+                state.rows.firstOrNull { it.catalogId == uid }?.catalogName ?: stringResource(R.string.iptv_od_this_group)
+            ),
             current = VodSort.parse(saved)?.first,
             useDefaultLabel = "Default (${viewModel.defaultSortLabel()})",
             onPick = { picked -> sortingUid = null; viewModel.setGroupSort(uid, picked) },
@@ -520,17 +525,17 @@ fun OnDemandHomeScreen(
             com.nuvio.tv.livetv.ui.LiveText(OnDemandDatabase.displayTitle(item.name), size = 20.sp, weight = androidx.compose.ui.text.font.FontWeight.Bold, maxLines = 2)
             androidx.compose.foundation.layout.Spacer(Modifier.height(14.dp))
             androidx.compose.foundation.layout.Column(verticalArrangement = androidx.compose.foundation.layout.Arrangement.spacedBy(4.dp)) {
-                com.nuvio.tv.livetv.ui.MenuItem("Fix poster", Modifier.focusRequester(first)) { cardMenu = null; fixFor = item }
-                com.nuvio.tv.livetv.ui.MenuItem("Manage VOD Groups") { cardMenu = null; showManage = true }
+                com.nuvio.tv.livetv.ui.MenuItem(stringResource(R.string.iptv_od_fix_poster), Modifier.focusRequester(first)) { cardMenu = null; fixFor = item }
+                com.nuvio.tv.livetv.ui.MenuItem(stringResource(R.string.iptv_vod_manage_groups)) { cardMenu = null; showManage = true }
             }
         }
         LaunchedEffect(Unit) { kotlinx.coroutines.delay(60); runCatching { first.requestFocus() } }
     }
     fixFor?.let { item ->
         com.nuvio.tv.livetv.ui.TextInputDialog(
-            title = "Fix poster",
+            title = stringResource(R.string.iptv_od_fix_poster),
             initial = OnDemandDatabase.displayTitle(item.name) + (item.year?.let { " ($it)" } ?: ""),
-            hint = "The movie or series name, and the year if you know it, like Dune (2021). Leave it empty to go back to automatic.",
+            hint = stringResource(R.string.iptv_od_fix_poster_hint),
             confirmLabel = "Save",
             onDismiss = { fixFor = null },
             onConfirm = { text ->

@@ -8,10 +8,12 @@ import androidx.compose.foundation.layout.height
 import androidx.compose.runtime.Composable
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.unit.dp
+import androidx.compose.ui.res.stringResource
 import androidx.tv.material3.Button
 import androidx.tv.material3.ExperimentalTvMaterial3Api
 import androidx.tv.material3.Text
 import com.nuvio.tv.ui.components.NuvioDialog
+import com.nuvio.tv.R
 
 /** How the in-player live chat looks. Kept in [YouTubeSettings], applied as the viewer changes it. */
 data class ChatAppearance(
@@ -27,20 +29,14 @@ private val POSITIONS = listOf(
     "center_start", "center", "center_end",
     "bottom_start", "bottom_center", "bottom_end"
 )
-private val POSITION_LABELS = mapOf(
-    "top_start" to "Top left", "top_center" to "Top middle", "top_end" to "Top right",
-    "center_start" to "Middle left", "center" to "Centre", "center_end" to "Middle right",
-    "bottom_start" to "Bottom left", "bottom_center" to "Bottom middle", "bottom_end" to "Bottom right"
-)
 private val SIZES = listOf("small", "medium", "large")
-private val SIZE_LABELS = mapOf("small" to "Small", "medium" to "Medium", "large" to "Large")
 private val COLORS = listOf(
-    0xFFFFFFFF.toInt() to "White",
-    0xFFD0D0D0.toInt() to "Light grey",
-    0xFFFFE066.toInt() to "Yellow",
-    0xFF7FE3FF.toInt() to "Cyan",
-    0xFF8CFF9E.toInt() to "Green",
-    0xFFFF9B9B.toInt() to "Red"
+    0xFFFFFFFF.toInt(),
+    0xFFD0D0D0.toInt(),
+    0xFFFFE066.toInt(),
+    0xFF7FE3FF.toInt(),
+    0xFF8CFF9E.toInt(),
+    0xFFFF9B9B.toInt()
 )
 private val OPACITIES = listOf(0, 25, 50, 75, 90)
 
@@ -60,13 +56,39 @@ fun saveChatAppearance(appearance: ChatAppearance, context: Context) {
     YouTubeSettings.setChatBackgroundOpacity(context, appearance.backgroundOpacity)
 }
 
-fun chatPositionLabel(value: String) = POSITION_LABELS[value] ?: "Middle right"
-fun chatSizeLabel(value: String) = SIZE_LABELS[value] ?: "Medium"
-fun chatColorLabel(value: Int) = COLORS.firstOrNull { it.first == value }?.second ?: "White"
+@Composable
+fun chatPositionLabel(value: String): String = when (value) {
+    "top_start" -> stringResource(R.string.onetube_pos_top_left)
+    "top_center" -> stringResource(R.string.onetube_pos_top_center)
+    "top_end" -> stringResource(R.string.onetube_pos_top_right)
+    "center_start" -> stringResource(R.string.onetube_pos_middle_left)
+    "center" -> stringResource(R.string.onetube_pos_center)
+    "center_end" -> stringResource(R.string.onetube_pos_middle_right)
+    "bottom_start" -> stringResource(R.string.onetube_pos_bottom_left)
+    "bottom_center" -> stringResource(R.string.onetube_pos_bottom_center)
+    else -> stringResource(R.string.onetube_pos_bottom_right)
+}
+
+@Composable
+fun chatSizeLabel(value: String): String = when (value) {
+    "small" -> stringResource(R.string.onetube_size_small)
+    "large" -> stringResource(R.string.onetube_size_large)
+    else -> stringResource(R.string.onetube_size_medium)
+}
+
+@Composable
+fun chatColorLabel(value: Int): String = when (value) {
+    COLORS[0] -> stringResource(R.string.onetube_colour_white)
+    COLORS[1] -> stringResource(R.string.onetube_colour_light_grey)
+    COLORS[2] -> stringResource(R.string.onetube_colour_yellow)
+    COLORS[3] -> stringResource(R.string.onetube_colour_cyan)
+    COLORS[4] -> stringResource(R.string.onetube_colour_green)
+    else -> stringResource(R.string.onetube_colour_red)
+}
 
 private fun nextPosition(value: String) = POSITIONS[(POSITIONS.indexOf(value).coerceAtLeast(0) + 1) % POSITIONS.size]
 private fun nextSize(value: String) = SIZES[(SIZES.indexOf(value).coerceAtLeast(0) + 1) % SIZES.size]
-private fun nextColor(value: Int) = COLORS[(COLORS.indexOfFirst { it.first == value }.coerceAtLeast(0) + 1) % COLORS.size].first
+private fun nextColor(value: Int) = COLORS[(COLORS.indexOf(value).coerceAtLeast(0) + 1) % COLORS.size]
 private fun nextOpacity(value: Int) = OPACITIES[(OPACITIES.indexOf(value).coerceAtLeast(0) + 1) % OPACITIES.size]
 
 /**
@@ -82,30 +104,30 @@ fun YouTubeChatSettingsPanel(
 ) {
     NuvioDialog(
         onDismiss = onClose,
-        title = "Live chat",
-        subtitle = "Changes show up right away",
+        title = stringResource(R.string.onetube_live_chat),
+        subtitle = stringResource(R.string.onetube_changes_now),
         containerBrush = androidx.compose.ui.graphics.SolidColor(
             androidx.compose.ui.graphics.Color.Black.copy(alpha = 0.70f)
         ),
         containerBorderColor = androidx.compose.ui.graphics.Color.White.copy(alpha = 0.16f)
     ) {
         Column(verticalArrangement = Arrangement.spacedBy(8.dp)) {
-            CycleRow("Position", chatPositionLabel(appearance.position)) {
+            CycleRow(stringResource(R.string.onetube_position), chatPositionLabel(appearance.position)) {
                 onChange(appearance.copy(position = nextPosition(appearance.position)))
             }
-            CycleRow("Size", chatSizeLabel(appearance.size)) {
+            CycleRow(stringResource(R.string.onetube_size), chatSizeLabel(appearance.size)) {
                 onChange(appearance.copy(size = nextSize(appearance.size)))
             }
-            CycleRow("Text colour", chatColorLabel(appearance.textColor)) {
+            CycleRow(stringResource(R.string.onetube_text_colour), chatColorLabel(appearance.textColor)) {
                 onChange(appearance.copy(textColor = nextColor(appearance.textColor)))
             }
-            CycleRow("Name colour", chatColorLabel(appearance.nameColor)) {
+            CycleRow(stringResource(R.string.onetube_name_colour), chatColorLabel(appearance.nameColor)) {
                 onChange(appearance.copy(nameColor = nextColor(appearance.nameColor)))
             }
-            CycleRow("Background", "${appearance.backgroundOpacity}%") {
+            CycleRow(stringResource(R.string.onetube_background), "${appearance.backgroundOpacity}%") {
                 onChange(appearance.copy(backgroundOpacity = nextOpacity(appearance.backgroundOpacity)))
             }
-            Button(onClick = onClose, modifier = Modifier.fillMaxWidth().height(44.dp)) { Text("Done") }
+            Button(onClick = onClose, modifier = Modifier.fillMaxWidth().height(44.dp)) { Text(stringResource(R.string.onetube_done)) }
         }
     }
 }

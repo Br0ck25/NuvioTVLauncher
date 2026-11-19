@@ -11,6 +11,8 @@ import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.res.stringResource
+import com.nuvio.tv.R
 import androidx.compose.ui.focus.FocusRequester
 import androidx.compose.ui.focus.focusRequester
 import androidx.compose.ui.text.font.FontWeight
@@ -40,6 +42,7 @@ internal fun BackupChannelMenu(
     onDismiss: () -> Unit
 ) {
     var step by remember { mutableStateOf("menu") }
+    val context = androidx.compose.ui.platform.LocalContext.current
     val first = remember { FocusRequester() }
     val settings by viewModel.settings.collectAsStateWithLifecycle()
     val user by viewModel.userState.collectAsStateWithLifecycle()
@@ -50,27 +53,27 @@ internal fun BackupChannelMenu(
     val now by viewModel.now.collectAsStateWithLifecycle()
     when (step) {
         "rename" -> TextInputDialog(
-            title = "Rename channel",
+            title = stringResource(R.string.iptv_ge_rename_channel),
             initial = channel.name,
-            hint = "Leave empty to use the playlist name",
-            confirmLabel = "Save",
+            hint = stringResource(R.string.iptv_ge_leave_name),
+            confirmLabel = stringResource(R.string.action_save),
             onDismiss = onDismiss,
             onConfirm = { viewModel.renameChannel(channel, it); onDismiss() }
         )
         "number" -> TextInputDialog(
-            title = "Channel number",
+            title = stringResource(R.string.iptv_ge_channel_number),
             initial = channel.number.toString(),
-            hint = "Leave empty to use the playlist number",
-            confirmLabel = "Save",
+            hint = stringResource(R.string.iptv_ge_leave_number),
+            confirmLabel = stringResource(R.string.action_save),
             numeric = true,
             onDismiss = onDismiss,
             onConfirm = { viewModel.setChannelNumber(channel, it.trim().toIntOrNull()); onDismiss() }
         )
         "newgroup" -> TextInputDialog(
-            title = "New group",
+            title = stringResource(R.string.iptv_ge_new_group),
             initial = "",
-            hint = "Group name",
-            confirmLabel = "Save",
+            hint = stringResource(R.string.iptv_ge_group_name),
+            confirmLabel = stringResource(R.string.action_save),
             onDismiss = onDismiss,
             onConfirm = { name -> viewModel.createGroupWith(name, channel); onDismiss() }
         )
@@ -84,7 +87,7 @@ internal fun BackupChannelMenu(
         "copy" -> GroupPickerDialog(
             channel = channel,
             groups = viewModel.copyTargets(channel),
-            title = "Copy \"${channel.name}\" to…",
+            title = stringResource(R.string.iptv_ge_copy_named, "\"${channel.name}\""),
             onDismiss = onDismiss,
             onPick = { g -> viewModel.copyToGroup(g.id, channel); onDismiss() },
             onNewGroup = { step = "newgroup" }
@@ -104,13 +107,13 @@ internal fun BackupChannelMenu(
             val recordingNow = recordings.any { it.channelKey == channel.key && it.isRecording }
             val scheduled = program != null && schedules.any { it.channel.key == channel.key && it.startMs == program.startMs }
             val recordLabel = when {
-                recordingNow -> "Stop recording"
-                scheduled -> "Cancel recording"
-                else -> "Record"
+                recordingNow -> stringResource(R.string.iptv_ge_stop_recording)
+                scheduled -> stringResource(R.string.iptv_ge_cancel_recording)
+                else -> stringResource(R.string.iptv_guide_record)
             }
             val seriesLabel = program?.let { p ->
                 val n = com.nuvio.tv.livetv.data.LiveTvRepository.normalize(titleMarks(p.title).title)
-                if (series.any { it.channel.key == channel.key && it.norm == n }) "Stop recording series" else "Record series"
+                if (series.any { it.channel.key == channel.key && it.norm == n }) stringResource(R.string.iptv_ge_stop_recording_series) else stringResource(R.string.iptv_ge_record_series)
             }
             val canRestart = viewModel.canWatchFromStart(channel)
             val bell = com.nuvio.tv.livetv.calendar.rememberLiveBell(program, channel)
@@ -118,25 +121,25 @@ internal fun BackupChannelMenu(
             LiveDialog(onDismiss = onDismiss, width = 460.dp) {
                 LiveText("${channel.number}  ${channel.name}", size = 20.sp, weight = FontWeight.Bold)
                 LiveText(
-                    listOfNotNull(from.takeIf { it.isNotBlank() }, channel.group.takeIf { it.isNotBlank() }, if (playing) "Watching" else null)
+                    listOfNotNull(from.takeIf { it.isNotBlank() }, channel.group.takeIf { it.isNotBlank() }, if (playing) stringResource(R.string.iptv_ge_watching) else null)
                         .joinToString(" · "),
                     color = NuvioTheme.colors.TextSecondary, size = 13.sp
                 )
-                program?.let { LiveText("Now: ${it.title}", color = NuvioTheme.colors.TextSecondary, size = 13.sp, maxLines = 1) }
+                program?.let { LiveText(stringResource(R.string.iptv_ge_now, it.title), color = NuvioTheme.colors.TextSecondary, size = 13.sp, maxLines = 1) }
                 Spacer(Modifier.height(14.dp))
                 LazyColumn(verticalArrangement = Arrangement.spacedBy(4.dp)) {
-                    if (!playing || canRestart) item { MenuHeader("Watch", first = true) }
-                    if (!playing) item { MenuItem("Switch to this copy", Modifier.focusRequester(first), onSwitch) }
+                    if (!playing || canRestart) item { MenuHeader(stringResource(R.string.iptv_guide_watch), first = true) }
+                    if (!playing) item { MenuItem(stringResource(R.string.iptv_ge_switch_copy), Modifier.focusRequester(first), onSwitch) }
                     if (canRestart) item {
                         MenuItem(viewModel.restartLabel(channel), if (playing) Modifier.focusRequester(first) else Modifier) {
                             if (viewModel.watchFromStart(channel)) onRestarted() else onDismiss()
                         }
                     }
                     if (bell != null) {
-                        item { MenuHeader("This show") }
+                        item { MenuHeader(stringResource(R.string.iptv_ge_this_show)) }
                         item { MenuItem(bell.label, onClick = { bell.toggle(); onDismiss() }) }
                     }
-                    item { MenuHeader("Record", first = playing && !canRestart) }
+                    item { MenuHeader(stringResource(R.string.iptv_ge_record_header), first = playing && !canRestart) }
                     item {
                         MenuItem(recordLabel, if (playing && !canRestart) Modifier.focusRequester(first) else Modifier) {
                             val msg = when {
@@ -155,23 +158,23 @@ internal fun BackupChannelMenu(
                             onDismiss()
                         }
                     }
-                    item { MenuItem("Schedule a recording…", onClick = { step = "manual" }) }
-                    item { MenuHeader("Favorites & groups") }
+                    item { MenuItem(stringResource(R.string.iptv_ge_schedule_recording), onClick = { step = "manual" }) }
+                    item { MenuHeader(stringResource(R.string.iptv_ge_favorites_groups)) }
                     item {
-                        MenuItem(if (isFavorite) "Remove from favorites" else "Add to favorites") {
+                        MenuItem(if (isFavorite) stringResource(R.string.iptv_ge_remove_favorites) else stringResource(R.string.iptv_ge_add_favorites)) {
                             viewModel.toggleFavorite(channel)
                             onDismiss()
                         }
                     }
-                    item { MenuItem("Add to group…", onClick = { step = "group" }) }
-                    item { MenuItem("Copy channel…", onClick = { step = "copy" }) }
-                    item { MenuHeader("Edit channel") }
-                    item { MenuItem("Rename channel", onClick = { step = "rename" }) }
-                    item { MenuItem("Change channel number", onClick = { step = "number" }) }
+                    item { MenuItem(stringResource(R.string.iptv_ge_add_to_group), onClick = { step = "group" }) }
+                    item { MenuItem(stringResource(R.string.iptv_ge_copy_channel), onClick = { step = "copy" }) }
+                    item { MenuHeader(stringResource(R.string.iptv_ge_edit_channel)) }
+                    item { MenuItem(stringResource(R.string.iptv_ge_rename_channel), onClick = { step = "rename" }) }
+                    item { MenuItem(stringResource(R.string.iptv_ge_change_number), onClick = { step = "number" }) }
                     item {
-                        MenuItem("Hide channel") {
+                        MenuItem(stringResource(R.string.iptv_gear_hide_channel)) {
                             viewModel.hideChannel(channel)
-                            LiveTvNotice.show("${channel.name} hidden. It still shows in Backups.")
+                            LiveTvNotice.show(context.getString(R.string.iptv_ge_channel_hidden, channel.name))
                             onDismiss()
                         }
                     }

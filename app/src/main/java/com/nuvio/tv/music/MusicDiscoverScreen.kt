@@ -13,6 +13,8 @@ import androidx.compose.foundation.lazy.LazyRow
 import androidx.compose.foundation.lazy.itemsIndexed
 import androidx.compose.runtime.Composable
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.res.stringResource
+import com.nuvio.tv.R
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
@@ -36,7 +38,7 @@ internal fun MusicDiscoverScreen(
     when {
         loading && curation.isEmpty -> MusicLoading(modifier.fillMaxSize())
         curation.isEmpty -> MusicEmptyState(
-            title = "Discover is still learning",
+            title = stringResource(R.string.music_discover_learning),
             message = "Play and like a few songs, then come back for a weekly mix, new releases and related artists.",
             modifier = modifier
         )
@@ -67,8 +69,8 @@ internal fun MusicDiscoverScreen(
             curation.discoverWeekly?.let { weekly ->
                 item(key = "discover-weekly") {
                     MusicCuratedSongsRow(
-                        title = "Discover Weekly",
-                        subtitle = "Your weekly mixtape of fresh music — new every week",
+                        title = stringResource(R.string.music_discover_weekly),
+                        subtitle = stringResource(R.string.music_discover_weekly_sub),
                         songs = weekly.tracks,
                         onPlay = onPlaySongs
                     )
@@ -79,8 +81,8 @@ internal fun MusicDiscoverScreen(
                 item(key = "release-radar") {
                     Column(Modifier.fillMaxWidth()) {
                         MusicSectionHeader(
-                            title = "Release Radar",
-                            subtitle = "The latest albums and singles from artists you play"
+                            title = stringResource(R.string.music_discover_radar),
+                            subtitle = stringResource(R.string.music_discover_radar_sub)
                         )
                         Spacer(Modifier.height(10.dp))
                         LazyRow(
@@ -113,8 +115,8 @@ internal fun MusicDiscoverScreen(
                 item(key = "fans-also-like") {
                     Column(Modifier.fillMaxWidth()) {
                         MusicSectionHeader(
-                            title = "Fans also like",
-                            subtitle = "Artists close to the ones you play, that you haven't played yet"
+                            title = stringResource(R.string.music_discover_fans),
+                            subtitle = stringResource(R.string.music_discover_fans_sub)
                         )
                         Spacer(Modifier.height(10.dp))
                         LazyRow(
@@ -128,7 +130,7 @@ internal fun MusicDiscoverScreen(
                                 MusicCard(
                                     item = ShelfItem(
                                         title = artist.name,
-                                        subtitle = "Artist",
+                                        subtitle = stringResource(R.string.music_p2_artist),
                                         thumbnailUrl = artist.thumbnailUrl,
                                         videoId = null,
                                         browseId = artist.browseId,

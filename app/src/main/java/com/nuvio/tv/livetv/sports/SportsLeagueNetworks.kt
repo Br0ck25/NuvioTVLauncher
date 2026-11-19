@@ -30,6 +30,8 @@ import androidx.compose.runtime.remember
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.res.stringResource
+import com.nuvio.tv.R
 import androidx.compose.ui.draw.alpha
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.focus.FocusRequester
@@ -199,7 +201,7 @@ internal fun LeagueNetworksPage(
     chooseFrom?.let { list ->
         val first = remember { FocusRequester() }
         SportsDialog(onDismiss = { chooseFrom = null }, width = 460.dp) {
-            LiveText("Choose a channel for…", size = 18.sp, weight = FontWeight.Bold)
+            LiveText(stringResource(R.string.iptv_sports_choose_channel_for), size = 18.sp, weight = FontWeight.Bold)
             Spacer(Modifier.height(8.dp))
             list.forEachIndexed { i, net ->
                 SportsMenuRow(net.name, if (i == 0) Modifier.focusRequester(first) else Modifier) { chooseFrom = null; pickFor = net }
@@ -209,7 +211,7 @@ internal fun LeagueNetworksPage(
     }
     pickFor?.let { net ->
         ChannelPickerDialog(
-            title = "Pick the channel for ${net.name}",
+            title = stringResource(R.string.iptv_sports_pick_channel_for, net.name),
             initial = net.name,
             viewModel = viewModel,
             onPick = { ch ->
@@ -236,7 +238,7 @@ internal fun LeagueNetworksPage(
     // The Sports top bar, the same on every Sports page.
     val topBar: @Composable () -> Unit = {
         Row(verticalAlignment = Alignment.CenterVertically) {
-            LiveText("Sports", size = 26.sp, weight = FontWeight.Black)
+            LiveText(stringResource(R.string.iptv_sports_title), size = 26.sp, weight = FontWeight.Black)
             Spacer(Modifier.width(14.dp))
             filters(Modifier.weight(1f))
         }
@@ -380,7 +382,7 @@ private fun NetworkCard(
                     LiveText(name, color = Color.White, size = 14.sp, weight = FontWeight.ExtraBold, maxLines = 1, modifier = Modifier.weight(1f, fill = false))
                     if (others > 0) {
                         Spacer(Modifier.width(8.dp))
-                        LiveText("+$others more", color = SportsLook.Dim, size = 11.sp, maxLines = 1)
+                        LiveText(stringResource(R.string.iptv_sports_more_count, others), color = SportsLook.Dim, size = 11.sp, maxLines = 1)
                     }
                 }
                 Spacer(Modifier.height(3.dp))
@@ -411,8 +413,8 @@ private fun NetworkMenu(
     when (mode) {
         "copies" -> {
             SportsDialog(onDismiss = { mode = "menu" }, width = 560.dp) {
-                LiveText("Other copies of ${net.name}", size = 18.sp, weight = FontWeight.Bold, maxLines = 2)
-                LiveText("OK uses that copy.", color = SportsLook.Dim, size = 12.sp)
+                LiveText(stringResource(R.string.iptv_sports_other_copies, net.name), size = 18.sp, weight = FontWeight.Bold, maxLines = 2)
+                LiveText(stringResource(R.string.iptv_sports_ok_uses_copy), color = SportsLook.Dim, size = 12.sp)
                 Spacer(Modifier.height(8.dp))
                 val list = listOf(lead) + tile.others
                 LazyColumn(Modifier.heightIn(max = 330.dp).keepFocusWhileHeld(horizontal = false), verticalArrangement = Arrangement.spacedBy(2.dp)) {
@@ -433,7 +435,7 @@ private fun NetworkMenu(
             LaunchedEffect(Unit) { delay(80); runCatching { first.requestFocus() } }
         }
         "pick" -> ChannelPickerDialog(
-            title = "Pick the channel for ${net.name}",
+            title = stringResource(R.string.iptv_sports_pick_channel_for, net.name),
             initial = net.name,
             viewModel = viewModel,
             onPick = { ch ->

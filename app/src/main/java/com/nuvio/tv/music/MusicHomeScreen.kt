@@ -47,9 +47,11 @@ import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import androidx.tv.material3.Icon
 import androidx.tv.material3.Text
+import androidx.compose.ui.res.stringResource
 import com.music.bitchord.data.model.HomeShelf
 import com.music.bitchord.data.model.ShelfItem
 import com.music.bitchord.data.model.Song
+import com.nuvio.tv.R
 
 @Composable
 internal fun MusicHomeScreen(
@@ -75,8 +77,8 @@ internal fun MusicHomeScreen(
         state.error != null && state.shelves.isEmpty() && !hasPersonal ->
             MusicErrorState(state.error, onRetry, modifier)
         state.shelves.isEmpty() && !hasPersonal -> MusicEmptyState(
-            title = "No music yet",
-            message = "The music service didn't send anything back. Check the connection and try again.",
+            title = stringResource(R.string.music_p2_no_music_yet),
+            message = stringResource(R.string.music_p2_the_music_service_didn_t),
             modifier = modifier
         )
         else -> MusicHomeFeed(
@@ -159,8 +161,8 @@ private fun MusicHomeFeed(
         if (curation.quickPicks.isNotEmpty()) {
             item(key = "curated-quick") {
                 MusicCuratedSongsRow(
-                    title = "Quick picks",
-                    subtitle = "New finds mixed with songs you love — fresh every day",
+                    title = stringResource(R.string.music_home_quick_picks),
+                    subtitle = stringResource(R.string.music_home_quick_picks_sub),
                     songs = curation.quickPicks,
                     onPlay = onPlayCurated
                 )
@@ -174,7 +176,7 @@ private fun MusicHomeFeed(
         if (jumpBackSongs.isNotEmpty()) {
             item(key = "curated-recents") {
                 MusicCuratedSongsRow(
-                    title = "Jump back in",
+                    title = stringResource(R.string.music_home_jump_back),
                     songs = jumpBackSongs,
                     onPlay = onPlayCurated
                 )
@@ -183,8 +185,8 @@ private fun MusicHomeFeed(
         if (curation.onRepeat.isNotEmpty()) {
             item(key = "curated-repeat") {
                 MusicCuratedSongsRow(
-                    title = "On repeat",
-                    subtitle = "Songs you've played most this month",
+                    title = stringResource(R.string.music_home_on_repeat),
+                    subtitle = stringResource(R.string.music_home_on_repeat_sub),
                     songs = curation.onRepeat,
                     onPlay = onPlayCurated
                 )
@@ -202,8 +204,8 @@ private fun MusicHomeFeed(
         if (curation.forgotten.isNotEmpty()) {
             item(key = "curated-forgotten") {
                 MusicCuratedSongsRow(
-                    title = "Forgotten favourites",
-                    subtitle = "Songs you liked but haven't played in a while",
+                    title = stringResource(R.string.music_home_forgotten),
+                    subtitle = stringResource(R.string.music_home_forgotten_sub),
                     songs = curation.forgotten,
                     onPlay = onPlayCurated
                 )
@@ -306,8 +308,8 @@ private fun MusicCuratedMixesRow(
     if (mixes.isEmpty()) return
     Column(Modifier.fillMaxWidth()) {
         MusicSectionHeader(
-            title = "Your daily mixes",
-            subtitle = "Your favourite artists, blended with music like theirs"
+            title = stringResource(R.string.music_home_daily_mixes),
+            subtitle = stringResource(R.string.music_home_daily_mixes_sub)
         )
         Spacer(Modifier.height(10.dp))
         LazyRow(
@@ -339,7 +341,7 @@ private fun MusicCuratedPlaylistsRow(
 ) {
     if (playlists.isEmpty()) return
     Column(Modifier.fillMaxWidth()) {
-        MusicSectionHeader(title = "Your playlists")
+        MusicSectionHeader(title = stringResource(R.string.music_home_your_playlists))
         Spacer(Modifier.height(10.dp))
         LazyRow(
             contentPadding = PaddingValues(horizontal = 27.dp),
@@ -369,7 +371,7 @@ private fun MusicCuratedAccountPlaylistsRow(
 ) {
     if (playlists.isEmpty()) return
     Column(Modifier.fillMaxWidth()) {
-        MusicSectionHeader(title = "From your account")
+        MusicSectionHeader(title = stringResource(R.string.music_home_from_account))
         Spacer(Modifier.height(10.dp))
         LazyRow(
             contentPadding = PaddingValues(horizontal = 27.dp),
@@ -468,7 +470,7 @@ private fun MusicHero(
                     horizontalArrangement = Arrangement.spacedBy(8.dp)
                 ) {
                     MusicTag(
-                        text = if (item.isVideo) "Video" else "Featured",
+                        text = if (item.isVideo) stringResource(R.string.music_p2_video) else stringResource(R.string.music_p2_featured),
                         color = MusicPalette.accentTeal
                     )
                     if (shelfSubtitle.isNotBlank()) {
@@ -503,14 +505,14 @@ private fun MusicHero(
                 ) {
                     HeroAction(
                         icon = Icons.Default.PlayArrow,
-                        label = if (item.videoId != null) "Play" else "Open",
+                        label = if (item.videoId != null) stringResource(R.string.music_action_play) else stringResource(R.string.music_p2_open),
                         primary = true,
                         onClick = onPlay
                     )
                     if (item.browseId != null) {
                         HeroAction(
                             icon = Icons.Default.ChevronRight,
-                            label = "Details",
+                            label = stringResource(R.string.music_p2_details),
                             primary = false,
                             onClick = onClick
                         )
