@@ -98,16 +98,29 @@ class LiveTvSettingsViewModel @Inject constructor(
                 context.contentResolver.openInputStream(uri)?.bufferedReader()?.use { it.readText() }
             }.getOrNull()
         }
-        val root = runCatching { JSONObject(text.orEmpty()) }.getOrNull()
+        toast(applyBackupText(text))
+    }
+
+    /** Restores the backup text the phone sent through the QR page. */
+    fun restoreFromBackupText(text: String) = viewModelScope.launch {
+        toast(applyBackupText(text))
+    }
+
+    private suspend fun applyBackupText(text: String?): Int {
+        val clean = text?.trim()?.removePrefix("\uFEFF")
+        val root = runCatching { JSONObject(clean.orEmpty()) }.getOrNull()
         val data = root?.optJSONObject("data") ?: root
-        val message = when {
-            text == null -> R.string.iptv_settings_restore_file_failed
+        return when {
+            clean.isNullOrEmpty() -> R.string.iptv_settings_restore_file_failed
             root == null || data == null -> R.string.iptv_settings_restore_file_invalid
             !prefs.syncHasSources(data) -> R.string.iptv_settings_restore_file_empty
             else -> runCatching { driveSync.applyLocally(data) }
                 .fold({ R.string.iptv_settings_restore_file_done }, { R.string.iptv_settings_restore_file_failed })
         }
-        Toast.makeText(context, context.withAppLocale().getString(message), Toast.LENGTH_LONG).show()
+    }
+
+    private fun toast(@androidx.annotation.StringRes id: Int) {
+        Toast.makeText(context, context.withAppLocale().getString(id), Toast.LENGTH_LONG).show()
     }
 
     fun addPlaylist(name: String, url: String, userAgent: String) =
