@@ -163,6 +163,7 @@ class LiveTvPreferences @Inject constructor(
         val calendarHiddenShows = stringPreferencesKey("calendar_hidden_shows")
         val calendarChannelPicks = stringPreferencesKey("calendar_channel_picks")
         val calendarPlans = stringPreferencesKey("calendar_plans")
+        val listChannels = stringPreferencesKey("list_channels")
         val onDemandInStreams = booleanPreferencesKey("on_demand_in_streams")
         val onDemandStreamsPosition = stringPreferencesKey("on_demand_streams_position")
         val onDemandAutoPlay = booleanPreferencesKey("on_demand_auto_play")
@@ -834,6 +835,19 @@ class LiveTvPreferences @Inject constructor(
 
     suspend fun editCalendarPlans(transform: (String) -> String) {
         editMine(Keys.calendarPlans, transform)
+    }
+
+    /**
+     * The channels this profile made from Home lists (their names, lists and play order, as JSON), kept here as well as on the
+     * TV so Google Drive and cloud sync carry them to another TV or back after a reinstall. "" until a TV has saved them once.
+     * What is playing now stays on each TV.
+     */
+    val listChannelDefs: Flow<String> =
+        kotlinx.coroutines.flow.combine(store.data, profileManager.activeProfileId) { p, id -> mineOrShared(p, Keys.listChannels, id) }.distinctUntilChanged()
+
+    /** Saves [json] as profile [profileId]'s channels (the profile they were made in, even if another is showing by now). */
+    suspend fun saveListChannelDefs(profileId: Int, json: String) {
+        store.edit { it[my(Keys.listChannels, profileId)] = json }
     }
 
     // ---------- settings ----------

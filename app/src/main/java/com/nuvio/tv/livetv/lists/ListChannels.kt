@@ -219,6 +219,7 @@ internal object ListChannels {
         }
         // Channels made on mylistsaddon.com, for a viewer who has the My Lists addon installed.
         MyListsChannelSync.start(scope)
+        followSyncedDefinitions()
     }
 
     fun detach() {
@@ -226,6 +227,9 @@ internal object ListChannels {
         serverScheduled.clear()
         tickJob?.cancel()
         tickJob = null
+        defsJob?.cancel()
+        defsJob = null
+        defsWrites.set(0)
         store = null
         profileId = -1
         slotsById = emptyMap()
@@ -260,6 +264,7 @@ internal object ListChannels {
         saved.saveChannels(list)
         _channels.value = list
         onChannelsChanged()
+        mirrorDefinitions()
         scope.launch { runCatching { extend(channel, System.currentTimeMillis()) }; onProgrammesChanged() }
     }
 
@@ -270,7 +275,64 @@ internal object ListChannels {
         saved.saveChannels(list)
         _channels.value = list
         onChannelsChanged()
+        mirrorDefinitions()
     }
+
+    // region Backup and sync of the viewer's own channels
+
+    private var defsJob: Job? = null
+    /** Saves to the synced store still running; while one is, what the store shows is not yet what was just saved. */
+    private val defsWrites = java.util.concurrent.atomic.AtomicInteger(0)
+
+    /** Puts this profile's own channels (not the My Lists ones) into the settings store, which Drive and cloud sync carry. */
+    private fun mirrorDefinitions() {
+        val saved = store ?: return
+        val json = saved.definitionsJson(_channels.value)
+        val forProfile = profileId
+        val live = runCatching { deps().liveTvPreferences() }.getOrNull() ?: return
+        defsWrites.incrementAndGet()
+        scope.launch {
+            try { runCatching { live.saveListChannelDefs(forProfile, json) } } finally { defsWrites.decrementAndGet() }
+        }
+    }
+
+    /**
+     * Another TV (or a restore after a reinstall) changed this profile's channels in the synced store: take them. When the store has
+     * nothing yet (never saved), what this TV has is put there instead, so the channels made before this existed are backed up too.
+     */
+    private fun followSyncedDefinitions() {
+        val live = runCatching { deps().liveTvPreferences() }.getOrNull() ?: return
+        defsJob?.cancel()
+        defsJob = scope.launch {
+            live.listChannelDefs.collect { json -> if (defsWrites.get() == 0) applySyncedDefinitions(json) }
+        }
+    }
+
+    private fun applySyncedDefinitions(json: String) {
+        val saved = store ?: return
+        if (json.isBlank()) {
+            if (_channels.value.any { !it.isSynced }) mirrorDefinitions()
+            return
+        }
+        val remote = saved.parseDefinitions(json) ?: return
+        val mine = _channels.value.filterNot { it.isSynced }
+        if (mine == remote) return
+        val remoteIds = remote.map { it.id }.toSet()
+        mine.filter { it.id !in remoteIds }.forEach { resetSchedule(it.id, saved) }
+        val changed = remote.filter { r -> mine.firstOrNull { it.id == r.id }?.let { it.refs.map(ListRef::key) != r.refs.map(ListRef::key) } == true }
+        changed.forEach { resetSchedule(it.id, saved) }
+        val added = remote.filter { r -> mine.none { it.id == r.id } } + changed
+        val list = remote + _channels.value.filter { it.isSynced }
+        saved.saveChannels(list)
+        _channels.value = list
+        onChannelsChanged()
+        scope.launch {
+            added.forEach { runCatching { extend(it, System.currentTimeMillis()) } }
+            onProgrammesChanged()
+        }
+    }
+
+    // endregion
 
     internal fun entryPoint(): ListChannelsEntryPoint? = appContext?.let { runCatching { deps() }.getOrNull() }
 
