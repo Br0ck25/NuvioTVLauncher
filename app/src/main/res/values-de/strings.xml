@@ -2345,4 +2345,5 @@
     <string name="about_update_optimize_install_subtitle">"Schnellerer erster Start nach einem Update, aber die App wird während der Installation etwa eine Minute lang geschlossen. Deaktivieren Sie diese Option, um stattdessen den Installationsbildschirm von Android zu verwenden"</string>
     <string name="update_ready_closes">"Download abgeschlossen. Die App wird während der Installation des Updates geschlossen, was eine Minute dauern kann. Öffnen Sie es anschließend erneut."</string>
     <string name="update_ready_closes_and_reopens">"Download abgeschlossen. Die App wird während der Installation des Updates geschlossen und erneut geöffnet, was eine Minute dauern kann."</string>
+    <string name="settings_vpn">VPN</string>
 </resources>

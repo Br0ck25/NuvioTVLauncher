@@ -131,6 +131,11 @@ class MultiviewPlaybackSession(
         )
     }
 
+    // Closing this subscription matters: sessions are short lived, unlike the single player.
+    private val vpnSubscription = com.nuvio.vpn.android.VpnPlaybackProtection.observeSettings {
+        mainHandler.post { if (!released) core.restartPlayers() }
+    }
+
     fun setLayout(layout: MultiviewLayout) = onMain { core.setLayout(layout) }
     fun assignChannel(paneId: Int, channel: LiveChannel) = onMain { core.assignChannel(paneId, channel) }
     fun clearPane(paneId: Int) = onMain { core.clearPane(paneId) }
@@ -170,6 +175,7 @@ class MultiviewPlaybackSession(
         checkMainThread()
         if (released) return
         released = true
+        vpnSubscription.close()
         mainHandler.removeCallbacksAndMessages(null)
         core.release()
     }

@@ -204,6 +204,22 @@ internal fun PlayerRuntimeController.initializePlayer(
                 url = url, filename = currentFilename, responseHeaders = currentStreamResponseHeaders
             )
         }
+        try {
+            com.nuvio.tv.core.vpn.awaitVpnForPlayback(context, url)
+            val proxy = com.nuvio.tv.core.vpn.awaitNativeVpnProxy(context)
+            if (!afrPreflightGate.isCurrent(afrPreflightToken)) { proxy?.close(); return@launch }
+            nativeVpnProxy?.close()
+            nativeVpnProxy = proxy
+        } catch (cancelled: kotlinx.coroutines.CancellationException) {
+            throw cancelled
+        } catch (failure: Exception) {
+            if (!afrPreflightGate.isCurrent(afrPreflightToken)) return@launch
+            _uiState.update {
+                it.copy(error = if (isStalker) "VPN protection could not be verified for this Stalker stream."
+                    else failure.message ?: "VPN connection could not be verified.", showLoadingOverlay = false)
+            }
+            return@launch
+        }
         if (!afrPreflightGate.isCurrent(afrPreflightToken)) return@launch
         try {
             if (allowEngineFailover) {

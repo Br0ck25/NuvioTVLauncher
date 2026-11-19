@@ -459,6 +459,7 @@
     <string name="settings_playback">Reprodukcija</string>
     <string name="settings_trakt_subtitle">Otvori ekran za povezivanje sa Trakt-om</string>
     <string name="settings_tracking_title">Praćenje</string>
+    <string name="settings_vpn">VPN</string>
     <string name="settings_tracking_description">Povežite provajdere praćenja i izaberite koji pokreće vašu biblioteku i Nastavak gledanja.</string>
     <string name="tracking_accounts_title">Nalozi</string>
     <string name="tracking_accounts_subtitle">Povežite i upravljajte uslugama praćenja</string>

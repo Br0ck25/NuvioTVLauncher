@@ -303,6 +303,7 @@
     <string name="settings_playback">Воспроизведение</string>
     <string name="settings_trakt_subtitle">Настройка подключения к Trakt</string>
     <string name="settings_tracking_title">Отслеживание</string>
+    <string name="settings_vpn">VPN</string>
     <string name="settings_tracking_description">Подключите сервисы отслеживания и выберите, какой из них будет использоваться для Библиотеки и раздела «Продолжить просмотр».</string>
     <string name="tracking_accounts_title">Аккаунты</string>
     <string name="tracking_accounts_subtitle">Подключение и управление сервисами отслеживания</string>

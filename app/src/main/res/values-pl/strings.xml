@@ -3214,6 +3214,7 @@
     <string name="mdblist_mal_title">MyAnimeList</string>
     <string name="mdblist_mal_subtitle">Pokaż ocenę MyAnimeList</string>
     <string name="settings_tracking_title">Śledzenie</string>
+    <string name="settings_vpn">VPN</string>
     <string name="settings_tracking_description">Połącz dostawców śledzenia i wybierz, który zasila Twoją Bibliotekę i Kontynuuj oglądanie.</string>
     <string name="simkl_account_title">Konto Simkl</string>
     <string name="simkl_awaiting_instruction">Otwórz stronę weryfikacji Simkl i wpisz ten kod.</string>

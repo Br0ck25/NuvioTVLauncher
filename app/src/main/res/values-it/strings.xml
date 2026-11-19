@@ -432,6 +432,7 @@
 <string name="settings_playback">Riproduzione</string>
 <string name="settings_trakt_subtitle">Apri la schermata di login su Trakt</string>
 <string name="settings_tracking_title">Tracciamento</string>
+    <string name="settings_vpn">VPN</string>
 <string name="settings_tracking_description">Collega i provider di tracciamento e scegli quale gestisce la tua Libreria e Continua a guardare.</string>
 <string name="tracking_accounts_title">Account</string>
 <string name="tracking_accounts_subtitle">Collega e gestisci i servizi di tracciamento</string>

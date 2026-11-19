@@ -481,6 +481,7 @@
     <string name="settings_playback">Phát lại</string>
     <string name="settings_trakt_subtitle">Mở màn hình kết nối Trakt</string>
     <string name="settings_tracking_title">Theo dõi</string>
+    <string name="settings_vpn">VPN</string>
     <string name="settings_tracking_description">Kết nối các dịch vụ theo dõi và chọn dịch vụ cung cấp dữ liệu cho Thư viện và Tiếp tục xem.</string>
     <string name="tracking_accounts_title">Tài khoản</string>
     <string name="tracking_accounts_subtitle">Kết nối và quản lý các dịch vụ theo dõi</string>

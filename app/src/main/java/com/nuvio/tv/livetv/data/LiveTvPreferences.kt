@@ -1786,7 +1786,7 @@ class LiveTvPreferences @Inject constructor(
         val out = JSONObject()
         p.asMap().forEach { (key, value) ->
             val name = key.name
-            if (name in SYNC_EXCLUDED) return@forEach
+            if (name in SYNC_EXCLUDED || name == com.nuvio.vpn.android.VpnBackup.KEY) return@forEach
             val entry = when (value) {
                 is Boolean -> JSONObject().put("t", "b").put("v", value)
                 is Int -> JSONObject().put("t", "i").put("v", value)
@@ -1814,6 +1814,10 @@ class LiveTvPreferences @Inject constructor(
             } ?: return@forEach
             out.put(name, entry)
         }
+        val vpnKey = stringPreferencesKey(com.nuvio.vpn.android.VpnBackup.KEY)
+        val vpn = com.nuvio.vpn.android.VpnBackup.prepareExport(context, p[vpnKey])
+        if (p[vpnKey] != null) store.edit { it.remove(vpnKey) }
+        out.put(com.nuvio.vpn.android.VpnBackup.KEY, JSONObject().put("t", "str").put("v", vpn))
         return out
     }
 
@@ -1821,7 +1825,8 @@ class LiveTvPreferences @Inject constructor(
     fun syncHasSources(data: JSONObject?): Boolean {
         if (data == null) return false
         fun raw(key: String) = data.optJSONObject(key)?.optString("v")
-        return runCatching { decodePlaylists(raw(Keys.playlists.name)).isNotEmpty() }.getOrDefault(false) ||
+        return runCatching { (JSONObject(raw(com.nuvio.vpn.android.VpnBackup.KEY).orEmpty()).optJSONArray("profiles")?.length() ?: 0) > 0 }.getOrDefault(false) ||
+            runCatching { decodePlaylists(raw(Keys.playlists.name)).isNotEmpty() }.getOrDefault(false) ||
             runCatching { decodeEpgs(raw(Keys.epgs.name)).isNotEmpty() }.getOrDefault(false) ||
             runCatching { decodeAddonChannels(raw(Keys.addonChannels.name)).isNotEmpty() }.getOrDefault(false)
 
@@ -1829,6 +1834,9 @@ class LiveTvPreferences @Inject constructor(
 
     /** Replaces this TV's Live TV setup with [data] from [exportForSync], keeping per-TV state. */
     suspend fun importFromSync(data: JSONObject): Set<String> = sourceMutations.withLock {
+        data.optJSONObject(com.nuvio.vpn.android.VpnBackup.KEY)?.optString("v")?.let {
+            com.nuvio.vpn.android.VpnBackup.restoreSetup(context, it)
+        }
         // Playlists whose address or login changed: they need downloading again.
         val changed = HashSet<String>()
         store.edit { p ->
@@ -1841,7 +1849,7 @@ class LiveTvPreferences @Inject constructor(
                 p.remove(it as Preferences.Key<Any>)
             }
             data.keys().forEach { name ->
-                if (name in SYNC_EXCLUDED) return@forEach
+                if (name in SYNC_EXCLUDED || name == com.nuvio.vpn.android.VpnBackup.KEY) return@forEach
                 val e = data.optJSONObject(name) ?: return@forEach
                 when (e.optString("t")) {
                     "b" -> p[booleanPreferencesKey(name)] = e.optBoolean("v")

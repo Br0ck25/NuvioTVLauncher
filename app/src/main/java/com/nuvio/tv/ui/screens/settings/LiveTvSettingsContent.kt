@@ -3493,6 +3493,7 @@ private fun guideBackdropLabel(context: Context, id: String): String = context.g
 private fun syncPartLabels(context: Context, part: com.nuvio.tv.livetv.sync.SyncPart): Pair<String, String> {
     val (title, description) = when (part) {
         com.nuvio.tv.livetv.sync.SyncPart.LOGINS -> R.string.iptv_settings_sync_logins to R.string.iptv_settings_sync_logins_description
+        com.nuvio.tv.livetv.sync.SyncPart.VPN -> R.string.iptv_settings_sync_vpn to R.string.iptv_settings_sync_vpn_description
         com.nuvio.tv.livetv.sync.SyncPart.FAVORITES -> R.string.iptv_settings_sync_favorites to R.string.iptv_settings_sync_favorites_description
         com.nuvio.tv.livetv.sync.SyncPart.SPORTS -> R.string.iptv_settings_sports to R.string.iptv_settings_sync_sports_description
         com.nuvio.tv.livetv.sync.SyncPart.CALENDAR -> R.string.iptv_settings_sync_calendar to R.string.iptv_settings_sync_calendar_description

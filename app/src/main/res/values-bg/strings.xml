@@ -478,6 +478,7 @@
     <string name="settings_playback">Възпроизвеждане</string>
     <string name="settings_trakt_subtitle">Отваряне на екрана за връзка с Trakt</string>
     <string name="settings_tracking_title">Проследяване</string>
+    <string name="settings_vpn">VPN</string>
     <string name="settings_tracking_description">Свържете доставчици на проследяване и изберете кой от тях захранва вашата библиотека и „Продължете да гледате“.</string>
     <string name="tracking_accounts_title">Профили</string>
     <string name="tracking_accounts_subtitle">Свързване и управление на услуги за проследяване</string>

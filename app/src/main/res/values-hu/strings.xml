@@ -478,6 +478,7 @@
     <string name="settings_playback">Lejátszás</string>
     <string name="settings_trakt_subtitle">Trakt kapcsolat beállítása.</string>
     <string name="settings_tracking_title">Követés</string>
+    <string name="settings_vpn">VPN</string>
     <string name="settings_tracking_description">Csatlakoztass követési szolgáltatásokat, és válaszd ki, melyik biztosítsa a Könyvtár és a Megtekintés folytatása adatait.</string>
     <string name="tracking_accounts_title">Fiókok</string>
     <string name="tracking_accounts_subtitle">Követési szolgáltatások csatlakoztatása és kezelése</string>

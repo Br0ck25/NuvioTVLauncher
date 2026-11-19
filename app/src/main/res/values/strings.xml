@@ -507,6 +507,7 @@
     <string name="settings_playback">Playback</string>
     <string name="settings_trakt_subtitle">Open Trakt connection screen</string>
     <string name="settings_tracking_title">Tracking</string>
+<string name="settings_vpn">VPN</string>
     <string name="settings_tracking_description">Connect tracking providers and choose which one powers your Library and Continue Watching.</string>
     <string name="tracking_accounts_title">Accounts</string>
     <string name="tracking_accounts_subtitle">Connect and manage tracking services</string>

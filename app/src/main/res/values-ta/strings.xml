@@ -2250,4 +2250,5 @@
     <string name="trakt_comments_error_request_failed">ட்ராக்ட் கருத்துகள் கோரிக்கை தோல்வியடைந்தது</string>
     <string name="trakt_library_error_fetch_list_items">பட்டியல் உருப்படிகளைப் பெற முடியவில்லை</string>
 
+    <string name="settings_vpn">VPN</string>
 </resources>

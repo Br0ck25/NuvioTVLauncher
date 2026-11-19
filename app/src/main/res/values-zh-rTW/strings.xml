@@ -460,6 +460,7 @@
     <string name="settings_playback">播放</string>
     <string name="settings_trakt_subtitle">開啟 Trakt 連線畫面</string>
     <string name="settings_tracking_title">追蹤</string>
+    <string name="settings_vpn">VPN</string>
     <string name="settings_tracking_description">連接追蹤提供者，並選擇由哪一個為您提供媒體庫和繼續觀看資料。</string>
     <string name="tracking_accounts_title">帳戶</string>
     <string name="tracking_accounts_subtitle">連接並管理追蹤服務</string>

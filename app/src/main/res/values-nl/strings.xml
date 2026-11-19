@@ -479,6 +479,7 @@
     <string name="settings_playback">Afspelen</string>
     <string name="settings_trakt_subtitle">Open het Trakt-verbindingsscherm</string>
     <string name="settings_tracking_title">Tracking</string>
+    <string name="settings_vpn">VPN</string>
     <string name="settings_tracking_description">Verbind trackingproviders en kies welke je bibliotheek en Verder kijken aanstuurt.</string>
     <string name="tracking_accounts_title">Accounts</string>
     <string name="tracking_accounts_subtitle">Trackingservices verbinden en beheren</string>

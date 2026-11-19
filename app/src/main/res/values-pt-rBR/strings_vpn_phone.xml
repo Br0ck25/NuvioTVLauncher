@@ -1,0 +1,27 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <string name="vpn_phone_title">"Adicionar VPN"</string>
+    <string name="vpn_phone_connected_to">"Conectado a %1$s"</string>
+    <string name="vpn_phone_heading">"Adicionar um perfil WireGuard"</string>
+    <string name="vpn_phone_instructions">"Escolha seu arquivo .conf do WireGuard. A TV l?, criptografa e guarda o arquivo neste dispositivo."</string>
+    <string name="vpn_phone_choose">"Escolher arquivo .conf"</string>
+    <string name="vpn_phone_selected">"Selecionado: %1$s"</string>
+    <string name="vpn_phone_send">"Enviar para a TV"</string>
+    <string name="vpn_phone_sending">"Enviando?"</string>
+    <string name="vpn_phone_received">"Enviado. Verifique sua TV."</string>
+    <string name="vpn_phone_too_large">"Esse arquivo ? grande demais."</string>
+    <string name="vpn_phone_unreachable">"N?o foi poss?vel alcan?ar a TV."</string>
+    <string name="vpn_phone_nothing">"Escolha um arquivo .conf primeiro."</string>
+    <string name="vpn_phone_network">"Apenas dispositivos nesta rede podem abrir esta p?gina. Seu perfil ? enviado diretamente para a TV."</string>
+    <string name="vpn_phone_add">"Adicionar do celular"</string>
+    <string name="vpn_phone_add_detail">"Escaneie um QR code e escolha o arquivo .conf no celular"</string>
+    <string name="vpn_phone_dialog_title">"Adicionar perfil VPN do celular"</string>
+    <string name="vpn_phone_qr">"C?digo QR"</string>
+    <string name="vpn_phone_waiting">"Aguardando seu celular?"</string>
+    <string name="vpn_phone_received_tv">"Perfil recebido. Salvando?"</string>
+    <string name="vpn_phone_steps">"1. Conecte o celular ao mesmo Wi-Fi desta TV.
+2. Escaneie o c?digo com a c?mera do celular.
+3. Escolha o arquivo .conf e toque em Enviar para a TV."</string>
+    <string name="vpn_phone_address">"Ou abra %1$s"</string>
+    <string name="vpn_phone_no_network">"Nenhuma rede dom?stica encontrada. Conecte esta TV ao Wi-Fi e tente novamente."</string>
+</resources>

@@ -2723,4 +2723,5 @@
     <string name="profile_default_name">Профіль %1$d</string>
     <string name="detail_tmdb_fallback_title">TMDB %1$d</string>
     <string name="collections_editor_tmdb_collection_fallback">Колекція TMDB %1$d</string>
+    <string name="settings_vpn">VPN</string>
 </resources>

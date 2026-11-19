@@ -481,6 +481,7 @@
     <string name="settings_playback">Lecture</string>
     <string name="settings_trakt_subtitle">Ouvrir l’écran de connexion à Trakt</string>
     <string name="settings_tracking_title">Suivi</string>
+    <string name="settings_vpn">VPN</string>
     <string name="settings_tracking_description">Connectez des services de suivi et choisissez celui qui alimente votre bibliothèque et la section Continuer à regarder.</string>
     <string name="tracking_accounts_title">Comptes</string>
     <string name="tracking_accounts_subtitle">Connecter et gérer les services de suivi</string>

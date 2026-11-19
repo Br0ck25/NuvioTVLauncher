@@ -4,6 +4,7 @@ import android.content.Context
 import android.content.SharedPreferences
 import com.nuvio.tv.livetv.model.LiveChannel
 import com.nuvio.tv.livetv.model.LiveTvLoadReport
+import com.nuvio.vpn.android.VpnPlaybackProtection
 import okhttp3.Dns
 import okhttp3.OkHttpClient
 import okhttp3.Request
@@ -26,6 +27,8 @@ enum class DnsChoice { SYSTEM, CLOUDFLARE, GOOGLE }
  * - On "System", an IPTV provider's server the normal lookup can't find is tried once more with
  *   Cloudflare, then Google. Only provider addresses get that retry, so home ad blockers and
  *   family filters keep working for everything else.
+ * - While the VPN is on, the normal lookup is always used: the VPN already gets around blocks,
+ *   and its own lookup stays in charge.
  *
  * Answers are remembered for a few minutes, so only the first lookup of a server is slower.
  * Per device (not synced): which lookup works depends on the network the device is on.
@@ -37,6 +40,7 @@ object ForkDns {
     private const val MAX_TTL_S = 600L
     private const val MAX_CACHE = 256
     private const val MAX_PROVIDER_HOSTS = 500
+    private const val VPN_CHECK_MS = 5_000L
 
     @Volatile private var prefs: SharedPreferences? = null
     @Volatile var choice: DnsChoice = DnsChoice.SYSTEM
@@ -46,6 +50,8 @@ object ForkDns {
     private val cache = ConcurrentHashMap<String, Answer>()
     private val providerHosts = ConcurrentHashMap.newKeySet<String>()
     private val reported = ConcurrentHashMap.newKeySet<String>()
+    @Volatile private var vpnOn = false
+    @Volatile private var vpnCheckedAt = 0L
 
     fun init(context: Context) {
         val p = context.applicationContext.getSharedPreferences(FILE, Context.MODE_PRIVATE)
@@ -104,7 +110,7 @@ object ForkDns {
             val allowRetry = retryFor(host)
             if (!isPublicName(host)) return Dns.SYSTEM.lookup(hostname)
             val chosen = choice
-            if (chosen != DnsChoice.SYSTEM) {
+            if (chosen != DnsChoice.SYSTEM && !vpnIsOn()) {
                 cached(host)?.let { return it }
                 resolve(chosen, hostname)?.let { return it }
                 return Dns.SYSTEM.lookup(hostname)
@@ -112,7 +118,7 @@ object ForkDns {
             try {
                 return Dns.SYSTEM.lookup(hostname)
             } catch (notFound: UnknownHostException) {
-                if (!allowRetry) throw notFound
+                if (!allowRetry || vpnIsOn()) throw notFound
                 cached(host)?.let { return it }
                 for (service in listOf(DnsChoice.CLOUDFLARE, DnsChoice.GOOGLE)) {
                     val found = resolve(service, hostname) ?: continue
@@ -134,7 +140,14 @@ object ForkDns {
         return local.none { host.endsWith(it) }
     }
 
-
+    private fun vpnIsOn(): Boolean {
+        val now = System.currentTimeMillis()
+        if (now - vpnCheckedAt > VPN_CHECK_MS) {
+            vpnOn = VpnPlaybackProtection.isOn()
+            vpnCheckedAt = now
+        }
+        return vpnOn
+    }
 
     private fun cached(host: String): List<InetAddress>? {
         val answer = cache[host] ?: return null

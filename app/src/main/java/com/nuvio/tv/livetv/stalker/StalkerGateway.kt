@@ -17,6 +17,10 @@ import com.nuvio.tv.livetv.model.LiveChannel
 import com.nuvio.tv.livetv.model.PlaylistSource
 import com.nuvio.tv.core.profile.ProfileManager
 import com.nuvio.tv.data.local.ProfileDataStore
+import com.nuvio.vpn.android.VpnHttpClient
+import com.nuvio.vpn.android.VpnPlaybackProtection
+import com.nuvio.vpn.core.ProtectionMode
+import com.nuvio.vpn.core.StreamRoutePolicy
 import kotlinx.coroutines.CancellationException
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.ensureActive
@@ -59,7 +63,7 @@ class StalkerGateway @Inject constructor(
     private val profileDataStore: ProfileDataStore,
 ) {
     private class OwnedPolicy(val source: PlaylistSource, val policy: WeakReference<StalkerMediaPolicy>)
-    private class Session(val config: StalkerConfig, val client: StalkerClient)
+    private class Session(val config: StalkerConfig, val routing: String, val client: StalkerClient)
     private val mutex = Mutex()
     private val sessions = mutableMapOf<String, Session>()
     private val policies = mutableMapOf<String, MutableList<OwnedPolicy>>()
@@ -100,26 +104,27 @@ class StalkerGateway @Inject constructor(
         awaitProfile()
         val config = source.stalkerConfig?.takeIf { source.isStalker }
             ?: throw StalkerException(StalkerError.INVALID_CONFIG)
+        val routing = VpnPlaybackProtection.requireUniformHttpRouting()
         assertCurrent(source)
         mutex.withLock {
             assertCurrent(source)
             val existing = sessions[source.id]
-            if (existing != null && existing.config == config) return@withLock existing.client
+            if (existing != null && existing.config == config && existing.routing == routing) return@withLock existing.client
             retire(source.id)
             // Two source rows for one identity must not handshake over one another.
-            sessions.values.firstOrNull { it.config == config }?.let {
+            sessions.values.firstOrNull { it.config == config && it.routing == routing }?.let {
                 sessions[source.id] = it
                 return@withLock it.client
             }
             val created = StalkerClient(
                 config, object : StalkerStreamingGuideTransport {
-                    override suspend fun get(url: String, headers: Map<String, String>) = request(url, headers)
+                    override suspend fun get(url: String, headers: Map<String, String>) = request(url, headers, routing)
                     override suspend fun getGuide(url: String, headers: Map<String, String>, onRow: (String?, StalkerGuideRow) -> Unit) =
-                        guideRequest(url, headers, onRow)
+                        guideRequest(url, headers, routing, onRow)
                 },
                 System::currentTimeMillis, ::parsePortalTime,
             )
-            sessions[source.id] = Session(config, created)
+            sessions[source.id] = Session(config, routing, created)
             created
         }
     }
@@ -153,14 +158,22 @@ class StalkerGateway @Inject constructor(
         if (ref.kind in setOf(StalkerContentKind.LIVE, StalkerContentKind.ARCHIVE)) {
             if (!source.liveEnabled) throw StalkerException(StalkerError.STALE_SESSION)
         } else if (!source.importVod) throw StalkerException(StalkerError.STALE_SESSION)
+        val routing = withContext(Dispatchers.IO) { VpnPlaybackProtection.requireUniformHttpRouting() }
         val stream = client(source).resolve(ref)
+        if (!consistentRoutes(routing, source.stalkerConfig!!.portalUrl, stream.url))
+            throw IOException(ROUTE_MISMATCH_MESSAGE)
         val latest = prefs.currentPlaylists().firstOrNull { it.id == sourceId && it.isStalker }
-        if (latest?.stalkerConfig != source.stalkerConfig) {
+        if (latest?.stalkerConfig != source.stalkerConfig ||
+            withContext(Dispatchers.IO) { VpnPlaybackProtection.requireUniformHttpRouting() } != routing
+        ) {
             invalidate(sourceId)
             throw StalkerException(StalkerError.STALE_SESSION)
         }
         // The resolved CDN link receives only stream headers, never portal Cookie/Bearer.
+        withContext(Dispatchers.IO) { VpnPlaybackProtection.beforeRequest(stream.url) }
         assertCurrent(source)
+        if (withContext(Dispatchers.IO) { VpnPlaybackProtection.requireUniformHttpRouting() } != routing)
+            throw StalkerException(StalkerError.STALE_SESSION)
         return stream
     }
 
@@ -169,7 +182,9 @@ class StalkerGateway @Inject constructor(
     } ?: StalkerResolvedStream(channel.url, channel.headers)
 
     private suspend fun awaitProfile() = withTimeout(10_000L) {
-        val savedId = profileDataStore.activeProfileId.first()
+        val savedId = VpnPlaybackProtection.activeUserProfile().takeIf { it > 0 }
+            ?: profileDataStore.activeProfileId.first()
+        VpnPlaybackProtection.initializeActiveUserProfile(savedId)
         // ProfileManager starts with a placeholder; do not read another profile's sources.
         profiles.activeProfileId.first { it == savedId }
     }
@@ -184,11 +199,17 @@ class StalkerGateway @Inject constructor(
         val source = prefs.currentPlaylists().firstOrNull { it.id == sourceId && it.isStalker && it.enabled }
             ?: throw StalkerException(StalkerError.STALE_SESSION)
         if (ref.sourceIdentity != identity(source)) throw StalkerException(StalkerError.STALE_SESSION)
+        val routing = withContext(Dispatchers.IO) { VpnPlaybackProtection.requireUniformHttpRouting() }
         val authorization = client(source).mediaAuthorization()
         assertCurrent(source)
         val policy = StalkerMediaPolicy(authorization,
-            URI(stream.url).scheme.equals("https", true)) { _ ->
+            URI(stream.url).scheme.equals("https", true), requestGate = { address, cancelled ->
+                VpnPlaybackProtection.beforeRequest(address) { cancelled() }
+            }) { actualUrl ->
             // Called on the HTTP worker, including every redirected/child request.
+            if (VpnPlaybackProtection.requireUniformHttpRouting() != routing ||
+                !consistentRoutes(routing, source.stalkerConfig!!.portalUrl, actualUrl)
+            ) throw IOException("The Stalker source or VPN route changed. Retry playback.")
             runBlocking { assertCurrent(source) }
         }
         mutex.withLock {
@@ -200,6 +221,8 @@ class StalkerGateway @Inject constructor(
         try {
             val mimeType = StalkerMimeProbe.mimeFromUrl(stream.url) ?: policy.probeMimeType(stream.url)
             assertCurrent(source)
+            if (withContext(Dispatchers.IO) { VpnPlaybackProtection.requireUniformHttpRouting() } != routing)
+                throw StalkerException(StalkerError.STALE_SESSION)
             return StalkerPlayback(stream.url, stream.headers, policy, mimeType)
         } catch (failure: Exception) {
             policy.retire()
@@ -207,9 +230,9 @@ class StalkerGateway @Inject constructor(
         }
     }
 
-    private suspend fun request(url: String, headers: Map<String, String>): StalkerHttpResponse =
+    private suspend fun request(url: String, headers: Map<String, String>, routing: String): StalkerHttpResponse =
         withContext(Dispatchers.IO) {
-            val (response, address) = open(url, headers)
+            val (response, address) = open(url, headers, routing)
             response.use {
                 val body = response.body ?: throw StalkerException(StalkerError.INVALID_RESPONSE)
                 val text = StringBuilder()
@@ -223,13 +246,14 @@ class StalkerGateway @Inject constructor(
                         text.append(buffer, 0, count)
                     }
                 }
+                checkRouting(routing)
                 StalkerHttpResponse(response.code, text.toString(), finalUrl = address)
             }
         }
 
-    private suspend fun guideRequest(url: String, headers: Map<String, String>,
+    private suspend fun guideRequest(url: String, headers: Map<String, String>, routing: String,
         onRow: (String?, StalkerGuideRow) -> Unit): StalkerGuideHttpResponse = withContext(Dispatchers.IO) {
-        val (response, address) = open(url, headers)
+        val (response, address) = open(url, headers, routing)
         response.use {
             val body = response.body ?: throw StalkerException(StalkerError.INVALID_RESPONSE)
             val context = coroutineContext
@@ -237,18 +261,25 @@ class StalkerGateway @Inject constructor(
                 context.ensureActive()
                 onRow(id, row)
             } }
+            checkRouting(routing)
             StalkerGuideHttpResponse(response.code, error, finalUrl = address)
         }
     }
 
-    private suspend fun open(url: String, headers: Map<String, String>): Pair<Response, String> =
+    private fun checkRouting(routing: String) {
+        if (VpnPlaybackProtection.requireUniformHttpRouting() != routing) throw StalkerException(StalkerError.STALE_SESSION)
+    }
+
+    private suspend fun open(url: String, headers: Map<String, String>, routing: String): Pair<Response, String> =
         withContext(Dispatchers.IO) {
+            checkRouting(routing)
             val origin = URI(url)
             var address = url
             repeat(6) { hop ->
                 coroutineContext.ensureActive()
+                checkRouting(routing)
                 val request = Request.Builder().url(address).apply { headers.forEach { (name, value) -> header(name, value) } }.build()
-                val call = http.newCall(request)
+                val call = VpnHttpClient.wrap(http).newCall(request)
                 val response = call.await()
                 try {
                     val location = response.header("Location")
@@ -258,6 +289,7 @@ class StalkerGateway @Inject constructor(
                         if (!sameOrigin(origin, target)) throw StalkerException(StalkerError.NETWORK)
                         address = target.toString()
                     } else {
+                        checkRouting(routing)
                         return@withContext response to address
                     }
                 } catch (cancelled: CancellationException) {
@@ -289,13 +321,17 @@ class StalkerGateway @Inject constructor(
 
     companion object {
         private const val MAX_RESPONSE_CHARS = 32 * 1024 * 1024
+        private const val ROUTE_MISMATCH_MESSAGE = "The Stalker portal and stream use different VPN routes. Use a remote portal and consistent VPN protection, then retry."
         fun identity(source: PlaylistSource): String = source.stalkerConfig?.let(::configIdentity).orEmpty()
         fun configIdentity(config: StalkerConfig): String = MessageDigest.getInstance("SHA-256")
             .digest(config.toJson().toString().toByteArray(Charsets.UTF_8)).joinToString("") { "%02x".format(it.toInt() and 255) }
         fun failureMessage(failure: Throwable): String = when {
             failure is StalkerException -> failure.message.orEmpty()
+            failure is IOException && failure.message == "Stalker portals require HTTP + HTTPS or Full app VPN protection. Change the VPN protection mode and retry." -> failure.message.orEmpty()
+            failure is IOException && failure.message == ROUTE_MISMATCH_MESSAGE -> ROUTE_MISMATCH_MESSAGE
             failure is IOException && failure.message == StalkerMimeProbe.DASH_RECORDING_UNAVAILABLE -> StalkerMimeProbe.DASH_RECORDING_UNAVAILABLE
-            else -> "The Stalker stream could not be opened. Check the portal and retry."
+            failure is IOException && failure.message == "VPN user profile is not ready. Reopen the app before using a Stalker portal." -> failure.message.orEmpty()
+            else -> "The Stalker stream could not be opened. Check VPN protection and retry."
         }
 
         /**
@@ -313,6 +349,9 @@ class StalkerGateway @Inject constructor(
             else -> "The Stalker portal couldn't be updated (${failure.javaClass.simpleName}). Try again."
         }
         private val SAFE_IO_MESSAGES = setOf(
+            "Stalker portals require HTTP + HTTPS or Full app VPN protection. Change the VPN protection mode and retry.",
+            ROUTE_MISMATCH_MESSAGE,
+            "VPN user profile is not ready. Reopen the app before using a Stalker portal.",
             "Could not save the Stalker channel cache.",
         )
         internal fun sameOrigin(origin: URI, target: URI): Boolean =
@@ -321,6 +360,13 @@ class StalkerGateway @Inject constructor(
                 port(origin) == port(target) && target.userInfo == null && target.fragment == null
 
         private fun port(uri: URI): Int = if (uri.port != -1) uri.port else if (uri.scheme.equals("https", true)) 443 else 80
+
+        internal fun consistentRoutes(routing: String, portalUrl: String, mediaUrl: String): Boolean = runCatching {
+            val mode = ProtectionMode.valueOf(routing.substringBefore(':'))
+            val portal = StreamRoutePolicy.decide(URI(portalUrl), mode, true)
+            val media = StreamRoutePolicy.decide(URI(mediaUrl), mode, true)
+            portal != StreamRoutePolicy.Route.BLOCK && portal == media
+        }.getOrDefault(false)
 
         private fun parsePortalTime(value: String, timezone: String): Long? = runCatching {
             val formatter = if ('T' in value) DateTimeFormatter.ISO_LOCAL_DATE_TIME else DateTimeFormatter.ofPattern("uuuu-MM-dd HH:mm:ss").withResolverStyle(ResolverStyle.STRICT)

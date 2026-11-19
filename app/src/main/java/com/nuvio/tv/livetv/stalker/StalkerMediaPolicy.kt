@@ -5,6 +5,7 @@ import androidx.media3.common.util.UnstableApi
 import androidx.media3.datasource.HttpDataSource
 import androidx.media3.datasource.okhttp.OkHttpDataSource
 import com.nuvio.stalker.StalkerMediaAuthorization
+import com.nuvio.vpn.android.VpnHttpClient
 import okhttp3.OkHttpClient
 import okhttp3.Call
 import java.io.IOException
@@ -69,13 +70,13 @@ class StalkerMediaPolicy internal constructor(
                 chain.proceed(next.build())
             }.build()
         client = baseline
-        return OkHttpDataSource.Factory(baseline).also { factory = it }
+        return OkHttpDataSource.Factory(VpnHttpClient.wrap(baseline)).also { factory = it }
     }
 
     suspend fun probeMimeType(url: String): String? {
         if (!StalkerMimeProbe.needsProbe(url)) return null
         httpFactory()
-        return StalkerMimeProbe.probe(url, checkNotNull(client))
+        return StalkerMimeProbe.probe(url, VpnHttpClient.wrap(checkNotNull(client)))
     }
 
     @Synchronized

@@ -482,6 +482,7 @@
     <string name="settings_playback">Reproducción</string>
     <string name="settings_trakt_subtitle">Abre la pantalla de conexión de Trakt</string>
     <string name="settings_tracking_title">Seguimiento</string>
+    <string name="settings_vpn">VPN</string>
     <string name="settings_tracking_description">Conecta proveedores de seguimiento y elige cuál impulsa tu Biblioteca y Continuar viendo.</string>
     <string name="tracking_accounts_title">Cuentas</string>
     <string name="tracking_accounts_subtitle">Conecta y administra servicios de seguimiento</string>

@@ -543,6 +543,8 @@ sentry {
 }
 
 dependencies {
+    implementation(project(":vpn-core"))
+    implementation(project(":vpn-android"))
     // YouTube hub engine (SmartTube MediaServiceCore, MIT)
     implementation(project(":mediaservicecore:youtubeapi"))
     implementation(project(":mediaservicecore:sharedutils"))

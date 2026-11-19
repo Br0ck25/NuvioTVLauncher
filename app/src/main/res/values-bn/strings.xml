@@ -436,6 +436,7 @@
     <string name="settings_playback">প্লেব্যাক</string>
     <string name="settings_trakt_subtitle">Trakt সংযোগ স্ক্রীন খুলুন</string>
     <string name="settings_tracking_title">ট্র্যাকিং</string>
+    <string name="settings_vpn">VPN</string>
     <string name="settings_tracking_description">ট্র্যাকিং প্রদানকারীদের সংযুক্ত করুন এবং কোনটি আপনার লাইব্রেরিকে শক্তি দেয় তা বাছুন এবং দেখা চালিয়ে যান।</string>
     <string name="tracking_accounts_title">অ্যাকাউন্ট</string>
     <string name="tracking_accounts_subtitle">ট্র্যাকিং সার্ভিস কানেক্ট এবং ম্যানেজ করুন</string>

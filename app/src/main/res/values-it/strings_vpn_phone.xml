@@ -1,0 +1,27 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <string name="vpn_phone_title">"Aggiungi VPN"</string>
+    <string name="vpn_phone_connected_to">"Connesso a %1$s"</string>
+    <string name="vpn_phone_heading">"Aggiungi un profilo WireGuard"</string>
+    <string name="vpn_phone_instructions">"Scegli il file .conf di WireGuard. Il televisore lo legge, lo crittografa e lo conserva su questo dispositivo."</string>
+    <string name="vpn_phone_choose">"Scegli file .conf"</string>
+    <string name="vpn_phone_selected">"Selezionato: %1$s"</string>
+    <string name="vpn_phone_send">"Invia al televisore"</string>
+    <string name="vpn_phone_sending">"Invio?"</string>
+    <string name="vpn_phone_received">"Inviato. Controlla il televisore."</string>
+    <string name="vpn_phone_too_large">"Il file ? troppo grande."</string>
+    <string name="vpn_phone_unreachable">"Impossibile raggiungere il televisore."</string>
+    <string name="vpn_phone_nothing">"Scegli prima un file .conf."</string>
+    <string name="vpn_phone_network">"Solo i dispositivi su questa rete possono aprire questa pagina. Il profilo viene inviato direttamente al televisore."</string>
+    <string name="vpn_phone_add">"Aggiungi dal telefono"</string>
+    <string name="vpn_phone_add_detail">"Scansiona un codice QR e scegli il file .conf sul telefono"</string>
+    <string name="vpn_phone_dialog_title">"Aggiungi profilo VPN dal telefono"</string>
+    <string name="vpn_phone_qr">"Codice QR"</string>
+    <string name="vpn_phone_waiting">"In attesa del telefono?"</string>
+    <string name="vpn_phone_received_tv">"Profilo ricevuto. Salvataggio?"</string>
+    <string name="vpn_phone_steps">"1. Collega il telefono alla stessa Wi-Fi di questo televisore.
+2. Scansiona il codice con la fotocamera del telefono.
+3. Scegli il file .conf e tocca Invia al televisore."</string>
+    <string name="vpn_phone_address">"Oppure apri %1$s"</string>
+    <string name="vpn_phone_no_network">"Nessuna rete domestica trovata. Collega questo televisore al Wi-Fi e riprova."</string>
+</resources>

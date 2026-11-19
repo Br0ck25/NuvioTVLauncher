@@ -1355,6 +1355,7 @@
   <string name="trakt_days_format">%1$d ημέρες</string>
   <!-- Tracking (Trakt / Simkl) -->
   <string name="settings_tracking_title">Παρακολούθηση</string>
+    <string name="settings_vpn">VPN</string>
   <string name="settings_tracking_description">Συνδέστε υπηρεσίες παρακολούθησης και επιλέξτε ποια θα τροφοδοτεί τη Βιβλιοθήκη και τη Συνέχεια παρακολούθησης.</string>
   <string name="tracking_accounts_title">Λογαριασμοί</string>
   <string name="tracking_accounts_subtitle">Σύνδεση και διαχείριση υπηρεσιών παρακολούθησης</string>

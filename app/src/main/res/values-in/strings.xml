@@ -2535,6 +2535,7 @@
     <string name="settings_content_discovery_addons_subtitle">Kelola add-on, urutan katalog, dan koleksi</string>
     <string name="settings_content_discovery_plugins_subtitle">Kelola repositori dan penyedia stream</string>
     <string name="settings_tracking_title">Pelacakan</string>
+    <string name="settings_vpn">VPN</string>
     <string name="settings_tracking_description">Hubungkan penyedia pelacakan dan pilih yang menggerakkan Pustaka dan Lanjutkan Menonton Anda.</string>
     <string name="tracking_accounts_title">Akun</string>
     <string name="tracking_accounts_subtitle">Hubungkan dan kelola layanan pelacakan</string>

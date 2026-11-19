@@ -315,6 +315,7 @@ private fun categoryKeywords(category: SettingsCategory): String = when (categor
     SettingsCategory.CALENDAR -> "calendar schedule"
     SettingsCategory.INTEGRATION -> "integration debrid tmdb mdblist anime skip"
     SettingsCategory.TRACKING -> "tracking trakt simkl mdblist scrobble"
+    SettingsCategory.VPN -> "vpn wireguard nordvpn profile tunnel"
     SettingsCategory.ADVANCED -> "advanced developer logs"
     SettingsCategory.ABOUT -> "about version updates"
     SettingsCategory.DEBUG -> "debug logs"

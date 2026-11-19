@@ -1286,6 +1286,7 @@
     <string name="settings_content_discovery_addons_subtitle">Tvarkyti priedus, katalogų tvarką ir kolekcijas</string>
     <string name="settings_content_discovery_plugins_subtitle">Tvarkyti repozitorijas ir srautų teikėjus</string>
     <string name="settings_tracking_title">Stebėjimas</string>
+    <string name="settings_vpn">VPN</string>
     <string name="settings_tracking_description">Prijunkite stebėjimo paslaugas ir pasirinkite, kuri naudojama bibliotekai ir „Tęsti žiūrėjimą“.</string>
     <string name="tracking_accounts_title">Paskyros</string>
     <string name="tracking_accounts_subtitle">Prijungti ir tvarkyti stebėjimo paslaugas</string>

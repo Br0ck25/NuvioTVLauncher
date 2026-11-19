@@ -479,6 +479,7 @@
     <string name="settings_playback">Reprodução</string>
     <string name="settings_trakt_subtitle">Abrir conexão do Trakt</string>
     <string name="settings_tracking_title">Rastreamento</string>
+    <string name="settings_vpn">VPN</string>
     <string name="settings_tracking_description">Conecte provedores de rastreamento e escolha qual deles alimenta sua Biblioteca e o Continuar Assistindo.</string>
     <string name="tracking_accounts_title">Contas</string>
     <string name="tracking_accounts_subtitle">Conectar e gerenciar serviços de rastreamento</string>

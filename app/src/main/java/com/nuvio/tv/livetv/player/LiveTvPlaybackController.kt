@@ -2385,6 +2385,29 @@ class LiveTvPlaybackController @Inject constructor(
         _state.value = LivePlaybackState()
     }
 
+    init {
+        // This controller is application-scoped. Reopen active playback after a scope change
+        // so a DefaultHttpDataSource opened before protection was enabled cannot keep reading.
+        com.nuvio.vpn.android.VpnPlaybackProtection.observeSettings {
+            scope.launch {
+                val channel = currentChannel ?: return@launch
+                val url = currentUrl ?: return@launch
+                val active = _player ?: return@launch
+                val resume = active.playWhenReady
+                val position = active.currentPosition
+                val live = _state.value.catchupTitle == null
+                stopReplayCache()
+                stopShift()
+                active.stop()
+                if (activeStalkerRef != null) { restartStalker(if (live) 0L else position); return@launch }
+                active.setMediaSource(buildMediaSource(url, channel.headers, live))
+                active.prepare()
+                if (!live && position > 0) active.seekTo(position)
+                active.playWhenReady = resume
+            }
+        }
+    }
+
     companion object {
         /** A sports addon stream needs at least this much timeline to pause and skip in it by itself. */
         private const val OWN_MIN_MS = 60_000L

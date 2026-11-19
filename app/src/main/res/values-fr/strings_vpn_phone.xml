@@ -1,0 +1,27 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <string name="vpn_phone_title">"Ajouter un VPN"</string>
+    <string name="vpn_phone_connected_to">"Connect? ? %1$s"</string>
+    <string name="vpn_phone_heading">"Ajouter un profil WireGuard"</string>
+    <string name="vpn_phone_instructions">"Choisissez votre fichier .conf WireGuard. Le t?l?viseur le lit, le chiffre et le conserve sur cet appareil."</string>
+    <string name="vpn_phone_choose">"Choisir un fichier .conf"</string>
+    <string name="vpn_phone_selected">"S?lectionn? : %1$s"</string>
+    <string name="vpn_phone_send">"Envoyer au t?l?viseur"</string>
+    <string name="vpn_phone_sending">"Envoi?"</string>
+    <string name="vpn_phone_received">"Envoy?. V?rifiez votre t?l?viseur."</string>
+    <string name="vpn_phone_too_large">"Ce fichier est trop volumineux."</string>
+    <string name="vpn_phone_unreachable">"Impossible de joindre le t?l?viseur."</string>
+    <string name="vpn_phone_nothing">"Choisissez d'abord un fichier .conf."</string>
+    <string name="vpn_phone_network">"Seuls les appareils de ce r?seau peuvent ouvrir cette page. Votre profil est envoy? directement au t?l?viseur."</string>
+    <string name="vpn_phone_add">"Ajouter depuis le t?l?phone"</string>
+    <string name="vpn_phone_add_detail">"Scannez un QR code et choisissez le fichier .conf sur votre t?l?phone"</string>
+    <string name="vpn_phone_dialog_title">"Ajouter un profil VPN depuis votre t?l?phone"</string>
+    <string name="vpn_phone_qr">"QR code"</string>
+    <string name="vpn_phone_waiting">"En attente de votre t?l?phone?"</string>
+    <string name="vpn_phone_received_tv">"Profil re?u. Enregistrement?"</string>
+    <string name="vpn_phone_steps">"1. Connectez votre t?l?phone au m?me Wi-Fi que ce t?l?viseur.
+2. Scannez le code avec l'appareil photo du t?l?phone.
+3. Choisissez le fichier .conf et appuyez sur Envoyer au t?l?viseur."</string>
+    <string name="vpn_phone_address">"Ou ouvrez %1$s"</string>
+    <string name="vpn_phone_no_network">"Aucun r?seau domestique trouv?. Connectez ce t?l?viseur au Wi-Fi et r?essayez."</string>
+</resources>

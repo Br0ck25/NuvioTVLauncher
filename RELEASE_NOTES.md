@@ -1,5 +1,10 @@
 # Nuvio One 1.2.0-beta.1.17.3
 
+## VPN
+
+- New: built-in WireGuard VPN. Import a WireGuard `.conf` (including NordVPN's manual WireGuard files) from your phone by scanning the QR code under Settings > VPN. The profile is read and encrypted on the TV; the private key is never shown in the QR code.
+- Choose **HTTP streams only** to protect HTTP playback while HTTPS stays direct, or **Full app** to protect all Nuvio traffic. OpenVPN is not included.
+
 ## Nuvio + IPTV 1.2.0-beta.2.1
 
 - Sports: official highlights and condensed games (ESPN, NHL, MLB and YouTube), replays and highlights from sports add-ons for every sport, and AFCON qualifying with qualification status.

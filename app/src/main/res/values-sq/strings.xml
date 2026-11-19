@@ -396,6 +396,7 @@
     <string name="settings_playback">Riprodhimi</string>
     <string name="settings_trakt_subtitle">Hap ekranin e lidhjes me Trakt</string>
     <string name="settings_tracking_title">Gjurmimi</string>
+    <string name="settings_vpn">VPN</string>
     <string name="settings_tracking_description">Lidh ofruesit e gjurmimit dhe zgjidh cili prej tyre furnizon Bibliotekën dhe Vazhdo shikimin.</string>
     <string name="tracking_accounts_title">Llogaritë</string>
     <string name="tracking_accounts_subtitle">Lidh dhe menaxho shërbimet e gjurmimit</string>

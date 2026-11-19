@@ -44,12 +44,12 @@ internal class LiveTvMediaSourceBuilder(
             buildDrmMediaSource(url, headers, isLive, protection)?.let { return it }
             check(!strictDrm) { "Protected stream could not be prepared" }
         }
-        val http = stalkerPolicy?.httpFactory() ?: DefaultHttpDataSource.Factory()
+        val http = stalkerPolicy?.httpFactory() ?: com.nuvio.tv.core.vpn.protectHttpFactory(DefaultHttpDataSource.Factory()
             .setUserAgent(headers["User-Agent"] ?: LiveTvRepository.DEFAULT_UA)
             .setDefaultRequestProperties(headers.filterKeys { it != "User-Agent" })
             .setAllowCrossProtocolRedirects(true)
             .setConnectTimeoutMs(15_000)
-            .setReadTimeoutMs(20_000)
+            .setReadTimeoutMs(20_000), headers, headers["User-Agent"] ?: LiveTvRepository.DEFAULT_UA)
         val item = buildMediaItem(url, isLive)
         // Closed captions: TV channels usually carry them inside the video (CEA-608/708) without
         // announcing them, so the player never offered them and Subtitles only showed "Off".
@@ -88,12 +88,12 @@ internal class LiveTvMediaSourceBuilder(
         isLive: Boolean,
         drm: com.nuvio.tv.livetv.model.DrmInfo
     ): androidx.media3.exoplayer.source.MediaSource? = runCatching {
-        val http = DefaultHttpDataSource.Factory()
+        val http = com.nuvio.tv.core.vpn.protectHttpFactory(DefaultHttpDataSource.Factory()
             .setUserAgent(headers["User-Agent"] ?: LiveTvRepository.DEFAULT_UA)
             .setDefaultRequestProperties(headers.filterKeys { it != "User-Agent" })
             .setAllowCrossProtocolRedirects(true)
             .setConnectTimeoutMs(15_000)
-            .setReadTimeoutMs(20_000)
+            .setReadTimeoutMs(20_000), headers, headers["User-Agent"] ?: LiveTvRepository.DEFAULT_UA)
         val itemBuilder = buildMediaItem(url, isLive).buildUpon()
         if (drm.manifestType == "mpd" || url.lowercase().contains(".mpd")) itemBuilder.setMimeType(MimeTypes.APPLICATION_MPD)
         if (drm.manifestType == "hls") itemBuilder.setMimeType(MimeTypes.APPLICATION_M3U8)
@@ -131,12 +131,15 @@ internal class LiveTvMediaSourceBuilder(
             val licenseHttp = if (strictDrm) {
                 val userAgent = licenseHeaders.entries.firstOrNull { it.key.equals("User-Agent", true) }?.value
                     ?: LiveTvRepository.DEFAULT_UA
-                DefaultHttpDataSource.Factory()
-                    .setUserAgent(userAgent)
-                    .setDefaultRequestProperties(licenseHeaders.filterKeys { !it.equals("User-Agent", true) })
-                    .setAllowCrossProtocolRedirects(true)
-                    .setConnectTimeoutMs(15_000)
-                    .setReadTimeoutMs(20_000)
+                com.nuvio.tv.core.vpn.protectHttpFactory(
+                    DefaultHttpDataSource.Factory()
+                        .setUserAgent(userAgent)
+                        .setDefaultRequestProperties(licenseHeaders.filterKeys { !it.equals("User-Agent", true) })
+                        .setAllowCrossProtocolRedirects(true)
+                        .setConnectTimeoutMs(15_000)
+                        .setReadTimeoutMs(20_000),
+                    licenseHeaders, userAgent,
+                )
             } else http
             factory.setDrmSessionManagerProvider(
                 androidx.media3.exoplayer.drm.DefaultDrmSessionManagerProvider().apply { setDrmHttpDataSourceFactory(licenseHttp) }

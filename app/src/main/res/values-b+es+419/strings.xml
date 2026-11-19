@@ -479,6 +479,7 @@
     <string name="settings_playback">Reproducción</string>
     <string name="settings_trakt_subtitle">Abrir pantalla de conexión con Trakt</string>
     <string name="settings_tracking_title">Seguimiento</string>
+    <string name="settings_vpn">VPN</string>
     <string name="settings_tracking_description">Conecta servicios de seguimiento y elige cuál usará Nuvio para tu Biblioteca y Continuar viendo.</string>
     <string name="tracking_accounts_title">Cuentas</string>
     <string name="tracking_accounts_subtitle">Conecta y administra los servicios de seguimiento</string>

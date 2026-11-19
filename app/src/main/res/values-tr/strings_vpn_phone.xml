@@ -1,0 +1,27 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <string name="vpn_phone_title">"VPN ekle"</string>
+    <string name="vpn_phone_connected_to">"%1$s cihaz?na ba?l?"</string>
+    <string name="vpn_phone_heading">"WireGuard profili ekle"</string>
+    <string name="vpn_phone_instructions">"WireGuard .conf dosyan?z? se?in. TV dosyay? okur, ?ifreler ve bu cihazda saklar."</string>
+    <string name="vpn_phone_choose">".conf dosyas? se?"</string>
+    <string name="vpn_phone_selected">"Se?ilen: %1$s"</string>
+    <string name="vpn_phone_send">"TV'ye g?nder"</string>
+    <string name="vpn_phone_sending">"G?nderiliyor?"</string>
+    <string name="vpn_phone_received">"G?nderildi. TV'nizi kontrol edin."</string>
+    <string name="vpn_phone_too_large">"Bu dosya ?ok b?y?k."</string>
+    <string name="vpn_phone_unreachable">"TV'ye ula??lamad?."</string>
+    <string name="vpn_phone_nothing">"?nce bir .conf dosyas? se?in."</string>
+    <string name="vpn_phone_network">"Bu sayfay? yaln?zca bu a?daki cihazlar a?abilir. Profiliniz do?rudan TV'ye g?nderilir."</string>
+    <string name="vpn_phone_add">"Telefondan ekle"</string>
+    <string name="vpn_phone_add_detail">"QR kodu taray?n ve telefondan .conf dosyas?n? se?in"</string>
+    <string name="vpn_phone_dialog_title">"Telefondan VPN profili ekle"</string>
+    <string name="vpn_phone_qr">"QR kodu"</string>
+    <string name="vpn_phone_waiting">"Telefonunuz bekleniyor?"</string>
+    <string name="vpn_phone_received_tv">"Profil al?nd?. Kaydediliyor?"</string>
+    <string name="vpn_phone_steps">"1. Telefonunuzu bu TV ile ayn? Wi-Fi a??na ba?lay?n.
+2. Kodu telefon kameras?yla taray?n.
+3. .conf dosyas?n? se?in ve TV'ye g?nder'e dokunun."</string>
+    <string name="vpn_phone_address">"Veya %1$s adresini a??n"</string>
+    <string name="vpn_phone_no_network">"Ev a?? bulunamad?. Bu TV'yi Wi-Fi'ye ba?lay?p tekrar deneyin."</string>
+</resources>

@@ -483,6 +483,7 @@
     <string name="settings_playback">הפעלה</string>
     <string name="settings_trakt_subtitle">פתיחת מסך החיבור ל-Trakt</string>
     <string name="settings_tracking_title">מעקב</string>
+    <string name="settings_vpn">VPN</string>
     <string name="settings_tracking_description">יש לחבר ספקי מעקב ולבחור איזה מהם מפעיל את הספרייה והמשך הצפייה שלך.</string>
     <string name="tracking_accounts_title">חשבונות</string>
     <string name="tracking_accounts_subtitle">חיבור וניהול שירותי מעקב</string>

@@ -482,6 +482,7 @@
     <string name="settings_playback">Oynatma</string>
     <string name="settings_trakt_subtitle">Trakt bağlantı ekranını aç</string>
     <string name="settings_tracking_title">Takip</string>
+    <string name="settings_vpn">VPN</string>
     <string name="settings_tracking_description">Takip servislerini bağla ve Kütüphane ile İzlemeye Devam Et için hangisinin kullanılacağını seç.</string>
     <string name="tracking_accounts_title">Hesaplar</string>
     <string name="tracking_accounts_subtitle">Takip servislerini bağla ve yönet</string>

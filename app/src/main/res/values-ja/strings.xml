@@ -479,6 +479,7 @@
     <string name="settings_playback">再生</string>
     <string name="settings_trakt_subtitle">Trakt接続画面を開く</string>
     <string name="settings_tracking_title">トラッキング</string>
+    <string name="settings_vpn">VPN</string>
     <string name="settings_tracking_description">トラッキングプロバイダーを接続し、ライブラリと視聴を続けるに使用するプロバイダーを選択します。</string>
     <string name="tracking_accounts_title">アカウント</string>
     <string name="tracking_accounts_subtitle">トラッキングサービスを接続・管理</string>
