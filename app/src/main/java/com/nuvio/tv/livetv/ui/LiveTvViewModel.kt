@@ -649,7 +649,7 @@ class LiveTvViewModel @Inject constructor(
         val i = show.episodes.indexOfFirst { it.id == recordingId }
         val next = show.episodes.getOrNull(i + 1) ?: return null
         if (!recorder.playlistFile(next).isFile) return null
-        return RecordingUpNext(next.id, next.title, com.nuvio.tv.livetv.record.episodeLabel(next))
+        return RecordingUpNext(next.id, next.title, com.nuvio.tv.livetv.record.episodeLabel(recorder.appContext, next))
     }
 
     /** Plays the episode offered at the end. False if it can't be played. */

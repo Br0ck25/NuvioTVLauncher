@@ -128,9 +128,9 @@ class RecordingsViewModel @Inject constructor(
         val at = scheduler.startsAt(s)
         val time = java.text.DateFormat.getTimeInstance(java.text.DateFormat.SHORT).format(java.util.Date(at))
         return when {
-            s.attempts > 0 -> "Not ready at the provider yet: trying again at $time (${s.attempts + 1} of ${LiveTvRecordingScheduler.MAX_TRIES + 1})"
-            at <= System.currentTimeMillis() -> "Saving from catch-up now"
-            else -> "Saved from catch-up at $time, after it ends"
+            s.attempts > 0 -> recorder.appContext.getString(R.string.iptv_rec_not_ready, time, s.attempts + 1, LiveTvRecordingScheduler.MAX_TRIES + 1)
+            at <= System.currentTimeMillis() -> recorder.appContext.getString(R.string.iptv_rec_saving_catchup_now)
+            else -> recorder.appContext.getString(R.string.iptv_rec_saved_catchup, time)
         }
     }
 
@@ -322,7 +322,7 @@ fun RecordingsScreen(
                 .padding(start = 56.dp, end = 48.dp, top = 32.dp)
         ) {
             Row(verticalAlignment = Alignment.Bottom) {
-                LiveText("Recordings", size = 30.sp, weight = FontWeight.Bold, modifier = Modifier.weight(1f))
+                LiveText(stringResource(R.string.iptv_guide_recordings), size = 30.sp, weight = FontWeight.Bold, modifier = Modifier.weight(1f))
                 LiveText(
                     "${sizeLabel(viewModel.freeBytes())} free",
                     size = 15.sp,
@@ -391,7 +391,7 @@ fun RecordingsScreen(
                         items(schedules, key = { it.id }) { s ->
                             InfoCard(
                                 title = s.title + (s.episode?.let { "  ·  $it" } ?: ""),
-                                line = withPlaylist(s.channel.name, s.channel.sourceId) + " · " + dateLabel(s.startMs),
+                                line = withPlaylist(s.channel.name, s.channel.sourceId) + " · " + dateLabel(androidx.compose.ui.platform.LocalContext.current, s.startMs),
                                 note = if (s.useCatchup) viewModel.catchupNote(s) else null,
                                 modifier = if (s.id == firstScheduleId) Modifier.focusRequester(first) else Modifier,
                                 onClick = { scheduleMenu = s }
@@ -506,7 +506,7 @@ fun RecordingsScreen(
                 )
                 LiveText(m.title, size = 13.sp, color = colors.TextSecondary)
                 ProgressLine(if (m.totalBytes > 0) m.doneBytes.toFloat() / m.totalBytes else 0f, colors.Secondary, Modifier.fillMaxWidth())
-                LiveText(sizeLabel(m.doneBytes) + " of " + sizeLabel(m.totalBytes), size = 12.sp, color = colors.TextTertiary)
+                LiveText(stringResource(R.string.iptv_rec_progress, sizeLabel(m.doneBytes), sizeLabel(m.totalBytes)), size = 12.sp, color = colors.TextTertiary)
             }
         }
     }
@@ -520,7 +520,7 @@ fun RecordingsScreen(
     scheduleMenu?.let { s ->
         RecordingActionDialog(
             title = s.title,
-            detail = s.channel.name + " · " + dateLabel(s.startMs) +
+            detail = s.channel.name + " · " + dateLabel(androidx.compose.ui.platform.LocalContext.current, s.startMs) +
                 (playlistOf(s.channel.sourceId)?.let { "\n" + stringResource(R.string.iptv_rec_recording_from_playlist, it) } ?: ""),
             actions = listOf(
                 stringResource(R.string.iptv_rec_cancel_recording) to { scheduleMenu = null; viewModel.scheduler.cancel(s.id) },
@@ -565,17 +565,17 @@ fun RecordingsScreen(
         val actions = buildList<Pair<String, () -> Unit>> {
             if (rec.status != RecordingStatus.FAILED) {
                 val resumeAt = viewModel.resume(rec)
-                add((if (resumeAt != null) "Resume" else "Play") to { menuFor = null; onPlay(viewModel.playUrl(rec), rec.title, posters[rec.id], rec.id, false) })
-                if (resumeAt != null) add("Play from Beginning" to { menuFor = null; onPlay(viewModel.playUrl(rec), rec.title, posters[rec.id], rec.id, true) })
+                add((if (resumeAt != null) stringResource(R.string.iptv_rec_resume_short) else stringResource(R.string.iptv_rec_play_short)) to { menuFor = null; onPlay(viewModel.playUrl(rec), rec.title, posters[rec.id], rec.id, false) })
+                if (resumeAt != null) add(stringResource(R.string.iptv_rec_play_from_beginning) to { menuFor = null; onPlay(viewModel.playUrl(rec), rec.title, posters[rec.id], rec.id, true) })
             }
-            if (rec.isRecording) add("Stop Recording" to { menuFor = null; viewModel.stop(rec) })
+            if (rec.isRecording) add(stringResource(R.string.iptv_ge_stop_recording) to { menuFor = null; viewModel.stop(rec) })
             if (!rec.isRecording && rec.status != RecordingStatus.FAILED) {
-                if (viewModel.isWatched(rec)) add("Mark as Unwatched" to { menuFor = null; viewModel.markUnwatched(listOf(rec)); resumeTick++ })
-                else add("Mark as Watched" to { menuFor = null; viewModel.markWatched(listOf(rec)); resumeTick++ })
-                if (RecordingStorage.choices(recContext).size > 1) add("Move To…" to { menuFor = null; movePick = listOf(rec) })
+                if (viewModel.isWatched(rec)) add(stringResource(R.string.iptv_rec_mark_unwatched) to { menuFor = null; viewModel.markUnwatched(listOf(rec)); resumeTick++ })
+                else add(stringResource(R.string.iptv_rec_mark_watched) to { menuFor = null; viewModel.markWatched(listOf(rec)); resumeTick++ })
+                if (RecordingStorage.choices(recContext).size > 1) add(stringResource(R.string.iptv_rec_move_to) to { menuFor = null; movePick = listOf(rec) })
             }
-            add("Information" to { menuFor = null; infoFor = rec })
-            add("Delete" to { menuFor = null; confirmDelete = rec })
+            add(stringResource(R.string.iptv_rec_information) to { menuFor = null; infoFor = rec })
+            add(stringResource(R.string.action_delete) to { menuFor = null; confirmDelete = rec })
         }
         RecordingActionDialog(title = rec.title, detail = rec.problem, actions = actions, onDismiss = { menuFor = null })
     }
@@ -583,24 +583,23 @@ fun RecordingsScreen(
         val here = recs.mapNotNull { viewModel.storageIdOf(it) }.distinct()
         val places = RecordingStorage.choices(recContext).filter { c -> recs.any { viewModel.storageIdOf(it) != c.id } }
         RecordingActionDialog(
-            title = if (recs.size == 1) "Move \"${recs.first().title}\"" else "Move ${recs.size} recordings",
-            detail = "Copies to the place you choose, checks the copy, then removes it from where it was. " +
-                "Leave the app open until it finishes.",
+            title = if (recs.size == 1) stringResource(R.string.iptv_rec_move_named, recs.first().title) else stringResource(R.string.iptv_rec_move_count, recs.size),
+            detail = stringResource(R.string.iptv_rec_move_detail),
             actions = places.map { c ->
                 val label = c.label + " · " + RecordingStorage.sizeLabel(c.freeBytes) + " free" +
                     if (here.size == 1 && here.first() == c.id) "  (already here)" else ""
                 label to { movePick = null; viewModel.moveTo(recs, c) }
-            } + listOf("Cancel" to { movePick = null }),
+            } + listOf(stringResource(R.string.action_cancel) to { movePick = null }),
             onDismiss = { movePick = null }
         )
     }
     confirmDeleteShow?.let { show ->
         RecordingActionDialog(
-            title = "Delete all of \"${show.title}\"?",
-            detail = "This deletes all ${show.episodes.size} episodes. It can't be undone.",
+            title = stringResource(R.string.iptv_rec_delete_show, show.title),
+            detail = stringResource(R.string.iptv_rec_delete_show_detail, show.episodes.size),
             actions = listOf(
-                "Cancel" to { confirmDeleteShow = null },
-                "Delete All" to { confirmDeleteShow = null; show.episodes.forEach { viewModel.delete(it) } }
+                stringResource(R.string.action_cancel) to { confirmDeleteShow = null },
+                stringResource(R.string.iptv_rec_delete_all) to { confirmDeleteShow = null; show.episodes.forEach { viewModel.delete(it) } }
             ),
             onDismiss = { confirmDeleteShow = null }
         )
@@ -626,11 +625,11 @@ fun RecordingsScreen(
     }
     confirmDelete?.let { rec ->
         RecordingActionDialog(
-            title = "Delete \"${rec.title}\"?",
-            detail = if (rec.isRecording) "It's still recording. This stops it and deletes what's been recorded." else "This can't be undone.",
+            title = stringResource(R.string.iptv_rec_delete_named, rec.title),
+            detail = if (rec.isRecording) stringResource(R.string.iptv_rec_delete_recording_detail) else stringResource(R.string.iptv_rec_delete_detail),
             actions = listOf(
-                "Cancel" to { confirmDelete = null },
-                "Delete" to { confirmDelete = null; viewModel.delete(rec) }
+                stringResource(R.string.action_cancel) to { confirmDelete = null },
+                stringResource(R.string.action_delete) to { confirmDelete = null; viewModel.delete(rec) }
             ),
             onDismiss = { confirmDelete = null }
         )
@@ -816,8 +815,8 @@ private fun RecordingNowCard(
                 LiveText(rec.title, size = 20.sp, weight = FontWeight.Bold, marquee = watchFocused || stopFocused, modifier = Modifier.weight(1f, fill = false))
             }
             val status = when {
-                rec.durationSec <= 0 -> "Starting…" + (rec.problem?.let { " ($it)" } ?: "")
-                else -> durationLabel(rec.durationSec) + " recorded" +
+                rec.durationSec <= 0 -> stringResource(R.string.iptv_rec_starting) + (rec.problem?.let { " ($it)" } ?: "")
+                else -> durationLabel(rec.durationSec) + " " + stringResource(R.string.iptv_rec_recorded) +
                     (if (rec.sizeBytes > 0) " · " + sizeLabel(rec.sizeBytes) else "") +
                     (rec.problem?.let { " · $it" } ?: "")
             }
@@ -829,9 +828,9 @@ private fun RecordingNowCard(
             ProgressLine(fraction, LIVE_RED, Modifier.fillMaxWidth(0.9f))
         }
         Spacer(Modifier.width(16.dp))
-        PillButton("Watch", primary = true, modifier = watchModifier, onFocus = { watchFocused = it }, onClick = onWatch, onMenu = onMenu)
+        PillButton(stringResource(R.string.iptv_rec_watch), primary = true, modifier = watchModifier, onFocus = { watchFocused = it }, onClick = onWatch, onMenu = onMenu)
         Spacer(Modifier.width(10.dp))
-        PillButton("Stop", primary = false, onFocus = { stopFocused = it }, onClick = onStop, onMenu = onMenu)
+        PillButton(stringResource(R.string.iptv_rec_stop), primary = false, onFocus = { stopFocused = it }, onClick = onStop, onMenu = onMenu)
     }
 }
 
@@ -924,6 +923,7 @@ internal fun RecordedCard(
     onMenu: () -> Unit
 ) {
     var focused by remember { mutableStateOf(false) }
+    val context = androidx.compose.ui.platform.LocalContext.current
     val colors = NuvioTheme.colors
     val shape = RoundedCornerShape(liveCorner())
     val failed = rec.status == RecordingStatus.FAILED
@@ -970,9 +970,9 @@ internal fun RecordedCard(
             marquee = focused
         )
         LiveText(
-            if (failed) rec.problem ?: "Couldn't be recorded"
+            if (failed) rec.problem ?: stringResource(R.string.iptv_rec_couldnt_record)
             else listOfNotNull(
-                shortDayLabel(rec.programStartMs.takeIf { it > 0 } ?: rec.startedAtMs),
+                shortDayLabel(context, rec.programStartMs.takeIf { it > 0 } ?: rec.startedAtMs),
                 durationLabel(rec.durationSec).takeIf { rec.durationSec > 0 },
                 sizeLabel(rec.sizeBytes).takeIf { rec.sizeBytes > 0 }
             ).joinToString(" · ") + (rec.problem?.let { " · $it" } ?: ""),
@@ -1025,20 +1025,20 @@ private fun RecordingInfoDialog(rec: LiveTvRecording, savedOn: String, playlist:
         day.format(Date(rec.programStartMs)) + ", " + time.format(Date(rec.programStartMs)) + " – " + time.format(Date(rec.programStopMs))
     else day.format(Date(rec.startedAtMs)) + ", " + time.format(Date(rec.startedAtMs))
     val rows = buildList {
-        add("Channel" to rec.channelName)
-        playlist?.let { add("Playlist" to it) }
-        rec.episode?.let { add("Episode" to it) }
-        add("Aired" to aired)
-        add("Length" to if (rec.durationSec > 0) durationLabel(rec.durationSec) + (if (rec.isRecording) " so far" else "") else "—")
-        add("Size" to if (rec.sizeBytes > 0) sizeLabel(rec.sizeBytes) + (if (rec.isRecording) " so far" else "") else "—")
-        add("Recorded" to when {
-            rec.isRecording && rec.fromCatchup -> "Saving from catch-up now"
-            rec.isRecording -> "Recording now"
-            rec.fromCatchup -> "From catch-up"
-            else -> "Live, as it aired"
+        add(stringResource(R.string.iptv_rec_channel) to rec.channelName)
+        playlist?.let { add(stringResource(R.string.iptv_ge_playlist) to it) }
+        rec.episode?.let { add(stringResource(R.string.iptv_rec_episodes) to it) }
+        add(stringResource(R.string.iptv_rec_aired) to aired)
+        add(stringResource(R.string.iptv_rec_length) to if (rec.durationSec > 0) durationLabel(rec.durationSec) + (if (rec.isRecording) stringResource(R.string.iptv_rec_so_far) else "") else "—")
+        add(stringResource(R.string.iptv_rec_size) to if (rec.sizeBytes > 0) sizeLabel(rec.sizeBytes) + (if (rec.isRecording) stringResource(R.string.iptv_rec_so_far) else "") else "—")
+        add(stringResource(R.string.iptv_rec_recorded) to when {
+            rec.isRecording && rec.fromCatchup -> stringResource(R.string.iptv_rec_saving_catchup_now)
+            rec.isRecording -> stringResource(R.string.iptv_rec_recording_now)
+            rec.fromCatchup -> stringResource(R.string.iptv_rec_from_catchup)
+            else -> stringResource(R.string.iptv_rec_live_as_aired)
         })
-        add("Saved on" to savedOn)
-        rec.problem?.let { add("Note" to it) }
+        add(stringResource(R.string.iptv_rec_saved_on) to savedOn)
+        rec.problem?.let { add(stringResource(R.string.iptv_rec_note) to it) }
     }
     com.nuvio.tv.livetv.ui.LiveDialog(onDismiss = onDismiss, width = 520.dp) {
         LiveText(rec.title, size = 20.sp, weight = FontWeight.Bold, maxLines = 2)
@@ -1051,7 +1051,7 @@ private fun RecordingInfoDialog(rec: LiveTvRecording, savedOn: String, playlist:
                 }
             }
             Spacer(Modifier.height(10.dp))
-            com.nuvio.tv.livetv.ui.MenuItem("Close", Modifier.focusRequester(first), onDismiss)
+            com.nuvio.tv.livetv.ui.MenuItem(stringResource(R.string.action_close), Modifier.focusRequester(first), onDismiss)
         }
     }
 }
@@ -1061,16 +1061,16 @@ private fun savedOnLabel(context: android.content.Context, dir: String): String 
     val choice = runCatching { RecordingStorage.choices(context) }.getOrDefault(emptyList())
         .filter { dir.startsWith(it.dir.absolutePath) }
         .maxByOrNull { it.dir.absolutePath.length }
-    return choice?.label ?: if (dir.startsWith("/storage/emulated") || dir.startsWith("/data/")) "This Device" else "A drive that isn't plugged in"
+    return choice?.label ?: if (dir.startsWith("/storage/emulated") || dir.startsWith("/data/")) context.getString(R.string.iptv_rec_this_device) else context.getString(R.string.iptv_rec_drive_unplugged)
 }
 
-internal fun dateLabel(ms: Long): String {
-    val day = shortDayLabel(ms)
+internal fun dateLabel(context: android.content.Context, ms: Long): String {
+    val day = shortDayLabel(context, ms)
     return day + ", " + SimpleDateFormat("h:mm a", Locale.getDefault()).format(Date(ms))
 }
 
 /** "Today", "Tomorrow", "Yesterday", the weekday within a week, else the date. */
-internal fun shortDayLabel(ms: Long): String {
+internal fun shortDayLabel(context: android.content.Context, ms: Long): String {
     val cal = java.util.Calendar.getInstance()
     fun dayIndex(t: Long): Long {
         cal.timeInMillis = t
@@ -1078,9 +1078,9 @@ internal fun shortDayLabel(ms: Long): String {
     }
     val diff = dayIndex(ms) - dayIndex(System.currentTimeMillis())
     return when {
-        diff == 0L -> "Today"
-        diff == 1L -> "Tomorrow"
-        diff == -1L -> "Yesterday"
+        diff == 0L -> context.getString(R.string.iptv_guide_today)
+        diff == 1L -> context.getString(R.string.iptv_guide_tomorrow)
+        diff == -1L -> context.getString(R.string.iptv_guide_yesterday)
         diff in -6L..6L -> SimpleDateFormat("EEE", Locale.getDefault()).format(Date(ms))
         else -> SimpleDateFormat("EEE d MMM", Locale.getDefault()).format(Date(ms))
     }
