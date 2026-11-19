@@ -473,6 +473,13 @@ internal fun LiveTvSettingsContent(
                         ) { viewModel.driveSync.backUpNow() }
                     },
                     onRestore = { dialog = LiveDialog.ConfirmRestore },
+                    onRestoreFile = { uri ->
+                        confirm(
+                            context.getString(R.string.iptv_settings_restore_from_file),
+                            context.getString(R.string.iptv_settings_restore_from_file_confirm),
+                            context.getString(R.string.iptv_settings_restore)
+                        ) { viewModel.restoreFromFile(uri) }
+                    },
                     onDisconnect = {
                         confirm(
                             context.getString(R.string.iptv_settings_disconnect_google_drive),
@@ -2313,9 +2320,13 @@ private fun DriveSyncCard(
     onAutoSync: (Boolean) -> Unit,
     onBackUp: () -> Unit,
     onRestore: () -> Unit,
+    onRestoreFile: (android.net.Uri) -> Unit,
     onDisconnect: () -> Unit
 ) {
     val context = LocalContext.current
+    val restoreFile = androidx.activity.compose.rememberLauncherForActivityResult(
+        androidx.activity.result.contract.ActivityResultContracts.OpenDocument()
+    ) { uri -> uri?.let(onRestoreFile) }
     val status = when {
         !state.available -> context.getString(R.string.iptv_settings_not_available_in_this_build)
         !state.connected -> context.getString(R.string.playback_afr_off)
@@ -2362,6 +2373,15 @@ private fun DriveSyncCard(
             state.message?.let {
                 Text(text = it, style = MaterialTheme.typography.bodySmall, color = NuvioTheme.colors.TextSecondary)
             }
+            SettingsActionRow(
+                context.getString(R.string.iptv_settings_restore_from_file),
+                context.getString(R.string.iptv_settings_restore_from_file_hint),
+                onClick = {
+                    restoreFile.launch(
+                        arrayOf("application/json", "text/json", "text/plain", "application/octet-stream", "*/*")
+                    )
+                }
+            )
         }
     }
 }

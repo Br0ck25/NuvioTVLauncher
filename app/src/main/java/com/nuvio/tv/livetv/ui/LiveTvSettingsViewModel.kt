@@ -1,6 +1,8 @@
 package com.nuvio.tv.livetv.ui
 
 import android.content.Context
+import android.net.Uri
+import android.widget.Toast
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
 import com.nuvio.tv.R
@@ -27,6 +29,7 @@ import kotlinx.coroutines.flow.map
 import kotlinx.coroutines.flow.stateIn
 import kotlinx.coroutines.launch
 import kotlinx.coroutines.withContext
+import org.json.JSONObject
 import javax.inject.Inject
 
 @HiltViewModel
@@ -83,6 +86,28 @@ class LiveTvSettingsViewModel @Inject constructor(
             prefs.updateSettings(transform)
             repository.refreshEpgOnly()
         }
+    }
+
+    /**
+     * Restores a Live TV backup copied from Google Drive (or another TV) as a .json file.
+     * Accepts both the Drive envelope (with `data` inside) and a bare setup object.
+     */
+    fun restoreFromFile(uri: Uri) = viewModelScope.launch {
+        val text = withContext(Dispatchers.IO) {
+            runCatching {
+                context.contentResolver.openInputStream(uri)?.bufferedReader()?.use { it.readText() }
+            }.getOrNull()
+        }
+        val root = runCatching { JSONObject(text.orEmpty()) }.getOrNull()
+        val data = root?.optJSONObject("data") ?: root
+        val message = when {
+            text == null -> R.string.iptv_settings_restore_file_failed
+            root == null || data == null -> R.string.iptv_settings_restore_file_invalid
+            !prefs.syncHasSources(data) -> R.string.iptv_settings_restore_file_empty
+            else -> runCatching { driveSync.applyLocally(data) }
+                .fold({ R.string.iptv_settings_restore_file_done }, { R.string.iptv_settings_restore_file_failed })
+        }
+        Toast.makeText(context, context.withAppLocale().getString(message), Toast.LENGTH_LONG).show()
     }
 
     fun addPlaylist(name: String, url: String, userAgent: String) =
