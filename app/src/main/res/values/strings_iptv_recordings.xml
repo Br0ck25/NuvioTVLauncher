@@ -94,4 +94,23 @@
 
     <string name="iptv_rec_notif_recording_description">"Shown while Live TV is recording"</string>
     <string name="iptv_rec_notif_recording_title">"Recording Live TV"</string>
+
+    <string name="iptv_rec_repeat">"Repeat"</string>
+    <string name="iptv_rec_repeat_never">"Never"</string>
+    <string name="iptv_rec_repeat_every_day">"Every day"</string>
+    <string name="iptv_rec_repeat_weekdays">"Weekdays"</string>
+    <string name="iptv_rec_repeat_weekends">"Weekends"</string>
+    <string name="iptv_rec_repeat_pick_days">"Pick days"</string>
+    <string name="iptv_rec_repeat_on">"Repeat on"</string>
+    <string name="iptv_rec_repeat_ok">"OK ticks a day"</string>
+    <string name="iptv_rec_pick_repeat_day">"Pick at least one day to repeat on."</string>
+    <string name="iptv_rec_ends_repeat">" Records every week on these days until you stop it in Recordings."</string>
+    <string name="iptv_rec_new_episodes">"New episodes"</string>
+    <string name="iptv_rec_series_detail_new_only">"Only airings the guide marks as NEW on %1$s (repeats of episodes already recorded are skipped). Stopping it also cancels the airings it set that haven't started; what's recorded is kept."</string>
+    <string name="iptv_rec_series_detail_all">"Every episode on %1$s (repeats of episodes already recorded are skipped). Stopping it also cancels the airings it set that haven't started; what's recorded is kept."</string>
+    <string name="iptv_rec_record_new_only">"Record: New Episodes Only"</string>
+    <string name="iptv_rec_record_all">"Record: All Episodes"</string>
+    <string name="iptv_rec_stop_repeating">"Stop Repeating"</string>
+    <string name="iptv_rec_repeat_detail">"%1$s ? %2$s at %3$s. Stopping it also cancels the airings it set that haven't started; what's recorded is kept."</string>
+    <string name="iptv_rec_done">"Done"</string>
 </resources>

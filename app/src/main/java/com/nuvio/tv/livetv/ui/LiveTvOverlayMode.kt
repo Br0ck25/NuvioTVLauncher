@@ -549,6 +549,7 @@ private fun OverlayModeContent(
             p.stopMs <= now -> if (CatchupUrlBuilder.isAvailable(ch, p, now)) stringResource(R.string.iptv_ge_save_to_recordings) else null
             else -> stringResource(R.string.iptv_guide_record)
         }
+        val recordSeriesLabel = stringResource(R.string.iptv_ge_record_series)
         val seriesLabel = if (p.stopMs <= now) null else {
             val n = com.nuvio.tv.livetv.data.LiveTvRepository.normalize(titleMarks(p.title).title)
             if (seriesList.any { it.channel.key == ch.key && it.norm == n }) stringResource(R.string.iptv_ge_stop_recording_series) else stringResource(R.string.iptv_ge_record_series)
@@ -569,6 +570,11 @@ private fun OverlayModeContent(
                 }
                 if (seriesLabel != null) MenuItem(seriesLabel, if (recordLabel == null) Modifier.focusRequester(first) else Modifier) {
                     com.nuvio.tv.livetv.record.LiveTvNotice.show(viewModel.toggleSeries(ch, p))
+                    recordMenu = null
+                    activity++
+                }
+                if (seriesLabel == recordSeriesLabel) MenuItem(stringResource(R.string.iptv_rec_record_new_only)) {
+                    com.nuvio.tv.livetv.record.LiveTvNotice.show(viewModel.toggleSeries(ch, p, newOnly = true))
                     recordMenu = null
                     activity++
                 }

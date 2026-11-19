@@ -132,6 +132,9 @@ internal class SportsFeeds {
     fun tsdbGameRaw(tsdbEventId: String): String =
         if (!SportsCatalog.SHARED_DATA_ENABLED) "" else get(DATA_URL + "sportsdb/games/$tsdbEventId.json")
 
+    /** Any of our own data files by its full address (see [DATA_URL]). */
+    fun dataRaw(url: String): String = get(url)
+
     // ------------------------------------------------------------------ the shared ESPN schedule cache
 
     /**
@@ -1020,6 +1023,7 @@ internal class SportsFeeds {
                 espnId = espnId,
                 endMs = endOf(session),
                 note = note,
+                sessions = sessions.map { EventSession(it.label, it.start, it.minutes, it.race) },
                 standings = runCatching { if (state == GameState.PRE && sessions.none { it.state != "pre" }) emptyList() else standingsOf(ev) }
                     .getOrDefault(emptyList())
             )

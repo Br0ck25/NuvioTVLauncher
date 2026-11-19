@@ -53,6 +53,8 @@ internal class MultiviewSessionCore(
     private val createPlayer: (Int, Int, () -> Unit) -> MultiviewPanePlayer,
     private val onChanged: () -> Unit,
     private val mayPlayChannel: (LiveChannel) -> Boolean = { true },
+    /** A pane that couldn't even be set up: the reason goes to the report instead of being lost. */
+    private val onSetupFailed: (Int, LiveChannel, Exception) -> Unit = { _, _, _ -> },
 ) {
     var layout: MultiviewLayout = initialLayout
         private set
@@ -266,11 +268,9 @@ internal class MultiviewSessionCore(
             player.prepare(channel)
             setupErrors[paneId] = null
         } catch (failure: Exception) {
-            // Kept in the log: the pane only says it couldn't start, and the reason (a stream
-            // format Multiview can't open, a protected stream) is what makes it fixable.
-            android.util.Log.w("Multiview", "Pane $paneId couldn't start \"${channel.name}\"", failure)
             releasePane(paneId)
             setupErrors[paneId] = "This TV couldn't start this stream. Try another channel."
+            runCatching { onSetupFailed(paneId, channel, failure) }
         }
     }
 

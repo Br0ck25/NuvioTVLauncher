@@ -75,7 +75,7 @@ class UpdateDownloadStore @Inject constructor(
         val destination = destinationFor(update)
         _progress.value = UpdateDownloadProgress(update.tag, 0L, update.assetSizeBytes)
         try {
-            apkDownloader.download(update.assetUrl, destination, update.assetSha256, update.assetSizeBytes) { downloaded, total ->
+            apkDownloader.download(update.assetUrl, destination, update.assetSha256) { downloaded, total ->
                 _progress.value = UpdateDownloadProgress(
                     tag = update.tag,
                     downloadedBytes = downloaded,

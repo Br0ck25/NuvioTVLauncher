@@ -88,6 +88,8 @@ class NuvioApplication : Application(), SingletonImageLoader.Factory {
         super.onCreate()
         SentryInitializer.start(this, sentrySettingsDataStore)
         PluginRuntimeHooks.onApplicationCreate(this)
+        // The DNS setting (Live TV settings), before any Live TV or player request.
+        com.nuvio.tv.livetv.data.ForkDns.init(this)
         androidTvChannelSyncService.start()
         serverUserStateProjection.start()
         // Load locale synchronously so it's available before Activity.attachBaseContext.

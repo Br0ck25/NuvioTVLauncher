@@ -249,45 +249,34 @@ internal object PlayerSubtitleUtils {
      * Merges simultaneously active unpositioned text cues into a single multi-line cue
      * to prevent Media3 SubtitlePainter from drawing colliding lines on top of each other.
      */
+    fun centerCue(cue: Cue): Cue {
+        if (cue.bitmap != null || cue.verticalType != Cue.TYPE_UNSET) return cue
+        val builder = cue.buildUpon()
+            .setPosition(Cue.DIMEN_UNSET)
+            .setPositionAnchor(Cue.TYPE_UNSET)
+            .setSize(Cue.DIMEN_UNSET)
+            .setTextAlignment(android.text.Layout.Alignment.ALIGN_CENTER)
+        val text = cue.text
+        if (text is android.text.Spanned) {
+            val spans = text.getSpans(0, text.length, android.text.style.AlignmentSpan::class.java)
+            if (spans.isNotEmpty()) {
+                val copy = android.text.SpannableStringBuilder(text)
+                spans.forEach { copy.removeSpan(it) }
+                builder.setText(copy)
+            }
+        }
+        return builder.build()
+    }
+
     fun mergeOverlappingCues(cues: List<Cue>): List<Cue> {
-        if (cues.size <= 1) {
-            val cue = cues.firstOrNull() ?: return cues
-            val text = cue.text
-            if (text == null || text is Spanned) return cues
-            val lines = text.toString().replace("\r\n", "\n").split('\n')
-            val unique = lines.filter { it.isNotBlank() }.distinct()
-            return if (unique.size == lines.size) {
-                cues
-            } else {
-                listOf(cue.buildUpon().setText(unique.joinToString("\n")).build())
-            }
-        }
-
-        // Two tracks, or a file with two events for the same line, can put the same text on
-        // screen twice. Drop an identical cue before merging, whether it is plain text or a
-        // styled/spanned cue, so the second copy cannot survive as an extra line.
-        var deduped: List<Cue> = cues
-        val seenTexts = HashSet<String>(cues.size)
-        var dropped = false
-        val uniqueCues = ArrayList<Cue>(cues.size)
-        for (cue in cues) {
-            val text = cue.text?.toString()?.trim()
-            if (text.isNullOrEmpty() || seenTexts.add(text)) {
-                uniqueCues.add(cue)
-            } else {
-                dropped = true
-            }
-        }
-        if (dropped) deduped = uniqueCues
-        if (deduped.size <= 1) return deduped
-
-        val unpositioned = deduped.filter { it.bitmap == null && it.line == Cue.DIMEN_UNSET }
-        if (unpositioned.size <= 1) return deduped
-        if (unpositioned.size < deduped.size) {
-            val positioned = deduped.filterNot { it.bitmap == null && it.line == Cue.DIMEN_UNSET }
+        if (cues.size <= 1) return cues
+        val unpositioned = cues.filter { it.bitmap == null && it.line == Cue.DIMEN_UNSET }
+        if (unpositioned.size <= 1) return cues
+        if (unpositioned.size < cues.size) {
+            val positioned = cues.filterNot { it.bitmap == null && it.line == Cue.DIMEN_UNSET }
             return positioned + mergeOverlappingCues(unpositioned)
         }
-        val validTexts = deduped.mapNotNull { it.text }.filter { it.isNotBlank() }
+        val validTexts = cues.mapNotNull { it.text }.filter { it.isNotBlank() }
         if (validTexts.isEmpty()) return emptyList()
 
         val hasSpanned = validTexts.any { it is Spanned }
@@ -299,13 +288,20 @@ internal object PlayerSubtitleUtils {
             }
             builder
         } else {
-            validTexts
-                .flatMap { it.toString().replace("\r\n", "\n").split('\n') }
-                .filter { it.isNotBlank() }
-                .distinct()
-                .joinToString("\n")
+            validTexts.distinct().joinToString("\n")
         }
-        return listOf(deduped[0].buildUpon().setText(mergedText).build())
+        val first = cues[0]
+        val sharesPosition = cues.all { it.position == first.position && it.positionAnchor == first.positionAnchor }
+        val base = when {
+            sharesPosition -> first
+            else -> cues.firstOrNull { it.position == Cue.DIMEN_UNSET }
+                ?: first.buildUpon()
+                    .setPosition(Cue.DIMEN_UNSET)
+                    .setPositionAnchor(Cue.TYPE_UNSET)
+                    .setTextAlignment(null)
+                    .build()
+        }
+        return listOf(base.buildUpon().setText(mergedText).build())
     }
 
     fun normalizeBottomCuePosition(cue: Cue): Cue {
@@ -322,30 +318,6 @@ internal object PlayerSubtitleUtils {
             .setLine(Cue.DIMEN_UNSET, Cue.TYPE_UNSET)
             .setLineAnchor(Cue.TYPE_UNSET)
             .build()
-    }
-
-    /**
-     * Puts a text cue back in the middle: drops the position, width and alignment the caption file
-     * asked for, so it's laid out like an ordinary subtitle.
-     */
-    fun centerCue(cue: Cue): Cue {
-        if (cue.bitmap != null || cue.verticalType != Cue.TYPE_UNSET) return cue
-        val builder = cue.buildUpon()
-            .setPosition(Cue.DIMEN_UNSET)
-            .setPositionAnchor(Cue.TYPE_UNSET)
-            .setSize(Cue.DIMEN_UNSET)
-            .setTextAlignment(android.text.Layout.Alignment.ALIGN_CENTER)
-        // Captions in TTML can also align inside the text itself.
-        val text = cue.text
-        if (text is android.text.Spanned) {
-            val spans = text.getSpans(0, text.length, android.text.style.AlignmentSpan::class.java)
-            if (spans.isNotEmpty()) {
-                val copy = android.text.SpannableStringBuilder(text)
-                spans.forEach { copy.removeSpan(it) }
-                builder.setText(copy)
-            }
-        }
-        return builder.build()
     }
 
     fun isAssOrSsaSelected(tracks: Tracks?, sidecarKey: String?): Boolean {
@@ -368,5 +340,6 @@ internal object PlayerSubtitleUtils {
             ?.any { codec ->
                 codec == MimeTypes.TEXT_SSA || codec == "s_text/ass" || codec == "s_text/ssa" || codec.endsWith("/x-ssa")
             } == true
+
     private const val BOTTOM_CUE_LINE_FRACTION = 0.6f
 }
