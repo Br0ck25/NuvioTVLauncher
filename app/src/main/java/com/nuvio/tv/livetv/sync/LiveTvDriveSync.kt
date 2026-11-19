@@ -125,14 +125,8 @@ class LiveTvDriveSync @Inject constructor(
     suspend fun backupInfo(): BackupInfo? = withContext(Dispatchers.IO) {
         runCatching {
             val token = token() ?: return@runCatching null
-            val fileId = fileId(token) ?: return@runCatching null
-            val json = JSONObject(execute(
-                Request.Builder()
-                    .url("https://www.googleapis.com/drive/v3/files/$fileId?alt=media")
-                    .header("Authorization", "Bearer $token")
-                    .get()
-                    .build()
-            ))
+            val text = readFile(token) ?: return@runCatching null
+            val json = JSONObject(text)
             BackupInfo(json.optLong("savedAt"), json.optString("device").ifBlank { "another TV" }, json.optString("deviceId") == deviceId)
         }.getOrNull()
     }
@@ -269,7 +263,15 @@ class LiveTvDriveSync @Inject constructor(
         accessToken = token.optString("access_token")
         accessTokenExpiresAt = System.currentTimeMillis() + token.optLong("expires_in", 3600) * 1000
         val email = emailFromIdToken(token.optString("id_token"))
-        store.edit().putString(KEY_REFRESH, refresh).putString(KEY_EMAIL, email).apply()
+        // A new sign-in can be a different Google account (or the old file was revoked): the
+        // cached file id belongs to the previous account, and reading it would fail with 403.
+        // Search again under the account that just signed in.
+        store.edit()
+            .putString(KEY_REFRESH, refresh)
+            .putString(KEY_EMAIL, email)
+            .remove(KEY_FILE_ID)
+            .remove(KEY_LAST_HASH)
+            .apply()
         _state.value = _state.value.copy(connected = true, email = email, signIn = null, message = null)
         if (importOnly) {
             // Only here to hand the backup over: don't restore it onto this TV or back anything up.
@@ -393,14 +395,7 @@ class LiveTvDriveSync @Inject constructor(
         val token = token() ?: return@withLock false
         _state.value = _state.value.copy(busy = true, message = if (force && !onlyIfExists) text(R.string.iptv_status_restoring) else null)
         val result = runCatching {
-            val fileId = fileId(token) ?: return@runCatching null
-            val text = execute(
-                Request.Builder()
-                    .url("https://www.googleapis.com/drive/v3/files/$fileId?alt=media")
-                    .header("Authorization", "Bearer $token")
-                    .get()
-                    .build()
-            )
+            val text = readFile(token) ?: return@runCatching null
             val json = JSONObject(text)
             val savedAt = json.optLong("savedAt")
             val fromThisTv = json.optString("deviceId") == deviceId
@@ -478,16 +473,8 @@ class LiveTvDriveSync @Inject constructor(
 
     /** The Drive copy, or null if there isn't one or it can't be read. */
     private suspend fun remoteCopy(token: String): JSONObject? = runCatching {
-        val fileId = fileId(token) ?: return null
-        JSONObject(
-            execute(
-                Request.Builder()
-                    .url("https://www.googleapis.com/drive/v3/files/$fileId?alt=media")
-                    .header("Authorization", "Bearer $token")
-                    .get()
-                    .build()
-            )
-        )
+        val text = readFile(token) ?: return null
+        JSONObject(text)
     }.getOrNull()
 
     /**
@@ -710,7 +697,11 @@ class LiveTvDriveSync @Inject constructor(
             return null
         }
         if (res.optString("error") == "invalid_grant") {
-            store.edit().remove(KEY_REFRESH).apply()
+            store.edit()
+                .remove(KEY_REFRESH)
+                .remove(KEY_FILE_ID)
+                .remove(KEY_LAST_HASH)
+                .apply()
             _state.value = _state.value.copy(connected = false, message = text(R.string.iptv_status_drive_access_removed))
             return null
         }
@@ -719,6 +710,27 @@ class LiveTvDriveSync @Inject constructor(
         accessTokenExpiresAt = System.currentTimeMillis() + res.optLong("expires_in", 3600) * 1000
         return access
     }
+
+    /** The backup file's contents; looks the file up again once if the cached id was stale. */
+    private suspend fun readFile(token: String): String? {
+        var id = fileId(token) ?: return null
+        return try {
+            readFileById(token, id)
+        } catch (e: Exception) {
+            // execute() drops the cached id on 403/404: search again, under this token.
+            if (store.getString(KEY_FILE_ID, null) != null) throw e
+            id = fileId(token) ?: return null
+            readFileById(token, id)
+        }
+    }
+
+    private suspend fun readFileById(token: String, id: String): String = execute(
+        Request.Builder()
+            .url("https://www.googleapis.com/drive/v3/files/$id?alt=media")
+            .header("Authorization", "Bearer $token")
+            .get()
+            .build()
+    )
 
     /** The backup file's id in the app data folder, or null if there isn't one yet. */
     private suspend fun fileId(token: String): String? {
@@ -751,8 +763,19 @@ class LiveTvDriveSync @Inject constructor(
     private suspend fun execute(request: Request): String = withContext(Dispatchers.IO) {
         http.newCall(request).execute().use { r ->
             val text = r.body?.string().orEmpty()
-            if (r.code == 404) store.edit().remove(KEY_FILE_ID).apply()
-            if (!r.isSuccessful) error("HTTP ${r.code}")
+            // 403 too: a cached file id from another account or an older app can no longer be
+            // read. Keep it and every restore would fail the same way; drop it so the next
+            // attempt searches for the file under the account that's connected now.
+            if (r.code == 404 || r.code == 403) store.edit().remove(KEY_FILE_ID).apply()
+            if (!r.isSuccessful) {
+                val reason = runCatching {
+                    val err = JSONObject(text).optJSONObject("error")
+                    err?.optJSONArray("errors")?.optJSONObject(0)?.optString("reason")
+                        ?.takeIf { it.isNotBlank() }
+                        ?: err?.optString("message")?.takeIf { it.isNotBlank() }
+                }.getOrNull()
+                error("HTTP ${r.code}" + (reason?.let { " ($it)" } ?: ""))
+            }
             text
         }
     }
