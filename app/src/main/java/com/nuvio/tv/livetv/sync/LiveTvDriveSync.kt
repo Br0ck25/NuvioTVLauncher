@@ -198,12 +198,14 @@ class LiveTvDriveSync @Inject constructor(
                     return@launch
                 }
                 mode = m
+                Log.w(TAG, "device/code ($m): error=${codes.optString("error")} desc=${codes.optString("error_description")} client=${clientId.take(12)}..${clientId.takeLast(24)} len=${clientId.length}")
                 if (codes.optString("error") != "invalid_scope") break
                 Log.w(TAG, "Scopes refused ($scopes): ${codes.optString("error_description")}")
             }
             val deviceCode = codes.optString("device_code")
             val userCode = codes.optString("user_code")
             if (deviceCode.isBlank() || userCode.isBlank()) {
+                Log.w(TAG, "sign-in code request failed: ${codes.optString("error")} (${codes.optString("error_description")})")
                 _state.value = _state.value.copy(busy = false, message = googleError(codes))
                 return@launch
             }
@@ -245,6 +247,7 @@ class LiveTvDriveSync @Inject constructor(
                         return@launch
                     }
                     else -> {
+                        Log.w(TAG, "token poll: error=${token.optString("error")} desc=${token.optString("error_description")} secretLen=${clientSecret.length}")
                         _state.value = _state.value.copy(signIn = null, message = googleError(token))
                         return@launch
                     }
