@@ -146,7 +146,7 @@ jobs:
           set_prop SPOTIFY_LINK_BASE_URL "${SPOTIFY_LINK_BASE_URL:-https://br0ck25.github.io/NuvioTVLauncher/spotify-link}"
           set_prop IMDB_RATINGS_API_BASE_URL "$IMDB_RATINGS_API_BASE_URL"
           set_prop IMDB_TAPFRAME_API_BASE_URL "$IMDB_TAPFRAME_API_BASE_URL"
-          set_prop INTRODB_API_URL "$INTRODB_API_URL"
+          set_prop INTRODB_API_URL "${INTRODB_API_URL:-https://api.introdb.app/}"
           # Names only, never values.
           echo "Keys set:"; sed -E 's/[[:space:]]*=.*//' local.properties | grep -v '^[[:space:]]*$' | sort -u
 
