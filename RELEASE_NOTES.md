@@ -1,9 +1,6 @@
-# Nuvio One 1.2.0-beta.1.17.2
+# Nuvio One 1.2.0-beta.1.17.2.1
 
-## OneTube
+## Live TV
 
-- The first poster and the row titles now clear Nuvio's side menu instead of being cut off at the left edge.
-
-## Playback
-
-- Fixed: pressing Back while watching could leave a black or grey screen and require restarting the app. The player now releases its video surface cleanly and returns to the previous screen.
+- Fixed: Restore from Google Drive could fail with HTTP 403 when the TV still had an old backup file ID. The saved ID is now reset on sign-in and after a failed read, the lookup is retried, and Google's actual reason is shown if it still fails.
+- New: Restore from Phone. Scan a QR code, choose the Live TV backup (.json) from Google Drive, Downloads or Files on your phone, and send it to the TV. The phone page shows the chosen file name before sending, and the file no longer needs to be copied to the TV.
