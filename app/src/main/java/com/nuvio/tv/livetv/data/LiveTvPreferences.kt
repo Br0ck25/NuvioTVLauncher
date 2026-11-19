@@ -560,11 +560,11 @@ class LiveTvPreferences @Inject constructor(
     // Playlists and guides are per profile too (each profile is a different user): the first profile keeps the original keys,
     // another profile starts with a copy of them (see seedProfileSettings) and then has its own.
     val playlists: Flow<List<PlaylistSource>> = kotlinx.coroutines.flow.combine(store.data, profileManager.activeProfileId) { p, id ->
-        playlistsMemo.get(p, null, id) { decodePlaylists(p[my(Keys.playlists, id)]) }
+        playlistsMemo.get(p, null, id) { decodePlaylists(p[my(Keys.playlists, id, groupsOf(p))]) }
     }.distinctUntilChanged()
 
     val epgSources: Flow<List<EpgSource>> = kotlinx.coroutines.flow.combine(store.data, profileManager.activeProfileId) { p, id ->
-        epgsMemo.get(p, null, id) { decodeEpgs(p[my(Keys.epgs, id)]) }
+        epgsMemo.get(p, null, id) { decodeEpgs(p[my(Keys.epgs, id, groupsOf(p))]) }
     }.distinctUntilChanged()
 
     val addonChannelSources: Flow<List<AddonChannelSource>> = store.data
@@ -654,7 +654,7 @@ class LiveTvPreferences @Inject constructor(
     }
 
     val settings: Flow<LiveTvSettings> = kotlinx.coroutines.flow.combine(store.data, profileManager.activeProfileId) { p0, id ->
-        settingsMemo.get(p0, null, id) { buildSettings(withMyMenu(settingsView(p0, id), id)) }
+        settingsMemo.get(p0, null, id) { buildSettings(withMyMenu(settingsView(profileView(p0, id), id), id)) }
     }.distinctUntilChanged()
 
     private fun buildSettings(p: Preferences): LiveTvSettings {
