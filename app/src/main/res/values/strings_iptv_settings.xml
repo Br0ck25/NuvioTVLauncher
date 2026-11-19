@@ -718,4 +718,13 @@
 2. Scan the code with your phone's camera.
 3. Choose the backup file and tap Restore TV setup."</string>
     <string name="iptv_settings_restore_phone_selected">"Selected file: %1$s"</string>
+    <string name="iptv_sync_host_title">"Setup Sync"</string>
+    <string name="iptv_sync_host_question">"Keep your Live TV setup on all your devices?"</string>
+    <string name="iptv_sync_host_help">"Your playlists (including their logins), guides, favorites, Sports and Calendar choices and Live TV settings are saved, so every TV you sign in on has the same setup. A phone keeps its own look and layout. You can change what's included, or turn it off, any time in Settings → Live TV → Setup Sync."</string>
+    <string name="iptv_sync_host_save">"Save My Setup"</string>
+    <string name="iptv_sync_host_not_now">"Not Now"</string>
+    <string name="iptv_sync_host_saved_title">"You have a saved Live TV setup"</string>
+    <string name="iptv_sync_host_choose_help">"This TV has its own setup too. Combine keeps the playlists and guides from both. Use the saved setup replaces what is on this TV."</string>
+    <string name="iptv_sync_host_combine">"Combine Both"</string>
+    <string name="iptv_sync_host_use_saved">"Use the Saved Setup"</string>
 </resources>

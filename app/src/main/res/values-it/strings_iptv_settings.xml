@@ -718,4 +718,13 @@
 2. Scansiona il codice con la fotocamera del telefono.
 3. Scegli il file di backup e tocca Ripristina configurazione TV."</string>
     <string name="iptv_settings_restore_phone_selected">"File scelto: %1$s"</string>
+    <string name="iptv_sync_host_title">"Sincronizzazione delle impostazioni"</string>
+    <string name="iptv_sync_host_question">"Mantenere la configurazione della TV in diretta su tutti i tuoi dispositivi?"</string>
+    <string name="iptv_sync_host_help">"Le tue playlist (inclusi i relativi accessi), le guide, i preferiti, le scelte di Sport e Calendario e le impostazioni della TV in diretta vengono salvate, quindi ogni TV a cui accedi ha la stessa configurazione. Un telefono mantiene il proprio aspetto e il proprio layout. Puoi modificare ciò che è incluso o disattivarlo in qualsiasi momento in Impostazioni → TV in diretta → Configurazione sincronizzazione."</string>
+    <string name="iptv_sync_host_save">"Salva la mia configurazione"</string>
+    <string name="iptv_sync_host_not_now">"Non adesso"</string>
+    <string name="iptv_sync_host_saved_title">"Hai una configurazione TV in diretta salvata"</string>
+    <string name="iptv_sync_host_choose_help">"Anche questo televisore ha la propria configurazione. Combina mantiene le playlist e le guide di entrambi. Usa la configurazione salvata sostituisce ciò che è presente su questo televisore."</string>
+    <string name="iptv_sync_host_combine">"Combina entrambi"</string>
+    <string name="iptv_sync_host_use_saved">"Utilizza l'impostazione salvata"</string>
 </resources>

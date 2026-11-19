@@ -485,7 +485,7 @@ fun MusicScreen(
                             viewModel.openDetail(
                                 browseId = "account:playlist:${playlist.id}",
                                 title = playlist.title,
-                                subtitle = "Playlist",
+                                subtitle = context.getString(R.string.music_screen_playlist),
                                 thumbnailUrl = playlist.thumbnailUrl,
                                 type = BrowseType.PLAYLIST
                             )
@@ -508,7 +508,7 @@ fun MusicScreen(
                             viewModel.openDetail(
                                 browseId = artist.browseId,
                                 title = artist.name,
-                                subtitle = "Artist",
+                                subtitle = context.getString(R.string.music_p2_artist),
                                 thumbnailUrl = artist.thumbnailUrl,
                                 type = BrowseType.ARTIST
                             )
@@ -558,7 +558,7 @@ fun MusicScreen(
                             viewModel.openDetail(
                                 browseId = "account:playlist:${playlist.id}",
                                 title = playlist.title,
-                                subtitle = "YouTube Music account",
+                                subtitle = context.getString(R.string.music_screen_youtube_account),
                                 thumbnailUrl = playlist.thumbnailUrl,
                                 type = BrowseType.PLAYLIST
                             )

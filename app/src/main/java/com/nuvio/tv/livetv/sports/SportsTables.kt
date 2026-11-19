@@ -35,6 +35,8 @@ import androidx.compose.runtime.remember
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.res.stringResource
+import com.nuvio.tv.R
 import androidx.compose.ui.draw.clip
 import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.ui.layout.ContentScale
@@ -198,8 +200,8 @@ internal fun TablesPage(
                 return@Column
             }
             when {
-                table == null && leagueId in failed -> LiveText("Couldn't get this table right now. It'll try again when you come back.", color = SportsLook.Dim, size = 12.sp, modifier = Modifier.padding(top = 14.dp, start = 4.dp))
-                table == null -> LiveText("Getting the table…", color = SportsLook.Dim, size = 12.sp, modifier = Modifier.padding(top = 14.dp, start = 4.dp))
+                table == null && leagueId in failed -> LiveText(stringResource(R.string.iptv_sports_table_failed), color = SportsLook.Dim, size = 12.sp, modifier = Modifier.padding(top = 14.dp, start = 4.dp))
+                table == null -> LiveText(stringResource(R.string.iptv_sports_getting_table), color = SportsLook.Dim, size = 12.sp, modifier = Modifier.padding(top = 14.dp, start = 4.dp))
                 else -> TableView(
                     table = table,
                     view = view,
@@ -549,7 +551,7 @@ private fun TeamSummary(table: Standings, row: StandingsRow, mine: Boolean, view
             OneLine(text, Color(0xFFC9CCD6), 12.sp)
         }
         Spacer(Modifier.height(4.dp))
-        LiveText("OK on a team: its card", color = SportsLook.Faint, size = 10.sp)
+        LiveText(stringResource(R.string.iptv_sports_ok_team_card), color = SportsLook.Faint, size = 10.sp)
     }
 }
 
@@ -734,7 +736,7 @@ internal fun TeamCard(
             }
             Spacer(Modifier.height(10.dp))
         }
-        if (games == null) LiveText("Getting their games…", color = SportsLook.Dim, size = 12.sp)
+        if (games == null) LiveText(stringResource(R.string.iptv_sports_getting_their_games), color = SportsLook.Dim, size = 12.sp)
         live?.let { ev ->
             CardHeading("NOW")
             CardGame(ev, team, hide, now, use24h, live = true)
@@ -748,7 +750,7 @@ internal fun TeamCard(
             CardGame(ev, team, hide, now, use24h)
         }
         if (games != null && live == null && last.isEmpty() && next == null) {
-            LiveText("No games of theirs known right now.", color = SportsLook.Dim, size = 12.sp)
+            LiveText(stringResource(R.string.iptv_sports_no_games_known), color = SportsLook.Dim, size = 12.sp)
         }
         Spacer(Modifier.height(12.dp))
         androidx.compose.foundation.layout.FlowRow(horizontalArrangement = Arrangement.spacedBy(8.dp), verticalArrangement = Arrangement.spacedBy(8.dp)) {

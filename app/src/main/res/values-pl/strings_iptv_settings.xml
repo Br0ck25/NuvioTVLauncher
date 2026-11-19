@@ -718,4 +718,13 @@
 2. Zeskanuj kod aparatem telefonu.
 3. Wybierz plik kopii i dotknij Przywróć konfigurację TV."</string>
     <string name="iptv_settings_restore_phone_selected">"Wybrany plik: %1$s"</string>
+    <string name="iptv_sync_host_title">"Skonfiguruj synchronizację"</string>
+    <string name="iptv_sync_host_question">"Zachować konfigurację telewizji na żywo na wszystkich swoich urządzeniach?"</string>
+    <string name="iptv_sync_host_help">"Twoje playlisty (łącznie z loginami), przewodniki, ulubione, wybory sportowe i kalendarzowe oraz ustawienia telewizji na żywo są zapisywane, więc każdy telewizor, na którym się zalogujesz, ma tę samą konfigurację. Telefon zachowuje swój własny wygląd i układ. Możesz w dowolnej chwili zmienić zawartość usługi lub ją wyłączyć, wybierając Ustawienia → Telewizja na żywo → Synchronizacja ustawień."</string>
+    <string name="iptv_sync_host_save">"Zapisz moją konfigurację"</string>
+    <string name="iptv_sync_host_not_now">"Nie teraz"</string>
+    <string name="iptv_sync_host_saved_title">"Masz zapisaną konfigurację telewizji na żywo"</string>
+    <string name="iptv_sync_host_choose_help">"Ten telewizor ma również własną konfigurację. Combine przechowuje listy odtwarzania i przewodniki z obu. Użyj zapisanej konfiguracji, zastępując konfigurację znajdującą się w tym telewizorze."</string>
+    <string name="iptv_sync_host_combine">"Połącz oba"</string>
+    <string name="iptv_sync_host_use_saved">"Użyj zapisanej konfiguracji"</string>
 </resources>

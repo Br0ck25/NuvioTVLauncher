@@ -370,7 +370,7 @@ private fun WebDavBrowser(
         if (browseUrl != rootUrl) {
             WebDavPill(
                 icon = Icons.AutoMirrored.Filled.ArrowBack,
-                label = "Back",
+                label = stringResource(R.string.music_back),
                 onClick = onBack
             )
         }

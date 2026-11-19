@@ -718,4 +718,13 @@
 2. Scan de code met de camera van je telefoon.
 3. Kies het back-upbestand en tik op TV-instellingen herstellen."</string>
     <string name="iptv_settings_restore_phone_selected">"Gekozen bestand: %1$s"</string>
+    <string name="iptv_sync_host_title">"Synchronisatie instellen"</string>
+    <string name="iptv_sync_host_question">"Uw Live TV-installatie op al uw apparaten behouden?"</string>
+    <string name="iptv_sync_host_help">"Je afspeellijsten (inclusief hun logins), gidsen, favorieten, sport- en agendakeuzes en live tv-instellingen worden opgeslagen, zodat elke tv waarop je inlogt dezelfde instellingen heeft. Een telefoon behoudt zijn eigen uiterlijk en indeling. Je kunt op elk gewenst moment wijzigen wat er inbegrepen is, of uitschakelen via Instellingen → Live tv → Synchronisatie instellen."</string>
+    <string name="iptv_sync_host_save">"Bewaar mijn instellingen"</string>
+    <string name="iptv_sync_host_not_now">"Niet nu"</string>
+    <string name="iptv_sync_host_saved_title">"Je hebt een opgeslagen Live TV-opstelling"</string>
+    <string name="iptv_sync_host_choose_help">"Ook deze tv heeft zijn eigen opstelling. Combineren bewaart de afspeellijsten en gidsen van beide. Gebruik de opgeslagen instellingen en vervangt wat er op deze tv staat."</string>
+    <string name="iptv_sync_host_combine">"Combineer beide"</string>
+    <string name="iptv_sync_host_use_saved">"Gebruik de opgeslagen configuratie"</string>
 </resources>

@@ -57,6 +57,7 @@ import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.graphicsLayer
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextOverflow
+import androidx.compose.ui.res.pluralStringResource
 import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.unit.Dp
 import androidx.compose.ui.unit.dp
@@ -471,8 +472,7 @@ internal fun MusicLibraryScreen(
                                 LibraryTile(
                                     artworkUrl = playlist.songs.firstOrNull()?.thumbnailUrl,
                                     title = playlist.name,
-                                    subtitle = "${playlist.songs.size} track" +
-                                        if (playlist.songs.size == 1) "" else "s",
+                                    subtitle = pluralStringResource(R.plurals.music_track_count, playlist.songs.size, playlist.songs.size),
                                     onClick = { onOpenPlaylist(playlist) }
                                 )
                             } + LibraryTile(

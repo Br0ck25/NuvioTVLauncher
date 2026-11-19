@@ -718,4 +718,13 @@
 2. Scannez le code avec l’appareil photo de votre téléphone.
 3. Choisissez le fichier de sauvegarde et touchez Restaurer la configuration TV."</string>
     <string name="iptv_settings_restore_phone_selected">"Fichier choisi : %1$s"</string>
+    <string name="iptv_sync_host_title">"Synchronisation de configuration"</string>
+    <string name="iptv_sync_host_question">"Conserver votre configuration Live TV sur tous vos appareils ?"</string>
+    <string name="iptv_sync_host_help">"Vos listes de lecture (y compris leurs connexions), guides, favoris, choix de sports et de calendrier et paramètres de télévision en direct sont enregistrés, de sorte que chaque téléviseur sur lequel vous vous connectez a la même configuration. Un téléphone conserve son propre look et sa propre disposition. Vous pouvez modifier ce qui est inclus ou le désactiver à tout moment dans Paramètres → Live TV → Configuration de la synchronisation."</string>
+    <string name="iptv_sync_host_save">"Enregistrer ma configuration"</string>
+    <string name="iptv_sync_host_not_now">"Pas maintenant"</string>
+    <string name="iptv_sync_host_saved_title">"Vous avez une configuration Live TV enregistrée"</string>
+    <string name="iptv_sync_host_choose_help">"Ce téléviseur a également sa propre configuration. Combine conserve les listes de lecture et les guides des deux. Utiliser la configuration enregistrée remplace ce qui se trouve sur ce téléviseur."</string>
+    <string name="iptv_sync_host_combine">"Combiner les deux"</string>
+    <string name="iptv_sync_host_use_saved">"Utiliser la configuration enregistrée"</string>
 </resources>

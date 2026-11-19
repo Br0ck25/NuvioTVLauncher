@@ -159,7 +159,7 @@ private fun MoodList(
         }
         if (state.releases.isNotEmpty()) {
             item(key = "explore-releases-header") {
-                MusicSectionHeader(title = "New releases")
+                MusicSectionHeader(title = stringResource(R.string.music_explore_new_releases))
             }
             itemsIndexed(
                 items = state.releases,
@@ -173,7 +173,7 @@ private fun MoodList(
         }
         if (state.charts.isNotEmpty()) {
             item(key = "explore-charts-header") {
-                MusicSectionHeader(title = "Charts")
+                MusicSectionHeader(title = stringResource(R.string.music_explore_charts))
             }
             itemsIndexed(
                 items = state.charts,

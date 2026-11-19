@@ -161,8 +161,8 @@ private fun MusicHomeFeed(
         if (curation.quickPicks.isNotEmpty()) {
             item(key = "curated-quick") {
                 MusicCuratedSongsRow(
-                    title = "Quick picks",
-                    subtitle = "New finds mixed with songs you love — fresh every day",
+                    title = stringResource(R.string.music_home_quick_picks),
+                    subtitle = stringResource(R.string.music_home_quick_picks_sub),
                     songs = curation.quickPicks,
                     onPlay = onPlayCurated
                 )
@@ -176,7 +176,7 @@ private fun MusicHomeFeed(
         if (jumpBackSongs.isNotEmpty()) {
             item(key = "curated-recents") {
                 MusicCuratedSongsRow(
-                    title = "Jump back in",
+                    title = stringResource(R.string.music_home_jump_back),
                     songs = jumpBackSongs,
                     onPlay = onPlayCurated
                 )
@@ -185,8 +185,8 @@ private fun MusicHomeFeed(
         if (curation.onRepeat.isNotEmpty()) {
             item(key = "curated-repeat") {
                 MusicCuratedSongsRow(
-                    title = "On repeat",
-                    subtitle = "Songs you've played most this month",
+                    title = stringResource(R.string.music_home_on_repeat),
+                    subtitle = stringResource(R.string.music_home_on_repeat_sub),
                     songs = curation.onRepeat,
                     onPlay = onPlayCurated
                 )
@@ -204,8 +204,8 @@ private fun MusicHomeFeed(
         if (curation.forgotten.isNotEmpty()) {
             item(key = "curated-forgotten") {
                 MusicCuratedSongsRow(
-                    title = "Forgotten favourites",
-                    subtitle = "Songs you liked but haven't played in a while",
+                    title = stringResource(R.string.music_home_forgotten),
+                    subtitle = stringResource(R.string.music_home_forgotten_sub),
                     songs = curation.forgotten,
                     onPlay = onPlayCurated
                 )
@@ -308,8 +308,8 @@ private fun MusicCuratedMixesRow(
     if (mixes.isEmpty()) return
     Column(Modifier.fillMaxWidth()) {
         MusicSectionHeader(
-            title = "Your daily mixes",
-            subtitle = "Your favourite artists, blended with music like theirs"
+            title = stringResource(R.string.music_home_daily_mixes),
+            subtitle = stringResource(R.string.music_home_daily_mixes_sub)
         )
         Spacer(Modifier.height(10.dp))
         LazyRow(
@@ -341,7 +341,7 @@ private fun MusicCuratedPlaylistsRow(
 ) {
     if (playlists.isEmpty()) return
     Column(Modifier.fillMaxWidth()) {
-        MusicSectionHeader(title = "Your playlists")
+        MusicSectionHeader(title = stringResource(R.string.music_home_your_playlists))
         Spacer(Modifier.height(10.dp))
         LazyRow(
             contentPadding = PaddingValues(horizontal = 27.dp),
@@ -371,7 +371,7 @@ private fun MusicCuratedAccountPlaylistsRow(
 ) {
     if (playlists.isEmpty()) return
     Column(Modifier.fillMaxWidth()) {
-        MusicSectionHeader(title = "From your account")
+        MusicSectionHeader(title = stringResource(R.string.music_home_from_account))
         Spacer(Modifier.height(10.dp))
         LazyRow(
             contentPadding = PaddingValues(horizontal = 27.dp),

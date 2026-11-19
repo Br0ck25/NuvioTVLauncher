@@ -662,13 +662,13 @@ private fun PartyPendingRow(
         }
         PartyMiniAction(
             icon = Icons.Default.Check,
-            label = "Approve ${request.song.title}",
+            label = stringResource(R.string.music_party_approve, request.song.title),
             tint = MusicPalette.accentTeal,
             onClick = onApprove
         )
         PartyMiniAction(
             icon = Icons.Default.Close,
-            label = "Decline ${request.song.title}",
+            label = stringResource(R.string.music_party_decline, request.song.title),
             tint = MusicPalette.accentCoral,
             onClick = onReject
         )

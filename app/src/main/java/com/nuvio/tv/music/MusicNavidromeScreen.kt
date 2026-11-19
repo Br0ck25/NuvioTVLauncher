@@ -552,14 +552,14 @@ private fun MusicLibraryContent(
     ) {
         NavidromeSectionPill(
             icon = Icons.Default.Album,
-            label = "Albums",
+            label = stringResource(R.string.music_navidrome_albums),
             selected = section == NavidromeSection.ALBUMS,
             count = albums.size,
             onClick = { onSection(NavidromeSection.ALBUMS) }
         )
         NavidromeSectionPill(
             icon = Icons.Default.PlaylistPlay,
-            label = "Playlists",
+            label = stringResource(R.string.music_navidrome_playlists),
             selected = section == NavidromeSection.PLAYLISTS,
             count = playlists.size,
             onClick = { onSection(NavidromeSection.PLAYLISTS) }
@@ -735,7 +735,7 @@ private fun PlaylistDetailContent(
         }
         NavidromePill(
             icon = Icons.Default.PlayArrow,
-            label = "Play",
+            label = stringResource(R.string.music_play),
             primary = true,
             onClick = { if (detail.songs.isNotEmpty()) onPlay(detail.songs, 0) }
         )

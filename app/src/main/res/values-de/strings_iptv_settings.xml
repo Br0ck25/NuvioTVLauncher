@@ -718,4 +718,13 @@
 2. Scanne den Code mit der Kamera deines Telefons.
 3. Wähle die Sicherungsdatei und tippe auf TV-Setup wiederherstellen."</string>
     <string name="iptv_settings_restore_phone_selected">"Gewählte Datei: %1$s"</string>
+    <string name="iptv_sync_host_title">"Synchronisierung einrichten"</string>
+    <string name="iptv_sync_host_question">"Ihr Live-TV-Setup auf allen Ihren Geräten behalten?"</string>
+    <string name="iptv_sync_host_help">"Ihre Wiedergabelisten (einschließlich ihrer Anmeldungen), Guides, Favoriten, Sport- und Kalenderauswahl sowie Live-TV-Einstellungen werden gespeichert, sodass jeder Fernseher, auf dem Sie sich anmelden, über die gleichen Einstellungen verfügt. Ein Telefon behält sein eigenes Aussehen und Layout. Sie können jederzeit unter Einstellungen → Live-TV → Synchronisierung einrichten ändern, was enthalten ist, oder es deaktivieren."</string>
+    <string name="iptv_sync_host_save">"Speichern Sie mein Setup"</string>
+    <string name="iptv_sync_host_not_now">"Nicht jetzt"</string>
+    <string name="iptv_sync_host_saved_title">"Sie haben ein gespeichertes Live-TV-Setup"</string>
+    <string name="iptv_sync_host_choose_help">"Auch dieser Fernseher verfügt über ein eigenes Setup. Combine behält die Playlists und Guides von beiden. Das gespeicherte Setup ersetzt das, was auf diesem Fernseher vorhanden ist."</string>
+    <string name="iptv_sync_host_combine">"Kombinieren Sie beides"</string>
+    <string name="iptv_sync_host_use_saved">"Verwenden Sie das gespeicherte Setup"</string>
 </resources>
