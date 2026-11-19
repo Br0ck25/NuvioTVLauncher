@@ -68,4 +68,9 @@
     <string name="iptv_cal_saved_channels">"Сохранённые каналы"</string>
     <string name="iptv_cal_saved_help">"Каналы, которые Календарь должен использовать для сети или передачи. OK забывает один: Календарь снова выбирает сам."</string>
     <string name="iptv_cal_nothing_saved">"Ничего не сохранено."</string>
+    <string name="iptv_cal_ring_bell">"Позвонить в колокольчик"</string>
+    <string name="iptv_cal_not_found_follow">"Не удалось найти «%1$s» для отслеживания"</string>
+    <string name="iptv_cal_show_again">"OK: снова показать в Календаре"</string>
+    <string name="iptv_cal_final">"ЗАВЕРШЁН"</string>
+    <string name="iptv_cal_today">"СЕГОДНЯ"</string>
 </resources>

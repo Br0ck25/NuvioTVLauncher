@@ -10,4 +10,6 @@
     <string name="iptv_od_loading_details">"Загрузка подробностей."</string>
     <string name="iptv_od_choose_version">"Выбрать версию"</string>
     <string name="iptv_od_no_episodes">"Провайдер не указал ни одной серии."</string>
+    <string name="iptv_od_multiple_versions">"У вашего провайдера есть несколько версий этого фильма или сериала."</string>
+    <string name="iptv_od_default_sort">"По умолчанию (%1$s)"</string>
 </resources>

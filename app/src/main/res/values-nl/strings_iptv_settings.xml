@@ -727,4 +727,7 @@
     <string name="iptv_sync_host_choose_help">"Ook deze tv heeft zijn eigen opstelling. Combineren bewaart de afspeellijsten en gidsen van beide. Gebruik de opgeslagen instellingen en vervangt wat er op deze tv staat."</string>
     <string name="iptv_sync_host_combine">"Combineer beide"</string>
     <string name="iptv_sync_host_use_saved">"Gebruik de opgeslagen configuratie"</string>
+    <string name="iptv_settings_live_tv_badge_help">"Toon de Live TV-badge op het pictogram"</string>
+    <string name="iptv_settings_badge_on">"Aan: het Nuvio One Live TV-pictogram en de banner in de door u gekozen kleur"</string>
+    <string name="iptv_settings_badge_off">"Uit: Nuvio One-pictogrammen, in de door u gekozen kleur"</string>
 </resources>

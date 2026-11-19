@@ -177,8 +177,7 @@ internal fun MusicDownloadsScreen(
                 Spacer(Modifier.height(14.dp))
                 DownloadsNotice(
                     icon = Icons.Default.Download,
-                    text = "Preparing ${downloads.starting.size} track" +
-                        if (downloads.starting.size == 1) "…" else "s…"
+                    text = stringResource(R.string.music_downloads_preparing, downloads.starting.size)
                 )
             }
 

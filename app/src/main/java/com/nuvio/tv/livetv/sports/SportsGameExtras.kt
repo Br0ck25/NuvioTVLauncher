@@ -231,7 +231,7 @@ private fun ChanceBar(ev: SportsEvent, x: GameExtras, awayColor: Color, homeColo
 private fun TablePanel(x: GameExtras, opens: Boolean) {
     Row(verticalAlignment = Alignment.CenterVertically) {
         LiveText((x.tableTitle ?: "TABLE").uppercase(Locale.ROOT), color = SportsLook.Dim, size = 9.sp, weight = FontWeight.Black, modifier = Modifier.weight(1f))
-        if (opens) LiveText("OK · FULL TABLE ›", color = NuvioTheme.colors.Secondary, size = 9.sp, weight = FontWeight.Black)
+        if (opens) LiveText(stringResource(R.string.iptv_sports_full_table), color = NuvioTheme.colors.Secondary, size = 9.sp, weight = FontWeight.Black)
     }
     Spacer(Modifier.height(5.dp))
     Row(Modifier.fillMaxWidth().padding(horizontal = 4.dp)) {
@@ -341,8 +341,8 @@ private fun ChancePanel(ev: SportsEvent, x: GameExtras, awayColor: Color, homeCo
         }
         Spacer(Modifier.height(3.dp))
         Row(Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.SpaceBetween) {
-            LiveText("START", color = SportsLook.Dim, size = 8.sp, weight = FontWeight.Black)
-            LiveText(if (ev.state == GameState.LIVE) "NOW" else "END", color = SportsLook.Dim, size = 8.sp, weight = FontWeight.Black)
+            LiveText(stringResource(R.string.iptv_sports_start_label), color = SportsLook.Dim, size = 8.sp, weight = FontWeight.Black)
+            LiveText(if (ev.state == GameState.LIVE) stringResource(R.string.iptv_sports_now_label) else stringResource(R.string.iptv_sports_end_label), color = SportsLook.Dim, size = 8.sp, weight = FontWeight.Black)
         }
     } else if (home != null && away != null) {
         ChanceBar(ev, x, awayColor, homeColor)

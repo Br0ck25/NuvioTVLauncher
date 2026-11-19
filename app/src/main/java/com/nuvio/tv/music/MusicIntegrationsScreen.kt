@@ -87,7 +87,7 @@ internal fun MusicIntegrationsScreen(
         androidx.activity.result.contract.ActivityResultContracts.StartActivityForResult()
     ) { result ->
         if (result.resultCode == android.app.Activity.RESULT_OK) {
-            spotifyWebMessage = "Spotify connected."
+            spotifyWebMessage = context.getString(R.string.music_integrations_spotify_connected)
         }
     }
     val closeFocus = remember { FocusRequester() }
@@ -183,15 +183,15 @@ internal fun MusicIntegrationsScreen(
                     tint = MusicPalette.accentCoral,
                     title = stringResource(R.string.music_integrations_lastfm),
                     subtitle = when {
-                        lastFm.configured && lastFm.enabled -> "Scrobbling as ${lastFm.username}."
-                        lastFm.configured -> "Signed in as ${lastFm.username}, currently off."
+                        lastFm.configured && lastFm.enabled -> context.getString(R.string.music_integrations_scrobbling_as, lastFm.username)
+                        lastFm.configured -> context.getString(R.string.music_integrations_signed_in_off, lastFm.username)
                         !lastFm.available -> stringResource(R.string.music_integrations_lastfm_unavailable)
                         else -> stringResource(R.string.music_integrations_lastfm_help)
                     }
                 ) {
                     if (lastFm.configured) {
                         Text(
-                            text = "Signed in as ${lastFm.username}.",
+                            text = stringResource(R.string.music_integrations_signed_in_as, lastFm.username),
                             color = MusicPalette.textSecondary,
                             fontSize = 12.sp
                         )
@@ -205,9 +205,9 @@ internal fun MusicIntegrationsScreen(
                                 onClick = {
                                     MusicScrobbler.setEnabled(context, !lastFm.enabled)
                                     lastFmMessage = if (lastFm.enabled) {
-                                        "Scrobbling paused."
+                                        context.getString(R.string.music_integrations_scrobbling_paused)
                                     } else {
-                                        "Scrobbling is on."
+                                        context.getString(R.string.music_integrations_scrobbling_on)
                                     }
                                 }
                             )
@@ -218,7 +218,7 @@ internal fun MusicIntegrationsScreen(
                                     MusicScrobbler.logout(context)
                                     lastFmUsername = ""
                                     lastFmPassword = ""
-                                    lastFmMessage = "Signed out of Last.fm."
+                                    lastFmMessage = context.getString(R.string.music_integrations_signed_out)
                                     lastFmError = null
                                 }
                             )
@@ -268,12 +268,12 @@ internal fun MusicIntegrationsScreen(
                                                 .fold(
                                                     onSuccess = { account ->
                                                         lastFmPassword = ""
-                                                        lastFmMessage = "Signed in as $account. Scrobbling is on."
+                                                        lastFmMessage = context.getString(R.string.music_integrations_signed_in_scrobbling, account)
                                                         lastFmSigningIn = false
                                                     },
                                                     onFailure = { error ->
                                                         lastFmError = error.message
-                                                            ?: "Last.fm rejected the sign-in."
+                                                            ?: context.getString(R.string.music_integrations_lastfm_rejected)
                                                         lastFmSigningIn = false
                                                     }
                                                 )
@@ -304,8 +304,8 @@ internal fun MusicIntegrationsScreen(
                     title = stringResource(R.string.music_integrations_sources),
                     subtitle = when {
                         addons.isEmpty() -> stringResource(R.string.music_integrations_addons_help)
-                        addons.count { it.enabled } == 0 -> "${addons.size} addon(s), all turned off."
-                        else -> "${addons.count { it.enabled }} addon(s) connected."
+                        addons.count { it.enabled } == 0 -> context.getString(R.string.music_integrations_addons_off, addons.size)
+                        else -> context.getString(R.string.music_integrations_addons_connected, addons.count { it.enabled })
                     }
                 ) {
                     IntegrationPill(
@@ -359,7 +359,7 @@ internal fun MusicIntegrationsScreen(
                                 onClick = {
                                     MusicSpotifyWebSession.clear(context)
                                     MusicSpotifyWebSync.reset()
-                                    spotifyWebMessage = "Spotify disconnected."
+                                    spotifyWebMessage = context.getString(R.string.music_integrations_spotify_disconnected)
                                 }
                             )
                         }
@@ -431,7 +431,7 @@ internal fun MusicIntegrationsScreen(
                                     importError = context.getString(R.string.music_integrations_paste_spotify_link)
                                 } else if (!importing) {
                                     importing = true
-                                    importProgress = "Reading playlist…"
+                                    importProgress = context.getString(R.string.music_integrations_reading_playlist)
                                     importResult = null
                                     importError = null
                                     scope.launch {
@@ -440,15 +440,18 @@ internal fun MusicIntegrationsScreen(
                                             spotifyUrl,
                                             onProgress = { done, total ->
                                                 withContext(Dispatchers.Main) {
-                                                    importProgress = "Matched $done of $total tracks…"
+                                                    importProgress = context.getString(R.string.music_integrations_matched_tracks, done, total)
                                                 }
                                             }
                                         ).fold(
                                             onSuccess = { result ->
                                                 importProgress = null
-                                                importResult = "Imported ${result.imported} of " +
-                                                    "${result.total} tracks into " +
-                                                    "“${result.playlistName}”."
+                                                importResult = context.getString(
+                                                    R.string.music_integrations_imported_tracks,
+                                                    result.imported,
+                                                    result.total,
+                                                    result.playlistName
+                                                )
                                                 importing = false
                                             },
                                             onFailure = { error ->

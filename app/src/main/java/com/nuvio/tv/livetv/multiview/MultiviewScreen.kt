@@ -469,7 +469,7 @@ fun MultiviewScreen(
         ) {
             Column(Modifier.padding(end = 4.dp)) {
                 LiveText(if (startOnSports) stringResource(R.string.iptv_mv_sports) else stringResource(R.string.iptv_settings_live_tv), size = 9.sp, color = NuvioTheme.colors.TextSecondary)
-                LiveText("Multiview", size = 13.sp, weight = FontWeight.ExtraBold)
+                LiveText(stringResource(R.string.iptv_gg_multiview), size = 13.sp, weight = FontWeight.ExtraBold)
             }
             MultiviewLayoutButton(multiviewLayoutTitle(state.layout), state.layout) { layoutOpen = true }
             MultiviewBarDivider()

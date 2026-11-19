@@ -68,4 +68,6 @@
         <item quantity="one">"%1$d lijst"</item>
         <item quantity="other">"%1$d lijsten"</item>
     </plurals>
+    <string name="iptv_player_provider_stopped">"De aanbieder is gestopt met het verzenden van deze show. Probeer het opnieuw of ga naar een ander punt"</string>
+    <string name="iptv_player_recording_failed">"Deze opname kan niet worden afgespeeld"</string>
 </resources>

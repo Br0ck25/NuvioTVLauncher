@@ -188,7 +188,7 @@ private fun MoodList(
         if (state.extrasLoading && state.releases.isEmpty() && state.charts.isEmpty()) {
             item(key = "explore-extras-loading") {
                 Text(
-                    text = "Loading new releases and charts…",
+                    text = stringResource(R.string.music_explore_loading),
                     color = MusicPalette.textSecondary,
                     fontSize = 10.5.sp,
                     modifier = Modifier.padding(horizontal = 26.dp)

@@ -411,7 +411,7 @@ internal fun MultiviewChannelPicker(
                     .fillMaxHeight().padding(10.dp).width(PickerWidth).multiviewPanel(panelBackground)
             ) {
                 Column(Modifier.fillMaxWidth().padding(start = 18.dp, end = 18.dp, top = 12.dp, bottom = 4.dp)) {
-                    LiveText("Pane ${paneId + 1}", size = 10.sp, color = NuvioTheme.colors.TextSecondary)
+                    LiveText(stringResource(R.string.iptv_mv_pane, paneId + 1), size = 10.sp, color = NuvioTheme.colors.TextSecondary)
                     LiveText(title, size = 17.sp, weight = FontWeight.SemiBold)
                 }
                 Column(
@@ -879,8 +879,8 @@ internal fun MultiviewLayoutPicker(
                     .multiviewPanel(panelBackground)
             ) {
                 Column(Modifier.fillMaxWidth().padding(start = 18.dp, end = 18.dp, top = 12.dp, bottom = 6.dp)) {
-                    LiveText("MULTIVIEW", size = 10.sp, color = NuvioTheme.colors.TextSecondary)
-                    LiveText("Layout", size = 17.sp, weight = FontWeight.SemiBold)
+                    LiveText(stringResource(R.string.iptv_gg_multiview), size = 10.sp, color = NuvioTheme.colors.TextSecondary)
+                    LiveText(stringResource(R.string.iptv_mv_layout), size = 17.sp, weight = FontWeight.SemiBold)
                 }
                 Box(
                     Modifier.weight(1f).fillMaxWidth()
@@ -922,13 +922,13 @@ internal fun MultiviewLayoutPicker(
                                     LiveText(choice.title, color = colors.text, size = 15.sp, weight = FontWeight.SemiBold)
                                     LiveText(choice.subtitle, color = NuvioTheme.colors.TextSecondary, size = 11.sp)
                                 }
-                                if (choice.layout == current) SportsBadge("CURRENT", MultiviewNeutralTag, NuvioTheme.colors.TextPrimary)
+                                if (choice.layout == current) SportsBadge(stringResource(R.string.iptv_mv_current), MultiviewNeutralTag, NuvioTheme.colors.TextPrimary)
                             }
                         }
                     }
                 }
                 Box(Modifier.fillMaxWidth().padding(horizontal = 18.dp, vertical = 10.dp)) {
-                    LiveText("OK: apply · Back: close", size = 10.sp, color = NuvioTheme.colors.TextSecondary)
+                    LiveText(stringResource(R.string.iptv_mv_ok_apply_back), size = 10.sp, color = NuvioTheme.colors.TextSecondary)
                 }
             }
         }

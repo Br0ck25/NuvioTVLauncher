@@ -113,4 +113,17 @@
     <string name="iptv_sports_other_streams">"Andere stromen"</string>
     <string name="iptv_sports_pane">"Paneel"</string>
     <string name="iptv_sports_start_label">"BEGIN"</string>
+    <string name="iptv_sports_replays_none">"Herhalingen en hoogtepunten zijn afkomstig van sport-add-ons die deze aanbieden (HighFly Premium, StremVerse…). Geen van uw add-ons doet dat nog: installeer er een in Add-ons en ze worden hier weergegeven."</string>
+    <string name="iptv_sports_no_replay_in">"Nog geen herhaling van deze game in %1$s. Ze worden vaak een paar uur nadat het spel is afgelopen, toegevoegd."</string>
+    <string name="iptv_sports_no_replay_addons">"Er is nog geen herhaling van deze game in je sport-add-ons. Ze worden vaak een paar uur nadat het spel is afgelopen, toegevoegd."</string>
+    <string name="iptv_sports_checked_from">"Je kanalen worden gecontroleerd voor deze game vanaf %1$s. Weet je waar het aan ligt? Kies nu een kanaal en het wordt onthouden."</string>
+    <string name="iptv_sports_not_in_guides">"Momenteel niet in de gidsen van je kanalen. Gidsen worden gedurende de dag bijgewerkt, dus kom later terug bij het begin. Weet je waar het aan ligt? Kies een kanaal en het wordt onthouden."</string>
+    <string name="iptv_sports_last_5">"LAATSTE 5"</string>
+    <string name="iptv_sports_game_info">"Spelinfo ›"</string>
+    <string name="iptv_sports_now_label">"NU"</string>
+    <string name="iptv_sports_end_label">"EINDE"</string>
+    <string name="iptv_sports_channels_from">"Kanalen van"</string>
+    <string name="iptv_sports_search_hint">"Zoek teams en competities"</string>
+    <string name="iptv_sports_person_hint">"Een speler, coureur, vechter of team"</string>
+    <string name="iptv_sports_last_met">"Laatst ontmoet %1$s"</string>
 </resources>

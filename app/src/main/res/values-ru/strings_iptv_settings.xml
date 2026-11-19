@@ -727,4 +727,7 @@
     <string name="iptv_sync_host_choose_help">"У этого телевизора тоже есть свои настройки. Комбайн сохраняет плейлисты и руководства от обоих. Использование сохраненной настройки заменяет то, что установлено на этом телевизоре."</string>
     <string name="iptv_sync_host_combine">"Объедините оба"</string>
     <string name="iptv_sync_host_use_saved">"Используйте сохраненную настройку"</string>
+    <string name="iptv_settings_live_tv_badge_help">"Показывать значок Live TV на иконке"</string>
+    <string name="iptv_settings_badge_on">"Включено: значок Nuvio One Live TV и баннер выбранного цвета."</string>
+    <string name="iptv_settings_badge_off">"Выкл.: значки Nuvio One выбранного цвета."</string>
 </resources>

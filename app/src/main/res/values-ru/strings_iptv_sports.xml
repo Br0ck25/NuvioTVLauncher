@@ -113,4 +113,17 @@
     <string name="iptv_sports_other_streams">"Другие потоки"</string>
     <string name="iptv_sports_pane">"Панель"</string>
     <string name="iptv_sports_start_label">"НАЧИНАТЬ"</string>
+    <string name="iptv_sports_replays_none">"Повторы и основные моменты поступают из спортивных дополнений, которые их предлагают (HighFly Premium, StremVerse…). Ни одно из ваших дополнений пока не работает: установите одно в разделе «Дополнения», и оно отобразится здесь."</string>
+    <string name="iptv_sports_no_replay_in">"Повтора этой игры в %1$s пока нет. Они часто добавляются через несколько часов после окончания игры."</string>
+    <string name="iptv_sports_no_replay_addons">"Повтора этой игры в ваших спортивных дополнениях пока нет. Они часто добавляются через несколько часов после окончания игры."</string>
+    <string name="iptv_sports_checked_from">"Ваши каналы проверены на наличие этой игры от %1$s. Знаешь, где это? Выберите канал сейчас, и он запомнится."</string>
+    <string name="iptv_sports_not_in_guides">"Сейчас его нет в руководствах ваших каналов. Руководства обновляются в течение дня, поэтому заходите ближе к началу. Знаешь, где это? Выберите канал, и он запомнится."</string>
+    <string name="iptv_sports_last_5">"ПОСЛЕДНИЕ 5"</string>
+    <string name="iptv_sports_game_info">"Информация об игре ›"</string>
+    <string name="iptv_sports_now_label">"СЕЙЧАС"</string>
+    <string name="iptv_sports_end_label">"КОНЕЦ"</string>
+    <string name="iptv_sports_channels_from">"Каналы из"</string>
+    <string name="iptv_sports_search_hint">"Поиск команд и лиг"</string>
+    <string name="iptv_sports_person_hint">"Игрок, водитель, боец ​​или команда"</string>
+    <string name="iptv_sports_last_met">"Последняя встреча %1$s"</string>
 </resources>

@@ -727,4 +727,7 @@
     <string name="iptv_sync_host_choose_help">"Bu televizyonun da kendi kurulumu var. Birleştir, her ikisinden de çalma listelerini ve kılavuzları saklar. Kaydedilen kurulumu kullanın, bu TV'dekinin yerine geçer."</string>
     <string name="iptv_sync_host_combine">"İkisini Birleştir"</string>
     <string name="iptv_sync_host_use_saved">"Kayıtlı Kurulumu Kullan"</string>
+    <string name="iptv_settings_live_tv_badge_help">"Simgede Canlı TV rozetini göster"</string>
+    <string name="iptv_settings_badge_on">"Açık: Seçtiğiniz renkte Nuvio One Live TV simgesi ve başlığı"</string>
+    <string name="iptv_settings_badge_off">"Kapalı: Seçtiğiniz renkte Nuvio One simgeleri"</string>
 </resources>

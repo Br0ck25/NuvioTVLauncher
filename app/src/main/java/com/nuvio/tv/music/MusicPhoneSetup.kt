@@ -3,7 +3,9 @@ package com.nuvio.tv.music
 import android.content.Context
 import android.os.Handler
 import android.os.Looper
+import com.nuvio.tv.R
 import com.nuvio.tv.core.server.DeviceIpAddress
+import com.nuvio.tv.core.util.withAppLocale
 import fi.iki.elonen.NanoHTTPD
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Dispatchers
@@ -52,7 +54,7 @@ object MusicPhoneSetup {
         if (server != null) {
             closeServer()
             _state.update {
-                it.copy(running = false, error = "The phone link expired. Show a new QR code.")
+                it.copy(running = false, error = appContext?.withAppLocale()?.getString(R.string.music_link_expired))
             }
         }
     }
@@ -75,7 +77,7 @@ object MusicPhoneSetup {
                 server = null
                 _state.value = MusicPhoneSetupState(
                     target = target,
-                    error = "No network address found. Connect the TV to Wi-Fi or Ethernet."
+                    error = app.withAppLocale().getString(R.string.music_no_network)
                 )
             } else {
                 _state.value = MusicPhoneSetupState(
@@ -90,7 +92,7 @@ object MusicPhoneSetup {
             server = null
             _state.value = MusicPhoneSetupState(
                 target = target,
-                error = it.message ?: "Couldn't start the phone setup page."
+                error = it.message ?: app.withAppLocale().getString(R.string.music_phone_setup_failed)
             )
         }
         return _state.value
@@ -129,10 +131,10 @@ object MusicPhoneSetup {
                 result.map {
                     val url = MusicWebDav.config.value.url
                     _state.update {
-                        it.copy(connected = true, message = "Connected to $url")
+                        it.copy(connected = true, message = app.withAppLocale().getString(R.string.music_phone_connected_to, url))
                     }
                     handler.postDelayed({ closeServer() }, 1_500L)
-                    "Connected to $url"
+                    app.withAppLocale().getString(R.string.music_phone_connected_to, url)
                 }
             }
             MusicPhoneTarget.LASTFM -> {
@@ -144,10 +146,10 @@ object MusicPhoneSetup {
                     )
                 }.map { account ->
                     _state.update {
-                        it.copy(connected = true, message = "Signed in to Last.fm as $account.")
+                        it.copy(connected = true, message = app.withAppLocale().getString(R.string.music_phone_lastfm_signed_in, account))
                     }
                     handler.postDelayed({ closeServer() }, 1_500L)
-                    "Signed in to Last.fm as $account. Scrobbling is on."
+                    app.withAppLocale().getString(R.string.music_phone_lastfm_signed_in, account)
                 }
             }
             MusicPhoneTarget.SPOTIFY -> {

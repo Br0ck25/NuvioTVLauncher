@@ -53,6 +53,7 @@ import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.res.stringResource
 import com.nuvio.tv.R
+import com.nuvio.tv.core.util.withAppLocale
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.focus.FocusRequester
 import androidx.compose.ui.focus.focusRequester
@@ -151,7 +152,7 @@ internal fun MusicNavidromeScreen(
         detailError = null
         withContext(Dispatchers.IO) { MusicNavidrome.album(album.id) }.fold(
             onSuccess = { albumDetail = it },
-            onFailure = { detailError = it.message ?: "Couldn't load that album." }
+            onFailure = { detailError = it.message ?: context.withAppLocale().getString(R.string.music_navidrome_album_failed) }
         )
         detailLoading = false
     }
@@ -163,7 +164,7 @@ internal fun MusicNavidromeScreen(
         detailError = null
         withContext(Dispatchers.IO) { MusicNavidrome.playlist(playlist.id) }.fold(
             onSuccess = { playlistDetail = it },
-            onFailure = { detailError = it.message ?: "Couldn't load that playlist." }
+            onFailure = { detailError = it.message ?: context.withAppLocale().getString(R.string.music_navidrome_playlist_failed) }
         )
         detailLoading = false
     }
@@ -256,7 +257,7 @@ internal fun MusicNavidromeScreen(
                                     showServerSetup = false
                                     done()
                                 },
-                                onFailure = { failed(it.message ?: "Couldn't connect.") }
+                                onFailure = { failed(it.message ?: context.getString(R.string.music_navidrome_connect_failed)) }
                             )
                         }
                     }
@@ -285,7 +286,7 @@ internal fun MusicNavidromeScreen(
                         val detail = playlistDetail
                         if (detail != null && detail.songs.isNotEmpty()) {
                             MusicLibrary.importPlaylist(detail.playlist.name, detail.songs)
-                            savedMessage = "Saved “${detail.playlist.name}” to Library."
+                            savedMessage = context.getString(R.string.music_navidrome_saved, detail.playlist.name)
                         }
                     }
                 )
@@ -994,7 +995,7 @@ private fun NavidromeBackButton(onClick: () -> Unit) {
     ) {
         Icon(
             Icons.AutoMirrored.Filled.ArrowBack,
-            contentDescription = "Back",
+            contentDescription = stringResource(R.string.music_back),
             tint = if (focused) MusicPalette.background else MusicPalette.text,
             modifier = Modifier.size(19.dp)
         )

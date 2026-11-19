@@ -191,7 +191,7 @@ internal fun MultiviewPane(
             )
         }
         if (empty) {
-            LiveText("P${pane.id + 1}", Modifier.align(Alignment.TopStart).padding(10.dp).clip(RoundedCornerShape(5.dp))
+            LiveText(stringResource(R.string.iptv_mv_pane, pane.id + 1), Modifier.align(Alignment.TopStart).padding(10.dp).clip(RoundedCornerShape(5.dp))
                 .background(Color.White.copy(alpha = 0.08f)).padding(horizontal = 6.dp, vertical = 2.dp),
                 color = NuvioTheme.colors.TextSecondary, size = 9.sp, weight = FontWeight.ExtraBold)
         }
@@ -245,7 +245,7 @@ internal fun MultiviewPane(
                 verticalAlignment = Alignment.CenterVertically,
             ) {
                 Icon(Icons.Default.VolumeUp, contentDescription = null, tint = NuvioTheme.colors.OnSecondary, modifier = Modifier.size(11.dp))
-                LiveText("SOUND", color = NuvioTheme.colors.OnSecondary, size = 9.sp, weight = FontWeight.Black)
+                LiveText(stringResource(R.string.iptv_mv_sound), color = NuvioTheme.colors.OnSecondary, size = 9.sp, weight = FontWeight.Black)
             }
         }
         if (showChannelLabel && pane.channelKey != null) {

@@ -595,7 +595,7 @@ fun CalendarScreen(
                                     onClick = { viewModel.unhide(h); focusAfterRemoving(null) }
                                 ) { focused ->
                                     LiveText(h.name.ifBlank { h.id }, size = 17.sp, weight = FontWeight.SemiBold, color = focusedTextColor(focused), modifier = Modifier.weight(1f))
-                                    LiveText("OK: show it on the Calendar again", size = 12.sp, color = focusedTextColor(focused).copy(alpha = 0.7f))
+                                    LiveText(stringResource(R.string.iptv_cal_show_again), size = 12.sp, color = focusedTextColor(focused).copy(alpha = 0.7f))
                                 }
                             }
                         }
@@ -820,8 +820,8 @@ private fun Hero(
         verticalArrangement = Arrangement.spacedBy(6.dp)
     ) {
         if (e == null) {
-            LiveText("Calendar", size = 30.sp, weight = FontWeight.ExtraBold)
-            LiveText(if (loading) "Looking up your shows…" else "Nothing to show here yet", size = 15.sp, color = NuvioTheme.colors.TextSecondary)
+            LiveText(stringResource(R.string.iptv_cal_tab_calendar), size = 30.sp, weight = FontWeight.ExtraBold)
+            LiveText(if (loading) stringResource(R.string.iptv_cal_looking_up) else stringResource(R.string.iptv_od_nothing), size = 15.sp, color = NuvioTheme.colors.TextSecondary)
             return@Column
         }
         val today = LocalDate.now()
@@ -1164,7 +1164,7 @@ private fun GameArt(e: CalendarEntry, big: Boolean, modifier: Modifier, standalo
             }
             when {
                 e.live && standalone -> LiveTag("LIVE", LIVE_RED, Color.White)
-                finished && !compact -> LiveText("FINAL", size = if (big) 14.sp else 10.sp, weight = FontWeight.Bold, color = Color.White.copy(alpha = 0.85f), shadow = true)
+                finished && !compact -> LiveText(stringResource(R.string.iptv_cal_final), size = if (big) 14.sp else 10.sp, weight = FontWeight.Bold, color = Color.White.copy(alpha = 0.85f), shadow = true)
                 else -> Unit
             }
         }
@@ -1196,10 +1196,10 @@ private fun GameHubCard(e: CalendarEntry, use24h: Boolean, live: Boolean, st: Ca
                 if (st != CalendarLiveStatus()) { LiveBadges(st, compact = true); Spacer(Modifier.width(4.dp)) }
                 when {
                     live -> LiveText("● LIVE", modifier = Modifier.clip(shape).background(SportsLook.Live).padding(horizontal = 5.dp, vertical = 1.dp), color = Color.White, size = 8.sp, weight = FontWeight.Black)
-                    finished -> LiveText("FINAL", modifier = Modifier.clip(shape).background(Color.White.copy(alpha = 0.12f)).padding(horizontal = 5.dp, vertical = 1.dp), color = Color.White, size = 8.sp, weight = FontWeight.Black)
+                    finished -> LiveText(stringResource(R.string.iptv_cal_final), modifier = Modifier.clip(shape).background(Color.White.copy(alpha = 0.12f)).padding(horizontal = 5.dp, vertical = 1.dp), color = Color.White, size = 8.sp, weight = FontWeight.Black)
                     e.day == LocalDate.now() -> {
                         val ring = NuvioTheme.colors.Secondary
-                        LiveText("TODAY", modifier = Modifier.clip(shape).background(ring.copy(alpha = 0.16f)).border(1.dp, ring.copy(alpha = 0.6f), shape).padding(horizontal = 5.dp, vertical = 1.dp), color = Color.White, size = 8.sp, weight = FontWeight.Black)
+                            LiveText(stringResource(R.string.iptv_cal_today), modifier = Modifier.clip(shape).background(ring.copy(alpha = 0.16f)).border(1.dp, ring.copy(alpha = 0.6f), shape).padding(horizontal = 5.dp, vertical = 1.dp), color = Color.White, size = 8.sp, weight = FontWeight.Black)
                     }
                     else -> Unit
                 }
@@ -1956,7 +1956,7 @@ private fun IconPill(modifier: Modifier = Modifier, onClick: () -> Unit) {
             .combinedClickable(interactionSource = remember { MutableInteractionSource() }, indication = null, onClick = onClick),
         contentAlignment = Alignment.Center
     ) {
-        androidx.tv.material3.Icon(Icons.Default.Refresh, contentDescription = "Refresh", tint = colors.text, modifier = Modifier.size(16.dp))
+        androidx.tv.material3.Icon(Icons.Default.Refresh, contentDescription = stringResource(R.string.iptv_cal_refresh), tint = colors.text, modifier = Modifier.size(16.dp))
     }
 }
 

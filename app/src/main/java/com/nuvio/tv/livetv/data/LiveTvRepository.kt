@@ -2160,7 +2160,7 @@ class LiveTvRepository @Inject constructor(
         }
         val addonSources = allAddonSources.filter { it.enabled }
         if (addonSources.isNotEmpty()) {
-            setStatus(loading = true, message = "Reading channels from your add-ons…")
+            setStatus(loading = true, message = context.withAppLocale().getString(R.string.iptv_repository_status_reading_addon_channels))
             val loaded = addonChannels.load(addonSources, force = forceAddon)
             val now = System.currentTimeMillis()
             val selectedIds = addonSources.mapTo(HashSet()) { it.id }
@@ -2202,7 +2202,7 @@ class LiveTvRepository @Inject constructor(
     fun refreshAddonChannelsNow() {
         scope.launch {
             mutex.withLock {
-                setStatus(loading = true, message = "Reading channels from your add-ons…")
+                setStatus(loading = true, message = context.withAppLocale().getString(R.string.iptv_repository_status_reading_addon_channels))
                 runCatching {
                     addonChannels.invalidate()
                     buildChannels(forceAddon = true)

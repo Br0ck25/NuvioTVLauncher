@@ -113,4 +113,17 @@
     <string name="iptv_sports_other_streams">"Inne strumienie"</string>
     <string name="iptv_sports_pane">"Szkło"</string>
     <string name="iptv_sports_start_label">"START"</string>
+    <string name="iptv_sports_replays_none">"Powtórki i najważniejsze momenty pochodzą z dodatków sportowych, które je oferują (HighFly Premium, StremVerse…). Żaden z Twoich dodatków jeszcze tego nie robi: zainstaluj jeden w Dodatkach, a pojawią się tutaj."</string>
+    <string name="iptv_sports_no_replay_in">"Nie ma jeszcze powtórki tej gry w %1$s. Często dodawane są kilka godzin po zakończeniu gry."</string>
+    <string name="iptv_sports_no_replay_addons">"Nie ma jeszcze powtórki tej gry w Twoich dodatkach sportowych. Często dodawane są kilka godzin po zakończeniu gry."</string>
+    <string name="iptv_sports_checked_from">"Twoje kanały zostały sprawdzone pod kątem tej gry od %1$s. Wiesz, gdzie to jest? Wybierz kanał teraz, a zostanie on zapamiętany."</string>
+    <string name="iptv_sports_not_in_guides">"Nie ma ich teraz w przewodnikach po Twoich kanałach. Przewodniki są aktualizowane w ciągu dnia, więc sprawdź ponownie bliżej początku. Wiesz, gdzie to jest? Wybierz kanał, a zostanie on zapamiętany."</string>
+    <string name="iptv_sports_last_5">"OSTATNIE 5"</string>
+    <string name="iptv_sports_game_info">"Informacje o grze ›"</string>
+    <string name="iptv_sports_now_label">"TERAZ"</string>
+    <string name="iptv_sports_end_label">"KONIEC"</string>
+    <string name="iptv_sports_channels_from">"Kanały z"</string>
+    <string name="iptv_sports_search_hint">"Wyszukaj drużyny i ligi"</string>
+    <string name="iptv_sports_person_hint">"Gracz, kierowca, wojownik lub zespół"</string>
+    <string name="iptv_sports_last_met">"Ostatnio spotkałem %1$s"</string>
 </resources>

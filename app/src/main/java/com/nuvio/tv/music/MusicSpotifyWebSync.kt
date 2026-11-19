@@ -6,6 +6,8 @@ import com.music.bitchord.data.YtMusicRepository
 import com.music.bitchord.data.model.SearchFilter
 import com.music.bitchord.data.model.SearchResult
 import com.music.bitchord.data.model.Song
+import com.nuvio.tv.R
+import com.nuvio.tv.core.util.withAppLocale
 import com.nuvio.tv.music.spotifyweb.SpotifySource
 import com.nuvio.tv.music.spotifyweb.SpotifyTrack
 import com.nuvio.tv.music.spotifyweb.SpotifyWebClient
@@ -72,11 +74,11 @@ object MusicSpotifyWebSync {
     fun sync(context: Context) {
         if (_state.value.busy) return
         val app = context.applicationContext
-        _state.value = SpotifyWebSyncState(busy = true, progress = "Reading your Spotify library…")
+        _state.value = SpotifyWebSyncState(busy = true, progress = app.withAppLocale().getString(R.string.music_spotify_reading_library))
         scope.launch {
             val cookie = MusicSpotifyWebSession.cookie(app)
             if (cookie.isBlank()) {
-                _state.value = SpotifyWebSyncState(error = "Link Spotify first.")
+                _state.value = SpotifyWebSyncState(error = app.withAppLocale().getString(R.string.music_spotify_link_first))
                 return@launch
             }
             val result = runCatching {
@@ -112,7 +114,7 @@ object MusicSpotifyWebSync {
                         entry.name.ifBlank { "Spotify playlist" }
                     }
                     _state.value = _state.value.copy(
-                        progress = "$name (${index + 1} of ${account.library.size})…"
+                        progress = app.withAppLocale().getString(R.string.music_spotify_playlist_progress, name, index + 1, account.library.size)
                     )
 
                     // Earlier builds put Spotify Liked Songs in a local playlist. Move those
@@ -228,7 +230,7 @@ object MusicSpotifyWebSync {
                                     val cached = queryHits[item.query]
                                     if (cached != null) return@async item to cached
                                     if (item.query in queryMisses) return@async item to null
-                                    val song = searchSong(item.query)
+                                    val song = searchSong(item.query, app)
                                     if (song == null) queryMisses.add(item.query)
                                     else queryHits[item.query] = song
                                     item to song
@@ -258,7 +260,7 @@ object MusicSpotifyWebSync {
                         }
                         handled += chunk.size
                         _state.value = _state.value.copy(
-                            progress = "$name: ${handled.coerceAtMost(playlist.tracks.size)} of ${playlist.tracks.size}…"
+                            progress = app.withAppLocale().getString(R.string.music_spotify_track_progress, name, handled.coerceAtMost(playlist.tracks.size), playlist.tracks.size)
                         )
                         delay(MATCH_PAUSE_MS)
                     }
@@ -308,14 +310,14 @@ object MusicSpotifyWebSync {
                 onFailure = { error ->
                     _state.value = SpotifyWebSyncState(
                         busy = false,
-                        error = error.message ?: "The Spotify library couldn't be synced."
+                        error = error.message ?: app.withAppLocale().getString(R.string.music_spotify_library_sync_failed)
                     )
                 }
             )
         }
     }
 
-    private suspend fun searchSong(query: String): Song? {
+    private suspend fun searchSong(query: String, app: Context): Song? {
         repeat(2) { attempt ->
             val result = runCatching {
                 withTimeoutOrNull(SEARCH_TIMEOUT_MS) {
@@ -338,15 +340,12 @@ object MusicSpotifyWebSync {
             if (isRateLimit(error)) {
                 if (attempt == 0) {
                     _state.value = _state.value.copy(
-                        progress = "YouTube Music is busy; waiting 20 seconds…"
+                        progress = app.withAppLocale().getString(R.string.music_youtube_music_busy)
                     )
                     delay(RATE_LIMIT_WAIT_MS)
                     return@repeat
                 }
-                throw IllegalStateException(
-                    "YouTube Music is temporarily limiting requests. Wait a few minutes, then " +
-                        "sync again. The tracks already added are safe."
-                )
+                throw IllegalStateException(app.withAppLocale().getString(R.string.music_youtube_music_limited))
             }
             return null
         }

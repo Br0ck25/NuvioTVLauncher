@@ -113,4 +113,17 @@
     <string name="iptv_sports_other_streams">"Altri flussi"</string>
     <string name="iptv_sports_pane">"Riquadro"</string>
     <string name="iptv_sports_start_label">"INIZIO"</string>
+    <string name="iptv_sports_replays_none">"I replay e gli highlights provengono da componenti aggiuntivi sportivi che li offrono (HighFly Premium, StremVerse...). Nessuno dei tuoi componenti aggiuntivi lo fa ancora: installane uno in Componenti aggiuntivi e verranno visualizzati qui."</string>
+    <string name="iptv_sports_no_replay_in">"Ancora nessun replay di questo gioco in %1$s. Spesso vengono aggiunti poche ore dopo la fine del gioco."</string>
+    <string name="iptv_sports_no_replay_addons">"Nessun replay di questo gioco ancora nei tuoi componenti aggiuntivi sportivi. Spesso vengono aggiunti poche ore dopo la fine del gioco."</string>
+    <string name="iptv_sports_checked_from">"I tuoi canali sono stati controllati per questo gioco da %1$s. Sai dov'è? Scegli un canale adesso e verrà ricordato."</string>
+    <string name="iptv_sports_not_in_guides">"Non nelle guide dei tuoi canali in questo momento. Le guide si aggiornano durante il giorno, quindi ricontrolla più vicino all'inizio. Sai dov'è? Scegli un canale e verrà ricordato."</string>
+    <string name="iptv_sports_last_5">"ULTIMI 5"</string>
+    <string name="iptv_sports_game_info">"Informazioni sul gioco ›"</string>
+    <string name="iptv_sports_now_label">"ORA"</string>
+    <string name="iptv_sports_end_label">"FINE"</string>
+    <string name="iptv_sports_channels_from">"Canali da"</string>
+    <string name="iptv_sports_search_hint">"Cerca squadre e campionati"</string>
+    <string name="iptv_sports_person_hint">"Un giocatore, pilota, combattente o squadra"</string>
+    <string name="iptv_sports_last_met">"Ultimo incontro %1$s"</string>
 </resources>

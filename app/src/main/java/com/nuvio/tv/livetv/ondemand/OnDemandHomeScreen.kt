@@ -513,7 +513,7 @@ fun OnDemandHomeScreen(
                 state.rows.firstOrNull { it.catalogId == uid }?.catalogName ?: stringResource(R.string.iptv_od_this_group)
             ),
             current = VodSort.parse(saved)?.first,
-            useDefaultLabel = "Default (${viewModel.defaultSortLabel()})",
+            useDefaultLabel = stringResource(R.string.iptv_od_default_sort, viewModel.defaultSortLabel()),
             onPick = { picked -> sortingUid = null; viewModel.setGroupSort(uid, picked) },
             onDismiss = { sortingUid = null }
         )

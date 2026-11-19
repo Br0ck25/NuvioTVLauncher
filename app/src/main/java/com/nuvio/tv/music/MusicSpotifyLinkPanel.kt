@@ -101,16 +101,16 @@ internal fun MusicSpotifyLinkPanel(onClose: () -> Unit) {
                 Spacer(Modifier.width(10.dp))
                 Column(Modifier.weight(1f)) {
                     Text(
-                        text = if (state.connected) "Spotify linked" else "Link Spotify with QR",
+                        text = if (state.connected) stringResource(R.string.music_spotify_linked_title) else stringResource(R.string.music_spotify_link_qr_title),
                         color = MusicPalette.text,
                         fontSize = 21.sp,
                         fontWeight = FontWeight.Bold
                     )
                     Text(
                         text = if (state.connected) {
-                            "Connected as ${state.displayName ?: "your Spotify account"}."
+                            stringResource(R.string.music_p2_connected_as, state.displayName ?: stringResource(R.string.music_integrations_spotify_account))
                         } else {
-                            "Scan the code with your phone camera, then approve access on Spotify."
+                            stringResource(R.string.music_spotify_scan_help)
                         },
                         color = MusicPalette.textSecondary,
                         fontSize = 11.sp
@@ -132,7 +132,7 @@ internal fun MusicSpotifyLinkPanel(onClose: () -> Unit) {
                 )
                 Spacer(Modifier.height(12.dp))
                 Text(
-                    text = "Use “Sync playlists & Liked Songs” in Integrations to bring them into Music.",
+                    text = stringResource(R.string.music_spotify_panel_use_sync),
                     color = MusicPalette.textSecondary,
                     fontSize = 12.sp,
                     textAlign = TextAlign.Center
@@ -150,7 +150,7 @@ internal fun MusicSpotifyLinkPanel(onClose: () -> Unit) {
                     if (qr != null) {
                         Image(
                             bitmap = qr.asImageBitmap(),
-                            contentDescription = "Spotify link QR code",
+                            contentDescription = stringResource(R.string.music_spotify_qr_description),
                             contentScale = ContentScale.Fit,
                             modifier = Modifier.fillMaxSize()
                         )
@@ -167,9 +167,9 @@ internal fun MusicSpotifyLinkPanel(onClose: () -> Unit) {
                 Text(
                     text = when {
                         state.error != null -> state.error.orEmpty()
-                        state.busy -> "Finishing the Spotify link…"
-                        state.running -> "Waiting for Spotify…"
-                        else -> "Preparing the QR code…"
+                        state.busy -> stringResource(R.string.music_spotify_finishing_link)
+                        state.running -> stringResource(R.string.music_spotify_waiting_qr)
+                        else -> stringResource(R.string.music_spotify_preparing_qr)
                     },
                     color = if (state.error != null) MusicPalette.error else MusicPalette.textMuted,
                     fontSize = 11.sp,
@@ -177,7 +177,7 @@ internal fun MusicSpotifyLinkPanel(onClose: () -> Unit) {
                 )
                 Spacer(Modifier.height(6.dp))
                 Text(
-                    text = "Keep the TV and phone on the same Wi-Fi. The QR expires after five minutes.",
+                    text = stringResource(R.string.music_spotify_panel_keep_wifi),
                     color = MusicPalette.textMuted,
                     fontSize = 9.sp,
                     textAlign = TextAlign.Center
@@ -274,7 +274,7 @@ private fun SpotifyLinkCloseButton(modifier: Modifier = Modifier, onClick: () ->
     ) {
         Icon(
             Icons.Default.Close,
-            contentDescription = "Close Spotify link",
+            contentDescription = stringResource(R.string.music_spotify_close_link),
             tint = if (focused) MusicPalette.background else MusicPalette.text,
             modifier = Modifier.size(20.dp)
         )

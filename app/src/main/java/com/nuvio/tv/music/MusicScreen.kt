@@ -623,7 +623,7 @@ fun MusicScreen(
                             color = MusicPalette.accent
                         )
                         Text(
-                            text = spotifySync.progress ?: "Syncing Spotify…",
+                            text = spotifySync.progress ?: stringResource(R.string.music_spotify_syncing),
                             color = MusicPalette.text,
                             fontSize = 12.sp,
                             maxLines = 1,
@@ -1095,7 +1095,7 @@ private fun MusicSettingsButton(onClick: () -> Unit) {
     ) {
         Icon(
             Icons.Default.Settings,
-            contentDescription = "Music settings",
+            contentDescription = stringResource(R.string.music_settings_content_description),
             tint = if (focused) MusicPalette.text else MusicPalette.textSecondary,
             modifier = Modifier.size(17.dp)
         )
@@ -1122,14 +1122,14 @@ private fun MusicAccountButton(name: String?, avatar: String?, onClick: () -> Un
         if (avatar != null) {
             AsyncImage(
                 model = avatar,
-                contentDescription = name ?: "YouTube Music account",
+                contentDescription = name ?: stringResource(R.string.music_p2_youtube_music_account),
                 contentScale = ContentScale.Crop,
                 modifier = Modifier.fillMaxSize().clip(CircleShape)
             )
         } else {
             Icon(
                 Icons.Default.AccountCircle,
-                contentDescription = if (name == null) "Sign in to YouTube Music" else name,
+                contentDescription = if (name == null) stringResource(R.string.music_p2_sign_in_to_youtube_music) else name,
                 tint = if (focused) MusicPalette.text else MusicPalette.textSecondary,
                 modifier = Modifier.size(20.dp)
             )

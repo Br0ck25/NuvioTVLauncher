@@ -93,4 +93,6 @@
     </plurals>
     <string name="iptv_rec_progress">"%1$s из %2$s"</string>
     <string name="iptv_rec_watched">"Просмотрено"</string>
+    <string name="iptv_rec_notif_recording_description">"Отображается во время записи Live TV"</string>
+    <string name="iptv_rec_notif_recording_title">"Запись прямого эфира"</string>
 </resources>

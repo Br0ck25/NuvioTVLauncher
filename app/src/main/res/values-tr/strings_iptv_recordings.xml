@@ -91,4 +91,6 @@
     </plurals>
     <string name="iptv_rec_progress">"%1$s / %2$s"</string>
     <string name="iptv_rec_watched">"İzlendi"</string>
+    <string name="iptv_rec_notif_recording_description">"Canlı TV kaydı sırasında gösterilir"</string>
+    <string name="iptv_rec_notif_recording_title">"Canlı TV Kaydetme"</string>
 </resources>

@@ -91,4 +91,7 @@
     </plurals>
     <string name="iptv_rec_progress">"%1$s of %2$s"</string>
     <string name="iptv_rec_watched">"Watched"</string>
+
+    <string name="iptv_rec_notif_recording_description">"Shown while Live TV is recording"</string>
+    <string name="iptv_rec_notif_recording_title">"Recording Live TV"</string>
 </resources>

@@ -11,7 +11,9 @@ import com.music.bitchord.data.model.SearchResult
 import com.music.bitchord.data.model.Song
 import com.music.bitchord.data.model.artworkAt
 import com.music.bitchord.data.model.durationMillis
+import com.nuvio.tv.R
 import com.nuvio.tv.core.server.DeviceIpAddress
+import com.nuvio.tv.core.util.withAppLocale
 import fi.iki.elonen.NanoHTTPD
 import java.util.Collections
 import java.util.concurrent.CountDownLatch
@@ -86,7 +88,7 @@ object MusicPartyManager {
             if (ip.isNullOrBlank()) {
                 _state.value = MusicPartyState(
                     running = true,
-                    error = "No network address found. Connect the TV to Wi-Fi or Ethernet."
+                    error = app.withAppLocale().getString(R.string.music_no_network)
                 )
             } else {
                 val url = "http://$ip:${candidate.listeningPort}/party/$token/"

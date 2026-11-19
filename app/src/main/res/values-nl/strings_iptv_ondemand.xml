@@ -10,4 +10,6 @@
     <string name="iptv_od_loading_details">"Details worden geladen."</string>
     <string name="iptv_od_choose_version">"Kies een versie"</string>
     <string name="iptv_od_no_episodes">"De provider heeft geen afleveringen vermeld."</string>
+    <string name="iptv_od_multiple_versions">"Uw provider heeft deze titel meerdere keren."</string>
+    <string name="iptv_od_default_sort">"Standaard (%1$s)"</string>
 </resources>

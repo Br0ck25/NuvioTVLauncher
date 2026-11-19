@@ -727,4 +727,7 @@
     <string name="iptv_sync_host_choose_help">"Este televisor también tiene su propia configuración. Combine mantiene las listas de reproducción y guías de ambos. Utilice la configuración guardada para reemplazar la que hay en este televisor."</string>
     <string name="iptv_sync_host_combine">"Combina ambos"</string>
     <string name="iptv_sync_host_use_saved">"Utilice la configuración guardada"</string>
+    <string name="iptv_settings_live_tv_badge_help">"Muestra la insignia de Live TV en el ícono"</string>
+    <string name="iptv_settings_badge_on">"Encendido: el ícono y el banner de Nuvio One Live TV en el color elegido"</string>
+    <string name="iptv_settings_badge_off">"Desactivado: iconos de Nuvio One, en el color elegido"</string>
 </resources>

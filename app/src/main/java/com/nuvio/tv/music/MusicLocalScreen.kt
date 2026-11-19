@@ -482,7 +482,7 @@ private fun LocalDrivePanel(
                 }
                 Column(Modifier.weight(1f)) {
                     Text(
-                        text = "On your phone, open ${prompt.url}",
+                        text = stringResource(R.string.music_local_open_phone, prompt.url),
                         color = MusicPalette.textSecondary,
                         fontSize = 13.sp
                     )
@@ -520,14 +520,14 @@ private fun LocalDrivePanel(
                     )
                     if (state.busy) {
                         Text(
-                            text = "Uploading ${state.uploaded} of ${state.total}…",
+                            text = stringResource(R.string.music_local_uploading, state.uploaded, state.total),
                             color = MusicPalette.text,
                             fontSize = 13.sp
                         )
                     }
                     state.folderUrl?.let { url ->
                         Text(
-                            text = "Drive folder: $url",
+                            text = stringResource(R.string.music_local_drive_folder, url),
                             color = MusicPalette.textMuted,
                             fontSize = 11.sp
                         )

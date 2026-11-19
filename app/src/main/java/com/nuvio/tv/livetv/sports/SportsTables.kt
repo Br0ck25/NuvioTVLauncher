@@ -365,7 +365,7 @@ private fun TableView(
             columns.forEach { c ->
                 LiveText(c.label, color = SportsLook.Dim, size = 9.sp, weight = FontWeight.Black, align = TextAlign.End, modifier = Modifier.width(cellWidth(c.key)))
             }
-            if (showForm) LiveText("LAST 5", color = SportsLook.Dim, size = 9.sp, weight = FontWeight.Black, align = TextAlign.End, modifier = Modifier.width(FORM_W + 8.dp))
+            if (showForm) LiveText(stringResource(R.string.iptv_sports_last_5), color = SportsLook.Dim, size = 9.sp, weight = FontWeight.Black, align = TextAlign.End, modifier = Modifier.width(FORM_W + 8.dp))
         }
         LazyColumn(
             Modifier.fillMaxWidth().weight(1f).keepFocusWhileHeld(horizontal = false),
@@ -769,7 +769,7 @@ internal fun TeamCard(
             SportsAction(if (following) "★  Following" else "☆  Follow", modifier = f(), selected = following, onClick = { viewModel.repo.toggleTeam(team) })
             if (list.isNotEmpty()) SportsAction("All their games", modifier = f(), onClick = { allGames = true })
             if (roster != null) SportsAction("Players", modifier = f(), onClick = { playersView = true })
-            (live ?: next)?.let { ev -> SportsAction("Game info", modifier = f(), onClick = { onOpen(ev) }) }
+            (live ?: next)?.let { ev -> SportsAction(stringResource(R.string.iptv_sports_game_info), modifier = f(), onClick = { onOpen(ev) }) }
         }
     }
 }
@@ -930,7 +930,7 @@ private fun AllGames(team: TeamInfo, games: List<SportsEvent>, hide: Boolean, no
                 if (focused) {
                     Row(Modifier.fillMaxWidth().padding(vertical = 4.dp), verticalAlignment = Alignment.CenterVertically) {
                         LiveText(gameLine(ev, team, hide, now, use24h), color = Color.White, size = 12.sp, weight = FontWeight.ExtraBold, modifier = Modifier.weight(1f))
-                        LiveText("Game info ›", color = SportsLook.Dim, size = 10.sp)
+                        LiveText(stringResource(R.string.iptv_sports_game_info), color = SportsLook.Dim, size = 10.sp)
                     }
                 } else {
                     CardGame(ev, team, hide, now, use24h, live = ev.state == GameState.LIVE)

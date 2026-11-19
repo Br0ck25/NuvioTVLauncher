@@ -113,4 +113,17 @@
     <string name="iptv_sports_other_streams">"Autres flux"</string>
     <string name="iptv_sports_pane">"Vitre"</string>
     <string name="iptv_sports_start_label">"COMMENCER"</string>
+    <string name="iptv_sports_replays_none">"Les replays et les temps forts proviennent des add-ons sportifs qui les proposent (HighFly Premium, StremVerse…). Aucun de vos modules complémentaires ne l'est encore : installez-en un dans Modules complémentaires et ils s'afficheront ici."</string>
+    <string name="iptv_sports_no_replay_in">"Aucune rediffusion de ce jeu dans %1$s pour l'instant. Ils sont souvent ajoutés quelques heures après la fin du jeu."</string>
+    <string name="iptv_sports_no_replay_addons">"Pas encore de replay de ce jeu dans vos modules sportifs. Ils sont souvent ajoutés quelques heures après la fin du jeu."</string>
+    <string name="iptv_sports_checked_from">"Vos chaînes sont vérifiées pour ce jeu à partir de %1$s. Tu sais où c'est ? Choisissez une chaîne maintenant et elle sera mémorisée."</string>
+    <string name="iptv_sports_not_in_guides">"Pas dans les guides de vos chaînes pour le moment. Les guides sont mis à jour pendant la journée, alors revenez plus près du début. Tu sais où c'est ? Choisissez une chaîne et elle sera mémorisée."</string>
+    <string name="iptv_sports_last_5">"5 DERNIERS"</string>
+    <string name="iptv_sports_game_info">"Informations sur le jeu ›"</string>
+    <string name="iptv_sports_now_label">"MAINTENANT"</string>
+    <string name="iptv_sports_end_label">"FIN"</string>
+    <string name="iptv_sports_channels_from">"Chaînes de"</string>
+    <string name="iptv_sports_search_hint">"Rechercher des équipes et des ligues"</string>
+    <string name="iptv_sports_person_hint">"Un joueur, un pilote, un combattant ou une équipe"</string>
+    <string name="iptv_sports_last_met">"Dernière rencontre %1$s"</string>
 </resources>

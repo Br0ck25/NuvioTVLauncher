@@ -47,4 +47,9 @@
     <string name="iptv_mv_queue_full">"La visualizzazione multipla ha già %1$d canali. Apri Multiview per modificarli."</string>
     <string name="iptv_mv_queue_already">"Già in Multiview (%1$d di %2$d)."</string>
     <string name="iptv_mv_queue_added">"Aggiunto a Visualizzazione multipla (%1$d di %2$d). Apri Visualizzazione multipla dalla riga superiore della guida."</string>
+    <string name="iptv_mv_pane">"Riquadro %1$d"</string>
+    <string name="iptv_mv_layout">"Disposizione"</string>
+    <string name="iptv_mv_ok_apply_back">"OK: applica · Indietro: chiudi"</string>
+    <string name="iptv_mv_sound">"SUONO"</string>
+    <string name="iptv_mv_current">"ATTUALE"</string>
 </resources>

@@ -14,5 +14,5 @@
 ## Localization
 
 - Live TV now follows the app language across the guide, player, settings, Multiview, Recordings, Calendar, Sports and On Demand, including their dialogs and status messages.
-- OneTube and Music now follow the app language across their main screens, settings, sources, account, Navidrome/WebDAV, Party and video player.
+- OneTube and Music now follow the app language across their main screens, settings, sources, account, local sharing, Spotify linking, Navidrome/WebDAV, Party and video player.
 - Languages: German, Spanish, French, Italian, Dutch, Polish, Portuguese, Russian and Turkish. OneTube and Music also include Arabic.

@@ -68,4 +68,9 @@
     <string name="iptv_cal_saved_channels">"Chaînes enregistrées"</string>
     <string name="iptv_cal_saved_help">"Chaînes que le Calendrier doit utiliser, pour un réseau ou une émission. OK en oublie une : le Calendrier choisit à nouveau."</string>
     <string name="iptv_cal_nothing_saved">"Rien d’enregistré."</string>
+    <string name="iptv_cal_ring_bell">"Sonner la cloche"</string>
+    <string name="iptv_cal_not_found_follow">"Impossible de trouver « %1$s » à suivre"</string>
+    <string name="iptv_cal_show_again">"OK : réafficher dans le calendrier"</string>
+    <string name="iptv_cal_final">"TERMINÉ"</string>
+    <string name="iptv_cal_today">"AUJOURD'HUI"</string>
 </resources>

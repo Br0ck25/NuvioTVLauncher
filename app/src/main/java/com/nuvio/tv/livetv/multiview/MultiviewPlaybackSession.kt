@@ -1,6 +1,8 @@
 package com.nuvio.tv.livetv.multiview
 
 import android.os.SystemClock
+import com.nuvio.tv.R
+import com.nuvio.tv.core.util.withAppLocale
 import com.nuvio.tv.livetv.model.LiveTvLoadReport
 import android.content.Context
 import android.media.AudioFocusRequest
@@ -245,7 +247,7 @@ private class AndroidMultiviewPanePlayer(
                 player.stop()
                 player.clearMediaItems()
                 if (scheduleReconnect("stream ended")) return
-                fail(LOST_MESSAGE)
+                fail(appContext.withAppLocale().getString(R.string.iptv_mv_lost_connection))
             }
         }
     }

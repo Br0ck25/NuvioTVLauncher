@@ -91,4 +91,6 @@
     </plurals>
     <string name="iptv_rec_progress">"%1$s di %2$s"</string>
     <string name="iptv_rec_watched">"Visto"</string>
+    <string name="iptv_rec_notif_recording_description">"Visualizzato durante la registrazione della TV in diretta"</string>
+    <string name="iptv_rec_notif_recording_title">"Registrazione della TV in diretta"</string>
 </resources>

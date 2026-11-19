@@ -727,4 +727,7 @@
     <string name="iptv_sync_host_choose_help">"Auch dieser Fernseher verfügt über ein eigenes Setup. Combine behält die Playlists und Guides von beiden. Das gespeicherte Setup ersetzt das, was auf diesem Fernseher vorhanden ist."</string>
     <string name="iptv_sync_host_combine">"Kombinieren Sie beides"</string>
     <string name="iptv_sync_host_use_saved">"Verwenden Sie das gespeicherte Setup"</string>
+    <string name="iptv_settings_live_tv_badge_help">"Zeigen Sie das Live-TV-Logo auf dem Symbol an"</string>
+    <string name="iptv_settings_badge_on">"Ein: das Nuvio One Live TV-Symbol und das Banner in der von Ihnen gewählten Farbe"</string>
+    <string name="iptv_settings_badge_off">"Aus: Nuvio One-Symbole in der von Ihnen gewählten Farbe"</string>
 </resources>

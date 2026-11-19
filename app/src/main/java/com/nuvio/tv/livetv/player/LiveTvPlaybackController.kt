@@ -1,6 +1,8 @@
 package com.nuvio.tv.livetv.player
 
 import android.content.Context
+import com.nuvio.tv.R
+import com.nuvio.tv.core.util.withAppLocale
 import androidx.annotation.OptIn
 import androidx.media3.common.C
 import androidx.media3.common.MediaItem
@@ -1222,7 +1224,7 @@ class LiveTvPlaybackController @Inject constructor(
                 com.nuvio.tv.livetv.model.LiveTvLoadReport.add("Catch-up on ${ch.name} kept freezing; stopped after 3 tries")
                 catchupRestarts = 0
                 p.stop()
-                _state.value = _state.value.copy(error = "The provider stopped sending this show. Try again, or skip to another point", isBuffering = false)
+                _state.value = _state.value.copy(error = context.withAppLocale().getString(R.string.iptv_player_provider_stopped), isBuffering = false)
                 return
             }
             catchupRestarts++
@@ -1990,7 +1992,7 @@ class LiveTvPlaybackController @Inject constructor(
             // A recording from Recordings: there's nothing else to try, so say so.
             if (savedRecordingId != null) {
                 com.nuvio.tv.livetv.model.LiveTvLoadReport.add("Recording: couldn't be played (${error.errorCodeName})")
-                _state.value = _state.value.copy(error = "This recording couldn't be played", isBuffering = false)
+                _state.value = _state.value.copy(error = context.withAppLocale().getString(R.string.iptv_player_recording_failed), isBuffering = false)
                 return
             }
             // The saved catch-up couldn't be played: play the replay straight from the provider.
