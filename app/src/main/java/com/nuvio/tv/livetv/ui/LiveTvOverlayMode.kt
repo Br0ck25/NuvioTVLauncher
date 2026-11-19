@@ -127,6 +127,7 @@ private fun OverlayModeContent(
     onClose: () -> Unit,
     onFindInNuvio: (String) -> Unit
 ) {
+    val context = androidx.compose.ui.platform.LocalContext.current
     val ui by viewModel.uiState.collectAsStateWithLifecycle()
     val programs by viewModel.programs.collectAsStateWithLifecycle()
     val settings by viewModel.settings.collectAsStateWithLifecycle()
@@ -216,7 +217,7 @@ private fun OverlayModeContent(
         programs[ch.key].orEmpty().forEach { p ->
             val day = startOfDay(p.startMs)
             if (day != lastDay) {
-                out += ScheduleRow.Day(dayLabel(day, now), day)
+                out += ScheduleRow.Day(dayLabel(day, now, context), day)
                 lastDay = day
             }
             out += ScheduleRow.Show(p, day)
@@ -416,11 +417,11 @@ private fun OverlayModeContent(
             when (level) {
                 OverlayLevel.GROUPS -> {
                     GroupsPanel(groups, groupRows, groupIndex, headingAt, settings.showGroupCounts, playlistNames, collapsed)
-                    ChannelsPanel(ui.groups.firstOrNull { it.id == ui.selectedGroupId }?.title ?: "Channels",
+                    ChannelsPanel(ui.groups.firstOrNull { it.id == ui.selectedGroupId }?.title ?: stringResource(R.string.iptv_overlay_channels),
                         channels, chIndex, focused = false, playback.channelKey, programs, now, user.favorites, settings.showChannelNumbers, settings.showChannelLogos)
                 }
                 OverlayLevel.CHANNELS -> {
-                    ChannelsPanel(ui.groups.firstOrNull { it.id == ui.selectedGroupId }?.title ?: "Channels",
+                    ChannelsPanel(ui.groups.firstOrNull { it.id == ui.selectedGroupId }?.title ?: stringResource(R.string.iptv_overlay_channels),
                         channels, chIndex, focused = true, playback.channelKey, programs, now, user.favorites, settings.showChannelNumbers, settings.showChannelLogos)
                     if (settings.overlayShowDetails) settledChannel?.let { SchedulePreview(it, programs[it.key].orEmpty(), now, use24h) }
                 }
@@ -480,7 +481,7 @@ private fun OverlayModeContent(
                 Spacer(Modifier.height(6.dp))
                 val live = now >= p.startMs && now < p.stopMs
                 Row(verticalAlignment = Alignment.CenterVertically) {
-                    val range = (if (startOfDay(p.startMs) != startOfDay(now)) "${dayLabel(startOfDay(p.startMs), now)}, " else "") +
+                    val range = (if (startOfDay(p.startMs) != startOfDay(now)) "${dayLabel(startOfDay(p.startMs), now, context)}, " else "") +
                         formatRange(p.startMs, p.stopMs, use24h)
                     LiveText(range, color = NuvioTheme.colors.TextSecondary, size = osp(14f))
                     if (live) {
@@ -504,17 +505,17 @@ private fun OverlayModeContent(
         LiveDialog(onDismiss = { futurePrompt = null; activity++ }, width = 460.dp) {
             LiveText(p.title, size = osp(20f), weight = FontWeight.Bold, maxLines = 2)
             LiveText(
-                "${dayLabel(startOfDay(p.startMs), now)}, ${formatRange(p.startMs, p.stopMs, use24h)} · ${ch.name}",
+                "${dayLabel(startOfDay(p.startMs), now, context)}, ${formatRange(p.startMs, p.stopMs, use24h)} · ${ch.name}",
                 color = NuvioTheme.colors.TextSecondary, size = osp(13f)
             )
             Spacer(Modifier.height(14.dp))
             Column(verticalArrangement = Arrangement.spacedBy(4.dp)) {
-                MenuItem("Find & stream in Nuvio", Modifier.focusRequester(first)) {
+                MenuItem(stringResource(R.string.iptv_guide_find_and_stream), Modifier.focusRequester(first)) {
                     futurePrompt = null
                     onFindInNuvio(com.nuvio.tv.livetv.data.LiveTvPosterResolver.searchTitleFor(p, ch))
                 }
                 MenuItem(
-                    if (user.reminders.any { it.channelKey == ch.key && it.startMs == p.startMs }) "Cancel reminder" else "Remind me"
+                    if (user.reminders.any { it.channelKey == ch.key && it.startMs == p.startMs }) stringResource(R.string.iptv_guide_cancel_reminder) else stringResource(R.string.iptv_guide_remind_me)
                 ) {
                     viewModel.toggleReminder(ch, p)
                     futurePrompt = null
@@ -525,12 +526,12 @@ private fun OverlayModeContent(
                     futurePrompt = null
                     activity++
                 }
-                MenuItem("Watch this channel now") {
+                MenuItem(stringResource(R.string.iptv_guide_watch_channel_now)) {
                     futurePrompt = null
                     viewModel.preview(ch)
                     onClose()
                 }
-                MenuItem("Close") { futurePrompt = null; activity++ }
+                MenuItem(stringResource(R.string.action_close)) { futurePrompt = null; activity++ }
             }
         }
         LaunchedEffect(Unit) { delay(60); runCatching { first.requestFocus() } }
@@ -543,19 +544,19 @@ private fun OverlayModeContent(
         val onNow = now >= p.startMs && now < p.stopMs
         val recordingNow = recordingsList.any { it.channelKey == ch.key && it.isRecording }
         val recordLabel = when {
-            onNow && recordingNow -> "Stop recording"
-            schedulesList.any { it.channel.key == ch.key && it.startMs == p.startMs } -> "Cancel recording"
-            p.stopMs <= now -> if (CatchupUrlBuilder.isAvailable(ch, p, now)) "Save to Recordings" else null
-            else -> "Record"
+            onNow && recordingNow -> stringResource(R.string.iptv_ge_stop_recording)
+            schedulesList.any { it.channel.key == ch.key && it.startMs == p.startMs } -> stringResource(R.string.iptv_ge_cancel_recording)
+            p.stopMs <= now -> if (CatchupUrlBuilder.isAvailable(ch, p, now)) stringResource(R.string.iptv_ge_save_to_recordings) else null
+            else -> stringResource(R.string.iptv_guide_record)
         }
         val seriesLabel = if (p.stopMs <= now) null else {
             val n = com.nuvio.tv.livetv.data.LiveTvRepository.normalize(titleMarks(p.title).title)
-            if (seriesList.any { it.channel.key == ch.key && it.norm == n }) "Stop recording series" else "Record series"
+            if (seriesList.any { it.channel.key == ch.key && it.norm == n }) stringResource(R.string.iptv_ge_stop_recording_series) else stringResource(R.string.iptv_ge_record_series)
         }
         LiveDialog(onDismiss = { recordMenu = null; activity++ }, width = 460.dp) {
             LiveText(p.title, size = osp(20f), weight = FontWeight.Bold, maxLines = 2)
             LiveText(
-                "${dayLabel(startOfDay(p.startMs), now)}, ${formatRange(p.startMs, p.stopMs, use24h)} · ${ch.name}",
+                "${dayLabel(startOfDay(p.startMs), now, context)}, ${formatRange(p.startMs, p.stopMs, use24h)} · ${ch.name}",
                 color = NuvioTheme.colors.TextSecondary, size = osp(13f)
             )
             Spacer(Modifier.height(14.dp))
@@ -571,7 +572,7 @@ private fun OverlayModeContent(
                     recordMenu = null
                     activity++
                 }
-                MenuItem("Close", if (recordLabel == null && seriesLabel == null) Modifier.focusRequester(first) else Modifier) {
+                MenuItem(stringResource(R.string.action_close), if (recordLabel == null && seriesLabel == null) Modifier.focusRequester(first) else Modifier) {
                     recordMenu = null
                     activity++
                 }
@@ -705,7 +706,7 @@ private fun ChannelsPanel(
                             LiveText(ch.name, color = colors.text, size = osp(15f), modifier = Modifier.weight(1f, fill = false), marquee = isFocused && i == restingIndex)
                             if (ch.catchup != null) {
                                 Spacer(Modifier.width(4.dp))
-                                Icon(androidx.compose.material.icons.Icons.Default.History, contentDescription = "Catch-up", tint = if (onSolid) Color.White else NuvioTheme.colors.TextSecondary, modifier = Modifier.size(odp(13f)))
+                                Icon(androidx.compose.material.icons.Icons.Default.History, contentDescription = stringResource(R.string.iptv_guide_catch_up), tint = if (onSolid) Color.White else NuvioTheme.colors.TextSecondary, modifier = Modifier.size(odp(13f)))
                             }
                             if (ch.key in favorites) LiveText("  ★", color = if (onSolid) Color.White else NuvioTheme.colors.Rating, size = osp(12f))
                         }
@@ -729,7 +730,7 @@ private fun ChannelsPanel(
                         }
                     }
                     if (ch.key == playingKey) {
-                        Icon(Icons.Default.PlayArrow, contentDescription = "Playing", tint = accent, modifier = Modifier.size(odp(20f)))
+                        Icon(Icons.Default.PlayArrow, contentDescription = stringResource(R.string.iptv_overlay_playing), tint = accent, modifier = Modifier.size(odp(20f)))
                     }
                 }
             }
@@ -790,7 +791,7 @@ private fun GroupsPanel(
                     ) {
                         LiveText(if (isCollapsed) "▸" else "▾", color = colors.text, size = osp(13f), modifier = Modifier.width(18.dp))
                         LiveText(
-                            (playlistNames[src] ?: "Playlist").uppercase(),
+                            (playlistNames[src] ?: stringResource(R.string.iptv_ge_playlist)).uppercase(),
                             color = colors.text, size = osp(12f), weight = FontWeight.Bold,
                             modifier = Modifier.weight(1f), marquee = focused
                         )
@@ -934,7 +935,7 @@ private fun SchedulePanel(
                             if (live) {
                                 Spacer(Modifier.width(6.dp))
                                 LiveText(
-                                    "LIVE",
+                                    stringResource(R.string.iptv_ge_tag_live),
                                     modifier = Modifier
                                         .border(1.dp, colors.text.copy(alpha = 0.7f), RoundedCornerShape(4.dp))
                                         .padding(horizontal = 5.dp, vertical = 1.dp),
@@ -992,13 +993,13 @@ private fun startOfDay(ms: Long): Long = Calendar.getInstance().apply {
     set(Calendar.HOUR_OF_DAY, 0); set(Calendar.MINUTE, 0); set(Calendar.SECOND, 0); set(Calendar.MILLISECOND, 0)
 }.timeInMillis
 
-private fun dayLabel(dayStart: Long, now: Long): String {
+private fun dayLabel(dayStart: Long, now: Long, context: android.content.Context): String {
     val today = startOfDay(now)
     val diffDays = Math.round((dayStart - today) / 86_400_000.0).toInt()
     return when (diffDays) {
-        0 -> "Today"
-        -1 -> "Yesterday"
-        1 -> "Tomorrow"
+        0 -> context.getString(R.string.iptv_guide_today)
+        -1 -> context.getString(R.string.iptv_guide_yesterday)
+        1 -> context.getString(R.string.iptv_guide_tomorrow)
         else -> SimpleDateFormat("EEEE, MMM d", Locale.getDefault()).format(Date(dayStart))
     }
 }
@@ -1129,7 +1130,7 @@ private fun BackupFlyoutContent(
     ) {
         PanelHeader {
             Row(Modifier.fillMaxWidth(), verticalAlignment = Alignment.CenterVertically) {
-                LiveText("Backups", size = osp(17f), weight = FontWeight.SemiBold, modifier = Modifier.weight(1f))
+                LiveText(stringResource(R.string.iptv_overlay_backups), size = osp(17f), weight = FontWeight.SemiBold, modifier = Modifier.weight(1f))
                 LiveText("${channels.size}", color = NuvioTheme.colors.TextSecondary, size = osp(12f))
             }
         }
@@ -1169,7 +1170,7 @@ private fun BackupFlyoutContent(
                         }
                         val from = playlistNames[ch.sourceId] ?: ch.sourceName
                         LiveText(
-                            listOfNotNull(from.takeIf { it.isNotBlank() }, ch.group.takeIf { it.isNotBlank() && BarPart.GROUP !in BarPart.hiddenOf(settings.barHidden) }, if (ch.key == playingKey) "Watching" else null).joinToString(" · "),
+                            listOfNotNull(from.takeIf { it.isNotBlank() }, ch.group.takeIf { it.isNotBlank() && BarPart.GROUP !in BarPart.hiddenOf(settings.barHidden) }, if (ch.key == playingKey) stringResource(R.string.iptv_ge_watching) else null).joinToString(" · "),
                             color = dim, size = osp(12f), maxLines = 1
                         )
                         LiveText(
@@ -1189,7 +1190,7 @@ private fun BackupFlyoutContent(
                         }
                     }
                     if (ch.key == playingKey) {
-                        Icon(Icons.Default.PlayArrow, contentDescription = "Playing", tint = accent, modifier = Modifier.size(odp(20f)))
+                        Icon(Icons.Default.PlayArrow, contentDescription = stringResource(R.string.iptv_overlay_playing), tint = accent, modifier = Modifier.size(odp(20f)))
                     }
                 }
             }

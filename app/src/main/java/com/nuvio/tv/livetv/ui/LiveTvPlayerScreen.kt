@@ -44,6 +44,7 @@ import androidx.compose.runtime.rememberCoroutineScope
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.res.pluralStringResource
 import androidx.compose.ui.res.stringResource
 import com.nuvio.tv.R
 import androidx.compose.ui.draw.clip
@@ -399,7 +400,7 @@ fun LiveTvPlayerScreen(
         delay(1_300)
         val n = numberBuffer.toIntOrNull()
         numberBuffer = ""
-        n?.let { viewModel.channelByNumber(it) }?.let { viewModel.preview(it) } ?: run { if (n != null) toast = "No channel $n" }
+        n?.let { viewModel.channelByNumber(it) }?.let { viewModel.preview(it) } ?: run { if (n != null) toast = context.getString(R.string.iptv_player_no_channel, n.toString()) }
     }
     LaunchedEffect(listVisible, sportsGamesOpen) {
         if (!listVisible && !sportsGamesOpen) {
@@ -608,7 +609,7 @@ fun LiveTvPlayerScreen(
                             hasClear && rf >= lastTile -> {
                                 viewModel.clearRecent()
                                 recentFocus = 0
-                                toast = "Recently watched cleared"
+                                toast = context.getString(R.string.iptv_player_recent_cleared)
                             }
                             else -> rowChannels.getOrNull(rf - 1)?.let { ch ->
                                 closeFull()
@@ -699,7 +700,7 @@ fun LiveTvPlayerScreen(
                                 }
                                 PanelControl.CC -> {
                                     captionsOn = viewModel.playback.toggleCaptions()
-                                    toast = if (captionsOn) "Captions on" else if (viewModel.playback.subtitleTracks().isEmpty()) "No captions on this channel" else "Captions off"
+                                    toast = if (captionsOn) context.getString(R.string.iptv_player_captions_on) else if (viewModel.playback.subtitleTracks().isEmpty()) context.getString(R.string.iptv_player_no_captions) else context.getString(R.string.iptv_player_captions_off)
                                 }
                                 PanelControl.AUDIO -> openGear("audio")
                                 PanelControl.SIZE -> openGear("size")
@@ -707,7 +708,7 @@ fun LiveTvPlayerScreen(
                                 PanelControl.BELL -> liveBell?.toggle?.invoke()
                                 PanelControl.PIN -> pinGame?.let { g ->
                                     val pinned = com.nuvio.tv.livetv.sports.SportsLive.togglePin(g.id)
-                                    com.nuvio.tv.livetv.record.LiveTvNotice.show(if (pinned) "Score pinned to the corner" else "Score unpinned")
+                                    com.nuvio.tv.livetv.record.LiveTvNotice.show(if (pinned) context.getString(R.string.iptv_player_score_pinned) else context.getString(R.string.iptv_player_score_unpinned))
                                 }
                                 PanelControl.BACKUPS -> dialog = PlayerDialog.BACKUPS
                                 PanelControl.SPORTS -> openMultiview()
@@ -803,7 +804,7 @@ fun LiveTvPlayerScreen(
                                         closeFull()
                                         bannerVisible = false
                                         dialog = PlayerDialog.BACKUP_FLYOUT
-                                    } else toast = "No backup channels for this channel"
+                                    } else toast = context.getString(R.string.iptv_player_no_backups)
                                 } else {
                                     lastRightTapAt = tapAt
                                     showBanner()
@@ -817,7 +818,7 @@ fun LiveTvPlayerScreen(
                                     browseKey = null
                                     viewModel.preview(prev)
                                     showBanner()
-                                } else toast = "No previous channel yet"
+                                } else toast = context.getString(R.string.iptv_player_no_previous)
                             }
                             else -> Unit
                         }
@@ -873,8 +874,8 @@ fun LiveTvPlayerScreen(
         // A problem: what's happening, and why underneath (wrapped, so it isn't cut off).
         playback.error?.let { reason ->
             PlayerStatusMessage(
-                title = if (playback.reconnectAttempt > 8) "Stream unavailable · press OK to retry"
-                    else "Reconnecting… (attempt ${playback.reconnectAttempt})",
+                title = if (playback.reconnectAttempt > 8) stringResource(R.string.iptv_player_stream_unavailable)
+                    else stringResource(R.string.iptv_player_reconnecting_attempt, playback.reconnectAttempt),
                 detail = reason,
                 modifier = Modifier.align(Alignment.Center)
             )
@@ -1090,9 +1091,9 @@ fun LiveTvPlayerScreen(
                                 positionMs = pos,
                                 liveMs = tick,
                                 recordedUntilMs = tick,
-                                leftLabel = "From " + formatClock(start, use24h),
-                                rightLabel = "Live " + formatClock(tick, use24h),
-                                status = formatDuration(behind) + " behind live",
+                                leftLabel = stringResource(R.string.iptv_player_from, formatClock(start, use24h)),
+                                rightLabel = stringResource(R.string.iptv_player_live_at, formatClock(tick, use24h)),
+                                status = stringResource(R.string.iptv_player_behind_live, formatDuration(behind)),
                                 statusLive = true
                             )
                         } else PanelTimeline(
@@ -1121,9 +1122,9 @@ fun LiveTvPlayerScreen(
                             positionMs = pos,
                             liveMs = tick,
                             recordedUntilMs = tick,
-                            leftLabel = "From " + formatClock(showStart, use24h),
-                            rightLabel = "Live " + formatClock(tick, use24h),
-                            status = formatDuration(behind) + " behind live",
+                            leftLabel = stringResource(R.string.iptv_player_from, formatClock(showStart, use24h)),
+                            rightLabel = stringResource(R.string.iptv_player_live_at, formatClock(tick, use24h)),
+                            status = stringResource(R.string.iptv_player_behind_live, formatDuration(behind)),
                             statusLive = true
                         )
                     }
@@ -1176,7 +1177,7 @@ fun LiveTvPlayerScreen(
                     audioLabel = remember(playback.channelKey, bannerVisible) { viewModel.playback.audioLabel() },
                     // The same words as the Screen size list (Fit, Crop, Cinema Zoom…).
                     sizeLabel = context.getString(aspectModeOf(settings.aspectMode).labelResId),
-                    sleepLabel = sleepAt?.let { at -> "Sleep " + ((at - tick).coerceAtLeast(0) / 60_000 + 1) + "m" },
+                    sleepLabel = sleepAt?.let { at -> stringResource(R.string.iptv_player_sleep_min, ((at - tick).coerceAtLeast(0) / 60_000 + 1).toInt()) },
                     clock = if (settings.clockMode == "never") "" else formatClock(tick, use24h),
                     // "1080p · 50 FPS": the frame rate rounded (23.976 -> 24, 59.94 -> 60).
                     resolution = if (playback.videoHeight > 0) {
@@ -1270,11 +1271,11 @@ fun LiveTvPlayerScreen(
                     .padding(horizontal = 22.dp, vertical = 16.dp),
                 verticalArrangement = Arrangement.spacedBy(4.dp)
             ) {
-                LiveText("Up next in $upNextSec", size = 13.sp, weight = FontWeight.Medium, color = Color.White.copy(alpha = 0.7f))
+                LiveText(stringResource(R.string.iptv_player_up_next_in, upNextSec.toInt()), size = 13.sp, weight = FontWeight.Medium, color = Color.White.copy(alpha = 0.7f))
                 LiveText(n.title, size = 20.sp, weight = FontWeight.Bold, color = Color.White)
                 LiveText(n.episode, size = 15.sp, color = Color.White.copy(alpha = 0.85f))
                 Spacer(Modifier.height(6.dp))
-                LiveText("OK to play now · Back to stop", size = 12.sp, color = Color.White.copy(alpha = 0.6f))
+                LiveText(stringResource(R.string.iptv_player_ok_play_back_stop), size = 12.sp, color = Color.White.copy(alpha = 0.6f))
             }
         }
         toast?.let {
@@ -1348,10 +1349,10 @@ fun LiveTvPlayerScreen(
             val canRestart = !archive && viewModel.canWatchFromStart(ch)
             val shifting = shiftStartedAt != null || (ownTimeline && viewModel.playback.ownTimelineNow()?.live == true && viewModel.playback.shiftIsBehind())
             val timeAction = when {
-                playingRecording -> "Stop watching"
-                archive -> "Back to live"
+                playingRecording -> stringResource(R.string.iptv_player_stop_watching)
+                archive -> stringResource(R.string.iptv_player_back_to_live)
                 canRestart -> viewModel.restartLabel(ch)
-                shifting -> "Go live"
+                shifting -> stringResource(R.string.iptv_player_go_live)
                 else -> null
             }
             GearPanel(
@@ -1368,12 +1369,12 @@ fun LiveTvPlayerScreen(
                 },
                 onPickSleep = { minutes ->
                     viewModel.setSleepTimer(minutes)
-                    toast = if (minutes == null) "Sleep timer off" else "Sleep timer: $minutes min"
+                    toast = if (minutes == null) context.getString(R.string.iptv_player_sleep_off) else context.getString(R.string.iptv_player_sleep_set, minutes)
                     dialog = PlayerDialog.NONE
                     scope.launch { delay(60); runCatching { rootFocus.requestFocus() } }
                 },
                 streamInfo = {
-                    streamInfoRows(viewModel.playback.player, ch, viewModel.pictureShapeOf(ch.key), viewModel.playback.captionsInfo())
+                    streamInfoRows(context, viewModel.playback.player, ch, viewModel.pictureShapeOf(ch.key), viewModel.playback.captionsInfo())
                 },
                 bottom = 168.dp,
                 background = settings.panelBackground,
@@ -1390,7 +1391,7 @@ fun LiveTvPlayerScreen(
                     val mode = com.nuvio.tv.ui.screens.player.AspectMode.entries[i]
                     viewModel.updateSettings { it.copy(aspectMode = mode.name) }
                 },
-                sleepLabel = sleepAt?.let { "${((it - System.currentTimeMillis()) / 60_000 + 1).coerceAtLeast(1)} min left" } ?: "Off",
+                sleepLabel = sleepAt?.let { at -> stringResource(R.string.iptv_player_min_left, ((at - System.currentTimeMillis()) / 60_000 + 1).coerceAtLeast(1).toInt()) } ?: stringResource(R.string.iptv_gear_off),
                 timeAction = timeAction,
                 hidden = BarPart.hiddenOf(settings.barHidden),
                 quickSettings = settings,
@@ -1460,14 +1461,14 @@ fun LiveTvPlayerScreen(
             )
         } ?: run { dialog = PlayerDialog.NONE }
         PlayerDialog.AUDIO -> TrackDialog(
-            title = "Audio",
+            title = stringResource(R.string.iptv_gear_audio),
             options = viewModel.playback.audioTracks(),
             allowOff = false,
             onPick = { option -> option?.let { viewModel.playback.pickAudio(it) }; dialog = PlayerDialog.NONE },
             onDismiss = { dialog = PlayerDialog.NONE }
         )
         PlayerDialog.SUBTITLES -> TrackDialog(
-            title = "Subtitles",
+            title = stringResource(R.string.iptv_gear_subtitles),
             options = viewModel.playback.subtitleTracks(),
             allowOff = true,
             more = viewModel.playback.moreCaptionTracks(),
@@ -1491,7 +1492,7 @@ fun LiveTvPlayerScreen(
         PlayerDialog.SLEEP -> SleepTimerDialog(
             onPick = { minutes ->
                 viewModel.setSleepTimer(minutes)
-                toast = if (minutes == null) "Sleep timer off" else "Sleep timer: $minutes min"
+                toast = if (minutes == null) context.getString(R.string.iptv_player_sleep_off) else context.getString(R.string.iptv_player_sleep_set, minutes)
                 dialog = PlayerDialog.NONE
                 scope.launch { delay(60); runCatching { rootFocus.requestFocus() } }
             },
@@ -1524,7 +1525,7 @@ fun LiveTvPlayerScreen(
             onPick = { mode ->
                 // Remembered for every channel, until you change it again.
                 viewModel.updateSettings { it.copy(aspectMode = mode.name) }
-                toast = "Screen size: ${context.getString(mode.labelResId)}"
+                toast = context.getString(R.string.iptv_player_screen_size_toast, context.getString(mode.labelResId))
                 dialog = PlayerDialog.NONE
                 scope.launch { delay(60); runCatching { rootFocus.requestFocus() } }
             },
@@ -1583,7 +1584,7 @@ private fun TrackDialog(
         LiveText(title, size = 20.sp, weight = FontWeight.Bold)
         Spacer(Modifier.height(12.dp))
         if (options.isEmpty() && !allowOff) {
-            LiveText("No tracks available", color = NuvioTheme.colors.TextSecondary)
+            LiveText(stringResource(R.string.iptv_gear_no_tracks), color = NuvioTheme.colors.TextSecondary)
         }
         note?.let {
             LiveText(it, color = NuvioTheme.colors.TextSecondary)
@@ -1593,7 +1594,7 @@ private fun TrackDialog(
             if (allowOff) {
                 item {
                     LiveFocusRow(modifier = Modifier.fillMaxWidth().focusRequester(first), onClick = { onPick(null) }) { f ->
-                        LiveText("Off", color = focusedTextColor(f))
+                        LiveText(stringResource(R.string.iptv_gear_off), color = focusedTextColor(f))
                     }
                 }
             }
@@ -1611,7 +1612,7 @@ private fun TrackDialog(
                 item {
                     LiveFocusRow(modifier = Modifier.fillMaxWidth(), onClick = { showMore = !showMore }) { f ->
                         LiveText(
-                            (if (showMore) "▾  " else "▸  ") + "More caption tracks",
+                            (if (showMore) "▾  " else "▸  ") + stringResource(R.string.iptv_gear_more_captions),
                             color = focusedTextColor(f).copy(alpha = 0.85f)
                         )
                     }
@@ -1656,7 +1657,7 @@ private fun BackupChannelsDialog(
         ?: channels.firstOrNull { it.key != playingKey }?.key ?: channels.first().key
     // A small flyout above the button (a centered panel if the button's spot isn't known yet).
     LiveDialog(onDismiss = onDismiss, width = 260.dp, anchor = anchor, minWidth = 240.dp, corner = 12.dp, pad = 10.dp) {
-        LiveText("Backups", size = 13.sp, weight = FontWeight.Bold, modifier = Modifier.padding(horizontal = 4.dp))
+        LiveText(stringResource(R.string.iptv_overlay_backups), size = 13.sp, weight = FontWeight.Bold, modifier = Modifier.padding(horizontal = 4.dp))
         Spacer(Modifier.height(6.dp))
         androidx.compose.foundation.lazy.LazyColumn(
             Modifier.fillMaxWidth().heightIn(max = 190.dp),
@@ -1682,12 +1683,12 @@ private fun BackupChannelsDialog(
                             }
                             if (playing) {
                                 Spacer(Modifier.width(6.dp))
-                                LiveText("Watching", size = 9.sp, color = focusedTextColor(f))
+                                LiveText(stringResource(R.string.iptv_ge_watching), size = 9.sp, color = focusedTextColor(f))
                             }
                         }
                         // Only the highlighted copy shows where it comes from and what's on.
                         if (f) {
-                            val line = listOf(ch.sourceName, ch.group.takeIf { showGroup }.orEmpty(), nowTitle(ch.key)?.let { "Now: $it" }.orEmpty())
+                            val line = listOf(ch.sourceName, ch.group.takeIf { showGroup }.orEmpty(), nowTitle(ch.key)?.let { stringResource(R.string.iptv_ge_now, it) }.orEmpty())
                                 .filter { it.isNotBlank() }.joinToString(" · ")
                             if (line.isNotBlank()) LiveText(line, size = 9.sp, color = focusedTextColor(f), maxLines = 1)
                         }
@@ -1709,7 +1710,7 @@ private fun ScreenSizeDialog(
 ) {
     val first = remember { FocusRequester() }
     LiveDialog(onDismiss = onDismiss, width = 420.dp) {
-        LiveText("Screen size", size = 20.sp, weight = FontWeight.Bold)
+        LiveText(stringResource(R.string.iptv_gear_screen_size), size = 20.sp, weight = FontWeight.Bold)
         Spacer(Modifier.height(12.dp))
         Column(verticalArrangement = Arrangement.spacedBy(4.dp)) {
             com.nuvio.tv.ui.screens.player.AspectMode.entries.forEach { mode ->
@@ -1744,10 +1745,11 @@ private fun StreamInfoDialog(
     captions: String? = null,
     onDismiss: () -> Unit
 ) {
-    val rows = streamInfoRows(player, channel, shape, captions)
+    val context = androidx.compose.ui.platform.LocalContext.current
+    val rows = streamInfoRows(context, player, channel, shape, captions)
     val first = remember { FocusRequester() }
     LiveDialog(onDismiss = onDismiss, width = 520.dp) {
-        LiveText("Stream info", size = 20.sp, weight = FontWeight.Bold)
+        LiveText(stringResource(R.string.iptv_guide_stream_info), size = 20.sp, weight = FontWeight.Bold)
         Spacer(Modifier.height(12.dp))
         rows.forEach { (k, value) ->
             Row(modifier = Modifier.padding(vertical = 3.dp)) {
@@ -1756,12 +1758,13 @@ private fun StreamInfoDialog(
             }
         }
         Spacer(Modifier.height(12.dp))
-        MenuItem("Close", Modifier.focusRequester(first), onDismiss)
+        MenuItem(stringResource(R.string.action_close), Modifier.focusRequester(first), onDismiss)
     }
     LaunchedEffect(Unit) { delay(60); runCatching { first.requestFocus() } }
 }
 
 private fun streamInfoRows(
+    context: android.content.Context,
     player: androidx.media3.common.Player?,
     channel: LiveChannel,
     shape: com.nuvio.tv.livetv.player.PictureShape,
@@ -1771,9 +1774,9 @@ private fun streamInfoRows(
     val v = exo?.videoFormat
     val a = exo?.audioFormat
     return buildList {
-        add("Channel" to "${channel.number}  ${channel.name}")
+        add(context.getString(R.string.iptv_guide_channel) to "${channel.number}  ${channel.name}")
         v?.let { f ->
-            if (f.width > 0) add("Resolution" to "${f.width} × ${f.height}" + qualityName(f.height)?.let { "  ($it)" }.orEmpty())
+            if (f.width > 0) add(context.getString(R.string.iptv_player_resolution) to "${f.width} × ${f.height}" + qualityName(context, f.height)?.let { "  ($it)" }.orEmpty())
             val size = exo?.videoSize ?: androidx.media3.common.VideoSize.UNKNOWN
             val par = if (size.width > 0) size.pixelWidthHeightRatio else f.pixelWidthHeightRatio
             val w = if (size.width > 0) size.width else f.width
@@ -1785,32 +1788,38 @@ private fun streamInfoRows(
                     pic.hasFlag(par) -> "  (stream's shape)"
                     else -> ""
                 }
-                add("Shape" to "${pic.ratioText(aspect)}$note")
+                add(context.getString(R.string.iptv_player_shape) to "${pic.ratioText(aspect)}$note")
             }
-            if (f.frameRate > 0f) add("Frame rate" to "%.2f fps".format(f.frameRate).replace(".00", ""))
-            add("Video" to listOfNotNull(f.sampleMimeType?.substringAfter('/'), f.codecs).joinToString(" · ").ifBlank { "Unknown" })
+            if (f.frameRate > 0f) add(context.getString(R.string.iptv_player_frame_rate) to "%.2f fps".format(f.frameRate).replace(".00", ""))
+            add(context.getString(R.string.iptv_player_video) to listOfNotNull(f.sampleMimeType?.substringAfter('/'), f.codecs).joinToString(" · ").ifBlank { context.getString(R.string.iptv_player_unknown) })
             val br = if (f.bitrate > 0) f.bitrate else f.averageBitrate
-            if (br > 0) add("Video bitrate" to "%.1f Mbps".format(br / 1_000_000f))
-        } ?: add("Video" to "Not known yet")
+            if (br > 0) add(context.getString(R.string.iptv_player_video_bitrate) to "%.1f Mbps".format(br / 1_000_000f))
+        } ?: add(context.getString(R.string.iptv_player_video) to context.getString(R.string.iptv_player_not_known_yet))
         a?.let { f ->
             add(
-                "Audio" to listOfNotNull(
+                context.getString(R.string.iptv_gear_audio) to listOfNotNull(
                     f.sampleMimeType?.substringAfter('/'),
-                    f.channelCount.takeIf { it > 0 }?.let { c -> when (c) { 1 -> "mono"; 2 -> "stereo"; 6 -> "5.1"; 8 -> "7.1"; else -> "$c ch" } },
+                    f.channelCount.takeIf { it > 0 }?.let { c -> when (c) {
+                        1 -> context.getString(R.string.iptv_player_mono)
+                        2 -> context.getString(R.string.iptv_player_stereo)
+                        6 -> context.getString(R.string.iptv_player_surround_51)
+                        8 -> context.getString(R.string.iptv_player_surround_71)
+                        else -> context.getString(R.string.iptv_player_channel_count, c)
+                    } },
                     f.sampleRate.takeIf { it > 0 }?.let { r -> "${r / 1000} kHz" },
                     f.language
                 ).joinToString(" · ")
             )
         }
-        captions?.let { add("Captions" to it) }
-        exo?.let { p -> add("Buffered" to "${p.totalBufferedDuration / 1000} s") }
-        add("Source" to (runCatching { android.net.Uri.parse(channel.url).host }.getOrNull() ?: "—"))
+        captions?.let { add(context.getString(R.string.iptv_player_captions) to it) }
+        exo?.let { p -> add(context.getString(R.string.iptv_player_buffered) to "${p.totalBufferedDuration / 1000} s") }
+        add(context.getString(R.string.iptv_player_source) to (runCatching { android.net.Uri.parse(channel.url).host }.getOrNull() ?: "—"))
     }
 }
 
-private fun qualityName(height: Int): String? = when {
+private fun qualityName(context: android.content.Context, height: Int): String? = when {
     height >= 1800 -> "4K"
-    height >= 1000 -> "Full HD"
+    height >= 1000 -> context.getString(R.string.iptv_player_full_hd)
     height >= 700 -> "HD"
     height > 0 -> "SD"
     else -> null
@@ -1820,13 +1829,18 @@ private fun qualityName(height: Int): String? = when {
 private fun SleepTimerDialog(onPick: (Int?) -> Unit, onDismiss: () -> Unit) {
     val first = remember { FocusRequester() }
     LiveDialog(onDismiss = onDismiss, width = 380.dp) {
-        LiveText("Sleep timer", size = 20.sp, weight = FontWeight.Bold)
-        LiveText("Stops playback after", color = NuvioTheme.colors.TextSecondary, size = 13.sp)
+        LiveText(stringResource(R.string.iptv_gear_sleep_timer), size = 20.sp, weight = FontWeight.Bold)
+        LiveText(stringResource(R.string.iptv_gear_sleep_hint), color = NuvioTheme.colors.TextSecondary, size = 13.sp)
         Spacer(Modifier.height(12.dp))
         Column(verticalArrangement = Arrangement.spacedBy(4.dp)) {
-            MenuItem("Off", Modifier.focusRequester(first)) { onPick(null) }
+            MenuItem(stringResource(R.string.iptv_gear_off), Modifier.focusRequester(first)) { onPick(null) }
             listOf(15, 30, 45, 60, 90, 120).forEach { m ->
-                MenuItem(if (m < 60) "$m minutes" else if (m == 60) "1 hour" else "${m / 60.0} hours".replace(".0 ", " ")) { onPick(m) }
+                val label = when {
+                    m == 60 -> pluralStringResource(R.plurals.iptv_settings_hours, 1, 1)
+                    m == 120 -> pluralStringResource(R.plurals.iptv_settings_hours, 2, 2)
+                    else -> pluralStringResource(R.plurals.iptv_settings_minutes_short, m, m)
+                }
+                MenuItem(label) { onPick(m) }
             }
         }
     }
