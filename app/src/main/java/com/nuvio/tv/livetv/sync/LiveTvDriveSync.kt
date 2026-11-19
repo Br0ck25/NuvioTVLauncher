@@ -269,6 +269,14 @@ class LiveTvDriveSync @Inject constructor(
             _state.value = _state.value.copy(signIn = null, message = text(R.string.iptv_status_google_no_sign_in))
             return
         }
+        // Google's permission screen lets people untick the Drive box; then the token has no Drive scope
+        // and every backup fails with a 403. Say so instead of looking connected.
+        val granted = token.optString("scope")
+        Log.w(TAG, "Granted scopes: $granted")
+        if (granted.isNotBlank() && "auth/drive" !in granted) {
+            _state.value = _state.value.copy(signIn = null, message = text(R.string.iptv_status_google_drive_not_granted))
+            return
+        }
         accessToken = token.optString("access_token")
         accessTokenExpiresAt = System.currentTimeMillis() + token.optLong("expires_in", 3600) * 1000
         val email = emailFromIdToken(token.optString("id_token"))
