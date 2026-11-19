@@ -93,4 +93,22 @@
     <string name="iptv_rec_watched">"Gesehen"</string>
     <string name="iptv_rec_notif_recording_description">"Wird angezeigt, während Live TV aufzeichnet"</string>
     <string name="iptv_rec_notif_recording_title">"Aufnahme von Live-TV"</string>
+    <string name="iptv_rec_repeat">"Wiederholen"</string>
+    <string name="iptv_rec_repeat_never">"Niemals"</string>
+    <string name="iptv_rec_repeat_every_day">"Täglich"</string>
+    <string name="iptv_rec_repeat_weekdays">"Wochentags"</string>
+    <string name="iptv_rec_repeat_weekends">"Wochenenden"</string>
+    <string name="iptv_rec_repeat_pick_days">"Wählen Sie Tage aus"</string>
+    <string name="iptv_rec_repeat_on">"Wiederholen Sie den Vorgang"</string>
+    <string name="iptv_rec_repeat_ok">"OK tickt pro Tag"</string>
+    <string name="iptv_rec_pick_repeat_day">"Wählen Sie mindestens einen Tag zur Wiederholung aus."</string>
+    <string name="iptv_rec_ends_repeat">"Zeichnet an diesen Tagen jede Woche auf, bis Sie es unter „Aufzeichnungen“ stoppen."</string>
+    <string name="iptv_rec_new_episodes">"Neue Episoden"</string>
+    <string name="iptv_rec_series_detail_new_only">"Wird nur auf %1$s mit der Leitmarkierung „NEU“ ausgestrahlt (Wiederholungen bereits aufgenommener Episoden werden übersprungen). Durch das Stoppen werden auch die eingestellten Ausstrahlungen abgebrochen, die noch nicht begonnen haben; Was aufgezeichnet wird, bleibt erhalten."</string>
+    <string name="iptv_rec_series_detail_all">"Jede Episode auf %1$s (Wiederholungen bereits aufgezeichneter Episoden werden übersprungen). Durch das Stoppen werden auch die eingestellten Ausstrahlungen abgebrochen, die noch nicht begonnen haben; Was aufgezeichnet wird, bleibt erhalten."</string>
+    <string name="iptv_rec_record_new_only">"Aufnahme: Nur neue Episoden"</string>
+    <string name="iptv_rec_record_all">"Aufnahme: Alle Episoden"</string>
+    <string name="iptv_rec_stop_repeating">"Hör auf zu wiederholen"</string>
+    <string name="iptv_rec_repeat_detail">"%1$s ? %2$s bei %3$s. Durch das Stoppen werden auch die eingestellten Ausstrahlungen abgebrochen, die noch nicht begonnen haben; Was aufgezeichnet wird, bleibt erhalten."</string>
+    <string name="iptv_rec_done">"Erledigt"</string>
 </resources>

@@ -95,4 +95,22 @@
     <string name="iptv_rec_watched">"Obejrzane"</string>
     <string name="iptv_rec_notif_recording_description">"Wyświetlane podczas nagrywania programu Live TV"</string>
     <string name="iptv_rec_notif_recording_title">"Nagrywanie telewizji na żywo"</string>
+    <string name="iptv_rec_repeat">"Powtarzać"</string>
+    <string name="iptv_rec_repeat_never">"Nigdy"</string>
+    <string name="iptv_rec_repeat_every_day">"Codziennie"</string>
+    <string name="iptv_rec_repeat_weekdays">"Dni powszednie"</string>
+    <string name="iptv_rec_repeat_weekends">"Weekendy"</string>
+    <string name="iptv_rec_repeat_pick_days">"Wybierz dni"</string>
+    <string name="iptv_rec_repeat_on">"Powtórz dalej"</string>
+    <string name="iptv_rec_repeat_ok">"OK, tyka dziennie"</string>
+    <string name="iptv_rec_pick_repeat_day">"Wybierz co najmniej jeden dzień, w którym chcesz powtórzyć."</string>
+    <string name="iptv_rec_ends_repeat">"W te dni nagrywane są co tydzień, dopóki nie zatrzymasz ich w Nagraniach."</string>
+    <string name="iptv_rec_new_episodes">"Nowe odcinki"</string>
+    <string name="iptv_rec_series_detail_new_only">"Emituje tylko przewodniki oznaczone jako NOWE w %1$s (powtórki odcinków już nagranych są pomijane). Zatrzymanie powoduje również anulowanie ustawionych emisji, które się nie rozpoczęły; to, co zostało zapisane, zostaje zachowane."</string>
+    <string name="iptv_rec_series_detail_all">"Każdy odcinek w %1$s (powtórki odcinków już nagranych są pomijane). Zatrzymanie powoduje również anulowanie ustawionych emisji, które się nie rozpoczęły; to, co zostało zapisane, zostaje zachowane."</string>
+    <string name="iptv_rec_record_new_only">"Rekord: tylko nowe odcinki"</string>
+    <string name="iptv_rec_record_all">"Nagranie: wszystkie odcinki"</string>
+    <string name="iptv_rec_stop_repeating">"Przestań powtarzać"</string>
+    <string name="iptv_rec_repeat_detail">"%1$s? %2$s o %3$s. Zatrzymanie powoduje również anulowanie ustawionych emisji, które się nie rozpoczęły; to, co zostało zapisane, zostaje zachowane."</string>
+    <string name="iptv_rec_done">"Zrobione"</string>
 </resources>

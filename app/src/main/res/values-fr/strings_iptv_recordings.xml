@@ -93,4 +93,22 @@
     <string name="iptv_rec_watched">"Vu"</string>
     <string name="iptv_rec_notif_recording_description">"Affiché pendant l'enregistrement de Live TV"</string>
     <string name="iptv_rec_notif_recording_title">"Enregistrement de la télévision en direct"</string>
+    <string name="iptv_rec_repeat">"Répéter"</string>
+    <string name="iptv_rec_repeat_never">"Jamais"</string>
+    <string name="iptv_rec_repeat_every_day">"Tous les jours"</string>
+    <string name="iptv_rec_repeat_weekdays">"Jours de la semaine"</string>
+    <string name="iptv_rec_repeat_weekends">"Week-ends"</string>
+    <string name="iptv_rec_repeat_pick_days">"Choisissez les jours"</string>
+    <string name="iptv_rec_repeat_on">"Répétez sur"</string>
+    <string name="iptv_rec_repeat_ok">"OK, c'est un jour"</string>
+    <string name="iptv_rec_pick_repeat_day">"Choisissez au moins un jour pour répéter."</string>
+    <string name="iptv_rec_ends_repeat">"Enregistre chaque semaine ces jours-là jusqu'à ce que vous l'arrêtiez dans Enregistrements."</string>
+    <string name="iptv_rec_new_episodes">"Nouveaux épisodes"</string>
+    <string name="iptv_rec_series_detail_new_only">"Diffuse uniquement les marques du guide comme NOUVEAU sur %1$s (les répétitions des épisodes déjà enregistrés sont ignorées). L'arrêter annule également les diffusions qu'il a programmées et qui n'ont pas commencé ; ce qui est enregistré est conservé."</string>
+    <string name="iptv_rec_series_detail_all">"Chaque épisode sur %1$s (les répétitions des épisodes déjà enregistrés sont ignorées). L'arrêter annule également les diffusions qu'il a programmées et qui n'ont pas commencé ; ce qui est enregistré est conservé."</string>
+    <string name="iptv_rec_record_new_only">"Enregistrement : nouveaux épisodes uniquement"</string>
+    <string name="iptv_rec_record_all">"Enregistrement : tous les épisodes"</string>
+    <string name="iptv_rec_stop_repeating">"Arrêtez de répéter"</string>
+    <string name="iptv_rec_repeat_detail">"%1$s ? %2$s à %3$s. L'arrêter annule également les diffusions qu'il a programmées et qui n'ont pas commencé ; ce qui est enregistré est conservé."</string>
+    <string name="iptv_rec_done">"Fait"</string>
 </resources>

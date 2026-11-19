@@ -93,4 +93,22 @@
     <string name="iptv_rec_watched">"Visto"</string>
     <string name="iptv_rec_notif_recording_description">"Exibido enquanto a TV ao vivo está gravando"</string>
     <string name="iptv_rec_notif_recording_title">"Gravando TV ao vivo"</string>
+    <string name="iptv_rec_repeat">"Repita"</string>
+    <string name="iptv_rec_repeat_never">"Nunca"</string>
+    <string name="iptv_rec_repeat_every_day">"Diariamente"</string>
+    <string name="iptv_rec_repeat_weekdays">"Dias da semana"</string>
+    <string name="iptv_rec_repeat_weekends">"Fins de semana"</string>
+    <string name="iptv_rec_repeat_pick_days">"Escolha os dias"</string>
+    <string name="iptv_rec_repeat_on">"Repita em"</string>
+    <string name="iptv_rec_repeat_ok">"OK, marca um dia"</string>
+    <string name="iptv_rec_pick_repeat_day">"Escolha pelo menos um dia para repetir."</string>
+    <string name="iptv_rec_ends_repeat">"Grava todas as semanas nestes dias até parar em Gravações."</string>
+    <string name="iptv_rec_new_episodes">"Novos episódios"</string>
+    <string name="iptv_rec_series_detail_new_only">"Apenas as exibições do guia marcam como NOVO em %1$s (as repetições de episódios já gravados são ignoradas). Interrompê-lo também cancela as exibições definidas que ainda não foram iniciadas; o que está gravado é mantido."</string>
+    <string name="iptv_rec_series_detail_all">"Todos os episódios em %1$s (as repetições de episódios já gravados são ignoradas). Interrompê-lo também cancela as exibições definidas que ainda não foram iniciadas; o que está gravado é mantido."</string>
+    <string name="iptv_rec_record_new_only">"Registro: apenas novos episódios"</string>
+    <string name="iptv_rec_record_all">"Registro: todos os episódios"</string>
+    <string name="iptv_rec_stop_repeating">"Pare de repetir"</string>
+    <string name="iptv_rec_repeat_detail">"%1$s? %2$s em %3$s. Interrompê-lo também cancela as exibições definidas que ainda não foram iniciadas; o que está gravado é mantido."</string>
+    <string name="iptv_rec_done">"Feito"</string>
 </resources>

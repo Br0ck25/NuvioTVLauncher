@@ -1347,7 +1347,9 @@ private fun GamePage(
         onDispose { viewModel.repo.closeGame(ev.id) }
     }
     val vodLooked = viewModel.repo.vodMatches.collectAsStateWithLifecycle().value[ev.id]
-    val replays = vodLooked.orEmpty()
+    val official = viewModel.repo.videoMatches.collectAsStateWithLifecycle().value[ev.id]
+    // Official highlights and condensed games (ESPN, NHL, MLB, YouTube) go in the same list.
+    val replays = remember(vodLooked, official) { SportsVideos.merge(vodLooked.orEmpty(), official.orEmpty()) }
     val vodAddons = viewModel.repo.vodAddons.collectAsStateWithLifecycle().value[ev.id]
     // A finished game: once replays turn up, put the highlight on the first one (once per visit).
     val firstReplay = remember(ev.id) { FocusRequester() }
@@ -1434,7 +1436,7 @@ private fun GamePage(
                         onClick = { onPlayReplay(m) })
                 }
             }
-            vodLooked == null -> LiveText(stringResource(R.string.iptv_sports_looking_addons), color = SportsLook.Dim, size = 12.sp,
+            vodLooked == null || official == null -> LiveText(stringResource(R.string.iptv_sports_looking_addons), color = SportsLook.Dim, size = 12.sp,
                 modifier = Modifier.padding(start = 6.dp, bottom = 4.dp))
             vodAddons != null && vodAddons.isEmpty() -> LiveText(
                 stringResource(R.string.iptv_sports_replays_none),

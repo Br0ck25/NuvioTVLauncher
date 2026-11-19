@@ -643,7 +643,7 @@ fun RecordingsScreen(
         ManualRecordingDialog(
             channel = ch,
             use24h = use24h,
-            onSchedule = { title, start, stop -> manualFor = null; viewModel.scheduleManual(ch, title, start, stop) },
+            onSchedule = { title, start, stop, days -> manualFor = null; viewModel.scheduleManual(ch, title, start, stop, days) },
             onDismiss = { manualFor = null }
         )
     }

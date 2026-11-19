@@ -1,5 +1,15 @@
 # Nuvio One 1.2.0-beta.1.17.3
 
+## Nuvio + IPTV 1.2.0-beta.2.1
+
+- Sports: official highlights and condensed games (ESPN, NHL, MLB and YouTube), replays and highlights from sports add-ons for every sport, and AFCON qualifying with qualification status.
+- Multiview: hold OK on a pane to watch it full screen and return with every pane still playing; pane names and the highlight fade with the top bar; the Sports tab has My Sports, All Events, Live Now and per-sport filters.
+- Live TV: a guide for each playlist, On Demand from M3U playlists, a DNS setting (System, Cloudflare or Google), copy several channels to a group at once, series recordings that take new episodes only, repeating recordings, a 14-day past guide, and Hide Stray Entries.
+- Profiles: Copy Settings now includes Live TV favorites, groups, channel order, hidden items, Sports and Calendar choices; Keep Matched keeps matched profiles in step.
+- Calendar: F1, NASCAR and IndyCar sessions show on their own day and time, and multi-day golf and tennis events show on every day they run.
+- Nuvio 1.2.0-beta.2 base: Stremio player and library tracking add-ons, subtitle outline width, styled subtitle colours and positions, keeping your place when switching source, and better source fallback. mpv updated to 0.2.1.
+- Fixed: Update Now re-downloads M3U playlists, overlay mode matches the guide, deleting a playlist clears its leftovers, sync keeps playlist and guide order, Stalker guide saving and error privacy, and NBA division standings order.
+
 ## OneTube
 
 - OneTube now uses the full screen width when Nuvio's side menu is hidden. The first poster and the row titles still clear the menu while it is open, without the black side bars.

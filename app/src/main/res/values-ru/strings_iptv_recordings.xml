@@ -95,4 +95,22 @@
     <string name="iptv_rec_watched">"Просмотрено"</string>
     <string name="iptv_rec_notif_recording_description">"Отображается во время записи Live TV"</string>
     <string name="iptv_rec_notif_recording_title">"Запись прямого эфира"</string>
+    <string name="iptv_rec_repeat">"Повторить"</string>
+    <string name="iptv_rec_repeat_never">"Никогда"</string>
+    <string name="iptv_rec_repeat_every_day">"Каждый день"</string>
+    <string name="iptv_rec_repeat_weekdays">"Будни"</string>
+    <string name="iptv_rec_repeat_weekends">"Выходные"</string>
+    <string name="iptv_rec_repeat_pick_days">"Выберите дни"</string>
+    <string name="iptv_rec_repeat_on">"Повторить дальше"</string>
+    <string name="iptv_rec_repeat_ok">"ок, день пройдет"</string>
+    <string name="iptv_rec_pick_repeat_day">"Выберите хотя бы один день для повторения."</string>
+    <string name="iptv_rec_ends_repeat">"Запись каждую неделю в эти дни, пока вы не остановите ее в разделе «Записи»."</string>
+    <string name="iptv_rec_new_episodes">"Новые серии"</string>
+    <string name="iptv_rec_series_detail_new_only">"Выходит в эфир только руководство, помечаемое как НОВОЕ на %1$s (повторы уже записанных серий пропускаются). Остановка также отменяет установленные трансляции, которые еще не начались; то, что записано, сохраняется."</string>
+    <string name="iptv_rec_series_detail_all">"Каждая серия на %1$s (повторы уже записанных серий пропускаются). Остановка также отменяет установленные трансляции, которые еще не начались; то, что записано, сохраняется."</string>
+    <string name="iptv_rec_record_new_only">"Запись: только новые серии"</string>
+    <string name="iptv_rec_record_all">"Запись: Все серии"</string>
+    <string name="iptv_rec_stop_repeating">"Хватит повторять"</string>
+    <string name="iptv_rec_repeat_detail">"%1$s ? %2$s в %3$s. Остановка также отменяет установленные трансляции, которые еще не начались; то, что записано, сохраняется."</string>
+    <string name="iptv_rec_done">"Сделанный"</string>
 </resources>

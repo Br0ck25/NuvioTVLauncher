@@ -93,4 +93,22 @@
     <string name="iptv_rec_watched">"İzlendi"</string>
     <string name="iptv_rec_notif_recording_description">"Canlı TV kaydı sırasında gösterilir"</string>
     <string name="iptv_rec_notif_recording_title">"Canlı TV Kaydetme"</string>
+    <string name="iptv_rec_repeat">"Tekrarlamak"</string>
+    <string name="iptv_rec_repeat_never">"Asla"</string>
+    <string name="iptv_rec_repeat_every_day">"Her gün"</string>
+    <string name="iptv_rec_repeat_weekdays">"Hafta içi"</string>
+    <string name="iptv_rec_repeat_weekends">"Hafta sonları"</string>
+    <string name="iptv_rec_repeat_pick_days">"Gün seç"</string>
+    <string name="iptv_rec_repeat_on">"Tekrar et"</string>
+    <string name="iptv_rec_repeat_ok">"Tamam bir gün işaretler"</string>
+    <string name="iptv_rec_pick_repeat_day">"Tekrarlamak için en az bir gün seçin."</string>
+    <string name="iptv_rec_ends_repeat">"Siz Kayıtlar'da durdurana kadar her hafta bu günlerde kayıt yapar."</string>
+    <string name="iptv_rec_new_episodes">"Yeni bölümler"</string>
+    <string name="iptv_rec_series_detail_new_only">"Kılavuz işaretleri yalnızca %1$s'de YENİ olarak yayınlanıyor (halihazırda kaydedilmiş bölümlerin tekrarları atlanıyor). Durdurmak aynı zamanda ayarladığı başlamamış yayınları da iptal eder; kaydedilenler saklanır."</string>
+    <string name="iptv_rec_series_detail_all">"%1$s'deki her bölüm (önceden kaydedilmiş bölümlerin tekrarları atlanır). Durdurmak aynı zamanda ayarladığı başlamamış yayınları da iptal eder; kaydedilenler saklanır."</string>
+    <string name="iptv_rec_record_new_only">"Kayıt: Yalnızca Yeni Bölümler"</string>
+    <string name="iptv_rec_record_all">"Kayıt: Tüm Bölümler"</string>
+    <string name="iptv_rec_stop_repeating">"Tekrarlamayı Durdur"</string>
+    <string name="iptv_rec_repeat_detail">"%1$s ? %2$s, %3$s'de. Durdurmak aynı zamanda ayarladığı başlamamış yayınları da iptal eder; kaydedilenler saklanır."</string>
+    <string name="iptv_rec_done">"Tamamlamak"</string>
 </resources>

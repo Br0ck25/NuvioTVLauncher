@@ -2186,9 +2186,9 @@ private fun LiveTvGuideScreenBody(
             com.nuvio.tv.livetv.record.ManualRecordingDialog(
                 channel = ch,
                 use24h = settings.use24HourClock,
-                onSchedule = { title, start, stop ->
+                onSchedule = { title, start, stop, days ->
                     manualRecordingFor = null
-                    com.nuvio.tv.livetv.record.LiveTvNotice.show(viewModel.scheduler.addManual(ch, title, start, stop))
+                    com.nuvio.tv.livetv.record.LiveTvNotice.show(viewModel.scheduler.addManual(ch, title, start, stop, days))
                     scope.launch { delay(60); runCatching { gridFocus.requestFocus() } }
                 },
                 onDismiss = {

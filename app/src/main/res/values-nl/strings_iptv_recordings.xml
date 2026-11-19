@@ -93,4 +93,22 @@
     <string name="iptv_rec_watched">"Bekeken"</string>
     <string name="iptv_rec_notif_recording_description">"Wordt weergegeven terwijl Live TV aan het opnemen is"</string>
     <string name="iptv_rec_notif_recording_title">"Live-tv opnemen"</string>
+    <string name="iptv_rec_repeat">"Herhalen"</string>
+    <string name="iptv_rec_repeat_never">"Nooit"</string>
+    <string name="iptv_rec_repeat_every_day">"Elke dag"</string>
+    <string name="iptv_rec_repeat_weekdays">"Weekdagen"</string>
+    <string name="iptv_rec_repeat_weekends">"Weekenden"</string>
+    <string name="iptv_rec_repeat_pick_days">"Kies dagen"</string>
+    <string name="iptv_rec_repeat_on">"Herhaal aan"</string>
+    <string name="iptv_rec_repeat_ok">"Oké, tikt een dag"</string>
+    <string name="iptv_rec_pick_repeat_day">"Kies minstens één dag om te herhalen."</string>
+    <string name="iptv_rec_ends_repeat">"Neemt op deze dagen elke week op totdat u deze stopt in Opnames."</string>
+    <string name="iptv_rec_new_episodes">"Nieuwe afleveringen"</string>
+    <string name="iptv_rec_series_detail_new_only">"De gidsmarkeringen worden alleen uitgezonden als NIEUW op %1$s (herhalingen van reeds opgenomen afleveringen worden overgeslagen). Als u het stopt, worden ook de uitzendingen geannuleerd die nog niet zijn gestart; wat wordt opgenomen, wordt bewaard."</string>
+    <string name="iptv_rec_series_detail_all">"Elke aflevering op %1$s (herhalingen van reeds opgenomen afleveringen worden overgeslagen). Als u het stopt, worden ook de uitzendingen geannuleerd die nog niet zijn gestart; wat wordt opgenomen, wordt bewaard."</string>
+    <string name="iptv_rec_record_new_only">"Opnemen: alleen nieuwe afleveringen"</string>
+    <string name="iptv_rec_record_all">"Opnemen: alle afleveringen"</string>
+    <string name="iptv_rec_stop_repeating">"Stop met herhalen"</string>
+    <string name="iptv_rec_repeat_detail">"%1$s ? %2$s op %3$s. Als u het stopt, worden ook de uitzendingen geannuleerd die nog niet zijn gestart; wat wordt opgenomen, wordt bewaard."</string>
+    <string name="iptv_rec_done">"Klaar"</string>
 </resources>
