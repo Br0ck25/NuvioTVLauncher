@@ -28,6 +28,7 @@ object RestoreFromPhoneServer {
         val heading: String,
         val instructions: String,
         val choose: String,
+        val selected: String,
         val send: String,
         val replace: String,
         val sending: String,
@@ -50,6 +51,7 @@ object RestoreFromPhoneServer {
                     heading = resources.getString(R.string.iptv_settings_restore_phone_heading),
                     instructions = resources.getString(R.string.iptv_settings_restore_phone_instructions),
                     choose = resources.getString(R.string.iptv_settings_restore_phone_choose),
+                    selected = resources.getString(R.string.iptv_settings_restore_phone_selected),
                     send = resources.getString(R.string.iptv_settings_restore_phone_send),
                     replace = resources.getString(R.string.iptv_settings_restore_phone_replace),
                     sending = resources.getString(R.string.iptv_settings_restore_phone_sending),
@@ -218,6 +220,8 @@ h1{margin:0;font-size:24px}
 p{margin:0;font-size:14px;color:#A9A9B5;line-height:1.5}
 .file{display:flex;align-items:center;justify-content:center;min-height:64px;border:1px dashed #3A3A46;border-radius:12px;background:#17171D;color:#C9C9D3;font-size:15px;font-weight:600;cursor:pointer;padding:12px;text-align:center}
 .file input{display:none}
+.picked{background:#17171D;border:1px solid #2E2E39;border-radius:10px;padding:12px 14px;font-size:14px;color:#F2F2F5;word-break:break-all;line-height:1.4}
+[hidden]{display:none!important}
 .send{height:52px;border:0;border-radius:12px;background:var(--accent);color:#0B0B10;font-size:16px;font-weight:700;font-family:inherit}
 .send:disabled{opacity:.6}
 #msg{min-height:20px;font-size:15px;text-align:center;line-height:1.4}
@@ -228,20 +232,24 @@ p{margin:0;font-size:14px;color:#A9A9B5;line-height:1.5}
 <h1>${esc(texts.heading)}</h1>
 <p>${esc(texts.instructions)}</p>
 <label class="file">${esc(texts.choose)}<input id="file" type="file" accept=".json,application/json,text/plain,application/octet-stream"></label>
+<div id="picked" class="picked" hidden></div>
 <button class="send" id="send">${esc(texts.send)}</button>
 <div id="msg" role="status"></div>
 <p class="note">${esc(texts.replace)}<br>${esc(texts.networkNote)}</p>
 </main>
 <script>
-var labels={sending:${quote(texts.sending)},received:${quote(texts.received)},tooLarge:${quote(texts.tooLarge)},unreachable:${quote(texts.unreachable)},nothing:${quote(texts.nothing)}};
-var f=document.getElementById('file'),b=document.getElementById('send'),m=document.getElementById('msg');
+var labels={sending:${quote(texts.sending)},received:${quote(texts.received)},tooLarge:${quote(texts.tooLarge)},unreachable:${quote(texts.unreachable)},nothing:${quote(texts.nothing)},selected:${quote(texts.selected)}};
+var f=document.getElementById('file'),b=document.getElementById('send'),m=document.getElementById('msg'),picked=document.getElementById('picked');
 function msg(t,c){m.textContent=t;m.className=c||''}
+function showPicked(){var file=f.files[0];if(!file){picked.hidden=true;picked.textContent='';return}
+picked.hidden=false;picked.textContent=labels.selected.replace('%1${'$'}s',file.name)}
+f.onchange=showPicked;
 function read(file){if(file.text)return file.text();return new Promise(function(res,rej){var r=new FileReader();r.onload=function(){res(r.result)};r.onerror=rej;r.readAsText(file)})}
 b.onclick=function(){var file=f.files[0];if(!file){msg(labels.nothing,'bad');return}
 if(file.size>16777216){msg(labels.tooLarge,'bad');return}
 b.disabled=true;msg(labels.sending,'');
 read(file).then(function(t){return fetch(location.pathname.replace(/\/$/,'')+'/restore',{method:'POST',headers:{'Content-Type':'application/json'},body:t})})
-.then(function(r){return r.json()}).then(function(j){msg(j.message,j.ok?'ok':'bad');if(j.ok)f.value=''})
+.then(function(r){return r.json()}).then(function(j){msg(j.message,j.ok?'ok':'bad');if(j.ok){f.value='';picked.hidden=true;picked.textContent=''}})
 .catch(function(){msg(labels.unreachable,'bad')}).finally(function(){b.disabled=false})};
 </script>
 </body></html>"""

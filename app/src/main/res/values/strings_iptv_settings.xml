@@ -714,4 +714,5 @@
     <string name="iptv_settings_restore_phone_tv_steps">"1. Put your phone on the same Wi-Fi as this TV.
 2. Scan the code with your phone's camera.
 3. Choose the backup file and tap Restore TV setup."</string>
+    <string name="iptv_settings_restore_phone_selected">"Selected file: %1$s"</string>
 </resources>
