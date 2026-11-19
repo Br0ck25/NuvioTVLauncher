@@ -691,4 +691,11 @@
     <string name="iptv_settings_group_tags_count">"%1$d zenders · %2$d groepen"</string>
     <string name="iptv_settings_group_tags_clear">"Alles wissen"</string>
     <string name="iptv_settings_group_tags_done">"Klaar"</string>
+    <string name="iptv_settings_restore_from_file">"Herstellen uit bestand"</string>
+    <string name="iptv_settings_restore_from_file_hint">"Kies een Nuvio Live TV-back-up (.json) van een USB-stick of Downloads."</string>
+    <string name="iptv_settings_restore_from_file_confirm">"Dit vervangt de Live TV-instellingen van deze tv door de gekozen back-up."</string>
+    <string name="iptv_settings_restore_file_invalid">"Dat bestand is geen Nuvio Live TV-back-up."</string>
+    <string name="iptv_settings_restore_file_empty">"Die back-up bevat geen afspeellijsten of gidsen."</string>
+    <string name="iptv_settings_restore_file_done">"Live TV-instellingen hersteld."</string>
+    <string name="iptv_settings_restore_file_failed">"Dat bestand kon niet worden gelezen."</string>
 </resources>

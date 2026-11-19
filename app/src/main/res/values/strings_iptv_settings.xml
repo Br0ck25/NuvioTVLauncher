@@ -691,4 +691,11 @@
     <string name="iptv_settings_today">"today"</string>
     <string name="iptv_settings_yesterday">"yesterday"</string>
     <string name="iptv_settings_expiry_expired">"expired"</string>
+    <string name="iptv_settings_restore_from_file">"Restore from File"</string>
+    <string name="iptv_settings_restore_from_file_hint">"Pick a Nuvio Live TV backup (.json) from a USB drive or Downloads."</string>
+    <string name="iptv_settings_restore_from_file_confirm">"This replaces this TV's Live TV setup with the selected backup."</string>
+    <string name="iptv_settings_restore_file_invalid">"That file isn't a Nuvio Live TV backup."</string>
+    <string name="iptv_settings_restore_file_empty">"That backup has no playlists or guides."</string>
+    <string name="iptv_settings_restore_file_done">"Live TV setup restored."</string>
+    <string name="iptv_settings_restore_file_failed">"Couldn't read that file."</string>
 </resources>

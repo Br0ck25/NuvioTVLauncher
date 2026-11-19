@@ -691,4 +691,11 @@
     <string name="iptv_settings_group_tags_count">"%1$d kanal · %2$d grup"</string>
     <string name="iptv_settings_group_tags_clear">"Tümünü temizle"</string>
     <string name="iptv_settings_group_tags_done">"Bitti"</string>
+    <string name="iptv_settings_restore_from_file">"Dosyadan geri yükle"</string>
+    <string name="iptv_settings_restore_from_file_hint">"USB sürücüden veya İndirilenler'den bir Nuvio Live TV yedeği (.json) seçin."</string>
+    <string name="iptv_settings_restore_from_file_confirm">"Bu, bu TV'nin Live TV kurulumunu seçilen yedekle değiştirir."</string>
+    <string name="iptv_settings_restore_file_invalid">"Bu dosya bir Nuvio Live TV yedeği değil."</string>
+    <string name="iptv_settings_restore_file_empty">"Bu yedekte oynatma listesi veya rehber yok."</string>
+    <string name="iptv_settings_restore_file_done">"Live TV kurulumu geri yüklendi."</string>
+    <string name="iptv_settings_restore_file_failed">"Bu dosya okunamadı."</string>
 </resources>

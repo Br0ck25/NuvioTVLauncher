@@ -691,4 +691,11 @@
     <string name="iptv_settings_group_tags_count">"%1$d kanałów · %2$d grup"</string>
     <string name="iptv_settings_group_tags_clear">"Wyczyść wszystko"</string>
     <string name="iptv_settings_group_tags_done">"Gotowe"</string>
+    <string name="iptv_settings_restore_from_file">"Przywróć z pliku"</string>
+    <string name="iptv_settings_restore_from_file_hint">"Wybierz kopię Live TV Nuvio (.json) z dysku USB lub Pobranych."</string>
+    <string name="iptv_settings_restore_from_file_confirm">"To zastąpi konfigurację Live TV tego telewizora wybraną kopią."</string>
+    <string name="iptv_settings_restore_file_invalid">"Ten plik nie jest kopią Live TV Nuvio."</string>
+    <string name="iptv_settings_restore_file_empty">"Ta kopia nie zawiera playlist ani przewodników."</string>
+    <string name="iptv_settings_restore_file_done">"Przywrócono konfigurację Live TV."</string>
+    <string name="iptv_settings_restore_file_failed">"Nie można odczytać tego pliku."</string>
 </resources>
