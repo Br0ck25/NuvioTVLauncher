@@ -1,0 +1,46 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <string name="iptv_cal_tab_calendar">"Calendario"</string>
+    <string name="iptv_cal_tab_following">"Siguiendo"</string>
+    <string name="iptv_cal_tab_hidden">"Programas ocultos"</string>
+    <string name="iptv_cal_tab_mine">"Mi calendario"</string>
+    <string name="iptv_cal_tab_recent">"Emitidos recientemente"</string>
+    <string name="iptv_cal_tab_today">"Hoy en TV"</string>
+    <string name="iptv_cal_on_my_tv">"En mi TV"</string>
+    <string name="iptv_cal_unwatched_only">"Solo no vistos"</string>
+    <string name="iptv_cal_prime_time">"Horario estelar"</string>
+    <string name="iptv_cal_looking_up">"Buscando tus programas."</string>
+    <string name="iptv_cal_looking_up_progress">"Buscando tus programas. %1$d de %2$d"</string>
+    <string name="iptv_cal_times_zone">"Horas en tu zona horaria"</string>
+    <string name="iptv_cal_left_off">"Quitado de tu calendario"</string>
+    <string name="iptv_cal_empty_connection">"Comprueba tu conexión e inténtalo de nuevo."</string>
+    <string name="iptv_cal_empty_none">"Aún no hay nada. Los programas que ves, tu biblioteca y los programas con campana aparecen aquí con sus nuevos episodios."</string>
+    <string name="iptv_cal_empty_on_tv">"Ninguno de tus programas está en tu guía de Live TV ahora. La guía suele cubrir los próximos días."</string>
+    <string name="iptv_cal_empty_upcoming">"No hay nada en los próximos cuatro meses."</string>
+    <string name="iptv_cal_empty_recent">"No se emitió nada el mes pasado."</string>
+    <string name="iptv_cal_see_today">"Ver qué se emite hoy"</string>
+    <string name="iptv_cal_getting_today">"Cargando los programas de hoy."</string>
+    <string name="iptv_cal_no_new_today">"No se encontraron episodios nuevos para hoy."</string>
+    <string name="iptv_cal_refresh">"Actualizar"</string>
+    <string name="iptv_cal_nothing_filter">"No hay nada con este filtro."</string>
+    <string name="iptv_cal_no_bells">"Aún no hay campanas activadas"</string>
+    <string name="iptv_cal_bell_help">"Activa la campana en la página de un programa, en Live TV o en Buscar (mantén OK) para seguirlo."</string>
+    <string name="iptv_cal_no_hidden">"No hay programas ocultos."</string>
+    <string name="iptv_cal_on_now">"AHORA"</string>
+    <string name="iptv_cal_out_home">"Para ver en casa"</string>
+    <string name="iptv_cal_title_hidden">"título oculto: aún no has llegado"</string>
+    <string name="iptv_cal_highlight_details">"Resalta algo para ver sus detalles aquí"</string>
+    <string name="iptv_cal_hold_more">"Mantén OK  Más opciones"</string>
+    <string name="iptv_cal_highlight_day">"Resalta un día con imagen para ver qué se emite"</string>
+    <string name="iptv_cal_this_week">"Esta semana"</string>
+    <string name="iptv_cal_next_week">"Próxima semana"</string>
+    <string name="iptv_cal_last_week">"Semana pasada"</string>
+    <string name="iptv_cal_nothing_out">"Nada en emisión"</string>
+    <string name="iptv_cal_on_day">"%1$d este día"</string>
+    <string name="iptv_cal_waiting_release">"Esperando su estreno"</string>
+    <string name="iptv_cal_nothing_announced">"Aún no hay anuncios"</string>
+    <string name="iptv_cal_in_theaters">"En cines"</string>
+    <string name="iptv_cal_on_disc">"En disco"</string>
+    <string name="iptv_cal_at_home">"En casa"</string>
+    <string name="iptv_cal_all_day">"Todo el día"</string>
+</resources>

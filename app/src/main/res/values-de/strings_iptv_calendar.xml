@@ -1,0 +1,46 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <string name="iptv_cal_tab_calendar">"Kalender"</string>
+    <string name="iptv_cal_tab_following">"Gefolgt"</string>
+    <string name="iptv_cal_tab_hidden">"Ausgeblendete Sendungen"</string>
+    <string name="iptv_cal_tab_mine">"Mein Kalender"</string>
+    <string name="iptv_cal_tab_recent">"Kürzlich gelaufen"</string>
+    <string name="iptv_cal_tab_today">"Heute im TV"</string>
+    <string name="iptv_cal_on_my_tv">"Auf meinem Fernseher"</string>
+    <string name="iptv_cal_unwatched_only">"Nur ungesehene"</string>
+    <string name="iptv_cal_prime_time">"Hauptsendezeit"</string>
+    <string name="iptv_cal_looking_up">"Deine Sendungen werden gesucht."</string>
+    <string name="iptv_cal_looking_up_progress">"Deine Sendungen werden gesucht. %1$d von %2$d"</string>
+    <string name="iptv_cal_times_zone">"Zeiten in deiner Zeitzone"</string>
+    <string name="iptv_cal_left_off">"Von deinem Kalender entfernt"</string>
+    <string name="iptv_cal_empty_connection">"Prüfe deine Verbindung und versuche es erneut."</string>
+    <string name="iptv_cal_empty_none">"Noch nichts hier. Sendungen, die du ansiehst, deine Bibliothek und Sendungen, bei denen du die Glocke aktivierst, erscheinen hier mit ihren neuen Episoden."</string>
+    <string name="iptv_cal_empty_on_tv">"Keine deiner Sendungen sind gerade in deiner Live-TV-Übersicht. Deine Übersicht deckt normalerweise die nächsten Tage ab."</string>
+    <string name="iptv_cal_empty_upcoming">"In den nächsten vier Monaten kommt nichts."</string>
+    <string name="iptv_cal_empty_recent">"Im letzten Monat lief nichts."</string>
+    <string name="iptv_cal_see_today">"Sieh, was heute läuft"</string>
+    <string name="iptv_cal_getting_today">"Heutige Sendungen werden geladen."</string>
+    <string name="iptv_cal_no_new_today">"Für heute wurden keine neuen Episoden gefunden."</string>
+    <string name="iptv_cal_refresh">"Aktualisieren"</string>
+    <string name="iptv_cal_nothing_filter">"Mit diesem Filter ist nichts hier."</string>
+    <string name="iptv_cal_no_bells">"Noch keine Glocke aktiviert"</string>
+    <string name="iptv_cal_bell_help">"Aktiviere die Glocke auf der Seite einer Sendung, in Live TV oder in der Suche (OK halten), um ihr zu folgen."</string>
+    <string name="iptv_cal_no_hidden">"Keine ausgeblendeten Sendungen."</string>
+    <string name="iptv_cal_on_now">"JETZT"</string>
+    <string name="iptv_cal_out_home">"Zuhause ansehen"</string>
+    <string name="iptv_cal_title_hidden">"Titel verborgen: Du bist noch nicht so weit"</string>
+    <string name="iptv_cal_highlight_details">"Markiere etwas, um hier Details zu sehen"</string>
+    <string name="iptv_cal_hold_more">"OK halten  Mehr Optionen"</string>
+    <string name="iptv_cal_highlight_day">"Markiere einen Tag mit Bild, um zu sehen, was läuft"</string>
+    <string name="iptv_cal_this_week">"Diese Woche"</string>
+    <string name="iptv_cal_next_week">"Nächste Woche"</string>
+    <string name="iptv_cal_last_week">"Letzte Woche"</string>
+    <string name="iptv_cal_nothing_out">"Nichts läuft"</string>
+    <string name="iptv_cal_on_day">"%1$d an diesem Tag"</string>
+    <string name="iptv_cal_waiting_release">"Wartet auf Veröffentlichung"</string>
+    <string name="iptv_cal_nothing_announced">"Noch nichts angekündigt"</string>
+    <string name="iptv_cal_in_theaters">"Im Kino"</string>
+    <string name="iptv_cal_on_disc">"Auf Disc"</string>
+    <string name="iptv_cal_at_home">"Zuhause"</string>
+    <string name="iptv_cal_all_day">"Ganztägig"</string>
+</resources>

@@ -1,0 +1,46 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <string name="iptv_cal_tab_calendar">"Takvim"</string>
+    <string name="iptv_cal_tab_following">"Takip edilenler"</string>
+    <string name="iptv_cal_tab_hidden">"Gizli programlar"</string>
+    <string name="iptv_cal_tab_mine">"Takvimim"</string>
+    <string name="iptv_cal_tab_recent">"Son yayınlananlar"</string>
+    <string name="iptv_cal_tab_today">"Bugün yayında"</string>
+    <string name="iptv_cal_on_my_tv">"TV’imde"</string>
+    <string name="iptv_cal_unwatched_only">"Yalnızca izlenmeyenler"</string>
+    <string name="iptv_cal_prime_time">"Ana yayın saati"</string>
+    <string name="iptv_cal_looking_up">"Programlarınız aranıyor."</string>
+    <string name="iptv_cal_looking_up_progress">"Programlarınız aranıyor. %1$d / %2$d"</string>
+    <string name="iptv_cal_times_zone">"Saatler kendi saat diliminizde"</string>
+    <string name="iptv_cal_left_off">"Takviminizden çıkarıldı"</string>
+    <string name="iptv_cal_empty_connection">"Bağlantınızı kontrol edip tekrar deneyin."</string>
+    <string name="iptv_cal_empty_none">"Henüz bir şey yok. İzlediğiniz programlar, kitaplığınız ve zil eklediğiniz programlar yeni bölümleriyle burada görünür."</string>
+    <string name="iptv_cal_empty_on_tv">"Programlarınızın hiçbiri şu anda Live TV rehberinizde değil. Rehber genellikle önümüzdeki birkaç günü kapsar."</string>
+    <string name="iptv_cal_empty_upcoming">"Önümüzdeki dört ayda bir şey gelmiyor."</string>
+    <string name="iptv_cal_empty_recent">"Geçen ay hiçbir şey yayınlanmadı."</string>
+    <string name="iptv_cal_see_today">"Bugün ne yayınlanıyor görün"</string>
+    <string name="iptv_cal_getting_today">"Bugünün programları yükleniyor."</string>
+    <string name="iptv_cal_no_new_today">"Bugün için yeni bölüm bulunamadı."</string>
+    <string name="iptv_cal_refresh">"Yenile"</string>
+    <string name="iptv_cal_nothing_filter">"Bu filtreyle hiçbir şey yok."</string>
+    <string name="iptv_cal_no_bells">"Henüz zil çalınmadı"</string>
+    <string name="iptv_cal_bell_help">"Takip etmek için bir programın sayfasında, Live TV’de veya Arama’da zili etkinleştirin (OK’ı basılı tutun)."</string>
+    <string name="iptv_cal_no_hidden">"Gizli program yok."</string>
+    <string name="iptv_cal_on_now">"ŞİMDİ"</string>
+    <string name="iptv_cal_out_home">"Evde izlemelik"</string>
+    <string name="iptv_cal_title_hidden">"başlık gizli: henüz oraya gelmediniz"</string>
+    <string name="iptv_cal_highlight_details">"Ayrıntıları görmek için bir öğeyi vurgulayın"</string>
+    <string name="iptv_cal_hold_more">"OK’ı basılı tutun  Daha fazla seçenek"</string>
+    <string name="iptv_cal_highlight_day">"Ne yayınlandığını görmek için resimli bir günü vurgulayın"</string>
+    <string name="iptv_cal_this_week">"Bu hafta"</string>
+    <string name="iptv_cal_next_week">"Gelecek hafta"</string>
+    <string name="iptv_cal_last_week">"Geçen hafta"</string>
+    <string name="iptv_cal_nothing_out">"Yayında bir şey yok"</string>
+    <string name="iptv_cal_on_day">"Bu günde %1$d"</string>
+    <string name="iptv_cal_waiting_release">"Çıkışı bekleniyor"</string>
+    <string name="iptv_cal_nothing_announced">"Henüz bir şey duyurulmadı"</string>
+    <string name="iptv_cal_in_theaters">"Sinemalarda"</string>
+    <string name="iptv_cal_on_disc">"Disk halinde"</string>
+    <string name="iptv_cal_at_home">"Evde"</string>
+    <string name="iptv_cal_all_day">"Tüm gün"</string>
+</resources>

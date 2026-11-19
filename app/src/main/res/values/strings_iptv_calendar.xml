@@ -1,0 +1,46 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <string name="iptv_cal_tab_calendar">"Calendar"</string>
+    <string name="iptv_cal_tab_following">"Following"</string>
+    <string name="iptv_cal_tab_hidden">"Hidden shows"</string>
+    <string name="iptv_cal_tab_mine">"My calendar"</string>
+    <string name="iptv_cal_tab_recent">"Recently aired"</string>
+    <string name="iptv_cal_tab_today">"Airing today"</string>
+    <string name="iptv_cal_on_my_tv">"On my TV"</string>
+    <string name="iptv_cal_unwatched_only">"Unwatched only"</string>
+    <string name="iptv_cal_prime_time">"Prime time"</string>
+    <string name="iptv_cal_looking_up">"Looking up your shows."</string>
+    <string name="iptv_cal_looking_up_progress">"Looking up your shows. %1$d of %2$d"</string>
+    <string name="iptv_cal_times_zone">"Times in your time zone"</string>
+    <string name="iptv_cal_left_off">"Left off your Calendar"</string>
+    <string name="iptv_cal_empty_connection">"Check your connection and try again."</string>
+    <string name="iptv_cal_empty_none">"Nothing here yet. Shows you watch, your Library and shows you ring the bell on show up here with their new episodes."</string>
+    <string name="iptv_cal_empty_on_tv">"None of your shows are in your Live TV guide right now. Your guide usually covers the next few days."</string>
+    <string name="iptv_cal_empty_upcoming">"Nothing coming up in the next four months."</string>
+    <string name="iptv_cal_empty_recent">"Nothing aired in the last month."</string>
+    <string name="iptv_cal_see_today">"See what's airing today"</string>
+    <string name="iptv_cal_getting_today">"Getting today's shows."</string>
+    <string name="iptv_cal_no_new_today">"No new episodes found for today."</string>
+    <string name="iptv_cal_refresh">"Refresh"</string>
+    <string name="iptv_cal_nothing_filter">"Nothing here with this filter."</string>
+    <string name="iptv_cal_no_bells">"No bells rung yet"</string>
+    <string name="iptv_cal_bell_help">"Ring the bell on a show's page, in Live TV or in Search (hold OK) to follow it."</string>
+    <string name="iptv_cal_no_hidden">"No hidden shows."</string>
+    <string name="iptv_cal_on_now">"ON NOW"</string>
+    <string name="iptv_cal_out_home">"Out to watch at home"</string>
+    <string name="iptv_cal_title_hidden">"title hidden: you're not there yet"</string>
+    <string name="iptv_cal_highlight_details">"Highlight something to see its details here"</string>
+    <string name="iptv_cal_hold_more">"Hold OK  More options"</string>
+    <string name="iptv_cal_highlight_day">"Highlight a day with a picture to see what's out"</string>
+    <string name="iptv_cal_this_week">"This week"</string>
+    <string name="iptv_cal_next_week">"Next week"</string>
+    <string name="iptv_cal_last_week">"Last week"</string>
+    <string name="iptv_cal_nothing_out">"Nothing out"</string>
+    <string name="iptv_cal_on_day">"%1$d on this day"</string>
+    <string name="iptv_cal_waiting_release">"Waiting to come out"</string>
+    <string name="iptv_cal_nothing_announced">"Nothing announced yet"</string>
+    <string name="iptv_cal_in_theaters">"In theaters"</string>
+    <string name="iptv_cal_on_disc">"On disc"</string>
+    <string name="iptv_cal_at_home">"At home"</string>
+    <string name="iptv_cal_all_day">"All day"</string>
+</resources>

@@ -1,0 +1,46 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <string name="iptv_cal_tab_calendar">"Календарь"</string>
+    <string name="iptv_cal_tab_following">"Отслеживаемые"</string>
+    <string name="iptv_cal_tab_hidden">"Скрытые передачи"</string>
+    <string name="iptv_cal_tab_mine">"Мой календарь"</string>
+    <string name="iptv_cal_tab_recent">"Недавно вышло"</string>
+    <string name="iptv_cal_tab_today">"Сегодня в эфире"</string>
+    <string name="iptv_cal_on_my_tv">"На моём телевизоре"</string>
+    <string name="iptv_cal_unwatched_only">"Только непросмотренные"</string>
+    <string name="iptv_cal_prime_time">"Прайм-тайм"</string>
+    <string name="iptv_cal_looking_up">"Поиск ваших передач."</string>
+    <string name="iptv_cal_looking_up_progress">"Поиск ваших передач. %1$d из %2$d"</string>
+    <string name="iptv_cal_times_zone">"Время в вашем часовом поясе"</string>
+    <string name="iptv_cal_left_off">"Убрано из календаря"</string>
+    <string name="iptv_cal_empty_connection">"Проверьте подключение и повторите попытку."</string>
+    <string name="iptv_cal_empty_none">"Здесь пока ничего нет. Передачи, которые вы смотрите, ваша библиотека и передачи с колокольчиком появятся здесь с новыми сериями."</string>
+    <string name="iptv_cal_empty_on_tv">"Ни одной вашей передачи сейчас нет в гиде Live TV. Гид обычно охватывает ближайшие дни."</string>
+    <string name="iptv_cal_empty_upcoming">"В ближайшие четыре месяца ничего не будет."</string>
+    <string name="iptv_cal_empty_recent">"В прошлом месяце ничего не выходило."</string>
+    <string name="iptv_cal_see_today">"Посмотреть, что сегодня в эфире"</string>
+    <string name="iptv_cal_getting_today">"Загрузка сегодняшних передач."</string>
+    <string name="iptv_cal_no_new_today">"Новых серий на сегодня не найдено."</string>
+    <string name="iptv_cal_refresh">"Обновить"</string>
+    <string name="iptv_cal_nothing_filter">"Здесь ничего нет с этим фильтром."</string>
+    <string name="iptv_cal_no_bells">"Колокольчики ещё не включены"</string>
+    <string name="iptv_cal_bell_help">"Включите колокольчик на странице передачи, в Live TV или в Поиске (удерживайте OK), чтобы отслеживать её."</string>
+    <string name="iptv_cal_no_hidden">"Скрытых передач нет."</string>
+    <string name="iptv_cal_on_now">"СЕЙЧАС"</string>
+    <string name="iptv_cal_out_home">"Смотреть дома"</string>
+    <string name="iptv_cal_title_hidden">"название скрыто: вы ещё не дошли до этого"</string>
+    <string name="iptv_cal_highlight_details">"Выделите что-нибудь, чтобы увидеть подробности"</string>
+    <string name="iptv_cal_hold_more">"Удерживайте OK  Больше опций"</string>
+    <string name="iptv_cal_highlight_day">"Выделите день с картинкой, чтобы увидеть, что выходит"</string>
+    <string name="iptv_cal_this_week">"На этой неделе"</string>
+    <string name="iptv_cal_next_week">"На следующей неделе"</string>
+    <string name="iptv_cal_last_week">"На прошлой неделе"</string>
+    <string name="iptv_cal_nothing_out">"Ничего не выходит"</string>
+    <string name="iptv_cal_on_day">"%1$d в этот день"</string>
+    <string name="iptv_cal_waiting_release">"Ожидает выхода"</string>
+    <string name="iptv_cal_nothing_announced">"Пока ничего не объявлено"</string>
+    <string name="iptv_cal_in_theaters">"В кинотеатрах"</string>
+    <string name="iptv_cal_on_disc">"На диске"</string>
+    <string name="iptv_cal_at_home">"Дома"</string>
+    <string name="iptv_cal_all_day">"Весь день"</string>
+</resources>
