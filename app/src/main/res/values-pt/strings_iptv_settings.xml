@@ -672,4 +672,31 @@
     <string name="iptv_settings_today">"hoje"</string>
     <string name="iptv_settings_yesterday">"ontem"</string>
     <string name="iptv_settings_expiry_expired">"expirado"</string>
+    <string name="iptv_settings_restore_from_file">"Restaurar de ficheiro"</string>
+    <string name="iptv_settings_restore_from_file_hint">"Escolha uma cópia de Live TV da Nuvio (.json) de uma pen USB ou Transferências."</string>
+    <string name="iptv_settings_restore_from_file_confirm">"Isto substitui a configuração de Live TV desta TV pela cópia escolhida."</string>
+    <string name="iptv_settings_restore_file_invalid">"Esse ficheiro não é uma cópia de Live TV da Nuvio."</string>
+    <string name="iptv_settings_restore_file_empty">"Essa cópia não tem playlists nem guias."</string>
+    <string name="iptv_settings_restore_file_done">"Configuração de Live TV restaurada."</string>
+    <string name="iptv_settings_restore_file_failed">"Não foi possível ler esse ficheiro."</string>
+    <string name="iptv_settings_restore_from_phone">"Restaurar do telefone"</string>
+    <string name="iptv_settings_restore_from_phone_hint">"Digitalize um código QR e escolha o ficheiro de cópia no telefone — do Google Drive, Transferências ou Ficheiros."</string>
+    <string name="iptv_settings_restore_phone_title">"Restaurar Live TV"</string>
+    <string name="iptv_settings_restore_phone_heading">"Restaurar do seu telefone"</string>
+    <string name="iptv_settings_restore_phone_instructions">"Escolha o ficheiro de cópia de Live TV. Pode escolhê-lo no Google Drive, Transferências ou Ficheiros."</string>
+    <string name="iptv_settings_restore_phone_choose">"Escolher ficheiro de cópia"</string>
+    <string name="iptv_settings_restore_phone_send">"Restaurar configuração da TV"</string>
+    <string name="iptv_settings_restore_phone_replace">"Isto substitui a configuração de Live TV da TV."</string>
+    <string name="iptv_settings_restore_phone_sending">"A enviar…"</string>
+    <string name="iptv_settings_restore_phone_received">"Enviado. Verifique a sua TV."</string>
+    <string name="iptv_settings_restore_phone_too_large">"Esse ficheiro é demasiado grande."</string>
+    <string name="iptv_settings_restore_phone_unreachable">"Não foi possível contactar a TV."</string>
+    <string name="iptv_settings_restore_phone_nothing">"Escolha primeiro um ficheiro de cópia."</string>
+    <string name="iptv_settings_restore_phone_network">"O telefone e a TV têm de estar na mesma Wi-Fi."</string>
+    <string name="iptv_settings_restore_phone_waiting">"À espera do seu telefone…"</string>
+    <string name="iptv_settings_restore_phone_received_tv">"Cópia recebida. A restaurar…"</string>
+    <string name="iptv_settings_restore_phone_tv_steps">"1. Coloque o telefone na mesma Wi-Fi que esta TV.
+2. Digitalize o código com a câmara do telefone.
+3. Escolha o ficheiro de cópia e toque em Restaurar configuração da TV."</string>
+    <string name="iptv_settings_restore_phone_selected">"Ficheiro escolhido: %1$s"</string>
 </resources>

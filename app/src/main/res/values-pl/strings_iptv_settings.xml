@@ -672,4 +672,31 @@
     <string name="iptv_settings_today">"dzisiaj"</string>
     <string name="iptv_settings_yesterday">"wczoraj"</string>
     <string name="iptv_settings_expiry_expired">"wygasło"</string>
+    <string name="iptv_settings_restore_from_file">"Przywróć z pliku"</string>
+    <string name="iptv_settings_restore_from_file_hint">"Wybierz kopię Live TV Nuvio (.json) z dysku USB lub Pobranych."</string>
+    <string name="iptv_settings_restore_from_file_confirm">"To zastąpi konfigurację Live TV tego telewizora wybraną kopią."</string>
+    <string name="iptv_settings_restore_file_invalid">"Ten plik nie jest kopią Live TV Nuvio."</string>
+    <string name="iptv_settings_restore_file_empty">"Ta kopia nie zawiera playlist ani przewodników."</string>
+    <string name="iptv_settings_restore_file_done">"Przywrócono konfigurację Live TV."</string>
+    <string name="iptv_settings_restore_file_failed">"Nie można odczytać tego pliku."</string>
+    <string name="iptv_settings_restore_from_phone">"Przywróć z telefonu"</string>
+    <string name="iptv_settings_restore_from_phone_hint">"Zeskanuj kod QR i wybierz plik kopii na telefonie — z Google Drive, Pobranych lub Plików."</string>
+    <string name="iptv_settings_restore_phone_title">"Przywróć Live TV"</string>
+    <string name="iptv_settings_restore_phone_heading">"Przywróć z telefonu"</string>
+    <string name="iptv_settings_restore_phone_instructions">"Wybierz plik kopii Live TV. Możesz go wybrać z Google Drive, Pobranych lub Plików."</string>
+    <string name="iptv_settings_restore_phone_choose">"Wybierz plik kopii"</string>
+    <string name="iptv_settings_restore_phone_send">"Przywróć konfigurację TV"</string>
+    <string name="iptv_settings_restore_phone_replace">"To zastąpi konfigurację Live TV telewizora."</string>
+    <string name="iptv_settings_restore_phone_sending">"Wysyłanie…"</string>
+    <string name="iptv_settings_restore_phone_received">"Wysłano. Sprawdź telewizor."</string>
+    <string name="iptv_settings_restore_phone_too_large">"Ten plik jest za duży."</string>
+    <string name="iptv_settings_restore_phone_unreachable">"Nie można połączyć się z telewizorem."</string>
+    <string name="iptv_settings_restore_phone_nothing">"Najpierw wybierz plik kopii."</string>
+    <string name="iptv_settings_restore_phone_network">"Telefon i telewizor muszą być w tej samej sieci Wi-Fi."</string>
+    <string name="iptv_settings_restore_phone_waiting">"Oczekiwanie na telefon…"</string>
+    <string name="iptv_settings_restore_phone_received_tv">"Odebrano kopię. Przywracanie…"</string>
+    <string name="iptv_settings_restore_phone_tv_steps">"1. Połącz telefon z tą samą siecią Wi-Fi co ten telewizor.
+2. Zeskanuj kod aparatem telefonu.
+3. Wybierz plik kopii i dotknij Przywróć konfigurację TV."</string>
+    <string name="iptv_settings_restore_phone_selected">"Wybrany plik: %1$s"</string>
 </resources>

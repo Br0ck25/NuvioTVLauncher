@@ -672,4 +672,31 @@
     <string name="iptv_settings_today">"bugün"</string>
     <string name="iptv_settings_yesterday">"dün"</string>
     <string name="iptv_settings_expiry_expired">"süresi doldu"</string>
+    <string name="iptv_settings_restore_from_file">"Dosyadan geri yükle"</string>
+    <string name="iptv_settings_restore_from_file_hint">"USB sürücüden veya İndirilenler'den bir Nuvio Live TV yedeği (.json) seçin."</string>
+    <string name="iptv_settings_restore_from_file_confirm">"Bu, bu TV'nin Live TV kurulumunu seçilen yedekle değiştirir."</string>
+    <string name="iptv_settings_restore_file_invalid">"Bu dosya bir Nuvio Live TV yedeği değil."</string>
+    <string name="iptv_settings_restore_file_empty">"Bu yedekte oynatma listesi veya rehber yok."</string>
+    <string name="iptv_settings_restore_file_done">"Live TV kurulumu geri yüklendi."</string>
+    <string name="iptv_settings_restore_file_failed">"Bu dosya okunamadı."</string>
+    <string name="iptv_settings_restore_from_phone">"Telefondan geri yükle"</string>
+    <string name="iptv_settings_restore_from_phone_hint">"QR kodunu tarayın ve telefondaki yedek dosyayı seçin — Google Drive, İndirilenler veya Dosyalar."</string>
+    <string name="iptv_settings_restore_phone_title">"Live TV'yi geri yükle"</string>
+    <string name="iptv_settings_restore_phone_heading">"Telefonunuzdan geri yükle"</string>
+    <string name="iptv_settings_restore_phone_instructions">"Live TV yedek dosyasını seçin. Google Drive, İndirilenler veya Dosyalar'dan alabilirsiniz."</string>
+    <string name="iptv_settings_restore_phone_choose">"Yedek dosyayı seç"</string>
+    <string name="iptv_settings_restore_phone_send">"TV kurulumunu geri yükle"</string>
+    <string name="iptv_settings_restore_phone_replace">"Bu, TV'nin Live TV kurulumunu değiştirir."</string>
+    <string name="iptv_settings_restore_phone_sending">"Gönderiliyor…"</string>
+    <string name="iptv_settings_restore_phone_received">"Gönderildi. TV'nizi kontrol edin."</string>
+    <string name="iptv_settings_restore_phone_too_large">"Bu dosya çok büyük."</string>
+    <string name="iptv_settings_restore_phone_unreachable">"TV'ye ulaşılamadı."</string>
+    <string name="iptv_settings_restore_phone_nothing">"Önce bir yedek dosya seçin."</string>
+    <string name="iptv_settings_restore_phone_network">"Telefon ve TV aynı Wi-Fi'da olmalı."</string>
+    <string name="iptv_settings_restore_phone_waiting">"Telefonunuz bekleniyor…"</string>
+    <string name="iptv_settings_restore_phone_received_tv">"Yedek alındı. Geri yükleniyor…"</string>
+    <string name="iptv_settings_restore_phone_tv_steps">"1. Telefonunuzu bu TV ile aynı Wi-Fi ağına bağlayın.
+2. Kodu telefonunuzun kamerasıyla tarayın.
+3. Yedek dosyayı seçin ve TV kurulumunu geri yükle'ye dokunun."</string>
+    <string name="iptv_settings_restore_phone_selected">"Seçilen dosya: %1$s"</string>
 </resources>
