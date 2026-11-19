@@ -643,6 +643,8 @@ Releases are built by the **Release** workflow (Actions tab → Release → Run 
 
 It needs these repository secrets: `NUVIO_RELEASE_KEYSTORE_BASE64`, `NUVIO_RELEASE_KEY_ALIAS`, `NUVIO_RELEASE_KEY_PASSWORD`, `NUVIO_RELEASE_STORE_PASSWORD` (or the `LAUNCHER_*` equivalents), and `TMDB_API_KEY` for artwork and logos, plus `NUVIO_BACKEND_URL` / `NUVIO_BACKEND_KEY` for the Nuvio account. Without `TMDB_API_KEY` the app shows titles as plain text instead of logos.
 
+**Branches.** `dev` is where work happens and where betas are built (tick **Pre-release**, version like `1.2.4-beta.7`). `main` holds stable releases only: when a beta has been tested, merge `dev` into `main`, then run the Release workflow on `main` with **Pre-release** off and a plain version like `1.2.4`. The workflow refuses a stable build from any other branch, a beta from `main`, and a version whose suffix doesn't match. Hotfixes go on `main` first and are merged back into `dev`.
+
 The **Sync upstream** workflow tries merging [Nuvio One](https://github.com/zoga2o3-ops/Nuvio-One)'s `main` into this repo every 6 hours and pushes a clean merge to `sync/nuvioone` for review.
 
 ## Legal
