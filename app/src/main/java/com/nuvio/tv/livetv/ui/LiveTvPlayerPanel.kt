@@ -62,6 +62,7 @@ import androidx.compose.ui.unit.Dp
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import androidx.tv.material3.Icon
+import com.nuvio.tv.R
 import com.nuvio.tv.livetv.model.LiveChannel
 import com.nuvio.tv.ui.theme.NuvioTheme
 
@@ -104,17 +105,17 @@ internal object BarPart {
     const val BELL = "bell"
 
     /** In the order the toggles show, with what each is called there. */
-    val ALL: List<Triple<String, String, String?>> = listOf(
-        Triple(POSTER, "Poster", null),
-        Triple(CHANNEL, "Channel name & logo", null),
-        Triple(GROUP, "Group name", "On the bar and in the backups lists"),
-        Triple(TAGS, "Tags", "Live, quality, sound, catch-up"),
-        Triple(DESCRIPTION, "Description", null),
-        Triple(PROGRESS, "Progress bar", "Always shown while paused"),
-        Triple(CLOCK, "Clock", null),
-        Triple(NEXT, "Up next", null),
-        Triple(RECENT, "Quick channels tab", "The tab under the bar (▼ opens it)"),
-        Triple(BELL, "Bell", "Follow the show, or put the movie on your Calendar")
+    val ALL: List<Triple<String, Int, Int?>> = listOf(
+        Triple(POSTER, R.string.iptv_gear_part_poster, null),
+        Triple(CHANNEL, R.string.iptv_gear_part_channel, null),
+        Triple(GROUP, R.string.iptv_gear_part_group, R.string.iptv_gear_part_group_hint),
+        Triple(TAGS, R.string.iptv_gear_part_tags, R.string.iptv_gear_part_tags_hint),
+        Triple(DESCRIPTION, R.string.iptv_gear_part_description, null),
+        Triple(PROGRESS, R.string.iptv_gear_part_progress, R.string.iptv_gear_part_progress_hint),
+        Triple(CLOCK, R.string.iptv_gear_part_clock, null),
+        Triple(NEXT, R.string.iptv_gear_part_next, null),
+        Triple(RECENT, R.string.iptv_gear_part_recent, R.string.iptv_gear_part_recent_hint),
+        Triple(BELL, R.string.iptv_gear_part_bell, R.string.iptv_gear_part_bell_hint)
     )
 
     fun parse(raw: String): Set<String> = raw.split(',').map { it.trim() }.filter { it.isNotEmpty() }.toSet()
