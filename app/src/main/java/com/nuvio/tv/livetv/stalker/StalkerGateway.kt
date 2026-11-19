@@ -68,6 +68,7 @@ class StalkerGateway @Inject constructor(
         // Portal identity headers may only follow a redirect to the same origin.
         .followRedirects(false).followSslRedirects(false)
         .connectTimeout(15, TimeUnit.SECONDS).readTimeout(30, TimeUnit.SECONDS)
+        .dns(com.nuvio.tv.livetv.data.ForkDns.provider)
         .build()
 
     init {
@@ -296,6 +297,24 @@ class StalkerGateway @Inject constructor(
             failure is IOException && failure.message == StalkerMimeProbe.DASH_RECORDING_UNAVAILABLE -> StalkerMimeProbe.DASH_RECORDING_UNAVAILABLE
             else -> "The Stalker stream could not be opened. Check the portal and retry."
         }
+
+        /**
+         * What went wrong updating a Stalker portal (channels, guide, movies, series), safe to show
+         * and share. Other errors can carry file names made from the account, web addresses or
+         * server text, so only the portal's own fixed messages are passed through.
+         */
+        fun safeUpdateError(failure: Throwable): String = when (failure) {
+            is StalkerException -> failure.message.orEmpty()
+            is java.net.UnknownHostException, is java.net.ConnectException -> "The Stalker portal could not be reached."
+            is java.net.SocketTimeoutException -> "The Stalker portal took too long to answer. Try again later."
+            is java.io.FileNotFoundException -> "The portal's data couldn't be saved on this device. Try again."
+            is IOException -> if (failure.message in SAFE_IO_MESSAGES) failure.message.orEmpty()
+                else "The connection to the Stalker portal failed. Try again."
+            else -> "The Stalker portal couldn't be updated (${failure.javaClass.simpleName}). Try again."
+        }
+        private val SAFE_IO_MESSAGES = setOf(
+            "Could not save the Stalker channel cache.",
+        )
         internal fun sameOrigin(origin: URI, target: URI): Boolean =
             target.scheme?.lowercase() in setOf("http", "https") &&
                 origin.scheme.equals(target.scheme, true) && origin.host.equals(target.host, true) &&

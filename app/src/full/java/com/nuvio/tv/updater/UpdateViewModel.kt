@@ -9,16 +9,18 @@ import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
 import com.nuvio.tv.BuildConfig
 import com.nuvio.tv.R
+import com.nuvio.tv.livetv.data.BackgroundWork
 import com.nuvio.tv.updater.model.AppUpdate
 import dagger.hilt.android.lifecycle.HiltViewModel
 import dagger.hilt.android.qualifiers.ApplicationContext
 import java.io.File
 import javax.inject.Inject
 import kotlinx.coroutines.Dispatchers
+import kotlinx.coroutines.currentCoroutineContext
+import kotlinx.coroutines.ensureActive
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.asStateFlow
-import kotlinx.coroutines.flow.collect
 import kotlinx.coroutines.flow.first
 import kotlinx.coroutines.flow.update
 import kotlinx.coroutines.Job
@@ -43,6 +45,9 @@ data class UpdateUiState(
     val autoInstallEnabled: Boolean = false,
     val autoInstallSupported: Boolean = Build.VERSION.SDK_INT >= Build.VERSION_CODES.S,
     val autoInstallNoticeEnabled: Boolean = true,
+    /** Updates the user installs carry dex metadata; off sends them through the system installer screen. */
+    val optimizeDuringInstall: Boolean = false,
+    val optimizeDuringInstallSupported: Boolean = ApkInstaller.supportsDexMetadata,
     /** Release installed automatically since the last launch, shown in the banner until dismissed. */
     val installedUpdate: AppUpdate? = null
 )
@@ -65,45 +70,19 @@ class UpdateViewModel @Inject constructor(
             val channel = updatePreferences.getOrInitializeUpdateChannel()
             val autoInstallEnabled = updatePreferences.autoInstallEnabled.first()
             val autoInstallNoticeEnabled = updatePreferences.autoInstallNoticeEnabled.first()
+            val optimizeDuringInstall = updatePreferences.optimizeDuringInstall.first()
             _uiState.update {
                 it.copy(
                     updateBannerEnabled = enabled,
                     updateChannel = channel,
                     autoInstallEnabled = autoInstallEnabled,
-                    autoInstallNoticeEnabled = autoInstallNoticeEnabled
+                    autoInstallNoticeEnabled = autoInstallNoticeEnabled,
+                    optimizeDuringInstall = optimizeDuringInstall
                 )
             }
             downloadStore.clearIfInstalled()
             consumeAutoInstalledUpdate()
             syncBackgroundJobs()
-            // A background job or the card may own the download. Share one progress source so the
-            // card never sits at 0% while the APK is actually arriving.
-            viewModelScope.launch {
-                downloadStore.progress.collect { progress ->
-                    val state = _uiState.value
-                    val update = state.update ?: return@collect
-                    if (progress == null) {
-                        val file = downloadStore.downloadedFileFor(update)
-                        if (file != null || state.isDownloading) {
-                            _uiState.update {
-                                it.copy(
-                                    isDownloading = false,
-                                    downloadProgress = null,
-                                    downloadedApkPath = file?.absolutePath ?: it.downloadedApkPath
-                                )
-                            }
-                        }
-                    } else if (progress.tag == update.tag) {
-                        _uiState.update {
-                            it.copy(
-                                isDownloading = true,
-                                downloadProgress = progress.fraction ?: 0f,
-                                errorMessage = null
-                            )
-                        }
-                    }
-                }
-            }
             if (enabled && !BuildConfig.IS_DEBUG_BUILD) {
                 checkForUpdates(force = false, showNoUpdateFeedback = false)
             }
@@ -111,14 +90,11 @@ class UpdateViewModel @Inject constructor(
     }
 
     fun checkForUpdates(force: Boolean, showNoUpdateFeedback: Boolean) {
-        // A download in progress owns the banner; a check now would reset it and hide the progress.
-        if (_uiState.value.isDownloading) return
-        // YouTube fork: no update source is set, so there is nothing to check.
-        if (BuildConfig.GITHUB_OWNER.isBlank() || BuildConfig.GITHUB_REPO.isBlank()) return
         if (!force && !_uiState.value.updateBannerEnabled) return
 
         updateCheckJob?.cancel()
         updateCheckJob = viewModelScope.launch {
+            if (!force) BackgroundWork.awaitOnDemandIdle()
             val channel = _uiState.value.updateChannel
             _uiState.update {
                 it.copy(
@@ -132,6 +108,7 @@ class UpdateViewModel @Inject constructor(
 
             val dismissedTag = updatePreferences.ignoredTag.first()
             val result = updateRepository.getLatestUpdate(channel)
+            currentCoroutineContext().ensureActive()
             updatePreferences.setLastCheckAtMs(System.currentTimeMillis())
 
             result
@@ -142,10 +119,8 @@ class UpdateViewModel @Inject constructor(
                     val installedUpdate = _uiState.value.installedUpdate?.let { installed ->
                         if (installed.tag == update.tag) update else installed
                     }
-                    if (remoteNewer && downloadedFile == null && update.tag != dismissedTag &&
-                        !BuildConfig.IS_DEBUG_BUILD && _uiState.value.autoInstallEnabled
-                    ) {
-                        UpdateJobService.scheduleCheckNow(context)
+                    if (remoteNewer && downloadedFile == null && update.tag != dismissedTag && !BuildConfig.IS_DEBUG_BUILD) {
+                        UpdateJobService.scheduleCheckNow(context, manual = force)
                     }
                     val shouldShow = UpdateBannerPolicy.shouldShow(
                         isRemoteNewer = remoteNewer,
@@ -154,15 +129,14 @@ class UpdateViewModel @Inject constructor(
                         dismissedTag = dismissedTag,
                         updateTag = update.tag
                     )
-                    val activeDownload = downloadStore.progress.value?.takeIf { it.tag == update.tag }
 
                     _uiState.update { state ->
                         state.copy(
                             isChecking = false,
                             update = update.takeIf { remoteNewer },
                             isUpdateAvailable = remoteNewer,
-                            isDownloading = activeDownload != null,
-                            downloadProgress = activeDownload?.fraction,
+                            isDownloading = false,
+                            downloadProgress = null,
                             downloadedApkPath = downloadedFile?.absolutePath
                                 ?: state.downloadedApkPath.takeIf { remoteNewer && state.update?.tag == update.tag },
                             showBanner = shouldShow || installedUpdate != null,
@@ -212,6 +186,7 @@ class UpdateViewModel @Inject constructor(
         }
 
     fun dismissBanner() {
+        val state = _uiState.value
         _uiState.update {
             it.copy(
                 showBanner = false,
@@ -220,8 +195,12 @@ class UpdateViewModel @Inject constructor(
                 installedUpdate = null
             )
         }
-        // "Later" only closes the card for this session. Do not set the ignored tag: that also
-        // stopped the background download job from fetching this release.
+        val tag = state.update?.tag
+        if (tag != null) {
+            viewModelScope.launch {
+                updatePreferences.setIgnoredTag(tag)
+            }
+        }
     }
 
     fun dismissUnknownSourcesDialog() {
@@ -293,7 +272,14 @@ class UpdateViewModel @Inject constructor(
             }
 
             val result = withContext(Dispatchers.IO) {
-                downloadStore.download(update)
+                downloadStore.download(update) { downloaded, total ->
+                    val progress = if (total != null && total > 0) {
+                        (downloaded.toFloat() / total.toFloat()).coerceIn(0f, 1f)
+                    } else {
+                        null
+                    }
+                    _uiState.update { it.copy(downloadProgress = progress) }
+                }
             }
 
             result
@@ -306,8 +292,7 @@ class UpdateViewModel @Inject constructor(
                             errorMessage = null
                         )
                     }
-                    // Don't launch the installer here. The banner switches to "Install" so the
-                    // user can choose when to install, just like they chose when to download.
+                    installUpdateOrRequestPermission()
                 }
                 .onFailure { error ->
                     _uiState.update {
@@ -342,16 +327,22 @@ class UpdateViewModel @Inject constructor(
         }
 
         _uiState.update { it.copy(showUnknownSourcesDialog = false) }
-        // An install the user starts opens the system installer screen right away, with its own progress and
-        // Done/Open steps. Only automatic idle installs use the silent session install.
-        runCatching { ApkInstaller.launchSystemInstaller(context, apkFile) }
-            .onFailure {
-                Log.w(TAG, "System installer unavailable, falling back to a session install", it)
-                viewModelScope.launch(Dispatchers.IO) {
-                    runCatching { ApkInstaller.install(context, apkFile, background = false, withDexMetadata = false) }
-                        .onFailure { e -> Log.w(TAG, "Session install failed", e) }
-                }
+        // Without dex metadata a session install gains nothing over the system installer, whose screen stays up
+        // while the app is closed for the install and offers to open it again.
+        val useSystemInstaller = !ApkInstaller.supportsDexMetadata || !_uiState.value.optimizeDuringInstall
+        viewModelScope.launch(Dispatchers.IO) {
+            if (useSystemInstaller) {
+                runCatching { ApkInstaller.launchSystemInstaller(context, apkFile) }
+                    .onFailure { error -> Log.w(TAG, "System installer failed", error) }
+                return@launch
             }
+            runCatching { ApkInstaller.install(context, apkFile, background = false) }
+                .onFailure {
+                    Log.w(TAG, "Session install failed, falling back to the system installer", it)
+                    runCatching { ApkInstaller.launchSystemInstaller(context, apkFile) }
+                        .onFailure { error -> Log.w(TAG, "System installer failed", error) }
+                }
+        }
     }
 
     // Shows the "updated" banner once after the idle job installed a release, then forgets it.
@@ -379,6 +370,11 @@ class UpdateViewModel @Inject constructor(
         viewModelScope.launch { updatePreferences.setAutoInstallNoticeEnabled(enabled) }
     }
 
+    fun setOptimizeDuringInstall(enabled: Boolean) {
+        _uiState.update { it.copy(optimizeDuringInstall = enabled) }
+        viewModelScope.launch { updatePreferences.setOptimizeDuringInstall(enabled) }
+    }
+
     fun setAutoInstallEnabled(enabled: Boolean) {
         _uiState.update { it.copy(autoInstallEnabled = enabled) }
         viewModelScope.launch {
@@ -390,18 +386,16 @@ class UpdateViewModel @Inject constructor(
         }
     }
 
-    // Background checks are only needed for automatic installs. The in-app check handles the
-    // banner, so a user who only wants the "Download now / Later" choice is never downloaded
-    // an update in the background.
+    // Background checks run while the banner or automatic installs are on; the idle install job only with the latter.
     private fun syncBackgroundJobs() {
         if (BuildConfig.IS_DEBUG_BUILD) return
         val state = _uiState.value
-        if (state.autoInstallEnabled) {
+        if (state.updateBannerEnabled || state.autoInstallEnabled) {
             UpdateJobService.schedulePeriodicCheck(context)
         } else {
             UpdateJobService.cancelPeriodicCheck(context)
-            UpdateJobService.cancelIdleInstall(context)
         }
+        if (!state.autoInstallEnabled) UpdateJobService.cancelIdleInstall(context)
     }
 
     fun openUnknownSourcesSettings() {

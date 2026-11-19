@@ -139,10 +139,12 @@ private const val HOUR_BLOCK_MS = 60L * 60L * 1000L
 
 /** Reuse prepared listings while the channel's guide inputs stay unchanged. */
 @Composable
-private fun rememberGuidePrograms(ch: LiveChannel?, list: List<EpgProgram>, nowMs: Long, pastHours: Int): List<EpgProgram> =
-    remember(ch?.key, ch?.catchup?.days, list, Math.floorDiv(nowMs, HOUR_BLOCK_MS), pastHours) {
-        if (ch == null) emptyList() else prepareGuidePrograms(ch, list, nowMs, pastHours)
+private fun rememberGuidePrograms(ch: LiveChannel?, list: List<EpgProgram>, nowMs: Long, pastHours: Int): List<EpgProgram> {
+    val noGuideTitle = stringResource(R.string.iptv_guide_no_guide_available)
+    return remember(ch?.key, ch?.catchup?.days, list, Math.floorDiv(nowMs, HOUR_BLOCK_MS), pastHours, noGuideTitle) {
+        if (ch == null) emptyList() else prepareGuidePrograms(ch, list, nowMs, pastHours, noGuideTitle)
     }
+}
 
 /** "Today", "Tomorrow", "Yesterday", or the day ("Sat, Oct 10") for the guide's time ruler. */
 @Composable
@@ -2184,9 +2186,9 @@ private fun LiveTvGuideScreenBody(
             com.nuvio.tv.livetv.record.ManualRecordingDialog(
                 channel = ch,
                 use24h = settings.use24HourClock,
-                onSchedule = { title, start, stop ->
+                onSchedule = { title, start, stop, days ->
                     manualRecordingFor = null
-                    com.nuvio.tv.livetv.record.LiveTvNotice.show(viewModel.scheduler.addManual(ch, title, start, stop))
+                    com.nuvio.tv.livetv.record.LiveTvNotice.show(viewModel.scheduler.addManual(ch, title, start, stop, days))
                     scope.launch { delay(60); runCatching { gridFocus.requestFocus() } }
                 },
                 onDismiss = {

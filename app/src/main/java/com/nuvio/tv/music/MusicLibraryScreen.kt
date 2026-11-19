@@ -1383,7 +1383,7 @@ internal fun MusicLocalPlaylistScreen(
                     }
                     Spacer(Modifier.size(14.dp))
                     Text(
-                        text = "PLAYLIST",
+                        text = stringResource(R.string.music_library_playlist_label),
                         color = MusicPalette.textSecondary,
                         fontSize = 12.sp,
                         fontWeight = FontWeight.Bold

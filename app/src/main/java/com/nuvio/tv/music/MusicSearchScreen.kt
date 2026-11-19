@@ -257,7 +257,7 @@ internal fun MusicSearchScreen(
             )
             state.rows.isEmpty() -> MusicEmptyState(
                 title = stringResource(R.string.music_p2_no_results),
-                message = "Nothing matched \"${state.query}\". Try another spelling.",
+                message = stringResource(R.string.music_search_no_match, state.query),
                 modifier = Modifier.weight(1f)
             )
             else -> {
@@ -300,7 +300,7 @@ internal fun MusicSearchScreen(
                             }
                             if (state.songResults.isNotEmpty()) {
                                 item(key = "search-songs-header") {
-                                    SearchGroupHeader("Songs") {
+                                    SearchGroupHeader(stringResource(R.string.music_search_songs)) {
                                         onFilterChange(SearchFilter.SONGS)
                                     }
                                 }
@@ -319,7 +319,7 @@ internal fun MusicSearchScreen(
                             }
                             if (state.videoResults.isNotEmpty()) {
                                 item(key = "search-videos-header") {
-                                    SearchGroupHeader("Videos") {
+                                    SearchGroupHeader(stringResource(R.string.music_search_videos)) {
                                         onFilterChange(SearchFilter.VIDEOS)
                                     }
                                 }
@@ -338,7 +338,7 @@ internal fun MusicSearchScreen(
                             }
                             if (state.albumResults.isNotEmpty()) {
                                 item(key = "search-albums-header") {
-                                    SearchGroupHeader("Albums") {
+                                    SearchGroupHeader(stringResource(R.string.music_navidrome_albums)) {
                                         onFilterChange(SearchFilter.ALBUMS)
                                     }
                                 }
@@ -357,7 +357,7 @@ internal fun MusicSearchScreen(
                             }
                             if (state.artistResults.isNotEmpty()) {
                                 item(key = "search-artists-header") {
-                                    SearchGroupHeader("Artists") {
+                                    SearchGroupHeader(stringResource(R.string.music_search_artists)) {
                                         onFilterChange(SearchFilter.ARTISTS)
                                     }
                                 }
@@ -376,7 +376,7 @@ internal fun MusicSearchScreen(
                             }
                             if (state.playlistResults.isNotEmpty()) {
                                 item(key = "search-playlists-header") {
-                                    SearchGroupHeader("Playlists") {
+                                    SearchGroupHeader(stringResource(R.string.music_section_playlists)) {
                                         onFilterChange(SearchFilter.PLAYLISTS)
                                     }
                                 }
@@ -501,7 +501,7 @@ private fun SearchTopResult(
         )
         Column(Modifier.weight(1f)) {
             Text(
-                text = "TOP RESULT",
+                text = stringResource(R.string.music_search_top_result),
                 color = MusicPalette.accentTeal,
                 fontSize = 10.sp,
                 letterSpacing = 1.8.sp,
@@ -530,7 +530,7 @@ private fun SearchTopResult(
             }
             Spacer(Modifier.height(12.dp))
             MusicPill(
-                label = if (song != null) "Play" else "Open",
+                label = if (song != null) stringResource(R.string.music_play) else stringResource(R.string.music_p2_open),
                 selected = false,
                 onClick = action
             )
@@ -558,7 +558,7 @@ private fun SearchGroupHeader(
         )
         Spacer(Modifier.weight(1f))
         MusicPill(
-            label = "Show all",
+            label = stringResource(R.string.music_search_show_all),
             selected = false,
             onClick = onShowAll,
             compact = true

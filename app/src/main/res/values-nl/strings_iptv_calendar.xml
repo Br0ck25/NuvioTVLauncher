@@ -68,4 +68,9 @@
     <string name="iptv_cal_saved_channels">"Opgeslagen zenders"</string>
     <string name="iptv_cal_saved_help">"Zenders die de Agenda moet gebruiken, voor een netwerk of één uitzending. OK vergeet er een: de Agenda kiest weer zelf."</string>
     <string name="iptv_cal_nothing_saved">"Niets opgeslagen."</string>
+    <string name="iptv_cal_ring_bell">"Bel luiden"</string>
+    <string name="iptv_cal_not_found_follow">"Kan “%1$s” niet vinden om te volgen"</string>
+    <string name="iptv_cal_show_again">"OK: weer op de kalender tonen"</string>
+    <string name="iptv_cal_final">"EIND"</string>
+    <string name="iptv_cal_today">"VANDAAG"</string>
 </resources>

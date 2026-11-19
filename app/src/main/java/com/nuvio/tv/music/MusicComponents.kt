@@ -83,6 +83,7 @@ import com.music.bitchord.data.model.HomeShelf
 import com.music.bitchord.data.model.ShelfItem
 import com.music.bitchord.data.model.Song
 import com.music.bitchord.data.model.artworkAt
+import androidx.compose.ui.res.stringResource
 import com.nuvio.tv.R
 import kotlin.math.abs
 import kotlin.math.max
@@ -575,9 +576,9 @@ internal fun MusicBrowseRow(
         }
         Text(
             text = when (type) {
-                BrowseType.ALBUM -> "Album"
-                BrowseType.ARTIST -> "Artist"
-                BrowseType.PLAYLIST -> "Playlist"
+                BrowseType.ALBUM -> stringResource(R.string.music_p2_album)
+                BrowseType.ARTIST -> stringResource(R.string.music_p2_artist)
+                BrowseType.PLAYLIST -> stringResource(R.string.music_screen_playlist)
                 BrowseType.OTHER -> ""
             },
             color = MusicPalette.textMuted,
@@ -696,7 +697,7 @@ internal fun MusicErrorState(
         horizontalAlignment = Alignment.CenterHorizontally
     ) {
         Text(
-            text = "Something went wrong",
+            text = stringResource(R.string.music_error_something),
             color = MusicPalette.text,
             fontSize = 24.sp,
             fontWeight = FontWeight.Bold
@@ -730,7 +731,7 @@ internal fun MusicErrorState(
                 modifier = Modifier.size(18.dp)
             )
             Text(
-                text = "Try again",
+                text = stringResource(R.string.music_error_try_again),
                 color = if (focused) MusicPalette.background else MusicPalette.text,
                 fontSize = 14.sp,
                 fontWeight = FontWeight.SemiBold

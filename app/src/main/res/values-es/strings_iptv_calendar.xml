@@ -68,4 +68,9 @@
     <string name="iptv_cal_saved_channels">"Canales guardados"</string>
     <string name="iptv_cal_saved_help">"Canales que el Calendario debe usar, para una cadena o un programa. OK olvida uno: el Calendario vuelve a elegir."</string>
     <string name="iptv_cal_nothing_saved">"Nada guardado."</string>
+    <string name="iptv_cal_ring_bell">"Tocar la campana"</string>
+    <string name="iptv_cal_not_found_follow">"No se encontró «%1$s» para seguir"</string>
+    <string name="iptv_cal_show_again">"OK: volver a mostrarlo en el Calendario"</string>
+    <string name="iptv_cal_final">"FINAL"</string>
+    <string name="iptv_cal_today">"HOY"</string>
 </resources>

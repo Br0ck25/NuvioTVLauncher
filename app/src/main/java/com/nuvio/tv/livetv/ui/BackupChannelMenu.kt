@@ -95,8 +95,8 @@ internal fun BackupChannelMenu(
         "manual" -> com.nuvio.tv.livetv.record.ManualRecordingDialog(
             channel = channel,
             use24h = settings.use24HourClock,
-            onSchedule = { title, start, stop ->
-                LiveTvNotice.show(viewModel.scheduler.addManual(channel, title, start, stop))
+            onSchedule = { title, start, stop, days ->
+                LiveTvNotice.show(viewModel.scheduler.addManual(channel, title, start, stop, days))
                 onDismiss()
             },
             onDismiss = onDismiss
@@ -111,6 +111,7 @@ internal fun BackupChannelMenu(
                 scheduled -> stringResource(R.string.iptv_ge_cancel_recording)
                 else -> stringResource(R.string.iptv_guide_record)
             }
+            val recordSeriesLabel = stringResource(R.string.iptv_ge_record_series)
             val seriesLabel = program?.let { p ->
                 val n = com.nuvio.tv.livetv.data.LiveTvRepository.normalize(titleMarks(p.title).title)
                 if (series.any { it.channel.key == channel.key && it.norm == n }) stringResource(R.string.iptv_ge_stop_recording_series) else stringResource(R.string.iptv_ge_record_series)
@@ -155,6 +156,12 @@ internal fun BackupChannelMenu(
                     if (program != null && seriesLabel != null) item {
                         MenuItem(seriesLabel) {
                             LiveTvNotice.show(viewModel.toggleSeries(channel, program))
+                            onDismiss()
+                        }
+                    }
+                    if (program != null && seriesLabel == recordSeriesLabel) item {
+                        MenuItem(stringResource(R.string.iptv_rec_record_new_only)) {
+                            LiveTvNotice.show(viewModel.toggleSeries(channel, program, newOnly = true))
                             onDismiss()
                         }
                     }

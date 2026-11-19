@@ -536,7 +536,7 @@ internal fun MusicNowPlayingScreen(
                             )
                             MusicActionChip(
                                 icon = Icons.Default.PlaylistAdd,
-                                label = "Playlist",
+                                label = stringResource(R.string.music_screen_playlist),
                                 onClick = { if (song != null) showPlaylistPicker = true }
                             )
                             if (song?.localUri == null) {

@@ -18,6 +18,7 @@ import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.res.stringResource
 import com.nuvio.tv.R
 import androidx.compose.ui.focus.FocusRequester
@@ -47,14 +48,17 @@ import java.util.Locale
 /**
  * "Schedule a Recording": a channel, a day, a start time and a length, for channels with no
  * listings (PPV events, a game that isn't in the guide). ◀ ▶ change the highlighted value.
+ * Repeat records the same time every week on the days picked ([onSchedule]'s days, as
+ * Calendar.SUNDAY..SATURDAY; empty: just once).
  */
 @Composable
 internal fun ManualRecordingDialog(
     channel: LiveChannel,
     use24h: Boolean,
-    onSchedule: (title: String, startMs: Long, stopMs: Long) -> Unit,
+    onSchedule: (title: String, startMs: Long, stopMs: Long, days: Set<Int>) -> Unit,
     onDismiss: () -> Unit
 ) {
+    val context = LocalContext.current
     val now = remember { System.currentTimeMillis() }
     // Start: the next quarter hour, today.
     val startCal = remember {
@@ -77,8 +81,26 @@ internal fun ManualRecordingDialog(
     var lengthMin by remember { mutableIntStateOf(120) }
     var customName by remember { mutableStateOf<String?>(null) }
     var editing by remember { mutableStateOf<String?>(null) }
-    val context = androidx.compose.ui.platform.LocalContext.current
     var problem by remember { mutableStateOf<String?>(null) }
+    // Repeat: one of the presets, or days picked one by one (Custom).
+    var repeat by remember { mutableIntStateOf(0) }
+    var customDays by remember { mutableStateOf(setOf<Int>()) }
+    var pickingDays by remember { mutableStateOf(false) }
+    fun repeatDays(): Set<Int> = when (repeat) {
+        1 -> (1..7).toSet()
+        2 -> setOf(2, 3, 4, 5, 6)
+        3 -> setOf(1, 7)
+        4 -> customDays
+        else -> emptySet()
+    }
+    fun repeatLabel(): String = when (repeat) {
+        0 -> context.getString(R.string.iptv_rec_repeat_never)
+        1 -> context.getString(R.string.iptv_rec_repeat_every_day)
+        2 -> context.getString(R.string.iptv_rec_repeat_weekdays)
+        3 -> context.getString(R.string.iptv_rec_repeat_weekends)
+        else -> if (customDays.isEmpty()) context.getString(R.string.iptv_rec_repeat_pick_days)
+        else RepeatRule.daysLabel(customDays)
+    }
 
     fun startMs(): Long = Calendar.getInstance().apply {
         timeInMillis = now
@@ -100,7 +122,8 @@ internal fun ManualRecordingDialog(
         m % 60 == 0 -> context.getString(R.string.iptv_rec_hours_short, m / 60)
         else -> context.getString(R.string.iptv_rec_hours_min, m / 60, m % 60)
     }
-    val defaultName = "${channel.name} — ${SimpleDateFormat("EEE", Locale.getDefault()).format(Date(startMs()))} ${timeFmt.format(Date(startMs()))}"
+    val defaultName = if (repeat == 0) "${channel.name} — ${SimpleDateFormat("EEE", Locale.getDefault()).format(Date(startMs()))} ${timeFmt.format(Date(startMs()))}"
+        else "${channel.name} — ${timeFmt.format(Date(startMs()))}"
     val name = customName?.takeIf { it.isNotBlank() } ?: defaultName
 
     val first = remember { FocusRequester() }
@@ -111,6 +134,15 @@ internal fun ManualRecordingDialog(
         Column(verticalArrangement = Arrangement.spacedBy(4.dp)) {
             ValueRow(stringResource(R.string.iptv_rec_channel), "${channel.number}  ${channel.name}", onChange = null, onClick = {})
             ValueRow(
+                stringResource(R.string.iptv_rec_repeat), repeatLabel(),
+                onChange = { d -> repeat = Math.floorMod(repeat + d, 5); problem = null },
+                onClick = {
+                    if (repeat == 4) pickingDays = true
+                    else { repeat = (repeat + 1) % 5; problem = null }
+                }
+            )
+            // Repeating: it starts on the next day picked, so there's no day to choose.
+            if (repeat == 0) ValueRow(
                 stringResource(R.string.iptv_rec_day), dayLabel(dayOffset),
                 modifier = Modifier.focusRequester(first),
                 onChange = { d -> dayOffset = (dayOffset + d).coerceIn(0, 7); problem = null },
@@ -130,8 +162,9 @@ internal fun ManualRecordingDialog(
         }
         Spacer(Modifier.height(6.dp))
         LiveText(
-            stringResource(R.string.iptv_rec_ends_at, timeFmt.format(Date(startMs() + lengthMin * 60_000L))),
-            color = NuvioTheme.colors.TextSecondary, size = 13.sp, maxLines = 2
+            stringResource(R.string.iptv_rec_ends_at, timeFmt.format(Date(startMs() + lengthMin * 60_000L))) +
+                if (repeat != 0) stringResource(R.string.iptv_rec_ends_repeat) else "",
+            color = NuvioTheme.colors.TextSecondary, size = 13.sp, maxLines = 3
         )
         problem?.let {
             Spacer(Modifier.height(4.dp))
@@ -140,16 +173,32 @@ internal fun ManualRecordingDialog(
         Spacer(Modifier.height(12.dp))
         Row(horizontalArrangement = Arrangement.spacedBy(10.dp)) {
             LiveFocusRow(onClick = {
-                val start = startMs()
-                val stop = start + lengthMin * 60_000L
-                if (stop <= System.currentTimeMillis()) {
-                    problem = context.getString(R.string.iptv_rec_time_passed)
-                } else onSchedule(name, start, stop)
+                val days = repeatDays()
+                if (repeat != 0) {
+                    if (days.isEmpty()) problem = context.getString(R.string.iptv_rec_pick_repeat_day)
+                    else {
+                        // The first airing: today's time if it's still to come, else the next day picked.
+                        val start = nextAiring(System.currentTimeMillis(), minuteOfDay, days)
+                        onSchedule(name, start, start + lengthMin * 60_000L, days)
+                    }
+                } else {
+                    val start = startMs()
+                    val stop = start + lengthMin * 60_000L
+                    if (stop <= System.currentTimeMillis()) {
+                        problem = context.getString(R.string.iptv_rec_time_passed)
+                    } else onSchedule(name, start, stop, emptySet())
+                }
             }) { f -> LiveText(stringResource(R.string.iptv_rec_schedule), color = focusedTextColor(f)) }
             LiveFocusRow(onClick = onDismiss) { f -> LiveText(stringResource(R.string.action_cancel), color = focusedTextColor(f)) }
         }
     }
     LaunchedEffect(Unit) { delay(60); runCatching { first.requestFocus() } }
+
+    if (pickingDays) RepeatDaysPicker(
+        selected = customDays,
+        onToggle = { d -> customDays = if (d in customDays) customDays - d else customDays + d; problem = null },
+        onDone = { pickingDays = false }
+    )
 
     when (editing) {
         "time" -> TextInputDialog(
@@ -173,6 +222,44 @@ internal fun ManualRecordingDialog(
             onConfirm = { text -> customName = text.trim().ifBlank { null }; editing = null }
         )
     }
+}
+
+/** The next start at [minuteOfDay] on one of [days], from [now] on. */
+private fun nextAiring(now: Long, minuteOfDay: Int, days: Set<Int>): Long {
+    for (ahead in 0..7) {
+        val c = Calendar.getInstance().apply {
+            timeInMillis = now
+            add(Calendar.DAY_OF_YEAR, ahead)
+            set(Calendar.HOUR_OF_DAY, minuteOfDay / 60); set(Calendar.MINUTE, minuteOfDay % 60)
+            set(Calendar.SECOND, 0); set(Calendar.MILLISECOND, 0)
+        }
+        if (c.get(Calendar.DAY_OF_WEEK) in days && c.timeInMillis > now) return c.timeInMillis
+    }
+    return now
+}
+
+/** Picking the days a recording repeats on: OK ticks a day. */
+@Composable
+private fun RepeatDaysPicker(selected: Set<Int>, onToggle: (Int) -> Unit, onDone: () -> Unit) {
+    val first = remember { FocusRequester() }
+    val names = remember { java.text.DateFormatSymbols.getInstance().weekdays }
+    LiveDialog(onDismiss = onDone, width = 420.dp) {
+        LiveText(stringResource(R.string.iptv_rec_repeat_on), size = 20.sp, weight = FontWeight.Bold)
+        LiveText(stringResource(R.string.iptv_rec_repeat_ok), color = NuvioTheme.colors.TextSecondary, size = 13.sp)
+        Spacer(Modifier.height(12.dp))
+        Column(verticalArrangement = Arrangement.spacedBy(4.dp)) {
+            // Monday first, Sunday last.
+            listOf(2, 3, 4, 5, 6, 7, 1).forEachIndexed { i, d ->
+                MenuItem(
+                    (if (d in selected) "✓  " else "     ") + names[d],
+                    if (i == 0) Modifier.focusRequester(first) else Modifier
+                ) { onToggle(d) }
+            }
+            Spacer(Modifier.height(6.dp))
+            MenuItem(stringResource(R.string.iptv_rec_done), onClick = onDone)
+        }
+    }
+    LaunchedEffect(Unit) { delay(60); runCatching { first.requestFocus() } }
 }
 
 /** "8:30 PM", "8.30pm", "20:30", "2030", "8pm" → minutes after midnight. */
@@ -241,7 +328,7 @@ internal fun ManualRecordingChannelPicker(
     LiveDialog(onDismiss = onDismiss, width = 520.dp) {
         LiveText(stringResource(R.string.iptv_rec_new_recording), size = 20.sp, weight = FontWeight.Bold)
         LiveText(
-            stringResource(R.string.iptv_rec_help),
+            "Your favorites and recent channels. For any other channel, long-press it in the guide and choose Schedule a Recording.",
             color = NuvioTheme.colors.TextSecondary, size = 13.sp, maxLines = 3
         )
         Spacer(Modifier.height(12.dp))

@@ -113,4 +113,17 @@
     <string name="iptv_sports_other_streams">"Andere Streams"</string>
     <string name="iptv_sports_pane">"Bereich"</string>
     <string name="iptv_sports_start_label">"START"</string>
+    <string name="iptv_sports_replays_none">"Wiederholungen und Highlights kommen von Sport-Add-ons, die sie anbieten (HighFly Premium, StremVerse…). Keines Ihrer Add-ons tut dies bisher: Installieren Sie eines unter Add-ons und sie werden hier angezeigt."</string>
+    <string name="iptv_sports_no_replay_in">"Noch keine Wiederholung dieses Spiels in %1$s. Sie werden oft einige Stunden nach Spielende hinzugefügt."</string>
+    <string name="iptv_sports_no_replay_addons">"Noch keine Wiederholung dieses Spiels in Ihren Sport-Add-Ons. Sie werden oft einige Stunden nach Spielende hinzugefügt."</string>
+    <string name="iptv_sports_checked_from">"Deine Kanäle werden für dieses Spiel ab %1$s überprüft. Wissen Sie, wo es läuft? Wählen Sie jetzt einen Kanal aus und er wird gespeichert."</string>
+    <string name="iptv_sports_not_in_guides">"Im Moment nicht in den Leitfäden deiner Kanäle. Die Reiseführer werden im Laufe des Tages aktualisiert, schauen Sie also näher am Start noch einmal vorbei. Wissen Sie, wo es läuft? Wählen Sie einen Kanal und er wird gespeichert."</string>
+    <string name="iptv_sports_last_5">"LETZTE 5"</string>
+    <string name="iptv_sports_game_info">"Spielinfo ›"</string>
+    <string name="iptv_sports_now_label">"JETZT"</string>
+    <string name="iptv_sports_end_label">"ENDE"</string>
+    <string name="iptv_sports_channels_from">"Kanäle von"</string>
+    <string name="iptv_sports_search_hint">"Suchen Sie nach Teams und Ligen"</string>
+    <string name="iptv_sports_person_hint">"Ein Spieler, Fahrer, Kämpfer oder Team"</string>
+    <string name="iptv_sports_last_met">"Zuletzt getroffen %1$s"</string>
 </resources>

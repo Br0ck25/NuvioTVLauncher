@@ -26,6 +26,8 @@ import com.music.bitchord.data.model.Song
 import com.music.bitchord.data.model.artworkAt
 import com.music.bitchord.data.model.durationMillis
 import com.music.bitchord.data.YtMusicRepository
+import com.nuvio.tv.R
+import com.nuvio.tv.core.util.withAppLocale
 import com.nuvio.tv.ui.screens.player.PlayerPlaybackNetworking
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Dispatchers
@@ -532,14 +534,14 @@ object MusicPlayer {
             result.fold(
                 onSuccess = { songs ->
                     if (songs.isEmpty()) {
-                        _state.update { it.copy(error = "No radio tracks were found.") }
+                        _state.update { it.copy(error = appContext?.withAppLocale()?.getString(R.string.music_player_no_radio) ?: "No radio tracks were found.") }
                     } else {
                         playQueue(songs, 0)
                     }
                 },
                 onFailure = { error ->
                     _state.update {
-                        it.copy(error = error.message ?: "Couldn't start the radio.")
+                        it.copy(error = error.message ?: appContext?.withAppLocale()?.getString(R.string.music_player_radio_failed) ?: "Couldn't start the radio.")
                     }
                 }
             )
@@ -906,7 +908,8 @@ object MusicPlayer {
                 it.copy(
                     isPlaying = false,
                     isBuffering = false,
-                    error = "Playback failed: ${error.errorCodeName}"
+                    error = appContext?.withAppLocale()?.getString(R.string.music_player_playback_failed, error.errorCodeName)
+                        ?: "Playback failed: ${error.errorCodeName}"
                 )
             }
         }

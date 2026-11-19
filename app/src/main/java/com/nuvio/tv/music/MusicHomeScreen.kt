@@ -230,7 +230,7 @@ private fun MusicHomeFeed(
         if (state.curationLoading) {
             item(key = "curated-building") {
                 Text(
-                    text = "Building your picks from what you play and like…",
+                    text = stringResource(R.string.music_home_building),
                     color = MusicPalette.textSecondary,
                     fontSize = 10.5.sp,
                     modifier = Modifier.padding(horizontal = 26.dp)
@@ -240,7 +240,7 @@ private fun MusicHomeFeed(
         if (state.shelves.isNotEmpty()) {
             item(key = "yt-header") {
                 Text(
-                    text = "FROM YOUTUBE MUSIC",
+                    text = stringResource(R.string.music_home_from_youtube),
                     color = MusicPalette.textMuted,
                     fontSize = 10.sp,
                     fontWeight = FontWeight.Bold,
@@ -383,7 +383,7 @@ private fun MusicCuratedAccountPlaylistsRow(
                         title = playlist.title,
                         subtitle = playlist.count?.let { count ->
                             if (count == 1) "1 song" else "$count songs"
-                        } ?: "Playlist",
+                        } ?: stringResource(R.string.music_screen_playlist),
                         thumbnailUrl = playlist.thumbnailUrl,
                         videoId = null,
                         browseId = "account:playlist:${playlist.id}",

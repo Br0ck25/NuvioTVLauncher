@@ -68,4 +68,6 @@
         <item quantity="one">"%1$d Liste"</item>
         <item quantity="other">"%1$d Listen"</item>
     </plurals>
+    <string name="iptv_player_provider_stopped">"Der Anbieter hat den Versand dieser Sendung eingestellt. Versuchen Sie es erneut oder springen Sie zu einem anderen Punkt"</string>
+    <string name="iptv_player_recording_failed">"Diese Aufnahme konnte nicht abgespielt werden"</string>
 </resources>

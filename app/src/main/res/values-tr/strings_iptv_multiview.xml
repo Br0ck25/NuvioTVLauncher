@@ -47,4 +47,9 @@
     <string name="iptv_mv_queue_full">"Çoklu görünümde zaten %1$d kanal var. Bunları değiştirmek için Çoklu Görünüm\'ü açın."</string>
     <string name="iptv_mv_queue_already">"Zaten Çoklu Görünüm\'de (%1$d / %2$d)."</string>
     <string name="iptv_mv_queue_added">"Çoklu Görünüm\'e eklendi (%1$d / %2$d). Kılavuzun üst satırından Multiview\'u açın."</string>
+    <string name="iptv_mv_pane">"Bölme %1$d"</string>
+    <string name="iptv_mv_layout">"Düzen"</string>
+    <string name="iptv_mv_ok_apply_back">"Tamam: uygula · Geri: kapat"</string>
+    <string name="iptv_mv_sound">"SES"</string>
+    <string name="iptv_mv_current">"AKIM"</string>
 </resources>

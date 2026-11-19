@@ -68,4 +68,6 @@
         <item quantity="one">"%1$d lista"</item>
         <item quantity="other">"%1$d listas"</item>
     </plurals>
+    <string name="iptv_player_provider_stopped">"O provedor parou de enviar este programa. Tente novamente ou pule para outro ponto"</string>
+    <string name="iptv_player_recording_failed">"Não foi possível reproduzir esta gravação"</string>
 </resources>

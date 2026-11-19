@@ -17,6 +17,7 @@ import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.lazy.LazyColumn
+import androidx.compose.foundation.lazy.LazyRow
 import androidx.compose.foundation.lazy.itemsIndexed
 import androidx.compose.foundation.lazy.rememberLazyListState
 import androidx.compose.foundation.shape.RoundedCornerShape
@@ -66,6 +67,7 @@ import com.nuvio.tv.livetv.model.EpgProgram
 import com.nuvio.tv.livetv.model.LiveChannel
 import com.nuvio.tv.livetv.sports.ChannelMatch
 import com.nuvio.tv.livetv.sports.SportsBadge
+import com.nuvio.tv.livetv.sports.SportsWatchFilter
 import com.nuvio.tv.livetv.sports.SportsWatchGame
 import com.nuvio.tv.livetv.sports.SportsWatchRow
 import com.nuvio.tv.livetv.sports.StripGameCard
@@ -75,6 +77,7 @@ import com.nuvio.tv.livetv.ui.LiveTextField
 import com.nuvio.tv.livetv.ui.LocalLiveSolidHighlight
 import com.nuvio.tv.livetv.ui.liveCellColors
 import com.nuvio.tv.ui.theme.NuvioTheme
+import com.nuvio.tv.livetv.ui.LONG_PRESS_MS
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.delay
 import kotlinx.coroutines.ensureActive
@@ -154,6 +157,11 @@ internal fun MultiviewChannelPicker(
     sportsMode: Boolean,
     onSportsMode: (Boolean) -> Unit,
     rows: List<SportsWatchRow>,
+    /** Chips over the games: My Sports, All Events, Live Now and each sport on now. */
+    filters: List<SportsWatchFilter>,
+    /** The chip the list is showing now (null: a Sports page filter the chips don't offer). */
+    filterKey: String?,
+    onFilter: (String) -> Unit,
     /** The games are still being fetched and matched to channels (the first time Sports is used). */
     loadingGames: Boolean,
     selectedEventId: String?,
@@ -243,6 +251,9 @@ internal fun MultiviewChannelPicker(
     val hasChannel = selectedPane?.channelKey != null
     val failed = selectedPane?.error != null
     val showActions = searching || !sportsMode || hasChannel || failed
+    // The filter chips sit under the buttons while the games list is showing.
+    val filterFocus = remember { FocusRequester() }
+    var filterJump by remember { mutableStateOf(false) }
 
     // Sports: the games under their section titles, a cursor over the games, and one game's streams.
     val items = remember(rows) {
@@ -267,6 +278,7 @@ internal fun MultiviewChannelPicker(
     var optionsGame by remember { mutableStateOf<SportsWatchGame?>(null) }
     var optionIndex by remember { mutableIntStateOf(0) }
     val okHeld = remember { booleanArrayOf(false) }
+    val holdJob = remember { arrayOfNulls<kotlinx.coroutines.Job>(1) }
 
     // What's on now, read only for the rows on screen (and a few below), once scrolling pauses.
     val shows = remember { mutableStateMapOf<String, EpgProgram>() }
@@ -312,6 +324,13 @@ internal fun MultiviewChannelPicker(
         searchState.scrollToItem(0)
     }
     LaunchedEffect(items) {
+        if (filterJump) {
+            // A new filter: the list starts at the top.
+            filterJump = false
+            gameCursor = 0
+            sportsState.scrollToItem(0)
+            return@LaunchedEffect
+        }
         if (gameAt.isEmpty()) return@LaunchedEffect
         if (!gamePlaced) {
             gamePlaced = true
@@ -337,8 +356,27 @@ internal fun MultiviewChannelPicker(
         runCatching { listFocus.requestFocus() }
     }
 
+    val filtersShown = sportsMode && !searching && optionsGame == null && streamsGame == null && filters.isNotEmpty()
     fun upFromList() {
-        runCatching { (if (searching) fieldFocus else if (showActions) actionFocus else tabFocus).requestFocus() }
+        runCatching {
+            (if (searching) fieldFocus else if (filtersShown) filterFocus else if (showActions) actionFocus else tabFocus).requestFocus()
+        }
+    }
+    fun pickFilter(key: String) {
+        if (key == filterKey) {
+            runCatching { listFocus.requestFocus() }
+            return
+        }
+        filterJump = true
+        gameCursor = 0
+        onFilter(key)
+        scope.launch {
+            sportsState.scrollToItem(0)
+            // The new list normally arrives well within this; a later update mustn't jump to the top.
+            delay(3_000L)
+            filterJump = false
+        }
+        runCatching { listFocus.requestFocus() }
     }
     fun openSearch() {
         searching = true
@@ -411,7 +449,7 @@ internal fun MultiviewChannelPicker(
                     .fillMaxHeight().padding(10.dp).width(PickerWidth).multiviewPanel(panelBackground)
             ) {
                 Column(Modifier.fillMaxWidth().padding(start = 18.dp, end = 18.dp, top = 12.dp, bottom = 4.dp)) {
-                    LiveText("Pane ${paneId + 1}", size = 10.sp, color = NuvioTheme.colors.TextSecondary)
+                    LiveText(stringResource(R.string.iptv_mv_pane, paneId + 1), size = 10.sp, color = NuvioTheme.colors.TextSecondary)
                     LiveText(title, size = 17.sp, weight = FontWeight.SemiBold)
                 }
                 Column(
@@ -427,6 +465,7 @@ internal fun MultiviewChannelPicker(
                                         val target = when {
                                             searching -> fieldFocus
                                             showActions -> actionFocus
+                                            filtersShown -> filterFocus
                                             else -> listFocus
                                         }
                                         if (!runCatching { target.requestFocus() }.isSuccess) runCatching { listFocus.requestFocus() }
@@ -479,7 +518,9 @@ internal fun MultiviewChannelPicker(
                             Modifier.fillMaxWidth()
                                 .onPreviewKeyEvent { event ->
                                     if (event.key == Key.DirectionDown) {
-                                        if (event.type == KeyEventType.KeyDown) runCatching { listFocus.requestFocus() }
+                                        if (event.type == KeyEventType.KeyDown) {
+                                            runCatching { (if (filtersShown) filterFocus else listFocus).requestFocus() }
+                                        }
                                         true
                                     } else false
                                 },
@@ -502,6 +543,44 @@ internal fun MultiviewChannelPicker(
                             if (failed) MultiviewChip("Retry", icon = Icons.Default.Refresh, onClick = onRetry)
                         }
                     }
+                    if (filtersShown) {
+                        // Up goes back to the buttons (or the tabs), Down to the games; Left/Right move along.
+                        val chipKey = filterKey?.takeIf { k -> filters.any { it.key == k } } ?: filters.first().key
+                        val chipState = rememberLazyListState()
+                        LaunchedEffect(chipKey, filters) {
+                            val at = filters.indexOfFirst { it.key == chipKey }
+                            if (at > 0) chipState.scrollToItem((at - 1).coerceAtLeast(0))
+                        }
+                        LazyRow(
+                            Modifier.fillMaxWidth()
+                                .onPreviewKeyEvent { event ->
+                                    when (event.key) {
+                                        Key.DirectionDown -> {
+                                            if (event.type == KeyEventType.KeyDown) runCatching { listFocus.requestFocus() }
+                                            true
+                                        }
+                                        Key.DirectionUp -> {
+                                            if (event.type == KeyEventType.KeyDown) {
+                                                runCatching { (if (showActions) actionFocus else tabFocus).requestFocus() }
+                                            }
+                                            true
+                                        }
+                                        else -> false
+                                    }
+                                },
+                            state = chipState,
+                            horizontalArrangement = Arrangement.spacedBy(6.dp),
+                            contentPadding = PaddingValues(horizontal = 2.dp)
+                        ) {
+                            itemsIndexed(filters, key = { _, f -> f.key }) { _, f ->
+                                MultiviewChip(
+                                    "${f.icon}  ${f.label}",
+                                    if (f.key == chipKey) Modifier.focusRequester(filterFocus) else Modifier,
+                                    selected = f.key == filterKey
+                                ) { pickFilter(f.key) }
+                            }
+                        }
+                    }
                 }
                 Box(
                     Modifier.weight(1f).fillMaxWidth()
@@ -514,13 +593,14 @@ internal fun MultiviewChannelPicker(
                                     event.key == Key.DirectionDown -> { if (optionIndex < 1) optionIndex++ }
                                     event.key == Key.DirectionUp -> { if (optionIndex > 0) optionIndex-- else upFromList() }
                                     event.key == Key.DirectionLeft -> optionsGame = null
-                                    ok -> optionsGame?.let { g -> if (optionIndex == 0) { optionsGame = null; openStreams(g) } else onGameInfo(g) }
+                                    // The OK that opened this menu may still be held: its repeats don't choose.
+                                    ok && event.nativeKeyEvent.repeatCount == 0 -> optionsGame?.let { g -> if (optionIndex == 0) { optionsGame = null; openStreams(g) } else onGameInfo(g) }
                                 }
                                 sportsMode && streamsGame != null -> if (down) when {
                                     event.key == Key.DirectionDown -> { if (streamIndex < streams.lastIndex) streamIndex++ }
                                     event.key == Key.DirectionUp -> { if (streamIndex > 0) streamIndex-- else upFromList() }
                                     event.key == Key.DirectionLeft -> streamsGame = null
-                                    ok -> streams.getOrNull(streamIndex)?.let { m ->
+                                    ok && event.nativeKeyEvent.repeatCount == 0 -> streams.getOrNull(streamIndex)?.let { m ->
                                         streamsGame?.let { g -> onStream(g, m.channel.key); onClose() }
                                     }
                                 }
@@ -528,21 +608,35 @@ internal fun MultiviewChannelPicker(
                                     val game = (items.getOrNull(gameAt.getOrNull(gameCursor) ?: -1) as? PanelItem.Game)?.game
                                     when {
                                         ok -> {
-                                            // Hold OK (the key repeats): more options for the game; a quick press plays it.
+                                            // Hold OK: more options for the game; a quick press plays it. Timed, not
+                                            // only by key repeats: some remotes (HDMI-CEC) send none while OK is held.
+                                            fun openOptions() {
+                                                okHeld[0] = false
+                                                holdJob[0]?.cancel()
+                                                game?.let { optionsGame = it; optionIndex = 0 }
+                                            }
                                             if (down) {
-                                                if (event.nativeKeyEvent.repeatCount == 0) okHeld[0] = true
-                                                else if (okHeld[0]) {
-                                                    okHeld[0] = false
-                                                    game?.let { optionsGame = it; optionIndex = 0 }
-                                                }
+                                                if (event.nativeKeyEvent.repeatCount == 0) {
+                                                    okHeld[0] = true
+                                                    holdJob[0]?.cancel()
+                                                    holdJob[0] = scope.launch {
+                                                        delay(LONG_PRESS_MS)
+                                                        if (okHeld[0]) openOptions()
+                                                    }
+                                                } else if (okHeld[0]) openOptions()
                                             } else if (okHeld[0]) {
                                                 okHeld[0] = false
+                                                holdJob[0]?.cancel()
                                                 game?.let(::playGame)
                                             }
                                         }
                                         !down -> Unit
                                         event.key == Key.DirectionDown -> { if (gameCursor < gameAt.lastIndex) gameCursor++ }
                                         event.key == Key.DirectionUp -> { if (gameCursor > 0) gameCursor-- else upFromList() }
+                                        // Left: back to the top of the list, then up to the tabs.
+                                        event.key == Key.DirectionLeft -> if (event.nativeKeyEvent.repeatCount == 0) {
+                                            if (gameCursor > 0) gameCursor = 0 else upFromList()
+                                        }
                                     }
                                 }
                                 !down -> Unit
@@ -557,11 +651,18 @@ internal fun MultiviewChannelPicker(
                                         event.key == Key.DirectionDown -> { if (index < tree.lastIndex) index++ }
                                         event.key == Key.DirectionUp -> { if (index > 0) index-- else upFromList() }
                                         // Left folds a playlist or group shut; on a channel it goes back to its group.
-                                        event.key == Key.DirectionLeft -> when (item) {
-                                            is TreeItem.Head -> if (!item.collapsed) toggleList(item)
-                                            is TreeItem.Group -> if (item.isOpen) toggleGroup(item)
-                                            is TreeItem.Channel -> tree.indexOfLast { it is TreeItem.Group && it.isOpen }.takeIf { it >= 0 }?.let { index = it }
-                                            null -> Unit
+                                        // With nothing to fold: back to the top of the list, then up to the tabs.
+                                        event.key == Key.DirectionLeft -> {
+                                            val folded = when (item) {
+                                                is TreeItem.Head -> if (!item.collapsed) { toggleList(item); true } else false
+                                                is TreeItem.Group -> if (item.isOpen) { toggleGroup(item); true } else false
+                                                is TreeItem.Channel -> tree.subList(0, index.coerceIn(0, tree.size)).indexOfLast { it is TreeItem.Group && it.isOpen }
+                                                    .takeIf { it >= 0 }?.let { index = it; true } ?: false
+                                                null -> false
+                                            }
+                                            if (!folded && event.nativeKeyEvent.repeatCount == 0) {
+                                                if (index > 0) index = 0 else upFromList()
+                                            }
                                         }
                                         event.key == Key.DirectionRight -> when (item) {
                                             is TreeItem.Head -> if (item.collapsed) toggleList(item)
@@ -879,8 +980,8 @@ internal fun MultiviewLayoutPicker(
                     .multiviewPanel(panelBackground)
             ) {
                 Column(Modifier.fillMaxWidth().padding(start = 18.dp, end = 18.dp, top = 12.dp, bottom = 6.dp)) {
-                    LiveText("MULTIVIEW", size = 10.sp, color = NuvioTheme.colors.TextSecondary)
-                    LiveText("Layout", size = 17.sp, weight = FontWeight.SemiBold)
+                    LiveText(stringResource(R.string.iptv_gg_multiview), size = 10.sp, color = NuvioTheme.colors.TextSecondary)
+                    LiveText(stringResource(R.string.iptv_mv_layout), size = 17.sp, weight = FontWeight.SemiBold)
                 }
                 Box(
                     Modifier.weight(1f).fillMaxWidth()
@@ -922,13 +1023,13 @@ internal fun MultiviewLayoutPicker(
                                     LiveText(choice.title, color = colors.text, size = 15.sp, weight = FontWeight.SemiBold)
                                     LiveText(choice.subtitle, color = NuvioTheme.colors.TextSecondary, size = 11.sp)
                                 }
-                                if (choice.layout == current) SportsBadge("CURRENT", MultiviewNeutralTag, NuvioTheme.colors.TextPrimary)
+                                if (choice.layout == current) SportsBadge(stringResource(R.string.iptv_mv_current), MultiviewNeutralTag, NuvioTheme.colors.TextPrimary)
                             }
                         }
                     }
                 }
                 Box(Modifier.fillMaxWidth().padding(horizontal = 18.dp, vertical = 10.dp)) {
-                    LiveText("OK: apply · Back: close", size = 10.sp, color = NuvioTheme.colors.TextSecondary)
+                    LiveText(stringResource(R.string.iptv_mv_ok_apply_back), size = 10.sp, color = NuvioTheme.colors.TextSecondary)
                 }
             }
         }

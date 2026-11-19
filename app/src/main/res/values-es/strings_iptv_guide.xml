@@ -81,4 +81,5 @@
     <string name="iptv_vod_rename_group">"Renombrar grupo"</string>
     <string name="iptv_vod_sort_group">"Ordenar %1$s"</string>
     <string name="iptv_vod_default_sort">"Predeterminado (%1$s)"</string>
+    <string name="iptv_guide_no_guide_available">"No hay guía de programas disponible"</string>
 </resources>

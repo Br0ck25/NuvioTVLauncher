@@ -289,6 +289,7 @@ fun CalendarScreen(
     fun page(e: CalendarEntry) {
         if (e.kind == CalendarKind.GAME) { e.eventId?.let(onOpenGame); return }
         if (e.kind == CalendarKind.MOVIE && !e.contentId.startsWith("tt")) return
+        if (!hasPage(e)) return
         val today2 = e.key.startsWith("today|")
         onOpenDetail(e.contentId, e.type, e.addonBaseUrl, if (today2) null else e.season, if (today2) null else e.episode)
     }
@@ -297,7 +298,8 @@ fun CalendarScreen(
         if (e.kind == CalendarKind.GAME) { page(e); return }
         val inGuide = channels(e).any { it.stopMs > now || it.catchup }
         val tvFirst = settings.calendarOkAction != "PAGE"
-        if (inGuide && (tvFirst || (e.kind == CalendarKind.MOVIE && !e.contentId.startsWith("tt")))) liveCard = e else page(e)
+        // A show with no page (TVmaze only knows it, like many news shows): its Live TV options either way.
+        if (!hasPage(e) || (inGuide && (tvFirst || (e.kind == CalendarKind.MOVIE && !e.contentId.startsWith("tt"))))) liveCard = e else page(e)
     }
     /**
      * Watch live / record. Looks in the guide again first (a guide that finished loading since
@@ -575,7 +577,9 @@ fun CalendarScreen(
                             statusOf = { f -> followEntry(f).takeIf { !isPlainFollow(it) }?.let { e -> viewModel.status(e) } },
                             onFocus = { f -> heroKey = "follow|" + f.id },
                             onOpen = { f ->
-                                if (!f.isAiring) onOpenDetail(f.id, f.type, f.addonBaseUrl, null, null)
+                                // No page for a show TVmaze alone knows: its options instead.
+                                if (f.id.startsWith("tvmaze:")) followOptions = f
+                                else if (!f.isAiring) onOpenDetail(f.id, f.type, f.addonBaseUrl, null, null)
                                 else f.imdbId?.let { onOpenDetail(it, "movie", null, null, null) }
                             },
                             onOptions = { followOptions = it }
@@ -595,7 +599,7 @@ fun CalendarScreen(
                                     onClick = { viewModel.unhide(h); focusAfterRemoving(null) }
                                 ) { focused ->
                                     LiveText(h.name.ifBlank { h.id }, size = 17.sp, weight = FontWeight.SemiBold, color = focusedTextColor(focused), modifier = Modifier.weight(1f))
-                                    LiveText("OK: show it on the Calendar again", size = 12.sp, color = focusedTextColor(focused).copy(alpha = 0.7f))
+                                    LiveText(stringResource(R.string.iptv_cal_show_again), size = 12.sp, color = focusedTextColor(focused).copy(alpha = 0.7f))
                                 }
                             }
                         }
@@ -631,10 +635,10 @@ fun CalendarScreen(
                 title = e.title,
                 subtitle = entryLine(e, use24h),
                 status = viewModel.status(e),
-                actions = liveList(e, close) + MenuAction(
+                actions = liveList(e, close) + listOfNotNull(MenuAction(
                     if (e.kind == CalendarKind.MOVIE) "Open movie page" else "Show page",
                     if (e.kind == CalendarKind.EPISODE) "Episodes, and your sources to watch on demand" else null
-                ) { close(); page(e) },
+                ) { close(); page(e) }.takeIf { hasPage(e) }),
                 onDismiss = close
             )
         }
@@ -652,7 +656,7 @@ fun CalendarScreen(
                 if (e.kind == CalendarKind.EPISODE && e.videoId != null && whenOf(e) <= now) {
                     add(MenuAction("Find sources for this episode") { close(); onFindSources(e) })
                 }
-                if (e.contentId.startsWith("tt") || e.kind == CalendarKind.EPISODE) {
+                if ((e.contentId.startsWith("tt") || e.kind == CalendarKind.EPISODE) && hasPage(e)) {
                     add(MenuAction(
                         when {
                             e.kind == CalendarKind.MOVIE -> "Open movie page"
@@ -690,7 +694,7 @@ fun CalendarScreen(
                 kicker = null, title = f.name, subtitle = fe?.let { entryLine(it, use24h) }, status = fe?.let { viewModel.status(it) },
                 actions = buildList {
                     if (fe != null) addAll(liveList(fe, close))
-                    if (!f.isAiring || f.imdbId != null) add(MenuAction("Open ${if (f.type == "series") "show" else "movie"} page") {
+                    if ((!f.isAiring || f.imdbId != null) && !f.id.startsWith("tvmaze:")) add(MenuAction("Open ${if (f.type == "series") "show" else "movie"} page") {
                         close()
                         if (f.isAiring) onOpenDetail(f.imdbId!!, "movie", null, null, null) else onOpenDetail(f.id, f.type, f.addonBaseUrl, null, null)
                     })
@@ -820,8 +824,8 @@ private fun Hero(
         verticalArrangement = Arrangement.spacedBy(6.dp)
     ) {
         if (e == null) {
-            LiveText("Calendar", size = 30.sp, weight = FontWeight.ExtraBold)
-            LiveText(if (loading) "Looking up your shows…" else "Nothing to show here yet", size = 15.sp, color = NuvioTheme.colors.TextSecondary)
+            LiveText(stringResource(R.string.iptv_cal_tab_calendar), size = 30.sp, weight = FontWeight.ExtraBold)
+            LiveText(if (loading) stringResource(R.string.iptv_cal_looking_up) else stringResource(R.string.iptv_od_nothing), size = 15.sp, color = NuvioTheme.colors.TextSecondary)
             return@Column
         }
         val today = LocalDate.now()
@@ -838,7 +842,7 @@ private fun Hero(
         }
         LiveText(e.title.uppercase(), size = 28.sp, weight = FontWeight.ExtraBold, shadow = true, modifier = Modifier.width(560.dp))
         val line = if (plain) e.note.orEmpty() else when (e.kind) {
-            CalendarKind.GAME -> listOfNotNull(e.league, e.score).joinToString(" · ")
+            CalendarKind.GAME -> listOfNotNull(e.league, e.note, e.score).joinToString(" ? ")
             CalendarKind.MOVIE -> e.note ?: if (CalendarTag.AT_HOME in e.tags) stringResource(R.string.iptv_cal_out_home) else ""
             else -> listOfNotNull(
                 e.episodeCode,
@@ -1070,8 +1074,9 @@ private fun WideCard(
         if (!game) LiveText(
             when (e.kind) {
                 CalendarKind.GAME ->
-                    if (compactCaption) listOfNotNull(e.teams.takeIf { it.size == 2 }?.joinToString(" vs ") { it.abbr ?: it.name }, e.league).joinToString(" · ")
-                    else listOfNotNull(e.league, e.guide?.channelName ?: e.network).joinToString(" · ")
+                    // A race session or a tournament day ("Qualifying", "Day 2 of 4") says which, in place of the league.
+                    if (compactCaption) listOfNotNull(e.teams.takeIf { it.size == 2 }?.joinToString(" vs ") { it.abbr ?: it.name }, e.note ?: e.league).joinToString(" · ")
+                    else listOfNotNull(e.note ?: e.league, e.guide?.channelName ?: e.network).joinToString(" · ")
                 CalendarKind.MOVIE -> e.note ?: "Movie"
                 else -> listOfNotNull(e.episodeCode, seasonDrop(e), if (e.spoiler) null else e.episodeTitle).joinToString(" · ")
             },
@@ -1164,7 +1169,7 @@ private fun GameArt(e: CalendarEntry, big: Boolean, modifier: Modifier, standalo
             }
             when {
                 e.live && standalone -> LiveTag("LIVE", LIVE_RED, Color.White)
-                finished && !compact -> LiveText("FINAL", size = if (big) 14.sp else 10.sp, weight = FontWeight.Bold, color = Color.White.copy(alpha = 0.85f), shadow = true)
+                finished && !compact -> LiveText(stringResource(R.string.iptv_cal_final), size = if (big) 14.sp else 10.sp, weight = FontWeight.Bold, color = Color.White.copy(alpha = 0.85f), shadow = true)
                 else -> Unit
             }
         }
@@ -1196,10 +1201,10 @@ private fun GameHubCard(e: CalendarEntry, use24h: Boolean, live: Boolean, st: Ca
                 if (st != CalendarLiveStatus()) { LiveBadges(st, compact = true); Spacer(Modifier.width(4.dp)) }
                 when {
                     live -> LiveText("● LIVE", modifier = Modifier.clip(shape).background(SportsLook.Live).padding(horizontal = 5.dp, vertical = 1.dp), color = Color.White, size = 8.sp, weight = FontWeight.Black)
-                    finished -> LiveText("FINAL", modifier = Modifier.clip(shape).background(Color.White.copy(alpha = 0.12f)).padding(horizontal = 5.dp, vertical = 1.dp), color = Color.White, size = 8.sp, weight = FontWeight.Black)
+                    finished -> LiveText(stringResource(R.string.iptv_cal_final), modifier = Modifier.clip(shape).background(Color.White.copy(alpha = 0.12f)).padding(horizontal = 5.dp, vertical = 1.dp), color = Color.White, size = 8.sp, weight = FontWeight.Black)
                     e.day == LocalDate.now() -> {
                         val ring = NuvioTheme.colors.Secondary
-                        LiveText("TODAY", modifier = Modifier.clip(shape).background(ring.copy(alpha = 0.16f)).border(1.dp, ring.copy(alpha = 0.6f), shape).padding(horizontal = 5.dp, vertical = 1.dp), color = Color.White, size = 8.sp, weight = FontWeight.Black)
+                            LiveText(stringResource(R.string.iptv_cal_today), modifier = Modifier.clip(shape).background(ring.copy(alpha = 0.16f)).border(1.dp, ring.copy(alpha = 0.6f), shape).padding(horizontal = 5.dp, vertical = 1.dp), color = Color.White, size = 8.sp, weight = FontWeight.Black)
                     }
                     else -> Unit
                 }
@@ -1489,7 +1494,7 @@ private fun MiniCard(
         )
         LiveText(
             when (e.kind) {
-                CalendarKind.GAME -> e.league ?: ""
+                CalendarKind.GAME -> listOfNotNull(e.league, e.note).joinToString(" · ")
                 CalendarKind.MOVIE -> e.note ?: "Movie"
                 else -> listOfNotNull(e.episodeCode, e.guide?.channelName ?: e.network).joinToString(" · ")
             },
@@ -1956,7 +1961,7 @@ private fun IconPill(modifier: Modifier = Modifier, onClick: () -> Unit) {
             .combinedClickable(interactionSource = remember { MutableInteractionSource() }, indication = null, onClick = onClick),
         contentAlignment = Alignment.Center
     ) {
-        androidx.tv.material3.Icon(Icons.Default.Refresh, contentDescription = "Refresh", tint = colors.text, modifier = Modifier.size(16.dp))
+        androidx.tv.material3.Icon(Icons.Default.Refresh, contentDescription = stringResource(R.string.iptv_cal_refresh), tint = colors.text, modifier = Modifier.size(16.dp))
     }
 }
 
@@ -2040,3 +2045,6 @@ private fun dayWord(day: LocalDate, today: LocalDate): String = when (ChronoUnit
     in 2L..6L -> day.format(DateTimeFormatter.ofPattern("EEEE"))
     else -> day.format(DateTimeFormatter.ofPattern("EEE MMM d"))
 }
+
+/** Whether it has a show or movie page to open (shows TVmaze alone knows, like many news shows, don't). */
+private fun hasPage(e: CalendarEntry): Boolean = !e.contentId.startsWith("tvmaze:")

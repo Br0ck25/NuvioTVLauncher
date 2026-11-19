@@ -162,7 +162,7 @@ fun SportsPicker(viewModel: SportsViewModel, onClose: () -> Unit) {
                     )
                 }
                 Box(Modifier.width(280.dp)) {
-                    LiveTextField(value = query, onValueChange = { query = it }, hint = "Search teams and leagues", focusRequester = searchReq)
+                    LiveTextField(value = query, onValueChange = { query = it }, hint = stringResource(R.string.iptv_sports_search_hint), focusRequester = searchReq)
                 }
                 Spacer(Modifier.width(12.dp))
                 SportsAction("↕  Arrange", onClick = { arrange = true })
@@ -330,7 +330,7 @@ fun SportsPicker(viewModel: SportsViewModel, onClose: () -> Unit) {
         TextInputDialog(
             title = stringResource(R.string.iptv_sports_follow_name),
             initial = "",
-            hint = "A player, driver, fighter or team",
+            hint = stringResource(R.string.iptv_sports_person_hint),
             confirmLabel = stringResource(R.string.iptv_sports_follow),
             onDismiss = { askWord = false },
             onConfirm = { w ->

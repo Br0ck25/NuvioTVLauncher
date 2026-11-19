@@ -68,4 +68,9 @@
     <string name="iptv_cal_saved_channels">"Gespeicherte Sender"</string>
     <string name="iptv_cal_saved_help">"Sender, die der Kalender für einen Sender oder eine Sendung verwenden soll. OK vergisst einen: der Kalender wählt wieder selbst."</string>
     <string name="iptv_cal_nothing_saved">"Nichts gespeichert."</string>
+    <string name="iptv_cal_ring_bell">"Glocke läuten"</string>
+    <string name="iptv_cal_not_found_follow">"„%1$s“ wurde zum Folgen nicht gefunden"</string>
+    <string name="iptv_cal_show_again">"OK: wieder im Kalender anzeigen"</string>
+    <string name="iptv_cal_final">"ENDE"</string>
+    <string name="iptv_cal_today">"HEUTE"</string>
 </resources>

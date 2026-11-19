@@ -68,4 +68,6 @@
         <item quantity="one">"%1$d liste"</item>
         <item quantity="other">"%1$d liste"</item>
     </plurals>
+    <string name="iptv_player_provider_stopped">"Sağlayıcı bu programı göndermeyi durdurdu. Tekrar deneyin veya başka bir noktaya geçin"</string>
+    <string name="iptv_player_recording_failed">"Bu kayıt oynatılamadı"</string>
 </resources>

@@ -10,4 +10,6 @@
     <string name="iptv_od_loading_details">"Ayrıntılar yükleniyor."</string>
     <string name="iptv_od_choose_version">"Bir sürüm seçin"</string>
     <string name="iptv_od_no_episodes">"Sağlayıcı hiç bölüm listelemedi."</string>
+    <string name="iptv_od_multiple_versions">"Sağlayıcınızda bu başlığın birden fazla sürümü var."</string>
+    <string name="iptv_od_default_sort">"Varsayılan (%1$s)"</string>
 </resources>

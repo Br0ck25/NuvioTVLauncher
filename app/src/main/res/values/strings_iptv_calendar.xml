@@ -68,4 +68,11 @@
     <string name="iptv_cal_saved_channels">"Saved Channels"</string>
     <string name="iptv_cal_saved_help">"Channels you told the Calendar to use, for a network or for one show. OK forgets one: the Calendar picks the channel itself again."</string>
     <string name="iptv_cal_nothing_saved">"Nothing saved."</string>
+
+    <string name="iptv_cal_ring_bell">"Ring the bell"</string>
+    <string name="iptv_cal_not_found_follow">"Couldn't find &quot;%1$s&quot; to follow"</string>
+    <string name="iptv_cal_show_again">"OK: show it on the Calendar again"</string>
+
+    <string name="iptv_cal_final">"FINAL"</string>
+    <string name="iptv_cal_today">"TODAY"</string>
 </resources>

@@ -1347,7 +1347,9 @@ private fun GamePage(
         onDispose { viewModel.repo.closeGame(ev.id) }
     }
     val vodLooked = viewModel.repo.vodMatches.collectAsStateWithLifecycle().value[ev.id]
-    val replays = vodLooked.orEmpty()
+    val official = viewModel.repo.videoMatches.collectAsStateWithLifecycle().value[ev.id]
+    // Official highlights and condensed games (ESPN, NHL, MLB, YouTube) go in the same list.
+    val replays = remember(vodLooked, official) { SportsVideos.merge(vodLooked.orEmpty(), official.orEmpty()) }
     val vodAddons = viewModel.repo.vodAddons.collectAsStateWithLifecycle().value[ev.id]
     // A finished game: once replays turn up, put the highlight on the first one (once per visit).
     val firstReplay = remember(ev.id) { FocusRequester() }
@@ -1434,17 +1436,15 @@ private fun GamePage(
                         onClick = { onPlayReplay(m) })
                 }
             }
-            vodLooked == null -> LiveText(stringResource(R.string.iptv_sports_looking_addons), color = SportsLook.Dim, size = 12.sp,
+            vodLooked == null || official == null -> LiveText(stringResource(R.string.iptv_sports_looking_addons), color = SportsLook.Dim, size = 12.sp,
                 modifier = Modifier.padding(start = 6.dp, bottom = 4.dp))
             vodAddons != null && vodAddons.isEmpty() -> LiveText(
-                "Replays and highlights come from sports add-ons that offer them (HighFly Premium, StremVerse…). " +
-                    "None of your add-ons do yet: install one in Add-ons and they'll show here.",
+                stringResource(R.string.iptv_sports_replays_none),
                 color = SportsLook.Dim, size = 12.sp, maxLines = 3, modifier = Modifier.padding(start = 6.dp, bottom = 4.dp)
             )
             else -> LiveText(
-                (vodAddons?.takeIf { it.isNotEmpty() }?.let { "No replay of this game in ${it.joinToString(", ")} yet. " }
-                    ?: "No replay of this game in your sports add-ons yet. ") +
-                    "They're often added a few hours after the game ends.",
+                (vodAddons?.takeIf { it.isNotEmpty() }?.let { stringResource(R.string.iptv_sports_no_replay_in, it.joinToString(", ")) }
+                    ?: stringResource(R.string.iptv_sports_no_replay_addons)),
                 color = SportsLook.Dim, size = 12.sp, maxLines = 3, modifier = Modifier.padding(start = 6.dp, bottom = 4.dp)
             )
         }
@@ -1497,15 +1497,15 @@ private fun GamePage(
             !hasChannels -> LiveText(stringResource(R.string.iptv_sports_add_playlist_short), color = SportsLook.Dim, size = 12.sp)
             // Too far off to have been looked for yet: say when it will be.
             ev.startMs - System.currentTimeMillis() > SportsMatcher.AHEAD_MS -> LiveText(
-                "Your channels are checked for this game from " +
+                stringResource(
+                    R.string.iptv_sports_checked_from,
                     java.text.SimpleDateFormat(if (use24h) "EEE HH:mm" else "EEE h:mm a", java.util.Locale.getDefault())
-                        .format(java.util.Date(ev.startMs - SportsMatcher.AHEAD_MS)) +
-                    ". Know where it's on? Pick a channel now and it's remembered.",
+                        .format(java.util.Date(ev.startMs - SportsMatcher.AHEAD_MS))
+                ),
                 color = SportsLook.Dim, size = 12.sp, maxLines = 3
             )
             else -> LiveText(
-                "Not in your channels' guides right now. Guides update during the day, so check back closer to the start. " +
-                    "Know where it's on? Pick a channel and it's remembered.",
+                stringResource(R.string.iptv_sports_not_in_guides),
                 color = SportsLook.Dim, size = 12.sp, maxLines = 3
             )
         }

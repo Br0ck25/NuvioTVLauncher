@@ -46,4 +46,5 @@
         <item quantity="many">"Срок «%1$s» истекает через %2$d дней"</item>
         <item quantity="other">"Срок «%1$s» истекает через %2$d дня"</item>
     </plurals>
+    <string name="iptv_repository_status_reading_addon_channels">"Чтение каналов из ваших дополнений…"</string>
 </resources>

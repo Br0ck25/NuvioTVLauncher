@@ -1,6 +1,8 @@
 package com.nuvio.tv.music
 
 import android.content.Context
+import com.nuvio.tv.R
+import com.nuvio.tv.core.util.withAppLocale
 import android.net.Uri
 import android.os.Build
 import android.util.Log
@@ -51,7 +53,7 @@ object MusicShareServerManager {
                 _state.value = MusicShareState(
                     running = true,
                     url = null,
-                    error = "No network address was found. Connect the TV to Wi-Fi or Ethernet."
+                    error = app.withAppLocale().getString(R.string.music_share_no_network)
                 )
             } else {
                 _state.value = MusicShareState(
@@ -62,7 +64,7 @@ object MusicShareServerManager {
         }.onFailure {
             Log.w("MusicShare", "Could not start share server: ${it.message}")
             runCatching { candidate.stop() }
-            _state.value = MusicShareState(error = it.message ?: "Couldn't start sharing.")
+            _state.value = MusicShareState(error = it.message ?: app.withAppLocale().getString(R.string.music_share_start_failed))
         }
     }
 
@@ -110,92 +112,43 @@ private class MusicShareServer(
             newFixedLengthResponse(
                 Response.Status.INTERNAL_ERROR,
                 "text/plain; charset=utf-8",
-                "Couldn't read that file."
+                context.withAppLocale().getString(R.string.music_share_read_failed)
             )
         }
     }
 
-    private fun indexPage(tracks: List<Song>): Response {
-        val device = Build.MODEL?.takeIf { it.isNotBlank() } ?: "this device"
-        val rows = buildString {
-            tracks.forEachIndexed { index, song ->
-                val title = escape(song.title)
-                val artist = escape(song.artist)
-                val album = song.albumName?.takeIf { it.isNotBlank() }?.let { escape(it) }
-                append("<li><a class=\"t\" href=\"file/$index\">$title</a>")
-                append("<span class=\"a\">$artist")
-                if (album != null) append(" &middot; $album")
-                append("</span>")
-                if (song.durationText != null) {
-                    append("<span class=\"d\">${escape(song.durationText)}</span>")
-                }
-                append("</li>")
-            }
-        }
-        val html = """
-            <!doctype html>
-            <html lang="en">
-            <head>
-              <meta charset="utf-8">
-              <meta name="viewport" content="width=device-width, initial-scale=1">
-              <title>Nuvio Music</title>
-              <style>
-                :root { color-scheme: dark; }
-                * { box-sizing: border-box; }
-                body { margin: 0; font-family: system-ui, -apple-system, Segoe UI, sans-serif;
-                       background: #07070a; color: #f5f5f7; }
-                main { max-width: 880px; margin: 0 auto; padding: 32px 20px 64px; }
-                header { display: flex; align-items: end; justify-content: space-between; gap: 16px;
-                         border-bottom: 1px solid #2a2a36; padding-bottom: 18px; }
-                h1 { margin: 0; font-size: 30px; letter-spacing: -0.02em; }
-                .sub { color: #a6a6b2; font-size: 14px; margin-top: 4px; }
-                .zip { flex: none; color: #071018; background: #0a84ff; text-decoration: none;
-                       padding: 10px 16px; border-radius: 999px; font-weight: 700; font-size: 13px; }
-                ul { list-style: none; margin: 18px 0 0; padding: 0; }
-                li { display: grid; grid-template-columns: minmax(0, 1fr) auto; gap: 2px 16px;
-                     padding: 13px 0; border-bottom: 1px solid #1b1b24; }
-                .t { color: #fff; text-decoration: none; font-weight: 600; overflow: hidden;
-                     text-overflow: ellipsis; white-space: nowrap; }
-                .t:hover { color: #0a84ff; }
-                .a { grid-column: 1; color: #a6a6b2; font-size: 13px; overflow: hidden;
-                     text-overflow: ellipsis; white-space: nowrap; }
-                .d { grid-column: 2; grid-row: 1; color: #74747f; font-size: 12px; }
-                .empty { color: #a6a6b2; padding: 28px 0; }
-                footer { margin-top: 28px; color: #666670; font-size: 12px; line-height: 1.6; }
-              </style>
-            </head>
-            <body>
-              <main>
-                <header>
-                  <div>
-                    <h1>Nuvio Music</h1>
-                    <div class="sub">${tracks.size} track${if (tracks.size == 1) "" else "s"} on $device</div>
-                  </div>
-                  ${if (tracks.isNotEmpty()) "<a class=\"zip\" href=\"zip\">Download all (.zip)</a>" else ""}
-                </header>
-                ${if (tracks.isEmpty()) {
-                    "<p class=\"empty\">No local music found. Scan again on the TV after plugging in a drive.</p>"
-                } else {
-                    "<ul>$rows</ul>"
-                }}
-                <footer>
-                  Only devices on this network can open this page. Stop sharing from the TV to close it.
-                </footer>
-              </main>
-            </body>
-            </html>
-        """.trimIndent()
-        return newFixedLengthResponse(
-            Response.Status.OK,
-            "text/html; charset=utf-8",
-            html
-        ).apply {
-            addHeader("Cache-Control", "no-store")
-        }
-    }
-
     private fun webPlayerPage(tracks: List<Song>): Response {
-        val device = escape(Build.MODEL?.takeIf { it.isNotBlank() } ?: "this device")
+        val res = context.withAppLocale()
+        val deviceName = Build.MODEL?.takeIf { it.isNotBlank() }
+            ?: res.getString(R.string.music_share_this_device)
+        val trackCount = res.resources.getQuantityString(
+            R.plurals.music_share_track_count,
+            tracks.size,
+            tracks.size
+        )
+        val pageTitle = res.getString(R.string.music_share_page_title)
+        val subtitle = escape(res.getString(R.string.music_share_track_count_on_device, trackCount, deviceName))
+        val downloadAll = res.getString(R.string.music_share_download_all)
+        val searchHint = res.getString(R.string.music_share_search_hint)
+        val noMatch = res.getString(R.string.music_share_no_match)
+        val noLocal = res.getString(R.string.music_share_no_local)
+        val footer = res.getString(R.string.music_share_footer)
+        val lang = res.resources.configuration.locales[0].language
+        val ui = JSONObject()
+            .put("play", res.getString(R.string.music_share_play))
+            .put("download", res.getString(R.string.music_share_download))
+            .put("shuffle", res.getString(R.string.music_share_shuffle))
+            .put("previous", res.getString(R.string.music_share_previous))
+            .put("next", res.getString(R.string.music_share_next))
+            .put("repeatOff", res.getString(R.string.music_share_repeat_off))
+            .put("repeatOne", res.getString(R.string.music_share_repeat_one))
+            .put("repeatAll", res.getString(R.string.music_share_repeat_all))
+            .put("volume", res.getString(R.string.music_share_volume))
+            .put("chooseTrack", res.getString(R.string.music_share_choose_track))
+            .put("nowArtist", res.getString(R.string.music_share_now_artist))
+            .put("noMatch", noMatch)
+            .put("noLocal", noLocal)
+            .toString().replace("</", "<\\/")
         val json = JSONArray().apply {
             tracks.forEachIndexed { index, song ->
                 put(
@@ -213,11 +166,11 @@ private class MusicShareServer(
 
         val html = """
             <!doctype html>
-            <html lang="en">
+            <html lang="$lang">
             <head>
               <meta charset="utf-8">
               <meta name="viewport" content="width=device-width, initial-scale=1">
-              <title>Nuvio Music</title>
+              <title>${escape(pageTitle)}</title>
               <style>
                 :root { color-scheme: dark; --bg:#07070a; --surface:#15151c; --surface2:#20202a;
                         --line:#2a2a36; --text:#f5f5f7; --muted:#a6a6b2; --dim:#74747f; --accent:#0a84ff; }
@@ -254,6 +207,7 @@ private class MusicShareServer(
                 .dl { color:var(--dim); text-decoration:none; font-size:18px; width:28px; text-align:center; }
                 .dl:hover { color:var(--accent); }
                 .empty { color:var(--muted); padding:30px 0; }
+                footer { margin-top:22px; color:var(--dim); font-size:12px; line-height:1.6; }
                 #player { position:fixed; left:0; right:0; bottom:0; background:rgba(12,12,17,.96);
                           border-top:1px solid var(--line); backdrop-filter:blur(18px);
                           padding:10px 18px 12px; display:grid; grid-template-columns:56px minmax(0,1fr) auto;
@@ -293,40 +247,42 @@ private class MusicShareServer(
               <main>
                 <header>
                   <div>
-                    <div class="brand">Nuvio Music</div>
-                    <div class="sub">${tracks.size} track${if (tracks.size == 1) "" else "s"} on $device</div>
+                    <div class="brand">${escape(pageTitle)}</div>
+                    <div class="sub">$subtitle</div>
                   </div>
-                  <input id="search" type="search" placeholder="Search title, artist or album" autocomplete="off">
-                  <a class="zip" href="zip">Download all (.zip)</a>
+                  <input id="search" type="search" placeholder="${escape(searchHint)}" autocomplete="off">
+                  <a class="zip" href="zip">${escape(downloadAll)}</a>
                 </header>
                 <ul id="list"></ul>
-                <p id="empty" class="empty" hidden>No tracks match that search.</p>
+                <p id="empty" class="empty" hidden>${escape(noMatch)}</p>
+                <footer>${escape(footer)}</footer>
               </main>
 
               <div id="player">
                 <div id="nowArt" class="nowArt"><span class="note">&#9834;</span></div>
                 <div class="nowMeta">
-                  <div id="nowTitle">Choose a track</div>
-                  <div id="nowArtist">Your music, streamed from the TV</div>
+                  <div id="nowTitle">${escape(res.getString(R.string.music_share_choose_track))}</div>
+                  <div id="nowArtist">${escape(res.getString(R.string.music_share_now_artist))}</div>
                 </div>
                 <div class="controls">
-                  <button id="shuffle" title="Shuffle">&#128256;</button>
-                  <button id="prev" title="Previous">&#9198;</button>
-                  <button id="play" title="Play">&#9654;</button>
-                  <button id="next" title="Next">&#9197;</button>
-                  <button id="repeat" title="Repeat off">&#128259;</button>
+                  <button id="shuffle" title="${escape(res.getString(R.string.music_share_shuffle))}">&#128256;</button>
+                  <button id="prev" title="${escape(res.getString(R.string.music_share_previous))}">&#9198;</button>
+                  <button id="play" title="${escape(res.getString(R.string.music_share_play))}">&#9654;</button>
+                  <button id="next" title="${escape(res.getString(R.string.music_share_next))}">&#9197;</button>
+                  <button id="repeat" title="${escape(res.getString(R.string.music_share_repeat_off))}">&#128259;</button>
                 </div>
                 <div class="seek">
                   <span id="cur">0:00</span>
                   <input id="seek" type="range" min="0" max="100" value="0" step="0.1">
                   <span id="dur">0:00</span>
                 </div>
-                <input id="vol" type="range" min="0" max="1" value="1" step="0.01" title="Volume">
+                <input id="vol" type="range" min="0" max="1" value="1" step="0.01" title="${escape(res.getString(R.string.music_share_volume))}">
               </div>
               <audio id="audio" preload="metadata"></audio>
 
               <script>
                 var TRACKS = $json;
+                var T = $ui;
                 var list = document.getElementById('list');
                 var empty = document.getElementById('empty');
                 var search = document.getElementById('search');
@@ -382,20 +338,21 @@ private class MusicShareServer(
                     var t = visible[i];
                     var on = t.i === currentId;
                     html += '<li data-i="' + i + '" class="' + (on ? 'on' : '') + '">' +
-                      '<button class="rowPlay" title="Play">' + (on && playing ? '&#10074;&#10074;' : '&#9654;') + '</button>' +
+                      '<button class="rowPlay" title="' + esc(T.play) + '">' + (on && playing ? '&#10074;&#10074;' : '&#9654;') + '</button>' +
                       '<div class="art">' + art(t) + '</div>' +
                       '<div class="meta"><div class="title">' + esc(t.title) + '</div>' +
                       '<div class="sub2">' + esc(t.artist) + (t.album ? ' &middot; ' + esc(t.album) : '') + '</div></div>' +
                       '<div class="dur">' + esc(t.duration) + '</div>' +
-                      '<a class="dl" href="' + t.file + '" download title="Download">&#8681;</a></li>';
+                      '<a class="dl" href="' + t.file + '" download title="' + esc(T.download) + '">&#8681;</a></li>';
                   }
                   list.innerHTML = html;
+                  empty.textContent = TRACKS.length === 0 ? T.noLocal : T.noMatch;
                   empty.hidden = visible.length !== 0;
                 }
                 function updateBar() {
                   var t = currentId === null ? null : trackById(currentId);
-                  nowTitle.textContent = t ? t.title : 'Choose a track';
-                  nowArtist.textContent = t ? t.artist : 'Your music, streamed from the TV';
+                  nowTitle.textContent = t ? t.title : T.chooseTrack;
+                  nowArtist.textContent = t ? t.artist : T.nowArtist;
                   nowArt.innerHTML = t ? art(t) : '<span class="note">&#9834;</span>';
                   playBtn.innerHTML = playing ? '&#10074;&#10074;' : '&#9654;';
                   if (t) {
@@ -441,7 +398,7 @@ private class MusicShareServer(
                 function updateRepeat() {
                   repeatBtn.classList.toggle('on', repeatAll || repeatOne);
                   repeatBtn.innerHTML = repeatOne ? '&#128257;' : '&#128259;';
-                  repeatBtn.title = repeatOne ? 'Repeat one' : (repeatAll ? 'Repeat all' : 'Repeat off');
+                  repeatBtn.title = repeatOne ? T.repeatOne : (repeatAll ? T.repeatAll : T.repeatOff);
                 }
                 list.addEventListener('click', function(event) {
                   if (event.target.closest('.dl')) return;

@@ -270,7 +270,7 @@ private fun WebDavConnectForm(
                 WebDavField(
                     label = stringResource(R.string.music_integrations_username),
                     value = user,
-                    placeholder = "optional",
+                    placeholder = stringResource(R.string.music_optional),
                     onValueChange = { user = it },
                     onDone = { keyboard?.hide() },
                     modifier = Modifier.weight(1f)
@@ -278,7 +278,7 @@ private fun WebDavConnectForm(
                 WebDavField(
                     label = stringResource(R.string.music_integrations_password),
                     value = password,
-                    placeholder = "optional",
+                    placeholder = stringResource(R.string.music_optional),
                     onValueChange = { password = it },
                     onDone = { keyboard?.hide() },
                     password = true,

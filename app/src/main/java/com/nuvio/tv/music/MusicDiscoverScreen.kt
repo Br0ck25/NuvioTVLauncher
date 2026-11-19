@@ -39,7 +39,7 @@ internal fun MusicDiscoverScreen(
         loading && curation.isEmpty -> MusicLoading(modifier.fillMaxSize())
         curation.isEmpty -> MusicEmptyState(
             title = stringResource(R.string.music_discover_learning),
-            message = "Play and like a few songs, then come back for a weekly mix, new releases and related artists.",
+            message = stringResource(R.string.music_discover_empty),
             modifier = modifier
         )
         else -> LazyColumn(
@@ -50,7 +50,7 @@ internal fun MusicDiscoverScreen(
             item(key = "discover-header") {
                 Column(Modifier.padding(horizontal = 26.dp)) {
                     Text(
-                        text = "Discover",
+                        text = stringResource(R.string.music_discover_title),
                         color = MusicPalette.text,
                         fontFamily = MusicDisplay,
                         fontSize = 30.sp,
@@ -59,7 +59,7 @@ internal fun MusicDiscoverScreen(
                     )
                     Spacer(Modifier.height(4.dp))
                     Text(
-                        text = "Music that's new to you, picked from what you love",
+                        text = stringResource(R.string.music_discover_subtitle),
                         color = MusicPalette.textSecondary,
                         fontSize = 10.5.sp
                     )

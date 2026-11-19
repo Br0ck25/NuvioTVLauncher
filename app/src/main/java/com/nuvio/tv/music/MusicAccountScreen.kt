@@ -105,7 +105,7 @@ internal fun MusicAccountScreen(
                     Text(
                         text = when {
                             account.code != null -> stringResource(R.string.music_account_waiting_approval)
-                            account.signedIn -> account.accountName ?: "Account"
+                            account.signedIn -> account.accountName ?: stringResource(R.string.music_account_fallback)
                             else -> stringResource(R.string.music_account_not_signed_in)
                         },
                         color = MusicPalette.textMuted,
@@ -361,7 +361,7 @@ private fun AccountAction(
         }
         if (selected) {
             Text(
-                text = "Current",
+                text = stringResource(R.string.music_account_current),
                 color = MusicPalette.accent,
                 fontSize = 12.sp,
                 fontWeight = FontWeight.SemiBold

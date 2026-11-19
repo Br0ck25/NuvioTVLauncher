@@ -68,4 +68,9 @@
     <string name="iptv_cal_saved_channels">"Kaydedilen kanallar"</string>
     <string name="iptv_cal_saved_help">"Takvimin bir ağ veya program için kullanması gereken kanallar. OK birini unutur: Takvim yine kendi seçer."</string>
     <string name="iptv_cal_nothing_saved">"Hiçbir şey kaydedilmedi."</string>
+    <string name="iptv_cal_ring_bell">"Zili çal"</string>
+    <string name="iptv_cal_not_found_follow">"%1$s takip için bulunamadı"</string>
+    <string name="iptv_cal_show_again">"OK: Takvim'de yeniden göster"</string>
+    <string name="iptv_cal_final">"BİTTİ"</string>
+    <string name="iptv_cal_today">"BUGÜN"</string>
 </resources>

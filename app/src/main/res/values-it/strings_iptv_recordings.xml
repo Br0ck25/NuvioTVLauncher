@@ -91,4 +91,24 @@
     </plurals>
     <string name="iptv_rec_progress">"%1$s di %2$s"</string>
     <string name="iptv_rec_watched">"Visto"</string>
+    <string name="iptv_rec_notif_recording_description">"Visualizzato durante la registrazione della TV in diretta"</string>
+    <string name="iptv_rec_notif_recording_title">"Registrazione della TV in diretta"</string>
+    <string name="iptv_rec_repeat">"Ripetere"</string>
+    <string name="iptv_rec_repeat_never">"Mai"</string>
+    <string name="iptv_rec_repeat_every_day">"Ogni giorno"</string>
+    <string name="iptv_rec_repeat_weekdays">"Giorni feriali"</string>
+    <string name="iptv_rec_repeat_weekends">"Fine settimana"</string>
+    <string name="iptv_rec_repeat_pick_days">"Scegli i giorni"</string>
+    <string name="iptv_rec_repeat_on">"Ripeti"</string>
+    <string name="iptv_rec_repeat_ok">"OK, spunta un giorno"</string>
+    <string name="iptv_rec_pick_repeat_day">"Scegli almeno un giorno in cui ripetere."</string>
+    <string name="iptv_rec_ends_repeat">"Registra ogni settimana in questi giorni finché non lo interrompi in Registrazioni."</string>
+    <string name="iptv_rec_new_episodes">"Nuovi episodi"</string>
+    <string name="iptv_rec_series_detail_new_only">"Solo le trasmissioni la guida contrassegna come NUOVE il %1$s (le repliche degli episodi già registrati vengono saltate). Fermandolo si annullano anche le trasmissioni impostate e non iniziate; ciò che è registrato viene conservato."</string>
+    <string name="iptv_rec_series_detail_all">"Ogni episodio su %1$s (le ripetizioni degli episodi già registrati vengono saltate). Fermandolo si annullano anche le trasmissioni impostate e non iniziate; ciò che è registrato viene conservato."</string>
+    <string name="iptv_rec_record_new_only">"Registrazione: solo nuovi episodi"</string>
+    <string name="iptv_rec_record_all">"Registra: tutti gli episodi"</string>
+    <string name="iptv_rec_stop_repeating">"Smettila di ripetere"</string>
+    <string name="iptv_rec_repeat_detail">"%1$s ? %2$s alle %3$s. Fermandolo si annullano anche le trasmissioni impostate e non iniziate; ciò che è registrato viene conservato."</string>
+    <string name="iptv_rec_done">"Fatto"</string>
 </resources>

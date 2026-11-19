@@ -247,11 +247,11 @@ internal fun LeagueNetworksPage(
     val list: @Composable (Modifier) -> Unit = { m ->
         LazyColumn(
             m.fillMaxWidth().keepFocusWhileHeld(horizontal = false),
-            verticalArrangement = Arrangement.spacedBy(10.dp)
+            verticalArrangement = Arrangement.spacedBy(SportsSpace.Card)
         ) {
             val bySport = tiles.groupBy { it.network.sport }
             bySport.forEach { (sport, all) ->
-                item(key = "h|$sport") { SectionHeader(sport) }
+                item(key = "h|$sport") { SectionHeader(sport, bottom = 0.dp) }
                 val sorted = all.sortedBy { it.lead == null }
                 if (sorted.size > 1 && sorted.all { it.lead == null }) {
                     // Nothing found for this sport: one tile, then pick which network to set by hand.
@@ -267,7 +267,7 @@ internal fun LeagueNetworksPage(
                 } else {
                     sorted.chunked(columns).forEach { row ->
                         item(key = "r|" + row.first().network.id) {
-                            Row(horizontalArrangement = Arrangement.spacedBy(10.dp)) {
+                            Row(horizontalArrangement = Arrangement.spacedBy(SportsSpace.Card)) {
                                 row.forEach { t ->
                                     val lead = t.lead
                                     val info: Pair<String, Boolean> =
@@ -296,8 +296,9 @@ internal fun LeagueNetworksPage(
     // The top bar across the page (like My Sports), then the list with the video window beside it.
     Box(Modifier.fillMaxSize()) {
         if (videoOn) {
-            Column(Modifier.fillMaxSize().padding(start = 56.dp, end = 28.dp, top = 20.dp, bottom = 26.dp)) {
+            Column(Modifier.fillMaxSize().padding(start = 56.dp, end = 28.dp, top = 20.dp, bottom = SportsSpace.Bottom)) {
                 topBar()
+                Spacer(Modifier.height(SportsSpace.RowGap))
                 Row(Modifier.weight(1f).fillMaxWidth()) {
                     Column(Modifier.width(470.dp).fillMaxHeight()) {
                         LiveText(
@@ -320,8 +321,9 @@ internal fun LeagueNetworksPage(
                 }
             }
         } else {
-            Column(Modifier.fillMaxSize().padding(start = 56.dp, end = 36.dp, top = 20.dp, bottom = 26.dp)) {
+            Column(Modifier.fillMaxSize().padding(start = 56.dp, end = 36.dp, top = 20.dp, bottom = SportsSpace.Bottom)) {
                 topBar()
+                Spacer(Modifier.height(SportsSpace.RowGap))
                 LiveText(
                     "Each league's own channel, found in your playlists by name.",
                     color = SportsLook.Dim, size = 12.sp, maxLines = 2, modifier = Modifier.padding(start = 4.dp, bottom = 4.dp)

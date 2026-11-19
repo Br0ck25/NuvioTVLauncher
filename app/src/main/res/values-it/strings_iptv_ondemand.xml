@@ -10,4 +10,6 @@
     <string name="iptv_od_loading_details">"Caricamento dettagli."</string>
     <string name="iptv_od_choose_version">"Scegli una versione"</string>
     <string name="iptv_od_no_episodes">"Il provider non ha elencato episodi."</string>
+    <string name="iptv_od_multiple_versions">"Il tuo provider ha questo titolo più di una volta."</string>
+    <string name="iptv_od_default_sort">"Predefinito (%1$s)"</string>
 </resources>

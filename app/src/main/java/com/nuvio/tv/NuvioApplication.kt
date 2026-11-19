@@ -91,6 +91,8 @@ class NuvioApplication : Application(), SingletonImageLoader.Factory {
         super.onCreate()
         com.nuvio.tv.core.launcher.StartupTiming.mark(this, "dependency graph ready (super.onCreate)")
         PluginRuntimeHooks.onApplicationCreate(this)
+        // The DNS setting (Live TV settings), before any Live TV or player request.
+        com.nuvio.tv.livetv.data.ForkDns.init(this)
         // Load locale synchronously so it's available before Activity.attachBaseContext.
         // SharedPreferences reads are fast (cached in memory after first access).
         val tag = getSharedPreferences("app_locale", Context.MODE_PRIVATE)

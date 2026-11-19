@@ -91,4 +91,24 @@
     </plurals>
     <string name="iptv_rec_progress">"%1$s de %2$s"</string>
     <string name="iptv_rec_watched">"Visto"</string>
+    <string name="iptv_rec_notif_recording_description">"Se muestra mientras se graba Live TV"</string>
+    <string name="iptv_rec_notif_recording_title">"Grabación de televisión en vivo"</string>
+    <string name="iptv_rec_repeat">"Repetir"</string>
+    <string name="iptv_rec_repeat_never">"Nunca"</string>
+    <string name="iptv_rec_repeat_every_day">"Cada día"</string>
+    <string name="iptv_rec_repeat_weekdays">"Días laborables"</string>
+    <string name="iptv_rec_repeat_weekends">"Fines de semana"</string>
+    <string name="iptv_rec_repeat_pick_days">"elegir dias"</string>
+    <string name="iptv_rec_repeat_on">"repetir en"</string>
+    <string name="iptv_rec_repeat_ok">"OK tictac al día"</string>
+    <string name="iptv_rec_pick_repeat_day">"Elija al menos un día para repetir."</string>
+    <string name="iptv_rec_ends_repeat">"Graba todas las semanas en estos días hasta que lo detengas en Grabaciones."</string>
+    <string name="iptv_rec_new_episodes">"Nuevos episodios"</string>
+    <string name="iptv_rec_series_detail_new_only">"Solo se transmite la guía marcada como NUEVA el %1$s (se omiten las repeticiones de episodios ya grabados). Detenerlo también cancela las transmisiones que programó y que no han comenzado; lo que se registra se conserva."</string>
+    <string name="iptv_rec_series_detail_all">"Cada episodio de %1$s (se omiten las repeticiones de episodios ya grabados). Detenerlo también cancela las transmisiones que programó y que no han comenzado; lo que se registra se conserva."</string>
+    <string name="iptv_rec_record_new_only">"Registro: solo nuevos episodios"</string>
+    <string name="iptv_rec_record_all">"Registro: todos los episodios"</string>
+    <string name="iptv_rec_stop_repeating">"dejar de repetir"</string>
+    <string name="iptv_rec_repeat_detail">"%1$s? %2$s en %3$s. Detenerlo también cancela las transmisiones que programó y que no han comenzado; lo que se registra se conserva."</string>
+    <string name="iptv_rec_done">"Hecho"</string>
 </resources>

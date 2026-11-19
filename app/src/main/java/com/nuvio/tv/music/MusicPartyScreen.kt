@@ -551,9 +551,9 @@ private fun PartyNowPlaying(
         Column(Modifier.weight(1f)) {
             Text(
                 text = when {
-                    song == null -> "WAITING"
+                    song == null -> stringResource(R.string.music_party_waiting_upper)
                     isPlaying -> stringResource(R.string.music_p2_now_playing)
-                    else -> "PAUSED"
+                    else -> stringResource(R.string.music_party_paused_upper)
                 },
                 color = if (song == null) MusicPalette.textMuted else MusicPalette.accentTeal,
                 fontSize = 9.sp,
@@ -579,7 +579,7 @@ private fun PartyNowPlaying(
             if (addedBy != null) {
                 Spacer(Modifier.height(2.dp))
                 Text(
-                    text = "Added by $addedBy",
+                    text = stringResource(R.string.music_party_added_by, addedBy),
                     color = MusicPalette.textMuted,
                     fontSize = 10.sp
                 )
@@ -786,7 +786,7 @@ private fun PartyTrashButton(onClick: () -> Unit) {
     ) {
         Icon(
             Icons.Default.Delete,
-            contentDescription = "Remove from queue",
+            contentDescription = stringResource(R.string.music_party_remove_queue),
             tint = if (focused) MusicPalette.background else MusicPalette.textMuted,
             modifier = Modifier.size(16.dp)
         )
@@ -857,7 +857,7 @@ private fun PartyLivePill(locked: Boolean) {
                 .background(if (locked) MusicPalette.accentCoral else MusicPalette.accentTeal)
         )
         Text(
-            text = if (locked) "LOCKED" else "PARTY LIVE",
+            text = if (locked) stringResource(R.string.music_party_locked_upper) else stringResource(R.string.music_party_live_upper),
             color = if (locked) MusicPalette.accentCoral else MusicPalette.accentTeal,
             fontSize = 9.sp,
             letterSpacing = 1.2.sp,

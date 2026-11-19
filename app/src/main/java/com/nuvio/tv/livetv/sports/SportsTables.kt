@@ -186,7 +186,7 @@ internal fun TablesPage(
                     .focusRestorer { leagueId?.let { leagueReq(it) } ?: FocusRequester.Default }
                     .keepFocusWhileHeld(vertical = false),
                 horizontalArrangement = Arrangement.spacedBy(7.dp),
-                contentPadding = PaddingValues(horizontal = 4.dp, vertical = 4.dp)
+                contentPadding = PaddingValues(horizontal = 4.dp, vertical = SportsSpace.RowPad)
             ) {
                 items(shown, key = { it.id }) { l ->
                     LeagueButton(l, selected = l.id == leagueId, modifier = Modifier.focusRequester(leagueReq(l.id))) { picked = l.id }
@@ -226,9 +226,9 @@ internal fun TablesPage(
     // beside it.
     Box(Modifier.fillMaxSize()) {
         if (videoOn) {
-            Column(Modifier.fillMaxSize().padding(start = 56.dp, end = 28.dp, top = 20.dp, bottom = 26.dp)) {
+            Column(Modifier.fillMaxSize().padding(start = 56.dp, end = 28.dp, top = 20.dp, bottom = SportsSpace.Bottom)) {
                 header()
-                Spacer(Modifier.height(8.dp))
+                Spacer(Modifier.height(SportsSpace.RowGap))
                 Row(Modifier.weight(1f).fillMaxWidth()) {
                     content(Modifier.width(470.dp).fillMaxHeight())
                     Spacer(Modifier.width(18.dp))
@@ -246,9 +246,9 @@ internal fun TablesPage(
                 }
             }
         } else {
-            Column(Modifier.fillMaxSize().padding(start = 56.dp, end = 36.dp, top = 20.dp, bottom = 26.dp)) {
+            Column(Modifier.fillMaxSize().padding(start = 56.dp, end = 36.dp, top = 20.dp, bottom = SportsSpace.Bottom)) {
                 header()
-                Spacer(Modifier.height(8.dp))
+                Spacer(Modifier.height(SportsSpace.RowGap))
                 Row(Modifier.weight(1f).fillMaxWidth()) {
                     content(Modifier.weight(1f).fillMaxHeight())
                     if (table != null && !settings.hideScores) {
@@ -274,7 +274,7 @@ private fun LeagueButton(league: League, selected: Boolean, modifier: Modifier =
     val shape = RoundedCornerShape(50)
     Row(
         modifier
-            .height(34.dp)
+            .height(SportsSpace.Control)
             .clip(shape)
             .background(if (selected) accent.copy(alpha = 0.14f) else SportsLook.Card)
             .border(if (focused) NuvioTheme.focusRing.border(1.5.dp) else androidx.compose.foundation.BorderStroke(1.5.dp, if (selected) accent else SportsLook.Border), shape)
@@ -335,9 +335,9 @@ private fun TableView(
     Column(modifier) {
         if (table.hasDivisions) {
             LazyRow(
-                Modifier.fillMaxWidth().padding(top = 6.dp).keepFocusWhileHeld(vertical = false),
+                Modifier.fillMaxWidth().padding(top = SportsSpace.RowGap).keepFocusWhileHeld(vertical = false),
                 horizontalArrangement = Arrangement.spacedBy(6.dp),
-                contentPadding = PaddingValues(horizontal = 4.dp, vertical = 3.dp)
+                contentPadding = PaddingValues(horizontal = 4.dp, vertical = SportsSpace.RowPad)
             ) {
                 items(StandingsView.entries.toList(), key = { "v" + it.name }) { v ->
                     DayTab(
@@ -365,7 +365,7 @@ private fun TableView(
             columns.forEach { c ->
                 LiveText(c.label, color = SportsLook.Dim, size = 9.sp, weight = FontWeight.Black, align = TextAlign.End, modifier = Modifier.width(cellWidth(c.key)))
             }
-            if (showForm) LiveText("LAST 5", color = SportsLook.Dim, size = 9.sp, weight = FontWeight.Black, align = TextAlign.End, modifier = Modifier.width(FORM_W + 8.dp))
+            if (showForm) LiveText(stringResource(R.string.iptv_sports_last_5), color = SportsLook.Dim, size = 9.sp, weight = FontWeight.Black, align = TextAlign.End, modifier = Modifier.width(FORM_W + 8.dp))
         }
         LazyColumn(
             Modifier.fillMaxWidth().weight(1f).keepFocusWhileHeld(horizontal = false),
@@ -769,7 +769,7 @@ internal fun TeamCard(
             SportsAction(if (following) "★  Following" else "☆  Follow", modifier = f(), selected = following, onClick = { viewModel.repo.toggleTeam(team) })
             if (list.isNotEmpty()) SportsAction("All their games", modifier = f(), onClick = { allGames = true })
             if (roster != null) SportsAction("Players", modifier = f(), onClick = { playersView = true })
-            (live ?: next)?.let { ev -> SportsAction("Game info", modifier = f(), onClick = { onOpen(ev) }) }
+            (live ?: next)?.let { ev -> SportsAction(stringResource(R.string.iptv_sports_game_info), modifier = f(), onClick = { onOpen(ev) }) }
         }
     }
 }
@@ -930,7 +930,7 @@ private fun AllGames(team: TeamInfo, games: List<SportsEvent>, hide: Boolean, no
                 if (focused) {
                     Row(Modifier.fillMaxWidth().padding(vertical = 4.dp), verticalAlignment = Alignment.CenterVertically) {
                         LiveText(gameLine(ev, team, hide, now, use24h), color = Color.White, size = 12.sp, weight = FontWeight.ExtraBold, modifier = Modifier.weight(1f))
-                        LiveText("Game info ›", color = SportsLook.Dim, size = 10.sp)
+                        LiveText(stringResource(R.string.iptv_sports_game_info), color = SportsLook.Dim, size = 10.sp)
                     }
                 } else {
                     CardGame(ev, team, hide, now, use24h, live = ev.state == GameState.LIVE)

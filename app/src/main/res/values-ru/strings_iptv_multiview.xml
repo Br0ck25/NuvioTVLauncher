@@ -47,4 +47,9 @@
     <string name="iptv_mv_queue_full">"В Multiview уже есть %1$d каналов. Откройте Multiview, чтобы изменить их."</string>
     <string name="iptv_mv_queue_already">"Уже в режиме мультипросмотра (%1$d из %2$d)."</string>
     <string name="iptv_mv_queue_added">"Добавлено в мультипросмотр (%1$d из %2$d). Откройте Multiview в верхнем ряду руководства."</string>
+    <string name="iptv_mv_pane">"Панель %1$d"</string>
+    <string name="iptv_mv_layout">"Макет"</string>
+    <string name="iptv_mv_ok_apply_back">"ОК: применить · Назад: закрыть"</string>
+    <string name="iptv_mv_sound">"ЗВУК"</string>
+    <string name="iptv_mv_current">"ТЕКУЩИЙ"</string>
 </resources>

@@ -113,4 +113,17 @@
     <string name="iptv_sports_other_streams">"Diğer akışlar"</string>
     <string name="iptv_sports_pane">"Bölme"</string>
     <string name="iptv_sports_start_label">"BAŞLANGIÇ"</string>
+    <string name="iptv_sports_replays_none">"Tekrarlar ve öne çıkanlar, bunları sunan spor eklentilerinden gelir (HighFly Premium, StremVerse…). Eklentilerinizden hiçbiri henüz bunu yapmıyor: Eklentiler'e bir tane yükleyin, burada gösterilecekler."</string>
+    <string name="iptv_sports_no_replay_in">"Bu oyunun %1$s'de tekrarı henüz yok. Genellikle oyun bittikten birkaç saat sonra eklenirler."</string>
+    <string name="iptv_sports_no_replay_addons">"Henüz spor eklentilerinizde bu oyunun tekrarı yok. Genellikle oyun bittikten birkaç saat sonra eklenirler."</string>
+    <string name="iptv_sports_checked_from">"Kanallarınız bu oyun için %1$s tarihinden itibaren kontrol ediliyor. Nerede olduğunu biliyor musun? Şimdi bir kanal seçin ve hatırlanır."</string>
+    <string name="iptv_sports_not_in_guides">"Şu anda kanallarınızın rehberlerinde yok. Kılavuzlar gün içinde güncellenir, bu nedenle başlangıca daha yakın bir zamanda tekrar kontrol edin. Nerede olduğunu biliyor musun? Bir kanal seçin ve hatırlanır."</string>
+    <string name="iptv_sports_last_5">"SON 5"</string>
+    <string name="iptv_sports_game_info">"Oyun bilgisi ›"</string>
+    <string name="iptv_sports_now_label">"ŞİMDİ"</string>
+    <string name="iptv_sports_end_label">"SON"</string>
+    <string name="iptv_sports_channels_from">"Gelen kanallar"</string>
+    <string name="iptv_sports_search_hint">"Takımları ve ligleri arayın"</string>
+    <string name="iptv_sports_person_hint">"Bir oyuncu, sürücü, dövüşçü veya takım"</string>
+    <string name="iptv_sports_last_met">"Son buluşma %1$s"</string>
 </resources>

@@ -81,4 +81,5 @@
     <string name="iptv_vod_rename_group">"Grubu yeniden adlandır"</string>
     <string name="iptv_vod_sort_group">"%1$s sırala"</string>
     <string name="iptv_vod_default_sort">"Varsayılan (%1$s)"</string>
+    <string name="iptv_guide_no_guide_available">"Program Rehberi Mevcut Değil"</string>
 </resources>

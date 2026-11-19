@@ -47,4 +47,9 @@
     <string name="iptv_mv_queue_full">"Multiview heeft al %1$d kanalen. Open Multiview om ze te wijzigen."</string>
     <string name="iptv_mv_queue_already">"Al in Multiview (%1$d van %2$d)."</string>
     <string name="iptv_mv_queue_added">"Toegevoegd aan Multiview (%1$d van %2$d). Open Multiview vanuit de bovenste rij van de gids."</string>
+    <string name="iptv_mv_pane">"Deelvenster %1$d"</string>
+    <string name="iptv_mv_layout">"Indeling"</string>
+    <string name="iptv_mv_ok_apply_back">"OK: toepassen · Terug: sluiten"</string>
+    <string name="iptv_mv_sound">"GELUID"</string>
+    <string name="iptv_mv_current">"HUIDIG"</string>
 </resources>

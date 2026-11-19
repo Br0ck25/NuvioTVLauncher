@@ -40,8 +40,8 @@ class UpdatePreferences @Inject constructor(
     private val downloadedApkPathKey = stringPreferencesKey("downloaded_apk_path")
     private val autoInstalledTagKey = stringPreferencesKey("auto_installed_release_tag")
     private val autoInstallNoticeEnabledKey = booleanPreferencesKey("auto_install_notice_enabled")
-    private val whatsNewSeenVersionKey = stringPreferencesKey("whats_new_seen_version")
     private val optimizeDuringInstallKey = booleanPreferencesKey("optimize_during_install")
+    private val whatsNewSeenVersionKey = stringPreferencesKey("whats_new_seen_version")
 
     val ignoredTag: Flow<String?> = dataStore.data.map { prefs ->
         prefs[ignoredTagKey]
@@ -83,10 +83,6 @@ class UpdatePreferences @Inject constructor(
     /** The app version whose release notes were last shown, so they appear once per update. */
     val whatsNewSeenVersion: Flow<String?> = dataStore.data.map { prefs -> prefs[whatsNewSeenVersionKey] }
 
-    suspend fun setWhatsNewSeenVersion(version: String) {
-        dataStore.edit { prefs -> prefs[whatsNewSeenVersionKey] = version }
-    }
-
     /** Whether updates the user installs carry dex metadata, or go through the system installer screen instead. */
     val optimizeDuringInstall: Flow<Boolean> = dataStore.data.map { prefs ->
         prefs[optimizeDuringInstallKey] ?: false
@@ -96,6 +92,10 @@ class UpdatePreferences @Inject constructor(
         dataStore.edit { prefs ->
             prefs[optimizeDuringInstallKey] = enabled
         }
+    }
+
+    suspend fun setWhatsNewSeenVersion(version: String) {
+        dataStore.edit { prefs -> prefs[whatsNewSeenVersionKey] = version }
     }
 
     suspend fun getOrInitializeUpdateChannel(): UpdateChannel {

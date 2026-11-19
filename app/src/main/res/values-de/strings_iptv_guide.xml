@@ -81,4 +81,5 @@
     <string name="iptv_vod_rename_group">"Gruppe umbenennen"</string>
     <string name="iptv_vod_sort_group">"%1$s sortieren"</string>
     <string name="iptv_vod_default_sort">"Standard (%1$s)"</string>
+    <string name="iptv_guide_no_guide_available">"Kein Programmführer verfügbar"</string>
 </resources>
