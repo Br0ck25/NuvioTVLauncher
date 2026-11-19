@@ -1,0 +1,36 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <string name="iptv_sports_no_channel">"No channel found for %1$s. Open it and use Fix Channel to pick one."</string>
+    <string name="iptv_sports_pick_game">"Pick a game to watch here"</string>
+    <string name="iptv_sports_hold_ok">"Hold OK on a game, or open it and pick a channel"</string>
+    <string name="iptv_sports_finding_channels">"Finding channels for today\'s games."</string>
+    <string name="iptv_sports_my_sports">"My Sports"</string>
+    <string name="iptv_sports_all_events">"All Events"</string>
+    <string name="iptv_sports_all_events_live">"All Events · %1$d live"</string>
+    <string name="iptv_sports_league_networks">"League Networks"</string>
+    <string name="iptv_sports_follow_teams">"Follow Teams &amp; Leagues"</string>
+    <string name="iptv_sports_add_playlist">"Add a playlist in Live TV settings to watch games from here. Scores and times still show."</string>
+    <string name="iptv_sports_live_now">"LIVE NOW"</string>
+    <string name="iptv_sports_coming_up">"COMING UP"</string>
+    <string name="iptv_sports_schedule">"SCHEDULE"</string>
+    <string name="iptv_sports_didnt_start">"DIDN\'T START"</string>
+    <string name="iptv_sports_this_week">"THIS WEEK"</string>
+    <string name="iptv_sports_choose_leagues">"Choose Leagues  &gt;"</string>
+    <string name="iptv_sports_leagues_all">"Leagues on All Events"</string>
+    <string name="iptv_sports_leagues_help">"OK turns a league on or off, and opens or closes a sport. Leagues you follow always show."</string>
+    <string name="iptv_sports_search_leagues">"Search leagues"</string>
+    <string name="iptv_sports_no_league_match">"No leagues match that search."</string>
+    <string name="iptv_sports_from_guide">"From your guide"</string>
+    <string name="iptv_sports_watch_here_help">"Hold OK on a game to watch it here while you browse. OK opens the game info."</string>
+    <string name="iptv_sports_playing_other">"Playing a channel that isn\'t showing a game from this page."</string>
+    <string name="iptv_sports_latest_scoring">"LATEST SCORING"</string>
+    <string name="iptv_sports_scores_hidden">"Scores are hidden"</string>
+    <string name="iptv_sports_no_scoring">"No scoring yet"</string>
+    <string name="iptv_sports_watching_on">"WATCHING ON"</string>
+    <string name="iptv_sports_also_on">"Also on %1$s"</string>
+    <string name="iptv_sports_getting_games">"Getting today\'s games."</string>
+    <string name="iptv_sports_nothing_teams">"Nothing from your teams on this day."</string>
+    <string name="iptv_sports_nothing_live">"Nothing on right now."</string>
+    <string name="iptv_sports_nothing_day">"Nothing on this day."</string>
+    <string name="iptv_sports_see_everything">"See Everything"</string>
+</resources>

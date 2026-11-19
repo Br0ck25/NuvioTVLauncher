@@ -1,0 +1,36 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <string name="iptv_sports_no_channel">"Nessun canale trovato per %1$s. Aprilo e usa Correggi canale per sceglierne uno."</string>
+    <string name="iptv_sports_pick_game">"Scegli una partita da guardare qui"</string>
+    <string name="iptv_sports_hold_ok">"Tieni premuto OK su una partita, oppure aprila e scegli un canale"</string>
+    <string name="iptv_sports_finding_channels">"Ricerca dei canali per le partite di oggi."</string>
+    <string name="iptv_sports_my_sports">"I miei sport"</string>
+    <string name="iptv_sports_all_events">"Tutti gli eventi"</string>
+    <string name="iptv_sports_all_events_live">"Tutti gli eventi · %1$d in diretta"</string>
+    <string name="iptv_sports_league_networks">"Canali delle leghe"</string>
+    <string name="iptv_sports_follow_teams">"Segui squadre e leghe"</string>
+    <string name="iptv_sports_add_playlist">"Aggiungi una playlist nelle impostazioni Live TV per guardare le partite qui. Punteggi e orari continuano a comparire."</string>
+    <string name="iptv_sports_live_now">"IN DIRETTA"</string>
+    <string name="iptv_sports_coming_up">"IN ARRIVO"</string>
+    <string name="iptv_sports_schedule">"PROGRAMMA"</string>
+    <string name="iptv_sports_didnt_start">"NON INIZIATA"</string>
+    <string name="iptv_sports_this_week">"QUESTA SETTIMANA"</string>
+    <string name="iptv_sports_choose_leagues">"Scegli le leghe  ›"</string>
+    <string name="iptv_sports_leagues_all">"Leghe su Tutti gli eventi"</string>
+    <string name="iptv_sports_leagues_help">"OK attiva o disattiva una lega e apre o chiude uno sport. Le leghe che segui vengono sempre mostrate."</string>
+    <string name="iptv_sports_search_leagues">"Cerca leghe"</string>
+    <string name="iptv_sports_no_league_match">"Nessuna lega corrisponde a questa ricerca."</string>
+    <string name="iptv_sports_from_guide">"Dalla tua guida"</string>
+    <string name="iptv_sports_watch_here_help">"Tieni premuto OK su una partita per guardarla qui mentre navighi. OK apre le info della partita."</string>
+    <string name="iptv_sports_playing_other">"Riproduzione di un canale che non mostra una partita di questa pagina."</string>
+    <string name="iptv_sports_latest_scoring">"ULTIMO PUNTEGGIO"</string>
+    <string name="iptv_sports_scores_hidden">"I punteggi sono nascosti"</string>
+    <string name="iptv_sports_no_scoring">"Ancora nessun punteggio"</string>
+    <string name="iptv_sports_watching_on">"GUARDANDO SU"</string>
+    <string name="iptv_sports_also_on">"Anche su %1$s"</string>
+    <string name="iptv_sports_getting_games">"Caricamento delle partite di oggi."</string>
+    <string name="iptv_sports_nothing_teams">"Niente delle tue squadre in questo giorno."</string>
+    <string name="iptv_sports_nothing_live">"Niente in questo momento."</string>
+    <string name="iptv_sports_nothing_day">"Niente in questo giorno."</string>
+    <string name="iptv_sports_see_everything">"Vedi tutto"</string>
+</resources>

@@ -1,0 +1,36 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <string name="iptv_sports_no_channel">"Канал для %1$s не найден. Откройте его и выберите «Исправить канал»."</string>
+    <string name="iptv_sports_pick_game">"Выберите матч, чтобы смотреть здесь"</string>
+    <string name="iptv_sports_hold_ok">"Удерживайте OK на матче или откройте его и выберите канал"</string>
+    <string name="iptv_sports_finding_channels">"Поиск каналов для сегодняшних матчей."</string>
+    <string name="iptv_sports_my_sports">"Мои виды спорта"</string>
+    <string name="iptv_sports_all_events">"Все события"</string>
+    <string name="iptv_sports_all_events_live">"Все события · %1$d в прямом эфире"</string>
+    <string name="iptv_sports_league_networks">"Каналы лиг"</string>
+    <string name="iptv_sports_follow_teams">"Следить за командами и лигами"</string>
+    <string name="iptv_sports_add_playlist">"Добавьте плейлист в настройках Live TV, чтобы смотреть матчи здесь. Счёт и время по-прежнему отображаются."</string>
+    <string name="iptv_sports_live_now">"СЕЙЧАС В ЭФИРЕ"</string>
+    <string name="iptv_sports_coming_up">"СКОРО"</string>
+    <string name="iptv_sports_schedule">"РАСПИСАНИЕ"</string>
+    <string name="iptv_sports_didnt_start">"НЕ НАЧАЛСЯ"</string>
+    <string name="iptv_sports_this_week">"НА ЭТОЙ НЕДЕЛЕ"</string>
+    <string name="iptv_sports_choose_leagues">"Выбрать лиги  ›"</string>
+    <string name="iptv_sports_leagues_all">"Лиги во Всех событиях"</string>
+    <string name="iptv_sports_leagues_help">"OK включает или выключает лигу и открывает или закрывает вид спорта. Лиги, за которыми вы следите, показываются всегда."</string>
+    <string name="iptv_sports_search_leagues">"Поиск лиг"</string>
+    <string name="iptv_sports_no_league_match">"Ни одна лига не соответствует запросу."</string>
+    <string name="iptv_sports_from_guide">"Из вашего гида"</string>
+    <string name="iptv_sports_watch_here_help">"Удерживайте OK на матче, чтобы смотреть его здесь во время просмотра. OK открывает информацию о матче."</string>
+    <string name="iptv_sports_playing_other">"Воспроизводится канал, который не показывает матч с этой страницы."</string>
+    <string name="iptv_sports_latest_scoring">"ПОСЛЕДНИЕ ОЧКИ"</string>
+    <string name="iptv_sports_scores_hidden">"Счёт скрыт"</string>
+    <string name="iptv_sports_no_scoring">"Очков пока нет"</string>
+    <string name="iptv_sports_watching_on">"СМОТРЯТ НА"</string>
+    <string name="iptv_sports_also_on">"Также на %1$s"</string>
+    <string name="iptv_sports_getting_games">"Загрузка сегодняшних матчей."</string>
+    <string name="iptv_sports_nothing_teams">"Ничего от ваших команд в этот день."</string>
+    <string name="iptv_sports_nothing_live">"Сейчас ничего нет."</string>
+    <string name="iptv_sports_nothing_day">"В этот день ничего нет."</string>
+    <string name="iptv_sports_see_everything">"Посмотреть всё"</string>
+</resources>

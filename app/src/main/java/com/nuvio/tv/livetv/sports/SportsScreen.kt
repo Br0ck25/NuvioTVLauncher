@@ -41,6 +41,8 @@ import androidx.compose.runtime.saveable.rememberSaveable
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.res.stringResource
+import com.nuvio.tv.R
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.draw.drawBehind
 import androidx.compose.ui.focus.FocusRequester
@@ -240,6 +242,7 @@ fun SportsScreen(
         viewModel.repo.setViewing(true)
         onDispose { viewModel.repo.setViewing(false) }
     }
+    val context = androidx.compose.ui.platform.LocalContext.current
     LaunchedEffect(Unit) {
         // Back from watching a game: the highlight goes back on it.
         SportsLaunch.takeFocusEvent()?.let { if (openId == null) { returnTo = it; rowsReturning = true } }
@@ -249,7 +252,7 @@ fun SportsScreen(
     /** Full screen in Live TV (from the start when the game is over). */
     fun watch(ev: SportsEvent, m: ChannelMatch?) {
         if (m == null) {
-            LiveTvNotice.show("No channel found for ${ev.title}. Open it and use Fix Channel to pick one.")
+            LiveTvNotice.show(context.getString(R.string.iptv_sports_no_channel, ev.title))
             return
         }
         SportsLaunch.openedFromSports(ev.id)
@@ -279,7 +282,7 @@ fun SportsScreen(
     fun quickWatch(ev: SportsEvent) {
         val m = matches[ev.id]?.firstOrNull()
         when {
-            m == null -> LiveTvNotice.show("No channel found for ${ev.title}. Open it and use Fix Channel to pick one.")
+            m == null -> LiveTvNotice.show(context.getString(R.string.iptv_sports_no_channel, ev.title))
             videoOn && ev.state != GameState.POST -> viewModel.playHere(m)
             else -> watch(ev, m)
         }
@@ -488,8 +491,8 @@ private fun VideoLayer(slot: Rect?, root: Rect?, player: androidx.media3.common.
             Column(horizontalAlignment = Alignment.CenterHorizontally, modifier = Modifier.padding(20.dp)) {
                 LiveText("▶", color = SportsLook.Dim, size = 26.sp)
                 Spacer(Modifier.height(6.dp))
-                LiveText("Pick a game to watch here", color = Color.White, size = 14.sp, weight = FontWeight.Bold)
-                LiveText("Hold OK on a game, or open it and pick a channel", color = SportsLook.Dim, size = 11.sp)
+                LiveText(stringResource(R.string.iptv_sports_pick_game), color = Color.White, size = 14.sp, weight = FontWeight.Bold)
+                LiveText(stringResource(R.string.iptv_sports_hold_ok), color = SportsLook.Dim, size = 11.sp)
             }
         }
     }
@@ -655,7 +658,7 @@ private fun SportsHub(
             ) {
                 com.nuvio.tv.livetv.ui.LoadingSpinner()
                 Spacer(Modifier.width(8.dp))
-                LiveText("Finding channels for today's games…", color = SportsLook.Dim, size = 11.sp, weight = FontWeight.Bold)
+                LiveText(stringResource(R.string.iptv_sports_finding_channels), color = SportsLook.Dim, size = 11.sp, weight = FontWeight.Bold)
             }
         }
         status?.let {
@@ -714,18 +717,18 @@ private fun SportsHub(
     val filters: @Composable (Modifier) -> Unit = { m ->
         LazyRow(m.keepFocusWhileHeld(vertical = false), horizontalArrangement = Arrangement.spacedBy(7.dp), verticalAlignment = Alignment.CenterVertically, contentPadding = PaddingValues(horizontal = 4.dp, vertical = 4.dp)) {
             val upTo: Modifier = Modifier
-            item(key = CHIP_MINE) { FilterIcon("★", "My Sports", effectiveChip == CHIP_MINE, Modifier.focusRequester(firstChip).then(upTo), withLabel = true) { pickChip(CHIP_MINE) } }
+            item(key = CHIP_MINE) { FilterIcon("★", stringResource(R.string.iptv_sports_my_sports), effectiveChip == CHIP_MINE, Modifier.focusRequester(firstChip).then(upTo), withLabel = true) { pickChip(CHIP_MINE) } }
             // Everything on, day by day (live games first), with how many are on now.
             item(key = CHIP_ALL) {
                 FilterIcon(
-                    "▦", if (sections.liveCount > 0) "All Events · ${sections.liveCount} live" else "All Events",
+                    "▦", if (sections.liveCount > 0) stringResource(R.string.iptv_sports_all_events_live, sections.liveCount) else stringResource(R.string.iptv_sports_all_events),
                     effectiveChip == CHIP_ALL, upTo, withLabel = true
                 ) { pickChip(CHIP_ALL) }
             }
             // Your leagues' tables.
             item(key = CHIP_TABLES) { FilterIcon("🏆", "Tables", effectiveChip == CHIP_TABLES, upTo, withLabel = true) { pickChip(CHIP_TABLES) } }
             // Each league's own channel (NFL Network, NBA TV…).
-            item(key = CHIP_NETWORKS) { FilterIcon("📡", "League Networks", effectiveChip == CHIP_NETWORKS, upTo, withLabel = true) { pickChip(CHIP_NETWORKS) } }
+            item(key = CHIP_NETWORKS) { FilterIcon("📡", stringResource(R.string.iptv_sports_league_networks), effectiveChip == CHIP_NETWORKS, upTo, withLabel = true) { pickChip(CHIP_NETWORKS) } }
             item(key = "multiview") { FilterIcon("▦", "Multiview", false, upTo, withLabel = true, onClick = onOpenMultiview) }
             // Sports you follow: My Teams for that sport only.
             if (followedSports.size > 1) {
@@ -836,7 +839,7 @@ private fun SportsHub(
                         LiveText("Sports", size = 26.sp, weight = FontWeight.Black)
                         Spacer(Modifier.width(14.dp))
                         filters(Modifier.weight(1f))
-                        FilterIcon("✎", "Follow Teams & Leagues", selected = false, withLabel = true) { onPick() }
+                        FilterIcon("✎", stringResource(R.string.iptv_sports_follow_teams), selected = false, withLabel = true) { onPick() }
                     }
                 },
                 columnState = rowsState,
@@ -946,6 +949,9 @@ private fun GameList(
     onChooseLeagues: () -> Unit = {}
 ) {
     fun playing(ev: SportsEvent) = playingKey != null && matches[ev.id]?.any { it.channel.key == playingKey } == true
+    val comingUpLabel = stringResource(R.string.iptv_sports_coming_up)
+    val scheduleLabel = stringResource(R.string.iptv_sports_schedule)
+    val didntStartLabel = stringResource(R.string.iptv_sports_didnt_start)
     LazyColumn(
         state = listState,
         // Nothing to the right of the list (the video window isn't a button): Right stays put
@@ -960,12 +966,12 @@ private fun GameList(
         }
         if (!hasChannels) item(key = "nochannels") {
             LiveText(
-                "Add a playlist in Live TV settings to watch games from here. Scores and times still show.",
+                stringResource(R.string.iptv_sports_add_playlist),
                 color = SportsLook.Dim, size = 12.sp, modifier = Modifier.padding(vertical = 4.dp)
             )
         }
         if (loading) {
-            item(key = "ph_label") { SectionHeader("LIVE NOW", live = true) }
+            item(key = "ph_label") { SectionHeader(stringResource(R.string.iptv_sports_live_now), live = true) }
             items(3, key = { "ph_$it" }) { PlaceholderCard() }
             return@LazyColumn
         }
@@ -995,14 +1001,14 @@ private fun GameList(
             }
         }
         if (sections.live.isNotEmpty()) {
-            item(key = "live_label") { SectionHeader("LIVE NOW", live = true, count = sections.live.size) }
+            item(key = "live_label") { SectionHeader(stringResource(R.string.iptv_sports_live_now), live = true, count = sections.live.size) }
             cardRows("live_", sections.live)
         }
         if (sections.upcoming.isNotEmpty()) {
             // A league's week: a heading per day ("SATURDAY 24 OCT"); a day: one heading.
             val groups: List<Pair<String, List<SportsEvent>>> =
                 if (byDate) sections.upcoming.groupBy { dayWord(it.startMs, now) }.toList()
-                else listOf((if (day == 0) "COMING UP" else if (day > 0) "SCHEDULE" else "DIDN'T START") to sections.upcoming)
+                else listOf((if (day == 0) comingUpLabel else if (day > 0) scheduleLabel else didntStartLabel) to sections.upcoming)
             groups.forEach { (label, groupList) ->
             item(key = "up_label_$label") { SectionHeader(label.uppercase(), count = groupList.size) }
             groupList.chunked(columns).forEachIndexed { ri, row ->
@@ -1030,7 +1036,7 @@ private fun GameList(
             }
         }
         if (sections.weekLong.isNotEmpty()) {
-            item(key = "week_label") { SectionHeader("THIS WEEK", count = sections.weekLong.size) }
+            item(key = "week_label") { SectionHeader(stringResource(R.string.iptv_sports_this_week), count = sections.weekLong.size) }
             cardRows("week_", sections.weekLong)
         }
         if (sections.finished.isNotEmpty()) {
@@ -1060,7 +1066,7 @@ private fun LeaguesBar(line: String, modifier: Modifier = Modifier, onClick: () 
         verticalAlignment = Alignment.CenterVertically
     ) {
         LiveText(line, color = SportsLook.Dim, size = 12.sp, weight = FontWeight.Bold, modifier = Modifier.weight(1f))
-        LiveText("Choose Leagues  ›", color = Color.White, size = 13.sp, weight = FontWeight.Bold)
+        LiveText(stringResource(R.string.iptv_sports_choose_leagues), color = Color.White, size = 13.sp, weight = FontWeight.Bold)
     }
 }
 
@@ -1088,15 +1094,15 @@ private fun LeaguesPicker(settings: SportsSettings, followed: Set<String>, onTog
         if (hits.isEmpty()) null else s to hits
     }
     SportsDialog(onDismiss = onDismiss, width = 620.dp) {
-        LiveText("Leagues on All Events", size = 18.sp, weight = FontWeight.Bold)
-        LiveText("OK turns a league on or off, and opens or closes a sport. Leagues you follow always show.", color = SportsLook.Dim, size = 12.sp)
+        LiveText(stringResource(R.string.iptv_sports_leagues_all), size = 18.sp, weight = FontWeight.Bold)
+        LiveText(stringResource(R.string.iptv_sports_leagues_help), color = SportsLook.Dim, size = 12.sp)
         Spacer(Modifier.height(8.dp))
         LiveTextField(
-            value = query, onValueChange = { query = it }, hint = "Search leagues", focusRequester = field,
+            value = query, onValueChange = { query = it }, hint = stringResource(R.string.iptv_sports_search_leagues), focusRequester = field,
             onDone = { keyboard?.hide(); runCatching { first.requestFocus() } }
         )
         Spacer(Modifier.height(8.dp))
-        if (searching && shown.isEmpty()) LiveText("No leagues match that search.", color = SportsLook.Dim, size = 12.sp)
+        if (searching && shown.isEmpty()) LiveText(stringResource(R.string.iptv_sports_no_league_match), color = SportsLook.Dim, size = 12.sp)
         LazyColumn(Modifier.heightIn(max = 360.dp).keepFocusWhileHeld(horizontal = false), verticalArrangement = Arrangement.spacedBy(2.dp)) {
             shown.forEachIndexed { gi, (sport, list) ->
                 val isOpen = searching || sport in open
@@ -1118,7 +1124,7 @@ private fun LeaguesPicker(settings: SportsSettings, followed: Set<String>, onTog
                             label = (if (on) "✓   " else "      ") + l.name,
                             detail = when {
                                 mine -> "Following"
-                                l.guideOnly -> "From your guide"
+                                l.guideOnly -> stringResource(R.string.iptv_sports_from_guide)
                                 else -> null
                             },
                             modifier = Modifier.padding(start = 22.dp),
@@ -1156,8 +1162,8 @@ private fun NowPlayingPanel(
     if (ev == null) {
         Box(Modifier.fillMaxWidth().sportsFrame(false, accent = NuvioTheme.colors.Secondary).padding(14.dp)) {
             LiveText(
-                if (playingKey == null) "Hold OK on a game to watch it here while you browse. OK opens the game info."
-                else "Playing a channel that isn't showing a game from this page.",
+                if (playingKey == null) stringResource(R.string.iptv_sports_watch_here_help)
+                else stringResource(R.string.iptv_sports_playing_other),
                 color = SportsLook.Dim, size = 12.sp, maxLines = 3
             )
         }
@@ -1169,9 +1175,9 @@ private fun NowPlayingPanel(
     val sport = SportsCatalog.league(ev.leagueId)?.sport ?: Sport.OTHER
     Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
         Column(Modifier.weight(1f).sportsFrame(false, accent = NuvioTheme.colors.Secondary).padding(horizontal = 11.dp, vertical = 9.dp)) {
-            LiveText("LATEST SCORING", color = SportsLook.Dim, size = 9.sp, weight = FontWeight.Black)
+            LiveText(stringResource(R.string.iptv_sports_latest_scoring), color = SportsLook.Dim, size = 9.sp, weight = FontWeight.Black)
             Spacer(Modifier.height(4.dp))
-            if (plays.isEmpty()) LiveText(if (settings.hideScores) "Scores are hidden" else "No scoring yet", color = SportsLook.Dim, size = 10.sp)
+            if (plays.isEmpty()) LiveText(if (settings.hideScores) stringResource(R.string.iptv_sports_scores_hidden) else stringResource(R.string.iptv_sports_no_scoring), color = SportsLook.Dim, size = 10.sp)
             plays.takeLast(2).reversed().forEach { p ->
                 Row(verticalAlignment = Alignment.CenterVertically) {
                     OneLine(listOfNotNull(p.clock, p.teamAbbr, p.text).joinToString(" · "), Color.White, 10.sp, modifier = Modifier.weight(1f))
@@ -1182,12 +1188,12 @@ private fun NowPlayingPanel(
             }
         }
         Column(Modifier.width(132.dp).sportsFrame(false, accent = NuvioTheme.colors.Secondary).padding(horizontal = 11.dp, vertical = 9.dp)) {
-            LiveText("WATCHING ON", color = SportsLook.Dim, size = 9.sp, weight = FontWeight.Black)
+            LiveText(stringResource(R.string.iptv_sports_watching_on), color = SportsLook.Dim, size = 9.sp, weight = FontWeight.Black)
             Spacer(Modifier.height(4.dp))
             OneLine(match?.channel?.name.orEmpty(), Color.White, 11.sp, FontWeight.ExtraBold)
             match?.quality?.let { LiveText(it, color = NuvioTheme.colors.Secondary, size = 9.sp, weight = FontWeight.Black) }
             matches[ev.id]?.firstOrNull { it.channel.key != playingKey }?.let {
-                OneLine("Also on ${it.channel.name}", SportsLook.Dim, 9.sp)
+                OneLine(stringResource(R.string.iptv_sports_also_on, it.channel.name), SportsLook.Dim, 9.sp)
             }
         }
     }
@@ -1250,16 +1256,16 @@ private fun EmptyDay(chip: String, loading: Boolean, anyToday: Boolean, followsE
     Column(Modifier.padding(top = 24.dp, start = 4.dp), verticalArrangement = Arrangement.spacedBy(10.dp)) {
         LiveText(
             when {
-                loading && !anyToday -> "Getting today's games…"
+                loading && !anyToday -> stringResource(R.string.iptv_sports_getting_games)
                 chip == CHIP_MINE && followsEmpty -> "You're not following any teams yet."
-                chip == CHIP_MINE -> "Nothing from your teams on this day."
-                chip == CHIP_LIVE -> "Nothing on right now."
-                else -> "Nothing on this day."
+                chip == CHIP_MINE -> stringResource(R.string.iptv_sports_nothing_teams)
+                chip == CHIP_LIVE -> stringResource(R.string.iptv_sports_nothing_live)
+                else -> stringResource(R.string.iptv_sports_nothing_day)
             },
             size = 17.sp, weight = FontWeight.Bold
         )
         Row(horizontalArrangement = Arrangement.spacedBy(10.dp)) {
-            if (chip != CHIP_ALL && anyToday) SportsAction("See Everything", onClick = onShowAll)
+            if (chip != CHIP_ALL && anyToday) SportsAction(stringResource(R.string.iptv_sports_see_everything), onClick = onShowAll)
             if (chip == CHIP_MINE) SportsAction("✎  Follow Teams & Leagues", onClick = onPick)
         }
     }
@@ -1614,7 +1620,7 @@ private fun GamePage(
                         ev.standings.take(8).forEach { st -> StandingRow(st) }
                     }
                     plays.isNotEmpty() -> {
-                        LiveText("LATEST SCORING", color = SportsLook.Dim, size = 9.sp, weight = FontWeight.Black)
+                        LiveText(stringResource(R.string.iptv_sports_latest_scoring), color = SportsLook.Dim, size = 9.sp, weight = FontWeight.Black)
                         Spacer(Modifier.height(2.dp))
                         plays.takeLast(4).reversed().forEach { p -> PlayRow(p, sport) }
                     }

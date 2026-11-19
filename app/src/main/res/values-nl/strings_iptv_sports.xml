@@ -1,0 +1,36 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <string name="iptv_sports_no_channel">"Geen zender gevonden voor %1$s. Open het en gebruik Zender herstellen om er een te kiezen."</string>
+    <string name="iptv_sports_pick_game">"Kies een wedstrijd om hier te kijken"</string>
+    <string name="iptv_sports_hold_ok">"Houd OK ingedrukt op een wedstrijd, of open hem en kies een zender"</string>
+    <string name="iptv_sports_finding_channels">"Zenders voor de wedstrijden van vandaag worden gezocht."</string>
+    <string name="iptv_sports_my_sports">"Mijn sport"</string>
+    <string name="iptv_sports_all_events">"Alle evenementen"</string>
+    <string name="iptv_sports_all_events_live">"Alle evenementen · %1$d live"</string>
+    <string name="iptv_sports_league_networks">"Ligazenders"</string>
+    <string name="iptv_sports_follow_teams">"Teams en competities volgen"</string>
+    <string name="iptv_sports_add_playlist">"Voeg een afspeellijst toe in de Live TV-instellingen om hier wedstrijden te kijken. Scores en tijden blijven zichtbaar."</string>
+    <string name="iptv_sports_live_now">"NU LIVE"</string>
+    <string name="iptv_sports_coming_up">"BINNENKORT"</string>
+    <string name="iptv_sports_schedule">"SCHEMA"</string>
+    <string name="iptv_sports_didnt_start">"NIET GESTART"</string>
+    <string name="iptv_sports_this_week">"DEZE WEEK"</string>
+    <string name="iptv_sports_choose_leagues">"Competities kiezen  ›"</string>
+    <string name="iptv_sports_leagues_all">"Competities bij Alle evenementen"</string>
+    <string name="iptv_sports_leagues_help">"OK zet een competitie aan of uit en opent of sluit een sport. Competities die je volgt worden altijd getoond."</string>
+    <string name="iptv_sports_search_leagues">"Competities zoeken"</string>
+    <string name="iptv_sports_no_league_match">"Geen competities gevonden voor die zoekopdracht."</string>
+    <string name="iptv_sports_from_guide">"Uit je gids"</string>
+    <string name="iptv_sports_watch_here_help">"Houd OK ingedrukt op een wedstrijd om hem hier te kijken terwijl je bladert. OK opent de wedstrijdinformatie."</string>
+    <string name="iptv_sports_playing_other">"Er wordt een zender afgespeeld die geen wedstrijd van deze pagina toont."</string>
+    <string name="iptv_sports_latest_scoring">"LAATSTE SCORE"</string>
+    <string name="iptv_sports_scores_hidden">"Scores zijn verborgen"</string>
+    <string name="iptv_sports_no_scoring">"Nog geen score"</string>
+    <string name="iptv_sports_watching_on">"GEKEKEN OP"</string>
+    <string name="iptv_sports_also_on">"Ook op %1$s"</string>
+    <string name="iptv_sports_getting_games">"Wedstrijden van vandaag worden geladen."</string>
+    <string name="iptv_sports_nothing_teams">"Niets van je teams op deze dag."</string>
+    <string name="iptv_sports_nothing_live">"Nu is er niets."</string>
+    <string name="iptv_sports_nothing_day">"Niets op deze dag."</string>
+    <string name="iptv_sports_see_everything">"Alles bekijken"</string>
+</resources>

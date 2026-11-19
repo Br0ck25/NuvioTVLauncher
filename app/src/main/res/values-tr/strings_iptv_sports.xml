@@ -1,0 +1,36 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <string name="iptv_sports_no_channel">"%1$s için kanal bulunamadı. Açın ve Kanalı düzelt ile bir tane seçin."</string>
+    <string name="iptv_sports_pick_game">"Burada izlemek için bir maç seçin"</string>
+    <string name="iptv_sports_hold_ok">"Bir maçta OK’ı basılı tutun veya maçı açıp bir kanal seçin"</string>
+    <string name="iptv_sports_finding_channels">"Bugünün maçları için kanallar aranıyor."</string>
+    <string name="iptv_sports_my_sports">"Sporlarım"</string>
+    <string name="iptv_sports_all_events">"Tüm etkinlikler"</string>
+    <string name="iptv_sports_all_events_live">"Tüm etkinlikler · %1$d canlı"</string>
+    <string name="iptv_sports_league_networks">"Lig kanalları"</string>
+    <string name="iptv_sports_follow_teams">"Takımları ve ligleri takip et"</string>
+    <string name="iptv_sports_add_playlist">"Burada maç izlemek için Live TV ayarlarına bir oynatma listesi ekleyin. Skorlar ve saatler yine görünür."</string>
+    <string name="iptv_sports_live_now">"ŞİMDİ CANLI"</string>
+    <string name="iptv_sports_coming_up">"YAKLAŞAN"</string>
+    <string name="iptv_sports_schedule">"PROGRAM"</string>
+    <string name="iptv_sports_didnt_start">"BAŞLAMADI"</string>
+    <string name="iptv_sports_this_week">"BU HAFTA"</string>
+    <string name="iptv_sports_choose_leagues">"Ligleri seç  ›"</string>
+    <string name="iptv_sports_leagues_all">"Tüm etkinliklerdeki ligler"</string>
+    <string name="iptv_sports_leagues_help">"OK bir ligi açar veya kapatır ve bir sporu açar veya kapatır. Takip ettiğiniz ligler her zaman gösterilir."</string>
+    <string name="iptv_sports_search_leagues">"Lig ara"</string>
+    <string name="iptv_sports_no_league_match">"Bu aramayla eşleşen lig yok."</string>
+    <string name="iptv_sports_from_guide">"Rehberinizden"</string>
+    <string name="iptv_sports_watch_here_help">"Gezinirken burada izlemek için bir maçta OK’ı basılı tutun. OK maç bilgisini açar."</string>
+    <string name="iptv_sports_playing_other">"Bu sayfadaki bir maçı göstermeyen bir kanal oynatılıyor."</string>
+    <string name="iptv_sports_latest_scoring">"SON SKOR"</string>
+    <string name="iptv_sports_scores_hidden">"Skorlar gizli"</string>
+    <string name="iptv_sports_no_scoring">"Henüz skor yok"</string>
+    <string name="iptv_sports_watching_on">"İZLENİYOR:"</string>
+    <string name="iptv_sports_also_on">"Ayrıca %1$s üzerinde"</string>
+    <string name="iptv_sports_getting_games">"Bugünün maçları yükleniyor."</string>
+    <string name="iptv_sports_nothing_teams">"Bu günde takımlarınızdan bir şey yok."</string>
+    <string name="iptv_sports_nothing_live">"Şu anda bir şey yok."</string>
+    <string name="iptv_sports_nothing_day">"Bu günde bir şey yok."</string>
+    <string name="iptv_sports_see_everything">"Tümünü gör"</string>
+</resources>
