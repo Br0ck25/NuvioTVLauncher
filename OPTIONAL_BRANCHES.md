@@ -35,9 +35,9 @@ their release yet, that file is included and listed below.
   files (`_p2` and so on) are only read by the two per-profile branches.
 - The default "Nuvio One credit" and README are already in the launcher branch.
 
-## Deleted branches (recreate with `git branch <name> <sha>` then push)
+## Branches cleared for deletion (SHAs recorded; recreate with `git branch <name> <sha>` then push)
 
-Removed on 2026-11-20 after checking that every commit is in `dev` (the WIP merge branch had one unfinished commit, kept here by SHA).
+Checked on 2026-11-20: every commit on these is in `dev` (the WIP merge branch has one unfinished commit, kept here by SHA). Deleting needs permissions the Claude session does not have, so they are still on origin until deleted by hand.
 The latest beta build (Release run #65) came from `hotfix/17.2.1` at `2587f1d0e`, so that branch was kept.
 
 | Branch | Tip SHA |
