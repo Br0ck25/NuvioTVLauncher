@@ -563,7 +563,7 @@ data class LiveTvSettings(
     /** OK opens the guide on the channel instead of playing it full screen. */
     val homeRowOpensGuide: Boolean = false,
     /** A "Next: 9:00 The News" line on each card. */
-    val homeRowShowNext: Boolean = false,
+    val homeRowShowNext: Boolean = true,
     /** Compact cards: logo and show name only. */
     val homeRowCompact: Boolean = false,
     /** Live TV buffer: "none" (the least the player can run on), "small" (fast channel changes), "normal", "large", "xlarge". */

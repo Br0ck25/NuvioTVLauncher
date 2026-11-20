@@ -33,9 +33,26 @@ object CalendarHomeFeed {
     private var prefs: android.content.SharedPreferences? = null
     private val dismissed = HashSet<String>()
 
+    @Volatile private var appContext: Context? = null
+
+    /** A different profile is now in use: drop the last profile's cards and read this profile's own dismissed/snoozed picks. */
+    fun onProfileChanged() {
+        released = emptyList()
+        upcoming = emptyList()
+        movies = emptyList()
+        injected = emptySet()
+        injectedMovies = emptySet()
+        prefs = null
+        synchronized(dismissed) { dismissed.clear() }
+        synchronized(snoozed) { snoozed.clear() }
+        appContext?.let { init(it) }
+        _version.value++
+    }
+
     fun init(context: Context) {
+        appContext = context.applicationContext
         if (prefs != null) return
-        val p = context.applicationContext.getSharedPreferences("calendar_home", Context.MODE_PRIVATE)
+        val p = com.nuvio.tv.core.profile.ActiveProfile.prefs(context, "calendar_home")
         prefs = p
         synchronized(dismissed) { dismissed += p.getStringSet("dismissed", emptySet()).orEmpty() }
         synchronized(snoozed) {
@@ -172,7 +189,13 @@ object CalendarHomeFeed {
         }.toSet()
         val gone = synchronized(dismissed) { dismissed.toSet() }
         val addMain = r.filter { it.info.contentId !in native && key(it.info.contentId, it.info.season, it.info.episode).let { k -> k !in gone && !isSnoozed(k) } }
-        val addUp = u.filter { it.info.contentId !in native && it.info.contentId !in addMain.map { a -> a.info.contentId } }
+        // Every show the calendar has coming up gets its next airing episode in Upcoming, whatever else Continue
+        // Watching holds for it: a show with a new-episode card there still has a next episode on the way (a weekly
+        // show with last week's episode unwatched used to lose its Upcoming card, so a week of 9 shows showed 2).
+        // Only a show Nuvio's own Upcoming row already holds is skipped, as that row has its card.
+        val nativeUp = baseUp.mapNotNull { (it as? ContinueWatchingItem.NextUp)?.info?.contentId }.toSet()
+        val addUp = u.filter { it.info.contentId !in nativeUp }
+        android.util.Log.i("CalendarHome", "Upcoming: calendar=${u.size} nuvioOwn=${nativeUp.size} added=${addUp.size}")
         val addMovies = mv.filter { it.progress.contentId !in native && key(it.progress.contentId, null, null) !in gone }
         injected = (addMain + addUp).map { "${it.info.contentId}|${it.info.videoId}" }.toSet()
         injectedMovies = addMovies.map { it.progress.contentId }.toSet()
