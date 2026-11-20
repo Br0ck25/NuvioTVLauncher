@@ -938,12 +938,12 @@ internal object MultiviewLayoutMemory {
     private const val KEY = "layout"
 
     fun load(context: android.content.Context): MultiviewLayout? {
-        val name = context.getSharedPreferences(FILE, android.content.Context.MODE_PRIVATE).getString(KEY, null) ?: return null
+        val name = com.nuvio.tv.core.profile.ActiveProfile.prefs(context, FILE).getString(KEY, null) ?: return null
         return MultiviewLayout.entries.firstOrNull { it.name == name }
     }
 
     fun save(context: android.content.Context, layout: MultiviewLayout) {
-        context.getSharedPreferences(FILE, android.content.Context.MODE_PRIVATE).edit().putString(KEY, layout.name).apply()
+        com.nuvio.tv.core.profile.ActiveProfile.prefs(context, FILE).edit().putString(KEY, layout.name).apply()
     }
 }
 
@@ -953,9 +953,9 @@ internal object MultiviewCollapseMemory {
     private const val KEY = "collapsed_playlists"
 
     fun load(context: android.content.Context): Set<String> =
-        context.getSharedPreferences(FILE, android.content.Context.MODE_PRIVATE).getStringSet(KEY, emptySet())?.toSet() ?: emptySet()
+        com.nuvio.tv.core.profile.ActiveProfile.prefs(context, FILE).getStringSet(KEY, emptySet())?.toSet() ?: emptySet()
 
     fun save(context: android.content.Context, collapsed: Set<String>) {
-        context.getSharedPreferences(FILE, android.content.Context.MODE_PRIVATE).edit().putStringSet(KEY, collapsed).apply()
+        com.nuvio.tv.core.profile.ActiveProfile.prefs(context, FILE).edit().putStringSet(KEY, collapsed).apply()
     }
 }

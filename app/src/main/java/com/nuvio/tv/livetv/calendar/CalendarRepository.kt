@@ -1468,6 +1468,17 @@ class CalendarRepository @Inject constructor(
             .filter { it.kind == CalendarKind.MOVIE && it.followed && CalendarTag.AT_HOME in it.tags && !it.watched &&
                 !it.day.isAfter(today) && !it.day.isBefore(today.minusDays(14)) }
             .distinctBy { it.contentId }
+        // What the Upcoming row can show, and what each condition leaves out (for the log).
+        run {
+            val inWeek = _state.value.entries.filter { it.kind == CalendarKind.EPISODE && whenOf(it) > now && !it.day.isAfter(today.plusDays(7)) }
+            val shows = inWeek.map { it.contentId }.distinct()
+            android.util.Log.i(
+                "CalendarHome",
+                "Upcoming source: ${shows.size} shows in 7 days; not IMDb ids=${shows.count { !it.startsWith("tt") }}; " +
+                    "no episode id=${inWeek.filter { it.contentId.startsWith("tt") && (it.videoId == null || it.season == null || it.episode == null) }.map { it.contentId }.distinct().size}; " +
+                    "row=${upcoming.size}"
+            )
+        }
         CalendarHomeFeed.publish(released, upcoming, movies)
     }
 
