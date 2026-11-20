@@ -1,5 +1,7 @@
 <div align="center">
 
+<img src="assets/branding/nuvio-one-m-banner.png" alt="Nuvio One M" width="820" />
+
 # Nuvio One
 
 **Movies and shows, live TV, sports, YouTube and music in one app for Google TV, Android TV and Fire TV.**
