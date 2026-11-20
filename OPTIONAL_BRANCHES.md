@@ -1,39 +1,43 @@
 # Optional branches
 
 `claude/launcher-on-nuvioone-base` is the launcher on top of Nuvio One `1.2.0-beta.1.17.2.1`.
-Everything else from our latest beta (`dev`, tag `1.2.4-beta.14`) lives on its own branch, so each
-piece can be looked at or restored separately. Every branch starts from the launcher branch and
-adds one feature, so to restore one:
+Everything else that shipped in our latest beta lives on its own branch, so each piece can be looked
+at or restored separately. **Source: the shipped build** (`hotfix/17.2.1` at `2587f1d`, Release run #65,
+which compiled in CI), so none of these need Nuvio One code that is not in a Nuvio One release.
+
+Every branch starts from the launcher branch and adds one feature. To restore one:
 
 ```bash
 git checkout claude/launcher-on-nuvioone-base
 git merge origin/claude/opt-<name>
 ```
 
-All ten merge together without conflicts (tested), so you can restore any subset in any order.
-Each branch takes `dev`'s version of its files. Where a feature needs Nuvio One code that is not in
-their release yet, that file is included and listed below.
+All nine merge together without conflicts or duplicate resources (tested). The launcher branch plus all
+nine reproduces the shipped build's files, except for the differences listed under "Known differences".
 
-| Branch | What it restores | Size | Needs from Nuvio One's unreleased code |
-|---|---|---|---|
-| `opt-per-profile-live-tv` | Live TV, Sports, recordings, calendar picks, playlists and the parental lock kept per profile | 22 files | `BackgroundWork`, `ListChannels`, `ProfileMatchMirror`, `SportsWatchPolicy` |
-| `opt-per-profile-music-onetube` | Music and OneTube settings, plus their YouTube and Spotify sign-ins, kept per profile | 18 files | none |
-| `opt-live-tv-my-lists` | Home lists as Live TV channels (My Lists), Sources button, Torbox flags, tests | 19 files | `ForkDns`, `PlaylistAddressInput`, `SportsVideos` |
-| `opt-live-tv-home-row` | Live TV row polish: progress to Next, favorites, artwork, focus | 2 files | none |
-| `opt-google-drive-signin` | Drive sign-in scope check, Google's real error reason, sign-in logging (logs part of the client id) | 4 files | `ForkDns`, `PlaylistServerChanges` |
-| `opt-home-tile-sizes` | Tile size for Continue Watching, Upcoming and collections; Upcoming card size | 8 files | none |
-| `opt-full-settings-all-profiles` | Every profile gets the full Settings, add-ons screen and side-menu pages | 12 files | `TrackingAddonConsentDialog` |
-| `opt-updater` | Smoother download progress, install result handling, Android 9 and older | 1 file | none |
-| `opt-on-demand-db-fix` | Opens the version 11 On Demand database from the older Plus-based beta (needed when upgrading from our current betas) | 1 file | none |
-| `opt-docs-and-sync` | Performance and Monet notes, privacy text, `sync-upstream.yml` (still follows Nuvio One's `main`) | 6 files | none |
-| `opt-nuvioone-unreleased` | **Reference only.** Nuvio One's `fix/livetv-green` at `ab5e959`: everything they have after their last release (player, subtitles, Multiview, translations and more). It is their branch, not built on ours | n/a | n/a |
+| Branch | What it restores | Files changed |
+|---|---|---|
+| `opt-per-profile-live-tv` | Live TV, Sports, recordings, calendar picks, playlists and the parental lock kept per profile (also carries `ListChannels.kt`, which these files use) | 18 |
+| `opt-per-profile-music-onetube` | Music and OneTube settings, plus their YouTube and Spotify sign-ins, kept per profile | 17 |
+| `opt-live-tv-my-lists` | Home lists as Live TV channels (My Lists), Sources button, Torbox flags, tests | 15 |
+| `opt-live-tv-home-row` | Live TV row polish: progress to Next, favorites, artwork, focus | 2 |
+| `opt-google-drive-signin` | Drive sign-in scope check, Google's real error reason, sign-in logging (logs part of the client id) | 2 |
+| `opt-home-tile-sizes` | Tile size for Continue Watching, Upcoming and collections; Upcoming card size | 8 |
+| `opt-full-settings-all-profiles` | Every profile gets the full Settings, add-ons screen and side-menu pages | 8 |
+| `opt-updater` | The shipped updater: download progress, install result handling, relaunch receiver, Android 9 and older | 6 |
+| `opt-docs-and-sync` | Performance and Monet notes, privacy text, `sync-upstream.yml` (still follows Nuvio One's `main`) | 7 |
+| `opt-on-demand-db-fix` | **Superseded.** The same fix is already in the launcher branch (database stays at version 10, `onDowngrade` keeps a version 11 file). Safe to delete | n/a |
+| `opt-nuvioone-unreleased` | **Reference only.** Nuvio One's `fix/livetv-green` at `ab5e959`: what they have after their last release | n/a |
+
+## Known differences from the shipped build (launcher branch plus all nine)
+- **`MainActivity.kt`:** the launcher branch keeps Nuvio One's "sync watch state when leaving the player" block, which the shipped build had dropped, and the original order of two `CompositionLocal` declarations. `opt-live-tv-my-lists` adds the one `ListChannels` hook.
+- **Translations:** the shipped build had ar, fr, pt-PT and vi translations of the new strings; these branches carry the English strings only.
+- **Strings files:** new strings live in their own files (`strings_launcher.xml`, `strings_opt_*`), not in Nuvio One's `strings.xml`.
+- **README and the two index documents** differ by design.
 
 ## Notes
-- Nothing here has been compiled (no Android SDK in the session). Each branch passes the same static
-  checks as the launcher branch (imports, members, strings); CI is the real test.
-- Upgrading existing users: `opt-on-demand-db-fix` is the one I would not skip; per-profile settings
-  files (`_p2` and so on) are only read by the two per-profile branches.
-- The default "Nuvio One credit" and README are already in the launcher branch.
+- Nothing here has been compiled (no Android SDK in the session). Each branch passes the same static checks as the launcher branch (imports, members, strings, duplicate resources); CI is the real test.
+- Per-profile settings files (`_p2` and so on) are only read by the two per-profile branches.
 
 ## Branches cleared for deletion (SHAs recorded; recreate with `git branch <name> <sha>` then push)
 
