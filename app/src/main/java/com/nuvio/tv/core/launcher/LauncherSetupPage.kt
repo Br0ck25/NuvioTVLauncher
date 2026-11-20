@@ -17,6 +17,9 @@ internal object LauncherSetupPage {
             Button(DeviceAction.ENABLE_NOTIFICATIONS, "Turn on notifications", "Lets the launcher show your TV's notifications under the bell at the top right of Home."),
             Button(DeviceAction.CHECK_HOME, "Which launcher is Home now?", "Only reads; changes nothing.")
         ),
+        "Background" to listOf(
+            Button(DeviceAction.KEEP_RUNNING, "Keep the app running in the background", "Stops Android putting this app to sleep or limiting it while the TV is idle, so scheduled recordings, guide and playlist updates and Drive sync run on time. Uses a little more power. Safe to run again; Android can reset part of it after a restart.")
+        ),
         "Go back" to listOf(
             Button(DeviceAction.RESTORE_ORIGINAL, "Switch back to the original launcher", "Points the Home button at the launcher the TV came with.")
         ),

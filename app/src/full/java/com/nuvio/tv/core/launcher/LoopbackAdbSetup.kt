@@ -101,6 +101,12 @@ internal class LoopbackAdbSetup(private val context: Context) : LocalAdbSetup {
             if (com.nuvio.tv.core.notification.LauncherNotificationListenerService.isAccessGranted(context)) "Notifications are on."
             else "The command ran, but Android didn't turn notifications on. Open Settings → Apps → Special access → Notification access and switch this launcher on."
         }
+        DeviceAction.KEEP_RUNNING -> {
+            keepRunning(manager)
+            val exempt = runCatching { shell(manager, DeviceCommands.listDozeWhitelist) }.getOrDefault("").contains(context.packageName)
+            if (exempt) "Done. Android will keep this app running in the background, so recordings, updates and sync run on time. If the TV restarts and recordings stop firing, run this again."
+            else "The commands ran, but this TV didn't confirm the Doze exemption. Some TVs ignore parts of this; the rest still applies."
+        }
         DeviceAction.ENABLE_OVERRIDE -> {
             enableOverride(manager)
             "Home button override is on. It stays on after a restart."
@@ -145,6 +151,12 @@ internal class LoopbackAdbSetup(private val context: Context) : LocalAdbSetup {
         enableOverride(manager)
         makeHome(manager)
         allowNotifications(manager)
+        keepRunning(manager)
+    }
+
+    /** Lets recordings, updates and sync run on time with the TV idle: see [DeviceCommands.keepRunning]. Best effort. */
+    private fun keepRunning(manager: AbsAdbConnectionManager) {
+        DeviceCommands.keepRunning(context.packageName).forEach { runCatching { shell(manager, it) } }
     }
 
     /** Notification access normally needs a trip through Settings; the shell can grant it directly. */
