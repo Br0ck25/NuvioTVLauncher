@@ -13,6 +13,8 @@
 
 [What is it](#what-is-it) · [OneTube (YouTube)](#onetube-youtube-built-in) · [Music](#music) · [Live TV, Sports and Calendar](#live-tv-sports-and-calendar) · [VPN](#vpn) · [Media servers](#media-servers) · [Install](#installation) · [Setup](#getting-started) · [Remote controls](CONTROLS.md) · [Bugs](#reporting-bugs-and-asking-for-features) · [Support](#support-the-project) · [Credits](#credits)
 
+**Fire TV Downloader codes:** `arm64-v8a` **2145572** · `armeabi-v7a` **6269910** · `universal` **3522884**
+
 </div>
 
 ---
@@ -190,8 +192,6 @@ Built-in WireGuard VPN protection for playback, with profiles stored on the TV.
    | Not sure (works everywhere, larger download) | `universal` |
 
 3. Install it with a file manager or an app like Downloader, and allow installs from unknown sources when asked.
-
-On Fire TV, the Downloader app works too: **2145572** for `arm64-v8a`, **6269910** for `armeabi-v7a`, or **3522884** for `universal`. These codes point at the current release.
 
 It needs **Android 7.0 or newer** (Fire OS 6 or later).
 
