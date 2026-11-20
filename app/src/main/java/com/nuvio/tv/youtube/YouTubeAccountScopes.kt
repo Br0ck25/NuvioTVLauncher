@@ -8,6 +8,7 @@ import com.liskovsoft.mediaserviceinterfaces.oauth.Account
 import com.liskovsoft.sharedutils.prefs.GlobalPreferences
 import com.liskovsoft.youtubeapi.service.YouTubeServiceManager
 import com.liskovsoft.youtubeapi.service.YouTubeSignInService
+import com.nuvio.tv.core.profile.ActiveProfile
 import java.security.MessageDigest
 
 /** The parts of the app that sign in to YouTube. Each has its own accounts, profiles and sign-in. */
@@ -17,7 +18,10 @@ enum class AccountScope(internal val tag: String) {
 }
 
 /**
- * OneTube and Music keep fully separate YouTube sign-ins, even for the same Google account.
+ * OneTube and Music keep fully separate YouTube sign-ins, even for the same Google account, and so does every Nuvio
+ * profile: a profile's sign-ins are its own. The first profile keeps the accounts that were signed in before profiles
+ * had their own; a profile that already existed then starts with a copy of them, so nobody is signed out by the
+ * update, and every profile created after that starts signed out (see [ActiveProfile]).
  *
  * The YouTube engine holds one set of accounts and cannot tell two sign-ins of the same Google account apart, so each
  * part gets its own complete set, kept here as a saved copy. Before a part uses the engine, [engine] makes the engine
@@ -35,9 +39,16 @@ object YouTubeAccountScopes {
 
     private val lock = Any()
 
-    /** Whose set of accounts the engine holds right now (null until this process has switched or confirmed it). */
+    /**
+     * Whose set of accounts the engine holds right now: a part and a profile, as [keyFor] writes it (null until this
+     * process has switched or confirmed it).
+     */
     @Volatile
-    private var engineScope: AccountScope? = null
+    private var engineScope: String? = null
+
+    /** The key of [scope]'s set of accounts for [profileId]: the first profile keeps the plain tag, the rest add "_p<id>". */
+    private fun keyFor(scope: AccountScope, profileId: Int = ActiveProfile.id): String =
+        if (profileId <= 1) scope.tag else "${scope.tag}_p$profileId"
 
     private fun prefs(context: Context) =
         context.applicationContext.getSharedPreferences(PREFS, Context.MODE_PRIVATE)
@@ -74,10 +85,13 @@ object YouTubeAccountScopes {
 
     /** Makes the engine hold [scope]'s accounts if it doesn't already. */
     fun ensure(context: Context, scope: AccountScope) {
-        if (engineScope == scope) return
+        val key = keyFor(scope)
+        if (engineScope == key) return
         synchronized(lock) {
-            if (engineScope == scope) return
-            switchLocked(context, scope)
+            // The profile may have changed while this waited for the lock.
+            val now = keyFor(scope)
+            if (engineScope == now) return
+            switchLocked(context, scope, now)
         }
     }
 
@@ -131,10 +145,11 @@ object YouTubeAccountScopes {
         }
     }
 
-    private fun blobKey(scope: AccountScope) = "blob_${scope.tag}"
+    private fun blobKey(key: String) = "blob_$key"
 
     private fun saveLocked(context: Context, scope: AccountScope, allowEmpty: Boolean = false) {
-        if (engineScope != scope) return
+        val key = keyFor(scope)
+        if (engineScope != key) return
         val svc = signIn() ?: return
         val exported = svc.exportAccounts()
         if (exported.isBlank() && !allowEmpty) {
@@ -146,8 +161,8 @@ object YouTubeAccountScopes {
         }
         // Refreshed tokens and account details arrive while a part is in use; keep its saved
         // copy current too, so the next launch doesn't restore an older token.
-        if (prefs(context).getString(blobKey(scope), null) == exported) return
-        prefs(context).edit().putString(blobKey(scope), exported).apply()
+        if (prefs(context).getString(blobKey(key), null) == exported) return
+        prefs(context).edit().putString(blobKey(key), exported).apply()
     }
 
     /**
@@ -176,7 +191,7 @@ object YouTubeAccountScopes {
                 return true
             }
 
-            val savedBlob = prefs(context).getString(blobKey(scope), null)
+            val savedBlob = prefs(context).getString(blobKey(keyFor(scope)), null)
             if (savedBlob.isNullOrEmpty()) return false
             Log.i(TAG, "recover $scope: restoring saved accounts")
             svc.importAccounts(savedBlob)
@@ -197,7 +212,22 @@ object YouTubeAccountScopes {
         }
     }
 
-    private fun switchLocked(context: Context, scope: AccountScope) {
+    /**
+     * What a profile that has no saved set yet starts with: a profile that existed before sign-ins were per profile
+     * gets a copy of the first profile's set (so it keeps what it saw); every other profile starts signed out.
+     */
+    private fun startingSet(p: android.content.SharedPreferences, scope: AccountScope, profileId: Int): String? {
+        if (profileId <= 1) return null
+        if (!ActiveProfile.baselineReady.isCompleted) {
+            // The list of profiles that existed first is read at launch; give it a moment rather than guess.
+            runCatching {
+                kotlinx.coroutines.runBlocking { kotlinx.coroutines.withTimeoutOrNull(1_500) { ActiveProfile.baselineReady.await() } }
+            }
+        }
+        return if (ActiveProfile.isLegacy(profileId)) p.getString(blobKey(keyFor(scope, 1)), null) else null
+    }
+
+    private fun switchLocked(context: Context, scope: AccountScope, key: String) {
         GlobalPreferences.instance(context.applicationContext)
         val svc = signIn() ?: return
         val p = prefs(context)
@@ -205,36 +235,38 @@ object YouTubeAccountScopes {
         if (!p.getBoolean(INITIALISED, false)) {
             val current = svc.exportAccounts().ifEmpty { GlobalPreferences.instance(context.applicationContext).mediaServiceAccountData.orEmpty() }
             p.edit()
-                .putString(blobKey(AccountScope.ONETUBE), current)
-                .putString(blobKey(AccountScope.MUSIC), current)
+                .putString(blobKey(AccountScope.ONETUBE.tag), current)
+                .putString(blobKey(AccountScope.MUSIC.tag), current)
                 .putString(ACTIVE, AccountScope.ONETUBE.tag)
                 .putBoolean(INITIALISED, true)
                 .apply()
         }
-        val holder = AccountScope.entries.firstOrNull { it.tag == p.getString(ACTIVE, null) } ?: AccountScope.ONETUBE
-        if (holder != scope) {
+        val holder = p.getString(ACTIVE, null) ?: AccountScope.ONETUBE.tag
+        if (holder != key) {
             // Keep what the engine holds (a sign-in, a profile choice, refreshed names) under its owner, then load ours.
             // Early in a launch the engine may not have read its saved accounts yet; never overwrite a copy with that.
             svc.exportAccounts().takeIf { it.isNotEmpty() }?.let { p.edit().putString(blobKey(holder), it).apply() }
-            val savedBlob = p.getString(blobKey(scope), null)
-            Log.i(TAG, "switch $scope: savedBlob=${savedBlob?.length ?: 0} chars")
+            val profileId = ActiveProfile.id
+            val savedBlob = p.getString(blobKey(key), null) ?: startingSet(p, scope, profileId)
+            Log.i(TAG, "switch $key: savedBlob=${savedBlob?.length ?: 0} chars")
+            // A null set means signed out: the engine then holds no accounts for this profile.
             svc.importAccounts(savedBlob)
             selectFirstIfNoneLocked(svc)
             runCatching { YouTubeServiceManager.instance().invalidateCache() }
-            p.edit().putString(ACTIVE, scope.tag).apply()
+            p.edit().putString(ACTIVE, key).apply()
         } else {
             // Same owner as last time, but the engine can be empty for a moment while storage is
             // read (or after a crash between the import and the saved write). Fall back to the
             // saved copy so a sign-in is never silently lost at launch.
-            val savedBlob = p.getString(blobKey(scope), null)
+            val savedBlob = p.getString(blobKey(key), null)
             if (!savedBlob.isNullOrEmpty() && svc.exportAccounts().isEmpty()) {
-                Log.i(TAG, "restore $scope from its saved copy: ${savedBlob.length} chars")
+                Log.i(TAG, "restore $key from its saved copy: ${savedBlob.length} chars")
                 svc.importAccounts(savedBlob)
                 selectFirstIfNoneLocked(svc)
                 runCatching { YouTubeServiceManager.instance().invalidateCache() }
             }
         }
-        engineScope = scope
-        Log.i(TAG, "engine now holds $scope: ${describe(context)}")
+        engineScope = key
+        Log.i(TAG, "engine now holds $key: ${describe(context)}")
     }
 }
