@@ -54,7 +54,6 @@ object MusicSpotifyLink {
 
     private val scope = CoroutineScope(SupervisorJob() + Dispatchers.IO)
     private var prefs: SharedPreferences? = null
-    private var loadedProfile = -1
     private var server: SpotifyCallbackServer? = null
     private var session: LinkSession? = null
     private var timeoutJob: Job? = null
@@ -73,8 +72,7 @@ object MusicSpotifyLink {
 
     @Synchronized
     fun init(context: Context) {
-        if (prefs != null && loadedProfile == com.nuvio.tv.core.profile.ActiveProfile.id) return
-        loadedProfile = com.nuvio.tv.core.profile.ActiveProfile.id
+        if (prefs != null) return
         val store = MusicSecurePreferences.open(
             context.applicationContext,
             PREFS_ENCRYPTED,

@@ -91,7 +91,7 @@ object MusicSpotifyWebSync {
                 val client = SpotifyWebClient.connect(cookie, requireSignedIn = true).getOrThrow()
                 val account = client.account().getOrThrow()
                 val accountKey = account.name.ifBlank { "spotify" }
-                val store = com.nuvio.tv.core.profile.ActiveProfile.prefs(app, PREFS)
+                val store = app.getSharedPreferences(PREFS, Context.MODE_PRIVATE)
                 val playlistMap = loadStringMap(store.getString(KEY_PLAYLIST_MAP, null))
                 val trackMap = loadTrackMap(store.getString(KEY_TRACK_MAP, null))
                 val playlistCounts = loadIntMap(store.getString(KEY_PLAYLIST_COUNTS, null))

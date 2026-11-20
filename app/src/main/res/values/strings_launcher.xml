@@ -269,5 +269,4 @@
     <string name="appearance_icon_pack_subtitle">Choose an icon pack for the apps on your Home screen and Apps page</string>
     <string name="appearance_icon_pack_row_title">Icon pack</string>
     <string name="appearance_icon_pack_row_subtitle">Use an Android TV or Projectivy icon pack for your apps</string>
-    <string name="iptv_status_google_drive_not_granted">Google signed you in but Drive access was not allowed. Connect again and tick the Google Drive box on the permissions screen.</string>
 </resources>
