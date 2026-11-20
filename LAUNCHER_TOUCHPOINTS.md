@@ -35,10 +35,26 @@ To check whether a bug is ours or Nuvio One's, build that tag. If the bug is the
 | `ThemeSettingsScreen`, `ThemeSettingsViewModel` | Icon pack picker |
 | `LayoutPreferenceDataStore`, `LayoutSettingsViewModel`, `LayoutCardSettings`, `LayoutHomeSettings` | Tile size and "pill shows profile" settings |
 
+## Our sign-in code (kept as on `dev`)
+
+| What | Where |
+|---|---|
+| Trakt sign-in with PKCE, no client secret needed (secret optional) | `TraktAuthService.kt`, `TraktAuthDtos.kt` |
+| Google Drive sign-in: detects a token without Drive access, shows Google's real error | `livetv/sync/LiveTvDriveSync.kt` (+ string `iptv_status_google_drive_not_granted`) |
+| Each Nuvio profile has its own YouTube, Music and Spotify sign-ins | `core/profile/ActiveProfile.kt` (new), `ProfileManager.kt` (sets it), `YouTubeAccountScopes.kt`, `MusicSecurePreferences.kt`, `MusicSpotify{Link,WebSession,Import,WebSync}.kt`, `HeroBackdropState.kt` (reset hook) |
+| Default Nuvio account server and public key | `app/build.gradle.kts` |
+| Where each service gets its credentials from CI secrets: Trakt, Simkl, MDBList, Google Drive, Last.fm, Spotify, TMDB, IntroDB default | `.github/workflows/release.yml` |
+| Spotify phone-link pages, Google OAuth branding pages | `site/`, `.github/workflows/pages.yml` |
+
+MDBList, Simkl, Premiumize and the Nuvio account sign-in code are identical to Nuvio One's; only the
+credentials differ, and those come from `release.yml`.
+
+Branding: the app icons (all colour variants), logo, wordmark, TV banner and the app name "Nuvio Launcher" are ours.
+
 ## Left out on purpose (still only on `dev`)
 
 - Anything from unreleased Nuvio One work (`fix/livetv-green`) and edits we made to Nuvio One's Live TV, Music and YouTube code.
 - Continue Watching and Upcoming card resizing, and collection-folder scaling (the Tile size setting now only sizes the apps row).
 - Essential-mode override in `SettingsScreen` (Nuvio One's behavior kept).
 - Live TV "My Lists" channels.
-- App icon, logo and banner artwork (Nuvio One's branding kept), website, workflows, docs.
+- Docs, and `sync-upstream.yml` (still follows Nuvio One's `main`; to be repointed at release tags).

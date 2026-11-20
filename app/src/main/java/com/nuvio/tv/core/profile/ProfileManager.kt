@@ -9,6 +9,7 @@ import dagger.hilt.android.qualifiers.ApplicationContext
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.SupervisorJob
+import kotlinx.coroutines.launch
 import kotlinx.coroutines.withContext
 import kotlinx.coroutines.flow.SharingStarted
 import kotlinx.coroutines.flow.StateFlow
@@ -33,7 +34,9 @@ class ProfileManager @Inject constructor(
 
     private val scope = CoroutineScope(SupervisorJob() + Dispatchers.IO)
 
+    // Launcher: code that has only a Context (the apps row) reads the profile in use from ActiveProfile.
     val activeProfileId: StateFlow<Int> = profileDataStore.activeProfileId
+        .onEach { ActiveProfile.id = it }
         .stateIn(scope, SharingStarted.Eagerly, 1)
 
     val activeProfileReady: StateFlow<Boolean> = profileDataStore.activeProfileId
@@ -56,6 +59,14 @@ class ProfileManager @Inject constructor(
         .stateIn(scope, SharingStarted.Eagerly, listOf(
             UserProfile(id = 1, name = context.getString(R.string.profile_default_name, 1), avatarColorHex = "#1E88E5")
         ))
+
+    init {
+        // Which profiles already exist is read from storage (not the placeholder above): they keep what they saw.
+        scope.launch {
+            val stored = runCatching { profileDataStore.profilesList.first() }.getOrDefault(emptyList())
+            ActiveProfile.initBaseline(context, stored.map { it.id })
+        }
+    }
 
     val activeProfile: UserProfile?
         get() = profiles.value.find { it.id == activeProfileId.value }

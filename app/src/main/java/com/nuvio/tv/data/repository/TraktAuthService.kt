@@ -118,7 +118,24 @@ class TraktAuthService @Inject constructor(
     }
 
     fun hasRequiredCredentials(): Boolean {
-        return BuildConfig.TRAKT_CLIENT_ID.isNotBlank() && BuildConfig.TRAKT_CLIENT_SECRET.isNotBlank()
+        // Trakt now gives new apps no client secret (PKCE instead), so the client id is enough. The secret
+        // is still sent when a build has one (older Trakt apps).
+        return BuildConfig.TRAKT_CLIENT_ID.isNotBlank()
+    }
+
+    private fun clientSecretOrNull(): String? = BuildConfig.TRAKT_CLIENT_SECRET.takeIf { it.isNotBlank() }
+
+    /** PKCE verifier of the sign-in in progress; the matching challenge went out with the device code request. */
+    @Volatile private var pkceVerifier: String? = null
+
+    private fun newPkcePair(): Pair<String, String> {
+        val bytes = ByteArray(48).also { java.security.SecureRandom().nextBytes(it) }
+        val flags = android.util.Base64.URL_SAFE or android.util.Base64.NO_PADDING or android.util.Base64.NO_WRAP
+        val verifier = android.util.Base64.encodeToString(bytes, flags)
+        val challenge = android.util.Base64.encodeToString(
+            java.security.MessageDigest.getInstance("SHA-256").digest(verifier.toByteArray(Charsets.US_ASCII)), flags
+        )
+        return verifier to challenge
     }
 
     suspend fun getCurrentAuthState(): TraktAuthState = traktAuthDataStore.getCurrentState()
@@ -155,10 +172,17 @@ class TraktAuthService @Inject constructor(
 
         // Issue a request, auto-retrying once on a transient 429 using the
         // Retry-After header when the server supplies a short back-off.
-        suspend fun requestOnce(): Response<TraktDeviceCodeResponseDto> =
-            traktApi.requestDeviceCode(
-                TraktDeviceCodeRequestDto(clientId = BuildConfig.TRAKT_CLIENT_ID)
+        suspend fun requestOnce(): Response<TraktDeviceCodeResponseDto> {
+            val (verifier, challenge) = newPkcePair()
+            pkceVerifier = verifier
+            return traktApi.requestDeviceCode(
+                TraktDeviceCodeRequestDto(
+                    clientId = BuildConfig.TRAKT_CLIENT_ID,
+                    codeChallenge = challenge,
+                    codeChallengeMethod = "S256"
+                )
             )
+        }
 
         var response = try {
             requestOnce()
@@ -213,7 +237,8 @@ class TraktAuthService @Inject constructor(
                 TraktDeviceTokenRequestDto(
                     code = deviceCode,
                     clientId = BuildConfig.TRAKT_CLIENT_ID,
-                    clientSecret = BuildConfig.TRAKT_CLIENT_SECRET
+                    clientSecret = clientSecretOrNull(),
+                    codeVerifier = pkceVerifier
                 )
             )
         } catch (e: IOException) {
@@ -276,7 +301,7 @@ class TraktAuthService @Inject constructor(
                     TraktRefreshTokenRequestDto(
                         refreshToken = refreshToken,
                         clientId = BuildConfig.TRAKT_CLIENT_ID,
-                        clientSecret = BuildConfig.TRAKT_CLIENT_SECRET,
+                        clientSecret = clientSecretOrNull(),
                         redirectUri = traktRedirectUri()
                     )
                 )
@@ -314,7 +339,7 @@ class TraktAuthService @Inject constructor(
                         TraktRevokeRequestDto(
                             token = accessToken,
                             clientId = BuildConfig.TRAKT_CLIENT_ID,
-                            clientSecret = BuildConfig.TRAKT_CLIENT_SECRET
+                            clientSecret = clientSecretOrNull()
                         )
                     )
                 }

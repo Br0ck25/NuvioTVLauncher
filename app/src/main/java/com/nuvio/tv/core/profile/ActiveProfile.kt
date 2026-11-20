@@ -19,7 +19,6 @@ object ActiveProfile {
             if (field != value) {
                 com.nuvio.tv.ui.screens.home.HeroBackdropState.reset()
                 field = value
-                com.nuvio.tv.livetv.calendar.CalendarHomeFeed.onProfileChanged()
             }
             field = value
         }
