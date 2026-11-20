@@ -697,11 +697,13 @@ fun ModernHomeContent(
     // Poster style reuses the portrait catalog dimensions so its artwork matches the catalogs below it.
     val continueWatchingStyle = uiState.continueWatchingCardStyle
     val continueWatchingScale = 1.34f
+    // The user's Tile size (Layout settings) applies to the tile every Home row shares.
+    val userTileScale = com.nuvio.tv.ui.components.rememberHomeTileScale()
     val continueWatchingCardWidth = when (continueWatchingStyle) {
         ContinueWatchingCardStyle.POSTER -> portraitCatalogCardWidth
         // Wide still scales with the poster width setting so it matches the rest of the row.
-        ContinueWatchingCardStyle.WIDE -> portraitBaseWidth * 2.1f
-        ContinueWatchingCardStyle.CARD -> portraitBaseWidth * 1.24f * continueWatchingScale
+        ContinueWatchingCardStyle.WIDE -> portraitBaseWidth * 2.1f * userTileScale
+        ContinueWatchingCardStyle.CARD -> portraitBaseWidth * 1.24f * continueWatchingScale * userTileScale
     }
     val continueWatchingCardHeight = when (continueWatchingStyle) {
         ContinueWatchingCardStyle.POSTER -> portraitCatalogCardHeight
