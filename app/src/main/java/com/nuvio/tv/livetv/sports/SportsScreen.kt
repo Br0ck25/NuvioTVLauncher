@@ -119,9 +119,11 @@ object SportsLaunch {
     @Volatile private var focusEvent: String? = null
     @Volatile private var returnSetAt = 0L
     fun openedFromSports(eventId: String) { returnTo = eventId; focusEvent = eventId; returnSetAt = System.currentTimeMillis() }
+    /** Live TV was opened from Sports without a game (a network channel): Back still goes to Sports. */
+    fun openedFromSports() { returnTo = ""; focusEvent = null; returnSetAt = System.currentTimeMillis() }
     fun takeReturnToSports(): Boolean = (returnTo != null).also { returnTo = null }
     val isWatchingFromSports: Boolean get() = returnTo != null
-    val watchingEventId: String? get() = returnTo
+    val watchingEventId: String? get() = returnTo?.takeIf { it.isNotBlank() }
     fun clearReturn() { returnTo = null; focusEvent = null }
     /** Live TV closed some other way: Back there no longer goes to Sports. */
     fun dropReturn() {

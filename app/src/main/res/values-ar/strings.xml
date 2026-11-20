@@ -3474,7 +3474,6 @@
     <string name="layout_cw_click_details_upcoming_desc">يفتح التفاصيل للحلقات التي لم تُعرض بعد، والمصدر لبقية الحلقات</string>
     <string name="mdblist_rating_order_subtitle">تُعرض أول 3 تقييمات مفعّلة ومتاحة في القسم المميز الحديث. استخدم الأسهم لإعادة الترتيب.</string>
     <string name="playback_cache_write_warning">في الأجهزة ذات التخزين المدمج، يكون نشاط الكتابة مستمرًا وقد يُقصّر عمر التخزين مع الوقت.</string>
-    <string name="autosync_toast_no_fit">فشلت المزامنة: هذه الترجمة لا تطابق هذه النسخة من الفيديو.</string>
     <string name="tracking_simkl_anime_id_tvdb">تفضيل TVDB</string>
     <plurals name="ambient_mode_timeout_minutes">
         <item quantity="one">دقيقة واحدة</item>
