@@ -405,8 +405,10 @@ class LiveTvPlaybackController @Inject constructor(
      * Plays a recording from Recordings like a replay that's all on this box: the catch-up seek
      * bar (Up to seek, 30 s skips), starting [startAtMs] in. Nothing is asked of the provider.
      */
-    fun playSavedRecording(channel: LiveChannel, playlist: java.io.File, title: String, recordingId: String, startAtMs: Long) {
-        play(channel, overrideUrl = android.net.Uri.fromFile(playlist).toString(), catchupTitle = title)
+    fun playSavedRecording(channel: LiveChannel, playlist: java.io.File, title: String, recordingId: String, startAtMs: Long, url: String? = null) {
+        // An SMB recording's pieces are on the share: its HTTP link reads them from there.
+        val uri = url?.let(android.net.Uri::parse) ?: android.net.Uri.fromFile(playlist)
+        play(channel, overrideUrl = uri.toString(), catchupTitle = title)
         val p = _player ?: return
         savedRecordingId = recordingId
         savedRecordingPlaylist = playlist
@@ -414,7 +416,7 @@ class LiveTvPlaybackController @Inject constructor(
         archiveStartPending = false
         leadSeekMs = 0L
         fallbackUrls.clear()
-        p.setMediaSource(localRecordingSource(android.net.Uri.fromFile(playlist), 0L))
+        p.setMediaSource(localRecordingSource(uri, 0L))
         p.prepare()
         p.playWhenReady = true
         com.nuvio.tv.livetv.model.LiveTvLoadReport.add("Recording \"$title\": playing in the Live TV player" + if (startAtMs > 0) " from ${startAtMs / 1000} s" else "")
@@ -429,8 +431,9 @@ class LiveTvPlaybackController @Inject constructor(
     }
 
     /** Plays [playlist] (a recording that's still being made), a few seconds behind live. */
-    fun playFromRecording(playlist: java.io.File, fromStart: Boolean = false) {
+    fun playFromRecording(playlist: java.io.File, fromStart: Boolean = false, url: String? = null) {
         val p = _player ?: return
+        val uri = url?.let(android.net.Uri::parse) ?: android.net.Uri.fromFile(playlist)
         _recordingPlayback.value = playlist
         _recordingStarting.value = true
         shiftJob?.cancel()
@@ -449,7 +452,7 @@ class LiveTvPlaybackController @Inject constructor(
                 currentChannel?.let { ch -> currentUrl = null; play(ch) }
                 return@launch
             }
-            p.setMediaSource(localRecordingSource(android.net.Uri.fromFile(playlist), 15_000))
+            p.setMediaSource(localRecordingSource(uri, 15_000))
             p.prepare()
             p.playWhenReady = true
             if (fromStart) {

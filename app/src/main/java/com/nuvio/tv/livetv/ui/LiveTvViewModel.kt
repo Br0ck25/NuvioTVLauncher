@@ -617,7 +617,7 @@ class LiveTvViewModel @Inject constructor(
         _catchup.value = CatchupSession(channel, program, 0L, recordingId = rec.id)
         _recordingEnded.value = null
         recordingSavedAt = 0L
-        playback.playSavedRecording(channel, file, rec.title, rec.id, resume)
+        playback.playSavedRecording(channel, file, rec.title, rec.id, resume, if (rec.smb) recorder.playUrl(rec) else null)
         return true
     }
 
@@ -877,7 +877,7 @@ class LiveTvViewModel @Inject constructor(
         }
         val rec = recorder.activeFor(channel.key) ?: return false
         if (playback.playingChannel?.key != channel.key) preview(channel)
-        playback.playFromRecording(recorder.playlistFile(rec), fromStart = true)
+        playback.playFromRecording(recorder.playlistFile(rec), fromStart = true, url = if (rec.smb) recorder.playUrl(rec) else null)
         return true
     }
 
@@ -1534,7 +1534,7 @@ class LiveTvViewModel @Inject constructor(
             stopAtMs = stopAt,
             startDelayMs = if (watching) 1_500L else 0L
         )
-        if (watching) playback.playFromRecording(recorder.playlistFile(rec))
+        if (watching) playback.playFromRecording(recorder.playlistFile(rec), url = if (rec.smb) recorder.playUrl(rec) else null)
         val until = if (untilStopped) "you stop it" else formatClock(stopAt, settings.value.use24HourClock)
         return if (recorder.freeBytes() < needed) "Recording \"$title\" until $until. Storage is low, so it may stop early."
         else "Recording \"$title\" until $until"
