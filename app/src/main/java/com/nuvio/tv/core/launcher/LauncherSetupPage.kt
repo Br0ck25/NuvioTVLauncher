@@ -18,7 +18,8 @@ internal object LauncherSetupPage {
             Button(DeviceAction.CHECK_HOME, "Which launcher is Home now?", "Only reads; changes nothing.")
         ),
         "Background" to listOf(
-            Button(DeviceAction.KEEP_RUNNING, "Keep the app running in the background", "Stops Android putting this app to sleep or limiting it while the TV is idle, so scheduled recordings, guide and playlist updates and Drive sync run on time. Uses a little more power. Safe to run again; Android can reset part of it after a restart.")
+            Button(DeviceAction.KEEP_RUNNING, "Keep the app running in the background", "Stops Android putting this app to sleep or limiting it while the TV is idle, so scheduled recordings, guide and playlist updates and Drive sync run on time. Uses a little more power. Safe to run again; Android can reset part of it after a restart."),
+            Button(DeviceAction.OPTIMIZE_SPEED, "Make the app start faster", "Compiles the app ahead of time. On a TiVo Stream 4K this halved the launcher's start-up time. It takes a minute or two and uses the TV's processor meanwhile. An app update undoes it; on a TV set up here, the app repeats it by itself after an update.")
         ),
         "Go back" to listOf(
             Button(DeviceAction.RESTORE_ORIGINAL, "Switch back to the original launcher", "Points the Home button at the launcher the TV came with.")

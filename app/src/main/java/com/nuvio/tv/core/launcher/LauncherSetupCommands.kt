@@ -44,7 +44,8 @@ object LauncherSetupCommands {
                 intro = "Stops Android limiting this app while the TV is idle, so scheduled recordings, guide and playlist updates and Drive sync run on time. Uses a little more power. Android may reset the standby setting after a restart; run it again if recordings stop firing.",
                 commands = listOf(
                     SetupCommand("Keep this app running", "Four commands: standby bucket, the two background app-ops, and the Doze exemption.", adbAll(DeviceCommands.keepRunning(component.substringBefore('/')))),
-                    SetupCommand("Check it took", "The app's package should be in this list.", adb(DeviceCommands.listDozeWhitelist))
+                    SetupCommand("Check it took", "The app's package should be in this list.", adb(DeviceCommands.listDozeWhitelist)),
+                    SetupCommand("Make the app start faster", "Compiles the app ahead of time (about half the start-up time on a TiVo Stream 4K). Takes a minute or two. An app update undoes it, so run it again after updating.", adb(DeviceCommands.optimizeSpeed(component.substringBefore('/'))))
                 )
             ),
             SetupSection(

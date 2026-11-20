@@ -47,6 +47,12 @@ class LauncherBootReceiver : BroadcastReceiver() {
                         restoreHomeAfterUpdate(appContext)
                         healOrNotifyAfterUpdate(appContext)
                     }, 8_000L)
+                    // An update undoes the ahead-of-time compile and can reset the background settings: apply both again.
+                    Handler(Looper.getMainLooper()).postDelayed({ reapplyBackgroundSetup(appContext, compile = true) }, 25_000L)
+                } else {
+                    // After a restart Android can put the standby setting back; the compile survives a restart.
+                    val appContext = context.applicationContext
+                    Handler(Looper.getMainLooper()).postDelayed({ reapplyBackgroundSetup(appContext, compile = false) }, 60_000L)
                 }
                 // The service takes over by itself when it is bound; this is only the backup.
                 val serviceBound = LauncherAccessibilityService.isOperational.value
@@ -107,6 +113,24 @@ class LauncherBootReceiver : BroadcastReceiver() {
         CoroutineScope(Dispatchers.Default).launch {
             val result = withTimeoutOrNull(40_000L) { setup.run(DeviceAction.MAKE_HOME, null) }
             Log.i(TAG, "Post-update Home repair: ${result?.fold({ it }, { "failed: ${it.message}" }) ?: "timed out"}")
+        }
+    }
+
+    /**
+     * Re-applies "keep the app running in the background" and, after an update, the ahead-of-time compile, over Wireless
+     * debugging, on a TV that was set up here before (the pairing is saved). Quietly does nothing otherwise: no pairing,
+     * Wireless debugging switched off, or a TV that refuses.
+     */
+    private fun reapplyBackgroundSetup(context: Context, compile: Boolean) {
+        if (!AccessibilityWatchdog.isOptedIn(context)) return
+        val setup = runCatching { LocalAdbSetupFactory.create(context) }.getOrNull() ?: return
+        CoroutineScope(Dispatchers.Default).launch {
+            val kept = withTimeoutOrNull(40_000L) { setup.run(DeviceAction.KEEP_RUNNING, null) }
+            Log.i(TAG, "Background setup: ${kept?.fold({ it }, { "failed: ${it.message}" }) ?: "timed out"}")
+            if (compile) {
+                val done = withTimeoutOrNull(300_000L) { setup.run(DeviceAction.OPTIMIZE_SPEED, null) }
+                Log.i(TAG, "Compile after update: ${done?.fold({ it }, { "failed: ${it.message}" }) ?: "timed out"}")
+            }
         }
     }
 
