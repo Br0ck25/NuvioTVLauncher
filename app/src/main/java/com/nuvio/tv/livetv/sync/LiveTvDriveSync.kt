@@ -192,12 +192,14 @@ class LiveTvDriveSync @Inject constructor(
                     return@launch
                 }
                 mode = m
+                Log.w(TAG, "device/code ($m): error=${codes.optString("error")} desc=${codes.optString("error_description")} client=${clientId.take(12)}..${clientId.takeLast(24)} len=${clientId.length}")
                 if (codes.optString("error") != "invalid_scope") break
                 Log.w(TAG, "Scopes refused ($scopes): ${codes.optString("error_description")}")
             }
             val deviceCode = codes.optString("device_code")
             val userCode = codes.optString("user_code")
             if (deviceCode.isBlank() || userCode.isBlank()) {
+                Log.w(TAG, "sign-in code request failed: ${codes.optString("error")} (${codes.optString("error_description")})")
                 _state.value = _state.value.copy(busy = false, message = googleError(codes))
                 return@launch
             }
@@ -239,6 +241,7 @@ class LiveTvDriveSync @Inject constructor(
                         return@launch
                     }
                     else -> {
+                        Log.w(TAG, "token poll: error=${token.optString("error")} desc=${token.optString("error_description")} secretLen=${clientSecret.length}")
                         _state.value = _state.value.copy(signIn = null, message = googleError(token))
                         return@launch
                     }
@@ -258,6 +261,14 @@ class LiveTvDriveSync @Inject constructor(
         val refresh = token.optString("refresh_token")
         if (refresh.isBlank()) {
             _state.value = _state.value.copy(signIn = null, message = text(R.string.iptv_status_google_no_sign_in))
+            return
+        }
+        // Google's permission screen lets people untick the Drive box; then the token has no Drive scope
+        // and every backup fails with a 403. Say so instead of looking connected.
+        val granted = token.optString("scope")
+        Log.w(TAG, "Granted scopes: $granted")
+        if (granted.isNotBlank() && "auth/drive" !in granted) {
+            _state.value = _state.value.copy(signIn = null, message = text(R.string.iptv_status_google_drive_not_granted))
             return
         }
         accessToken = token.optString("access_token")
@@ -768,13 +779,16 @@ class LiveTvDriveSync @Inject constructor(
             // attempt searches for the file under the account that's connected now.
             if (r.code == 404 || r.code == 403) store.edit().remove(KEY_FILE_ID).apply()
             if (!r.isSuccessful) {
+                // Google's own reason (API not enabled, scope missing, quota...) so a 403 can be told apart.
                 val reason = runCatching {
-                    val err = JSONObject(text).optJSONObject("error")
-                    err?.optJSONArray("errors")?.optJSONObject(0)?.optString("reason")
-                        ?.takeIf { it.isNotBlank() }
-                        ?: err?.optString("message")?.takeIf { it.isNotBlank() }
-                }.getOrNull()
-                error("HTTP ${r.code}" + (reason?.let { " ($it)" } ?: ""))
+                    val e = JSONObject(text).optJSONObject("error")
+                    listOfNotNull(
+                        e?.optJSONArray("errors")?.optJSONObject(0)?.optString("reason")?.takeIf { it.isNotBlank() },
+                        e?.optString("status")?.takeIf { it.isNotBlank() }
+                    ).distinct().joinToString("/")
+                }.getOrNull().orEmpty()
+                Log.w(TAG, "Drive HTTP ${r.code}: ${text.take(300)}")
+                error(if (reason.isNotBlank()) "HTTP ${r.code} $reason" else "HTTP ${r.code}")
             }
             text
         }
