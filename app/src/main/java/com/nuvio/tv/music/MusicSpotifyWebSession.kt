@@ -22,12 +22,14 @@ object MusicSpotifyWebSession {
     private const val KEY_NAME = "account_name"
 
     private var prefs: SharedPreferences? = null
+    private var loadedProfile = -1
     private val _state = MutableStateFlow(SpotifyWebSessionState())
     val state: StateFlow<SpotifyWebSessionState> = _state.asStateFlow()
 
     @Synchronized
     fun init(context: Context) {
-        if (prefs != null) return
+        if (prefs != null && loadedProfile == com.nuvio.tv.core.profile.ActiveProfile.id) return
+        loadedProfile = com.nuvio.tv.core.profile.ActiveProfile.id
         val store = MusicSecurePreferences.open(
             context.applicationContext,
             PREFS_ENCRYPTED,

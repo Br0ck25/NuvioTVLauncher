@@ -44,14 +44,14 @@ internal object MusicQueueStore {
                 }
             )
         }
-        context.getSharedPreferences(PREFS, Context.MODE_PRIVATE)
+        com.nuvio.tv.core.profile.ActiveProfile.prefs(context, PREFS)
             .edit()
             .putString(KEY_SNAPSHOT, json.toString())
             .apply()
     }
 
     fun restore(context: Context): RestoredMusicQueue? = runCatching {
-        val raw = context.getSharedPreferences(PREFS, Context.MODE_PRIVATE)
+        val raw = com.nuvio.tv.core.profile.ActiveProfile.prefs(context, PREFS)
             .getString(KEY_SNAPSHOT, null)
             ?: return null
         val json = JSONObject(raw)
@@ -78,7 +78,7 @@ internal object MusicQueueStore {
     }.getOrNull()
 
     fun clear(context: Context) {
-        context.getSharedPreferences(PREFS, Context.MODE_PRIVATE)
+        com.nuvio.tv.core.profile.ActiveProfile.prefs(context, PREFS)
             .edit()
             .remove(KEY_SNAPSHOT)
             .apply()
