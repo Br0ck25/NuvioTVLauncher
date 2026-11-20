@@ -85,6 +85,16 @@ data class VodItem(
     val uid: String get() = "${kind.key}:$playlistId:$id"
 }
 
+/** An episode listed in an M3U playlist (series built from the playlist's own entries). */
+data class M3uEpisodeRow(
+    val series: String,
+    val season: Int,
+    val episode: Int,
+    val title: String,
+    val url: String,
+    val image: String?
+)
+
 data class VodCategory(
     val playlistId: String,
     val kind: VodKind,
@@ -103,7 +113,7 @@ data class VodCategory(
  */
 @Singleton
 class OnDemandDatabase @Inject constructor(@ApplicationContext private val appContext: Context) :
-    SQLiteOpenHelper(appContext, "livetv_on_demand.db", null, 10) {
+    SQLiteOpenHelper(appContext, "livetv_on_demand.db", null, 11) {
 
     init {
         // Browsing On Demand doesn't wait while an import or genre lookup is writing.
@@ -126,12 +136,20 @@ class OnDemandDatabase @Inject constructor(@ApplicationContext private val appCo
         createPosterTable(db)
         createPrefixTable(db)
         createPosterFixTable(db)
+        createM3uEpisodeTable(db)
         db.execSQL(
             """CREATE TABLE categories (
                 pl TEXT NOT NULL, kind TEXT NOT NULL, id TEXT NOT NULL, name TEXT NOT NULL,
                 position INTEGER NOT NULL, PRIMARY KEY (pl, kind, id))"""
         )
     }
+
+    /**
+     * A database written by the older Nuvio Plus based beta is version 11. That only added one extra
+     * table over version 10 (M3U series episodes), which this build never reads, so keep everything
+     * as it is instead of failing with "can't downgrade database from version 11 to 10".
+     */
+    override fun onDowngrade(db: SQLiteDatabase, oldVersion: Int, newVersion: Int) = Unit
 
     override fun onUpgrade(db: SQLiteDatabase, oldVersion: Int, newVersion: Int) {
         // Version 2 only adds the poster cache; the imported catalogs are kept.
@@ -173,6 +191,9 @@ class OnDemandDatabase @Inject constructor(@ApplicationContext private val appCo
             db.execSQL("ALTER TABLE items ADD COLUMN provider_plot TEXT")
             db.execSQL("ALTER TABLE items ADD COLUMN provider_duration INTEGER")
         }
+        // Version 11: episodes of series read from an M3U playlist's own entries (a new table;
+        // everything already imported is kept).
+        if (oldVersion < 11) createM3uEpisodeTable(db)
     }
 
     private fun fixYearsFromNames(db: SQLiteDatabase) {
@@ -469,10 +490,14 @@ class OnDemandDatabase @Inject constructor(@ApplicationContext private val appCo
         db.rawQuery("SELECT DISTINCT pl FROM items UNION SELECT DISTINCT pl FROM categories", null).use { c ->
             while (c.moveToNext()) existing += c.getString(0)
         }
+        db.rawQuery("SELECT DISTINCT pl FROM m3u_episodes", null).use { c ->
+            while (c.moveToNext()) existing += c.getString(0)
+        }
         val dropped = existing - keepPlaylistIds
         dropped.forEach { pl ->
             db.delete("items", "pl = ?", arrayOf(pl))
             db.delete("categories", "pl = ?", arrayOf(pl))
+            db.delete("m3u_episodes", "pl = ?", arrayOf(pl))
         }
         return dropped
     }
@@ -519,6 +544,64 @@ class OnDemandDatabase @Inject constructor(@ApplicationContext private val appCo
         }
         return counts.entries.filter { it.value >= 3 }.sortedByDescending { it.value }.map { display[it.key]!! to it.value }
     }
+
+    private fun createM3uEpisodeTable(db: SQLiteDatabase) {
+        db.execSQL(
+            """CREATE TABLE IF NOT EXISTS m3u_episodes (
+                pl TEXT NOT NULL, series TEXT NOT NULL, season INTEGER NOT NULL, episode INTEGER NOT NULL,
+                title TEXT NOT NULL, url TEXT NOT NULL, image TEXT)"""
+        )
+        db.execSQL("CREATE INDEX IF NOT EXISTS m3u_episodes_series ON m3u_episodes(pl, series)")
+    }
+
+    /** Replaces one M3U playlist's episodes with [rows] (read as they're written). */
+    fun replaceM3uEpisodes(playlistId: String, rows: Sequence<M3uEpisodeRow>): Int {
+        val db = writableDatabase
+        var n = 0
+        db.beginTransaction()
+        try {
+            db.delete("m3u_episodes", "pl = ?", arrayOf(playlistId))
+            val stmt = db.compileStatement("INSERT INTO m3u_episodes (pl, series, season, episode, title, url, image) VALUES (?,?,?,?,?,?,?)")
+            rows.forEach { r ->
+                stmt.clearBindings()
+                stmt.bindString(1, playlistId)
+                stmt.bindString(2, r.series)
+                stmt.bindLong(3, r.season.toLong())
+                stmt.bindLong(4, r.episode.toLong())
+                stmt.bindString(5, r.title)
+                stmt.bindString(6, r.url)
+                r.image?.let { stmt.bindString(7, it) } ?: stmt.bindNull(7)
+                stmt.executeInsert()
+                n++
+            }
+            db.setTransactionSuccessful()
+        } finally {
+            db.endTransaction()
+        }
+        return n
+    }
+
+    fun clearM3uEpisodes(playlistId: String) {
+        writableDatabase.delete("m3u_episodes", "pl = ?", arrayOf(playlistId))
+    }
+
+    /** A series' episodes from an M3U playlist, in order. */
+    fun m3uEpisodes(playlistId: String, series: String): List<M3uEpisodeRow> {
+        val out = ArrayList<M3uEpisodeRow>()
+        readableDatabase.rawQuery(
+            "SELECT season, episode, title, url, image FROM m3u_episodes WHERE pl = ? AND series = ? ORDER BY season, episode, rowid",
+            arrayOf(playlistId, series)
+        ).use { c ->
+            while (c.moveToNext()) out += M3uEpisodeRow(series, c.getInt(0), c.getInt(1), c.getString(2), c.getString(3), if (c.isNull(4)) null else c.getString(4))
+        }
+        return out
+    }
+
+    /** How many titles of [kind] one provider has. */
+    fun count(playlistId: String, kind: VodKind): Int =
+        readableDatabase.rawQuery("SELECT COUNT(*) FROM items WHERE pl = ? AND kind = ?", arrayOf(playlistId, kind.key)).use {
+            if (it.moveToFirst()) it.getInt(0) else 0
+        }
 
     fun hasAny(): Boolean =
         readableDatabase.rawQuery("SELECT 1 FROM items LIMIT 1", null).use { it.moveToFirst() }
