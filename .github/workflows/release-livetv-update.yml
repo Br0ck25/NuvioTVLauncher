@@ -13,6 +13,14 @@ on:
         description: "What changed (shown in the update prompt)"
         required: false
         type: string
+      version:
+        description: "Optional release version (for a patch, e.g. 1.2.0-beta.1.17.1)"
+        required: false
+        type: string
+      buildNumber:
+        description: "Optional fork build number (must be greater than the last one)"
+        required: false
+        type: string
 
 permissions:
   contents: write
@@ -30,6 +38,8 @@ jobs:
         id: version
         env:
           GH_TOKEN: ${{ github.token }}
+          VERSION_OVERRIDE: ${{ inputs.version }}
+          BUILD_OVERRIDE: ${{ inputs.buildNumber }}
         run: |
           BASE=$(grep -m1 -E '^\s*versionName = "' app/build.gradle.kts | sed -E 's/.*"(.*)".*/\1/')
           if [ -z "$BASE" ]; then echo "Couldn't read versionName from app/build.gradle.kts" >&2; exit 1; fi
@@ -42,9 +52,18 @@ jobs:
           LAST=$(gh release list -R "$GITHUB_REPOSITORY" --limit 200 --json tagName -q '.[].tagName' \
             | grep -F "$PREFIX" | sed "s/^$(printf '%s' "$PREFIX" | sed 's/[.[\*^$/]/\\&/g')//" \
             | grep -E '^[0-9]+$' | sort -n | tail -1 || true)
-          N=$(( ${LAST:-0} + 1 ))
+          if [ -n "$BUILD_OVERRIDE" ]; then
+            N="$BUILD_OVERRIDE"
+          else
+            N=$(( ${LAST:-0} + 1 ))
+          fi
+          if ! [[ "$N" =~ ^[0-9]+$ ]]; then echo "Build number must be a whole number" >&2; exit 1; fi
           if [ "$N" -gt 99 ]; then echo "Too many fork builds on one Nuvio version (max 99)" >&2; exit 1; fi
-          VERSION="$PREFIX$N"
+          if [ -n "$VERSION_OVERRIDE" ]; then
+            VERSION="$VERSION_OVERRIDE"
+          else
+            VERSION="$PREFIX$N"
+          fi
           echo "Nuvio base $BASE -> fork release $VERSION (build $N)"
           echo "version=$VERSION" >> "$GITHUB_OUTPUT"
           echo "number=$N" >> "$GITHUB_OUTPUT"

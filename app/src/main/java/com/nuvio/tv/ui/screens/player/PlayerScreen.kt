@@ -2632,8 +2632,12 @@ private fun ExoPlayerSurface(
         latestBindSubtitleView(playerView.subtitleView)
         onDispose {
             latestBindSubtitleView(null)
-            if (playerView.player === player) {
-                playerView.player = null
+            runCatching {
+                if (playerView.player === player) {
+                    playerView.player = null
+                }
+                // Drop the surface with the player, so it cannot stay on top of the next screen.
+                playerView.visibility = View.GONE
             }
         }
     }

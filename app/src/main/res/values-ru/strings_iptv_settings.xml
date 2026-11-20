@@ -672,4 +672,31 @@
     <string name="iptv_settings_today">"сегодня"</string>
     <string name="iptv_settings_yesterday">"вчера"</string>
     <string name="iptv_settings_expiry_expired">"истёк"</string>
+    <string name="iptv_settings_restore_from_file">"Восстановить из файла"</string>
+    <string name="iptv_settings_restore_from_file_hint">"Выберите резервную копию Live TV Nuvio (.json) с USB-накопителя или из Загрузок."</string>
+    <string name="iptv_settings_restore_from_file_confirm">"Это заменит настройки Live TV на этом телевизоре выбранной копией."</string>
+    <string name="iptv_settings_restore_file_invalid">"Этот файл не является резервной копией Live TV Nuvio."</string>
+    <string name="iptv_settings_restore_file_empty">"В этой копии нет плейлистов или гидов."</string>
+    <string name="iptv_settings_restore_file_done">"Настройки Live TV восстановлены."</string>
+    <string name="iptv_settings_restore_file_failed">"Не удалось прочитать этот файл."</string>
+    <string name="iptv_settings_restore_from_phone">"Восстановить с телефона"</string>
+    <string name="iptv_settings_restore_from_phone_hint">"Отсканируйте QR-код и выберите файл резервной копии на телефоне — из Google Drive, Загрузок или Файлов."</string>
+    <string name="iptv_settings_restore_phone_title">"Восстановить Live TV"</string>
+    <string name="iptv_settings_restore_phone_heading">"Восстановить с телефона"</string>
+    <string name="iptv_settings_restore_phone_instructions">"Выберите файл резервной копии Live TV. Его можно взять из Google Drive, Загрузок или Файлов."</string>
+    <string name="iptv_settings_restore_phone_choose">"Выбрать файл копии"</string>
+    <string name="iptv_settings_restore_phone_send">"Восстановить настройки ТВ"</string>
+    <string name="iptv_settings_restore_phone_replace">"Это заменит настройки Live TV на телевизоре."</string>
+    <string name="iptv_settings_restore_phone_sending">"Отправка…"</string>
+    <string name="iptv_settings_restore_phone_received">"Отправлено. Проверьте телевизор."</string>
+    <string name="iptv_settings_restore_phone_too_large">"Этот файл слишком большой."</string>
+    <string name="iptv_settings_restore_phone_unreachable">"Не удалось связаться с телевизором."</string>
+    <string name="iptv_settings_restore_phone_nothing">"Сначала выберите файл копии."</string>
+    <string name="iptv_settings_restore_phone_network">"Телефон и телевизор должны быть в одной сети Wi-Fi."</string>
+    <string name="iptv_settings_restore_phone_waiting">"Ожидание телефона…"</string>
+    <string name="iptv_settings_restore_phone_received_tv">"Копия получена. Восстановление…"</string>
+    <string name="iptv_settings_restore_phone_tv_steps">"1. Подключите телефон к той же Wi-Fi, что и этот телевизор.
+2. Отсканируйте код камерой телефона.
+3. Выберите файл копии и нажмите «Восстановить настройки ТВ»."</string>
+    <string name="iptv_settings_restore_phone_selected">"Выбранный файл: %1$s"</string>
 </resources>
