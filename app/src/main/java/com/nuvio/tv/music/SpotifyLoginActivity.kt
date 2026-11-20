@@ -3,6 +3,7 @@ package com.nuvio.tv.music
 import android.annotation.SuppressLint
 import android.app.Activity
 import android.content.Intent
+import com.nuvio.tv.R
 import android.graphics.Canvas
 import android.graphics.Color
 import android.graphics.Paint
@@ -78,7 +79,7 @@ class SpotifyLoginActivity : Activity() {
 
     private val timeout = Runnable {
         if (finished) return@Runnable
-        status.text = "Spotify sign-in timed out. Press Cancel and try again."
+        status.text = getString(R.string.music_spotify_timeout)
     }
 
     @SuppressLint("SetJavaScriptEnabled")
@@ -109,7 +110,7 @@ class SpotifyLoginActivity : Activity() {
             webViewClient = object : WebViewClient() {
                 override fun onPageFinished(view: WebView?, url: String?) {
                     super.onPageFinished(view, url)
-                    status.text = "D-pad moves the cursor · OK clicks · Back hides it"
+                    status.text = getString(R.string.music_spotify_dpad_hint)
                     checkCookie()
                 }
             }
@@ -134,19 +135,19 @@ class SpotifyLoginActivity : Activity() {
             setPadding(28, 18, 28, 18)
         }
         val title = TextView(this).apply {
-            text = "Sign in to Spotify"
+            text = getString(R.string.music_spotify_sign_in)
             setTextColor(Color.WHITE)
             textSize = 20f
             gravity = Gravity.CENTER_VERTICAL
             layoutParams = LinearLayout.LayoutParams(0, ViewGroup.LayoutParams.WRAP_CONTENT, 1f)
         }
         cursorButton = Button(this).apply {
-            text = "Cursor: on"
+            text = getString(R.string.music_spotify_cursor_on)
             isFocusable = false
             setOnClickListener { setCursorOn(true) }
         }
         val cancel = Button(this).apply {
-            text = "Cancel"
+            text = getString(R.string.music_p2_cancel)
             isFocusable = true
             setOnClickListener { cancelAndFinish() }
         }
@@ -160,7 +161,7 @@ class SpotifyLoginActivity : Activity() {
         ))
 
         status = TextView(this).apply {
-            text = "Loading Spotify…"
+            text = getString(R.string.music_spotify_loading)
             setTextColor(Color.WHITE)
             textSize = 13f
             setBackgroundColor(Color.argb(220, 18, 20, 26))
@@ -250,12 +251,12 @@ class SpotifyLoginActivity : Activity() {
     private fun setCursorOn(on: Boolean) {
         cursorOn = on
         cursor.visibility = if (on) View.VISIBLE else View.GONE
-        cursorButton.text = if (on) "Cursor: on" else "Cursor: off"
+        cursorButton.text = if (on) getString(R.string.music_spotify_cursor_on) else getString(R.string.music_spotify_cursor_off)
         cursorButton.isFocusable = !on
         if (on) {
-            status.text = "D-pad moves the cursor · OK clicks · Back hides it"
+            status.text = getString(R.string.music_spotify_dpad_hint)
         } else {
-            status.text = "Cursor off. Press Back or Cancel."
+            status.text = getString(R.string.music_spotify_cursor_off_hint)
         }
     }
 
@@ -271,7 +272,7 @@ class SpotifyLoginActivity : Activity() {
         if (cookie == lastTriedCookie) return
         lastTriedCookie = cookie
         validating = true
-        status.text = "Checking the Spotify session…"
+        status.text = getString(R.string.music_spotify_checking)
         scope.launch {
             val result = runCatching {
                 withContext(Dispatchers.IO) {
@@ -295,9 +296,9 @@ class SpotifyLoginActivity : Activity() {
             } else {
                 val error = result.exceptionOrNull()?.message
                 status.text = if (error.isNullOrBlank()) {
-                    "Waiting for Spotify sign-in…"
+                    getString(R.string.music_spotify_waiting)
                 } else {
-                    "Spotify check failed: $error"
+                    getString(R.string.music_spotify_check_failed, error)
                 }
                 validating = false
             }

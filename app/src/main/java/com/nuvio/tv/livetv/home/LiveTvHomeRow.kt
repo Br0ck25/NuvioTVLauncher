@@ -1,6 +1,8 @@
 package com.nuvio.tv.livetv.home
 
 import androidx.compose.ui.input.key.type
+import androidx.compose.ui.res.stringResource
+import com.nuvio.tv.R
 
 import androidx.compose.ui.input.key.key
 
@@ -142,7 +144,7 @@ fun LiveTvHomeHint(modifier: Modifier = Modifier) {
         ) {
             Box(Modifier.size(7.dp).clip(androidx.compose.foundation.shape.CircleShape).background(Color(0xFFE24B4A)))
             Spacer(Modifier.width(6.dp))
-            LiveText("Live TV", size = 12.sp, weight = FontWeight.Medium, color = NuvioTheme.colors.TextPrimary)
+            LiveText(stringResource(R.string.iptv_settings_live_tv), size = 12.sp, weight = FontWeight.Medium, color = NuvioTheme.colors.TextPrimary)
             Spacer(Modifier.width(4.dp))
             androidx.tv.material3.Icon(
                 androidx.compose.material.icons.Icons.Default.KeyboardArrowUp, contentDescription = null,

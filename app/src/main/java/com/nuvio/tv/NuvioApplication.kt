@@ -8,6 +8,7 @@ import android.os.StrictMode
 import coil3.ImageLoader
 import coil3.SingletonImageLoader
 import com.nuvio.tv.core.image.CustomPosterFallbackInterceptor
+import com.nuvio.tv.core.image.HardwareBitmapSettingInterceptor
 import coil3.disk.DiskCache
 import coil3.memory.MemoryCache
 import coil3.gif.GifDecoder
@@ -30,6 +31,10 @@ import com.nuvio.tv.core.network.imageNetworkFetcherFactory
 import com.nuvio.tv.data.local.ImagePerformancePreferences
 import com.nuvio.tv.data.local.SentrySettingsDataStore
 import com.nuvio.tv.data.mediaserver.ServerUserStateProjection
+import com.nuvio.tv.data.mediaserver.plex.PlexArtworkInterceptor
+import com.nuvio.tv.data.mediaserver.plex.PlexArtworkSigner
+import com.nuvio.tv.data.mediaserver.silo.SiloArtworkInterceptor
+import com.nuvio.tv.data.mediaserver.silo.SiloArtworkRefresher
 import com.nuvio.tv.data.simkl.SimklAnimeIdPreferenceHolder
 import com.nuvio.tv.ui.screens.settings.MemoryBudget
 import dagger.hilt.android.HiltAndroidApp
@@ -52,6 +57,8 @@ class NuvioApplication : Application(), SingletonImageLoader.Factory {
     @Inject lateinit var imagePerformancePreferences: dagger.Lazy<ImagePerformancePreferences>
     @Inject lateinit var simklAnimeIdPreferenceHolder: dagger.Lazy<SimklAnimeIdPreferenceHolder>
     @Inject lateinit var serverUserStateProjection: dagger.Lazy<ServerUserStateProjection>
+    @Inject lateinit var plexArtworkSigner: dagger.Lazy<PlexArtworkSigner>
+    @Inject lateinit var siloArtworkRefresher: dagger.Lazy<SiloArtworkRefresher>
 
     companion object {
         /**
@@ -91,6 +98,13 @@ class NuvioApplication : Application(), SingletonImageLoader.Factory {
         super.onCreate()
         com.nuvio.tv.core.launcher.StartupTiming.mark(this, "dependency graph ready (super.onCreate)")
         PluginRuntimeHooks.onApplicationCreate(this)
+        // Live TV fork: VPN progress lines go into the start-up report.
+        com.nuvio.vpn.android.VpnPlaybackProtection.diagnostics =
+            java.util.function.Consumer { line -> com.nuvio.tv.livetv.model.LiveTvLoadReport.add(line) }
+        // ...and whether it's on and which profile (at start and whenever it changes).
+        com.nuvio.tv.livetv.data.VpnReportLines.start()
+        // The DNS setting (Live TV settings), before any Live TV or player request.
+        com.nuvio.tv.livetv.data.ForkDns.init(this)
         // Load locale synchronously so it's available before Activity.attachBaseContext.
         // SharedPreferences reads are fast (cached in memory after first access).
         val tag = getSharedPreferences("app_locale", Context.MODE_PRIVATE)
@@ -129,6 +143,9 @@ class NuvioApplication : Application(), SingletonImageLoader.Factory {
                 .connectTimeout(4, TimeUnit.SECONDS)
                 .readTimeout(5, TimeUnit.SECONDS)
                 .callTimeout(8, TimeUnit.SECONDS)
+                .addInterceptor(PlexArtworkInterceptor { if (::plexArtworkSigner.isInitialized) plexArtworkSigner.get() else null })
+                .addNetworkInterceptor(PlexArtworkInterceptor.Token { if (::plexArtworkSigner.isInitialized) plexArtworkSigner.get() else null })
+                .addInterceptor(SiloArtworkInterceptor({ if (::siloArtworkRefresher.isInitialized) siloArtworkRefresher.get() else null }))
                 .addInterceptor { chain ->
                     try {
                         chain.proceed(chain.request())
@@ -147,6 +164,7 @@ class NuvioApplication : Application(), SingletonImageLoader.Factory {
 
         return ImageLoader.Builder(this)
             .components {
+                add(HardwareBitmapSettingInterceptor { imagePerformancePreferences.get().hardwareBitmapsEnabled })
                 add(CustomPosterFallbackInterceptor())
                 // A custom WebP decoder was tried for Fire OS 9's stream-decoder crash, but it
                 // intercepted every static WebP (most addon posters) and left them blank on the
@@ -178,7 +196,6 @@ class NuvioApplication : Application(), SingletonImageLoader.Factory {
                 // from rapid bitmap eviction during scrolling.
                 // Mid-range devices (≤3GB): use 0.20 for decent image caching.
                 // Normal devices (>3GB): use 0.25 for snappy image loading.
-                // - allowHardware(false) keeps bitmaps on heap instead of GPU memory
                 val cachePercent = when {
                     totalRamMb <= 2048 -> 0.15
                     totalRamMb <= 3072 -> 0.20

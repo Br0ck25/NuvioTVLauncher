@@ -56,6 +56,8 @@ import androidx.tv.material3.Text
 import com.google.zxing.BarcodeFormat
 import com.google.zxing.MultiFormatWriter
 import com.music.bitchord.data.model.Song
+import androidx.compose.ui.res.stringResource
+import com.nuvio.tv.R
 
 @Composable
 internal fun MusicLocalScreen(
@@ -104,7 +106,7 @@ internal fun MusicLocalScreen(
             ) {
                 Column(Modifier.weight(1f)) {
                     Text(
-                        text = "Local Music",
+                        text = stringResource(R.string.music_p2_local_music),
                         color = MusicPalette.text,
                         fontFamily = MusicDisplay,
                         fontSize = 40.sp,
@@ -113,7 +115,7 @@ internal fun MusicLocalScreen(
                     )
                     Spacer(Modifier.height(5.dp))
                     Text(
-                        text = "Music on this TV, USB drives and your network share.",
+                        text = stringResource(R.string.music_p2_music_on_this_tv_usb),
                         color = MusicPalette.textSecondary,
                         fontSize = 14.sp
                     )
@@ -124,7 +126,7 @@ internal fun MusicLocalScreen(
                 ) {
                     LocalActionButton(
                         icon = Icons.Default.Refresh,
-                        label = if (scanning) "Scanning…" else "Scan",
+                        label = if (scanning) stringResource(R.string.music_p2_scanning) else stringResource(R.string.music_p2_scan),
                         enabled = !scanning,
                         modifier = Modifier.focusRequester(scanFocus),
                         onClick = {
@@ -137,7 +139,7 @@ internal fun MusicLocalScreen(
                     )
                     LocalActionButton(
                         icon = if (share.running) Icons.Default.Close else Icons.Default.Share,
-                        label = if (share.running) "Stop" else "Share",
+                        label = if (share.running) stringResource(R.string.music_p2_stop) else stringResource(R.string.music_p2_share),
                         enabled = share.running || (hasPermission && tracks.isNotEmpty()),
                         onClick = {
                             if (share.running) {
@@ -152,10 +154,10 @@ internal fun MusicLocalScreen(
                     LocalActionButton(
                         icon = Icons.Default.CloudUpload,
                         label = when {
-                            drive.busy -> "Working…"
-                            drive.signIn != null -> "Cancel"
-                            drive.connected -> "Upload"
-                            else -> "Drive"
+                            drive.busy -> stringResource(R.string.music_p2_working)
+                            drive.signIn != null -> stringResource(R.string.music_p2_cancel)
+                            drive.connected -> stringResource(R.string.music_p2_upload)
+                            else -> stringResource(R.string.music_p2_drive)
                         },
                         enabled = !drive.busy,
                         onClick = {
@@ -207,9 +209,9 @@ internal fun MusicLocalScreen(
             item(key = "local-permission") {
                 LocalNotice(
                     icon = Icons.Default.Usb,
-                    title = "Allow storage access",
-                    message = "Nuvio needs permission to read music files on this device and on USB drives.",
-                    actionLabel = "Allow access",
+                    title = stringResource(R.string.music_p2_allow_storage_access),
+                    message = stringResource(R.string.music_p2_nuvio_needs_permission_to_read),
+                    actionLabel = stringResource(R.string.music_p2_allow_access),
                     onClick = {
                         permissionLauncher.launch(LocalMusicRepository.requiredPermission())
                     },
@@ -229,7 +231,7 @@ internal fun MusicLocalScreen(
                         modifier = Modifier.size(24.dp)
                     )
                     Text(
-                        text = "Scanning the device and connected drives…",
+                        text = stringResource(R.string.music_p2_scanning_the_device_and_connected),
                         color = MusicPalette.textSecondary,
                         fontSize = 14.sp
                     )
@@ -247,9 +249,9 @@ internal fun MusicLocalScreen(
             item(key = "local-empty") {
                 LocalNotice(
                     icon = Icons.Default.Usb,
-                    title = "No music found",
-                    message = "Plug in a USB drive with audio files, then press Scan.",
-                    actionLabel = "Scan again",
+                    title = stringResource(R.string.music_p2_no_music_found),
+                    message = stringResource(R.string.music_p2_plug_in_a_usb_drive),
+                    actionLabel = stringResource(R.string.music_p2_scan_again),
                     onClick = { LocalMusicRepository.scan(context) },
                     modifier = Modifier.padding(horizontal = 26.dp)
                 )
@@ -261,7 +263,7 @@ internal fun MusicLocalScreen(
                     verticalAlignment = Alignment.CenterVertically
                 ) {
                     Text(
-                        text = "On this device",
+                        text = stringResource(R.string.music_section_on_this_device),
                         color = MusicPalette.text,
                         fontFamily = MusicDisplay,
                         fontSize = 21.sp,
@@ -317,13 +319,13 @@ private fun LocalSharePanel(
         ) {
             Column(Modifier.weight(1f)) {
                 Text(
-                    text = "Transfer to a computer",
+                    text = stringResource(R.string.music_p2_transfer_to_a_computer),
                     color = MusicPalette.text,
                     fontSize = 20.sp,
                     fontWeight = FontWeight.Bold
                 )
                 Text(
-                    text = "Open the address in a browser on the same Wi-Fi or Ethernet network.",
+                    text = stringResource(R.string.music_p2_open_the_address_in_a),
                     color = MusicPalette.textSecondary,
                     fontSize = 13.sp
                 )
@@ -331,13 +333,13 @@ private fun LocalSharePanel(
             if (share.running) {
                 LocalActionButton(
                     icon = Icons.Default.Close,
-                    label = "Stop sharing",
+                    label = stringResource(R.string.music_p2_stop_sharing),
                     onClick = onStop
                 )
             } else {
                 LocalActionButton(
                     icon = Icons.Default.Share,
-                    label = "Share over network",
+                    label = stringResource(R.string.music_p2_share_over_network),
                     enabled = hasPermission && trackCount > 0,
                     onClick = onStart
                 )
@@ -353,7 +355,7 @@ private fun LocalSharePanel(
                 if (qrBitmap != null) {
                     Image(
                         bitmap = qrBitmap.asImageBitmap(),
-                        contentDescription = "Share page QR code",
+                        contentDescription = stringResource(R.string.music_p2_share_page_qr_code),
                         modifier = Modifier
                             .size(160.dp)
                             .clip(RoundedCornerShape(10.dp))
@@ -361,18 +363,18 @@ private fun LocalSharePanel(
                 }
                 Column(Modifier.weight(1f)) {
                     Text(
-                        text = "On your computer, open:",
+                        text = stringResource(R.string.music_p2_on_your_computer_open),
                         color = MusicPalette.textSecondary,
                         fontSize = 13.sp
                     )
                     Text(
-                        text = share.url ?: "Finding the TV's network address…",
+                        text = share.url ?: stringResource(R.string.music_p2_finding_the_tv_s_network),
                         color = MusicPalette.accent,
                         fontSize = 21.sp,
                         fontWeight = FontWeight.Bold
                     )
                     Text(
-                        text = "The page lists every local track with individual download links and a Download all (.zip) button. Keep the TV on this screen while transferring.",
+                        text = stringResource(R.string.music_p2_the_page_lists_every_local),
                         color = MusicPalette.textMuted,
                         fontSize = 12.sp
                     )
@@ -387,13 +389,13 @@ private fun LocalSharePanel(
             }
         } else if (!hasPermission) {
             Text(
-                text = "Allow storage access above to share local music.",
+                text = stringResource(R.string.music_p2_allow_storage_access_above_to),
                 color = MusicPalette.textMuted,
                 fontSize = 12.sp
             )
         } else if (trackCount == 0) {
             Text(
-                text = "Scan the device and any connected USB drive first.",
+                text = stringResource(R.string.music_p2_scan_the_device_and_any),
                 color = MusicPalette.textMuted,
                 fontSize = 12.sp
             )
@@ -426,13 +428,13 @@ private fun LocalDrivePanel(
         ) {
             Column(Modifier.weight(1f)) {
                 Text(
-                    text = "Copy to Google Drive",
+                    text = stringResource(R.string.music_p2_copy_to_google_drive),
                     color = MusicPalette.text,
                     fontSize = 20.sp,
                     fontWeight = FontWeight.Bold
                 )
                 Text(
-                    text = "Uploads local tracks to a “Nuvio Music” folder in your own Drive.",
+                    text = stringResource(R.string.music_p2_uploads_local_tracks_to_a),
                     color = MusicPalette.textSecondary,
                     fontSize = 13.sp
                 )
@@ -448,7 +450,7 @@ private fun LocalDrivePanel(
                 state.connected -> {
                     LocalActionButton(
                         icon = Icons.Default.CloudUpload,
-                        label = "Upload local music",
+                        label = stringResource(R.string.music_p2_upload_local_music),
                         enabled = trackCount > 0,
                         onClick = onUpload
                     )
@@ -456,7 +458,7 @@ private fun LocalDrivePanel(
                 else -> {
                     LocalActionButton(
                         icon = Icons.Default.CloudUpload,
-                        label = "Connect Google Drive",
+                        label = stringResource(R.string.music_p2_connect_google_drive),
                         onClick = onConnect
                     )
                 }
@@ -472,7 +474,7 @@ private fun LocalDrivePanel(
                 if (signInQr != null) {
                     Image(
                         bitmap = signInQr.asImageBitmap(),
-                        contentDescription = "Google sign-in QR code",
+                        contentDescription = stringResource(R.string.music_p2_google_sign_in_qr_code),
                         modifier = Modifier
                             .size(140.dp)
                             .clip(RoundedCornerShape(10.dp))
@@ -480,7 +482,7 @@ private fun LocalDrivePanel(
                 }
                 Column(Modifier.weight(1f)) {
                     Text(
-                        text = "On your phone, open ${prompt.url}",
+                        text = stringResource(R.string.music_local_open_phone, prompt.url),
                         color = MusicPalette.textSecondary,
                         fontSize = 13.sp
                     )
@@ -491,14 +493,14 @@ private fun LocalDrivePanel(
                         fontWeight = FontWeight.Bold
                     )
                     Text(
-                        text = "Waiting for approval…",
+                        text = stringResource(R.string.music_p2_waiting_for_approval),
                         color = MusicPalette.textMuted,
                         fontSize = 12.sp
                     )
                 }
                 LocalActionButton(
                     icon = Icons.Default.Close,
-                    label = "Cancel",
+                    label = stringResource(R.string.music_p2_cancel),
                     onClick = onCancel
                 )
             }
@@ -511,20 +513,21 @@ private fun LocalDrivePanel(
             ) {
                 Column(Modifier.weight(1f)) {
                     Text(
-                        text = state.email?.let { "Connected as $it" } ?: "Google Drive connected",
+                        text = state.email?.let { stringResource(R.string.music_p2_connected_as, it) }
+                            ?: stringResource(R.string.music_p2_google_drive_connected),
                         color = MusicPalette.textSecondary,
                         fontSize = 13.sp
                     )
                     if (state.busy) {
                         Text(
-                            text = "Uploading ${state.uploaded} of ${state.total}…",
+                            text = stringResource(R.string.music_local_uploading, state.uploaded, state.total),
                             color = MusicPalette.text,
                             fontSize = 13.sp
                         )
                     }
                     state.folderUrl?.let { url ->
                         Text(
-                            text = "Drive folder: $url",
+                            text = stringResource(R.string.music_local_drive_folder, url),
                             color = MusicPalette.textMuted,
                             fontSize = 11.sp
                         )
@@ -532,7 +535,7 @@ private fun LocalDrivePanel(
                 }
                 LocalActionButton(
                     icon = Icons.Default.Logout,
-                    label = "Disconnect",
+                    label = stringResource(R.string.music_p2_disconnect),
                     onClick = onDisconnect
                 )
             }

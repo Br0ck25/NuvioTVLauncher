@@ -2,6 +2,7 @@ package com.nuvio.tv.livetv.crash
 
 import android.app.Activity
 import android.content.Intent
+import com.nuvio.tv.R
 import android.graphics.Color
 import android.graphics.Typeface
 import android.os.Bundle
@@ -32,20 +33,18 @@ class CrashReportActivity : Activity() {
         super.onCreate(savedInstanceState)
         val report = intent.getStringExtra(CrashCatcher.EXTRA_REPORT)
             ?: CrashCatcher.lastReport(this)
-            ?: "No crash details were saved."
+            ?: getString(R.string.iptv_crash_no_details)
 
         fun dp(v: Int) = TypedValue.applyDimension(TypedValue.COMPLEX_UNIT_DIP, v.toFloat(), resources.displayMetrics).toInt()
 
         val title = TextView(this).apply {
-            text = "Nuvio One stopped"
+            text = getString(R.string.iptv_crash_title)
             setTextColor(Color.WHITE)
             setTextSize(TypedValue.COMPLEX_UNIT_SP, 24f)
             typeface = Typeface.DEFAULT_BOLD
         }
         val hint = TextView(this).apply {
-            text = "To send this report: put your phone on the same Wi-Fi as this TV, scan the code with " +
-                "your phone's camera, tap Copy short report and paste it in your message. No Wi-Fi? Take a " +
-                "photo of this screen instead. Use up/down to scroll."
+            text = getString(R.string.iptv_crash_help)
             setTextColor(Color.parseColor("#B0B0B8"))
             setTextSize(TypedValue.COMPLEX_UNIT_SP, 14f)
             setPadding(0, dp(6), dp(16), dp(12))
@@ -54,7 +53,7 @@ class CrashReportActivity : Activity() {
         // 2,000 characters comfortably, so the full trace stays on screen only.
         // The whole report is a web page on the home network (opened from a phone on the same
         // Wi-Fi); the code holds its address. Without a network, the start of the report instead.
-        server = ReportServer.start("Nuvio One crash report", short = { shortCrash(report) }) { report }
+        server = ReportServer.start(getString(R.string.iptv_crash_report_page_title), short = { shortCrash(report) }) { report }
         val summary = report.substringBefore("FULL TRACE:").trim().take(1_800)
         val qr = runCatching {
             com.nuvio.tv.core.qr.QrCodeGenerator.generate(server?.url ?: summary, dp(200))
@@ -103,7 +102,7 @@ class CrashReportActivity : Activity() {
         }
         // Only offered after a crash, when this screen is all that's left of the app.
         val restart = Button(this).apply {
-            text = "Restart app"
+            text = getString(R.string.iptv_crash_restart)
             visibility = if (isTaskRoot) View.VISIBLE else View.GONE
             setOnClickListener {
                 packageManager.getLaunchIntentForPackage(packageName)?.let {
@@ -113,7 +112,7 @@ class CrashReportActivity : Activity() {
             }
         }
         val close = Button(this).apply {
-            text = "Close"
+            text = getString(R.string.iptv_crash_close)
             setOnClickListener { finish() }
         }
         val buttons = LinearLayout(this).apply {

@@ -9,11 +9,13 @@ import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.runtime.Composable
+import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.unit.dp
 import androidx.tv.material3.Switch
 import androidx.tv.material3.Text
+import com.nuvio.tv.R
 import com.nuvio.tv.domain.model.AppIconOption
 import com.nuvio.tv.ui.screens.settings.bannerResource
 import com.nuvio.tv.ui.screens.settings.iconResource
@@ -67,10 +69,10 @@ fun IptvIconToggle(enabled: Boolean, busy: Boolean, onToggle: (Boolean) -> Unit)
             horizontalArrangement = Arrangement.spacedBy(12.dp)
         ) {
             Column(modifier = Modifier.weight(1f)) {
-                Text("Show the Live TV badge on the icon", color = NuvioTheme.colors.TextPrimary)
+                Text(stringResource(R.string.iptv_settings_live_tv_badge_help), color = NuvioTheme.colors.TextPrimary)
                 Text(
-                    if (enabled) "On: the Nuvio One Live TV icon and banner in your chosen color"
-                    else "Off: Nuvio One icons, in your chosen color",
+                    if (enabled) stringResource(R.string.iptv_settings_badge_on)
+                    else stringResource(R.string.iptv_settings_badge_off),
                     color = NuvioTheme.colors.TextSecondary,
                     style = androidx.tv.material3.MaterialTheme.typography.bodySmall
                 )

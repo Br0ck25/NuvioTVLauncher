@@ -16,6 +16,8 @@ import androidx.compose.runtime.collectAsState
 import androidx.compose.runtime.getValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.res.stringResource
+import com.nuvio.tv.R
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.text.font.FontWeight
@@ -146,7 +148,7 @@ fun BoxScope.SponsorSkipCard() {
             .background(Color(0xE6111114))
             .padding(horizontal = 16.dp, vertical = 10.dp)
     ) {
-        Text("Skip $text?", color = Color.White, fontSize = 15.sp, fontWeight = FontWeight.Bold)
-        Text("Press OK", color = Color(0xFFBBBBBB), fontSize = 12.sp)
+        Text(stringResource(R.string.onetube_skip_prompt, text), color = Color.White, fontSize = 15.sp, fontWeight = FontWeight.Bold)
+        Text(stringResource(R.string.onetube_press_ok), color = Color(0xFFBBBBBB), fontSize = 12.sp)
     }
 }

@@ -96,7 +96,7 @@ class LiveTvCloudSync @Inject constructor(
     private val parts = SyncParts(store)
     private val mutex = Mutex()
     private val http = ForkHttp.builder()
-        .dns(com.nuvio.tv.core.network.IPv4FirstDns())
+        .dns(com.nuvio.tv.core.network.IPv4FirstDns(com.nuvio.tv.livetv.data.ForkDns.app))
         .connectTimeout(15, TimeUnit.SECONDS)
         .readTimeout(30, TimeUnit.SECONDS)
         .followRedirects(false)
@@ -129,6 +129,9 @@ class LiveTvCloudSync @Inject constructor(
     fun start() {
         if (started || !available) return
         started = true
+        com.nuvio.vpn.android.VpnPlaybackProtection.observeBackupChanges {
+            scope.launch { delay(8_000); if (!applying && isOn()) syncIfChanged() }
+        }
         drive.importListener = { scope.launch { runImport() } }
         // A QR sign-in, or a TV that was already signed in when the app opened: both arrive here.
         scope.launch { authManager.authState.collect { onAuthState(it) } }
@@ -545,7 +548,7 @@ class LiveTvCloudSync @Inject constructor(
 
     /** Remembers what both sides now agree on: the starting point for the next combine. */
     private suspend fun saved(uid: String, data: JSONObject, removedHere: Set<String>) {
-        runCatching { baseFile().writeText(parts.strip(data).toString()) }
+        runCatching { baseFile().writeText(com.nuvio.vpn.android.VpnBackup.sealCache(parts.strip(data).toString())) }
         store.edit()
             .putString(KEY_BASE_USER, uid)
             .putLong(KEY_LAST_SYNC, System.currentTimeMillis())
@@ -560,7 +563,7 @@ class LiveTvCloudSync @Inject constructor(
     /** What both sides last agreed on, but only if it was for this account. */
     private fun readBase(uid: String): JSONObject? {
         if (store.getString(KEY_BASE_USER, null) != uid) return null
-        return runCatching { JSONObject(baseFile().readText()) }.getOrNull()
+        return runCatching { JSONObject(com.nuvio.vpn.android.VpnBackup.openCache(baseFile().readText())) }.getOrNull()
     }
 
     // ------------------------------------------------------------------ the service

@@ -93,6 +93,8 @@ class HomeViewModel @Inject constructor(
     internal val onDemandRepository: com.nuvio.tv.livetv.ondemand.OnDemandRepository,
     internal val liveTvPreferences: com.nuvio.tv.livetv.data.LiveTvPreferences,
     internal val installedAppsRepository: com.nuvio.tv.core.apps.InstalledAppsRepository? = null,
+    internal val trailerPlayerPool: com.nuvio.tv.core.player.TrailerPlayerPool,
+    internal val backgroundTrailerController: com.nuvio.tv.core.player.BackgroundTrailerController,
     internal val metaPreviewEnricher: MetaPreviewEnricher = MetaPreviewEnricher(
         tmdbService,
         tmdbMetadataService,
@@ -258,6 +260,8 @@ class HomeViewModel @Inject constructor(
     internal val trailerPreviewNegativeCache = mutableSetOf<String>()
     internal val trailerPreviewUrlsState = mutableStateMapOf<String, String>()
     internal val trailerPreviewAudioUrlsState = mutableStateMapOf<String, String>()
+    internal val trailerPreviewYoutubeKeys = mutableMapOf<String, String>()
+    internal var continueTrailerInDetails = false
     internal var activeTrailerPreviewItemId: String? = null
     internal var trailerPreviewRequestVersion: Long = 0L
     internal var trailerPreviewJob: Job? = null
@@ -365,6 +369,11 @@ class HomeViewModel @Inject constructor(
         // Live TV fork: On Demand's progress lives in the same watch-progress store; make sure
         // its database is open so the Home row can map those entries back to provider items.
         runCatching { onDemandRepository.start() }
+        viewModelScope.launch {
+            layoutPreferenceDataStore.focusedPosterTrailerContinueInDetails.collect { enabled ->
+                continueTrailerInDetails = enabled
+            }
+        }
         // Accumulates individual watched status changes and flushes them as a single
         // update after 150ms of inactivity, preventing N separate recompositions.
         viewModelScope.launch {
@@ -400,6 +409,7 @@ class HomeViewModel @Inject constructor(
             loadContinueWatching()
             observeContinueWatchingReleases()
             observeOnDemandContinueWatching()
+            observeYouTubeContinueWatching()
             watchedSeriesStateHolder.loadFromDisk()
             observeExternalMetaPrefetchPreference()
             observeContinueWatchingSortMode()
@@ -504,7 +514,7 @@ class HomeViewModel @Inject constructor(
         cwLastShowIdSiblings = emptyMap()
         cwLastWatchedEpisodeCounts = emptyMap()
         watchedSeriesStateHolder.clearValidationState()
-        _uiState.update { it.copy(continueWatchingItems = emptyList(), onDemandContinueWatchingItems = emptyList(), upcomingItems = emptyList()) }
+        _uiState.update { it.copy(continueWatchingItems = emptyList(), onDemandContinueWatchingItems = emptyList(), youtubeContinueWatchingItems = emptyList(), upcomingItems = emptyList()) }
         // Bump trigger so the pipeline's collectLatest restarts with fresh state.
         cwPipelineRefreshTrigger.value++
     }
@@ -641,6 +651,20 @@ class HomeViewModel @Inject constructor(
     }
 
     fun requestTrailerPreview(item: MetaPreview) = requestTrailerPreviewPipeline(item)
+
+    fun beginTrailerHandoff(itemId: String) {
+        if (!continueTrailerInDetails) return
+        val videoUrl = trailerPreviewUrlsState[itemId] ?: return
+        val audioUrl = trailerPreviewAudioUrlsState[itemId]
+        val youtubeKey = trailerPreviewYoutubeKeys[itemId]
+        if (backgroundTrailerController.beginTransfer(itemId, videoUrl, audioUrl, youtubeKey)) return
+        trailerPlayerPool.beginHandoff(
+            itemId = itemId,
+            videoUrl = videoUrl,
+            audioUrl = audioUrl,
+            youtubeKey = youtubeKey
+        )
+    }
 
     fun requestTrailerPreview(
         itemId: String,

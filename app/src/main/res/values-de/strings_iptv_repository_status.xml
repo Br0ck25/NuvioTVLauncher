@@ -42,4 +42,5 @@
         <item quantity="one">"„%1$s“ läuft in %2$d Tag ab"</item>
         <item quantity="other">"„%1$s“ läuft in %2$d Tagen ab"</item>
     </plurals>
+    <string name="iptv_repository_status_reading_addon_channels">"Kanäle aus Ihren Add-ons lesen…"</string>
 </resources>

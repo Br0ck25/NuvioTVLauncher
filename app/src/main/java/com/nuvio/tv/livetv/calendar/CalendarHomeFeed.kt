@@ -1,6 +1,8 @@
 package com.nuvio.tv.livetv.calendar
 
 import android.content.Context
+import com.nuvio.tv.R
+import com.nuvio.tv.core.util.withAppLocale
 import com.nuvio.tv.ui.screens.home.ContinueWatchingItem
 import com.nuvio.tv.ui.screens.home.NextUpInfo
 import kotlinx.coroutines.flow.MutableStateFlow
@@ -31,12 +33,14 @@ object CalendarHomeFeed {
     @Volatile private var injected: Set<String> = emptySet()
 
     private var prefs: android.content.SharedPreferences? = null
+    private var appContext: Context? = null
     private val dismissed = HashSet<String>()
 
     fun init(context: Context) {
         if (prefs != null) return
         val p = context.applicationContext.getSharedPreferences("calendar_home", Context.MODE_PRIVATE)
         prefs = p
+        appContext = context.applicationContext
         synchronized(dismissed) { dismissed += p.getStringSet("dismissed", emptySet()).orEmpty() }
         synchronized(snoozed) {
             p.getStringSet("snoozed", emptySet()).orEmpty().forEach { v ->
@@ -84,7 +88,7 @@ object CalendarHomeFeed {
                     videoId = e.contentId,
                     season = null,
                     episode = null,
-                    episodeTitle = "Now out to watch at home",
+                    episodeTitle = appContext?.withAppLocale()?.getString(R.string.iptv_cal_out_home) ?: "Out to watch at home",
                     position = 0L,
                     duration = 0L,
                     lastWatched = at,

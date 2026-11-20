@@ -60,4 +60,10 @@
     <string name="iptv_status_sync_too_big">"Je live-tv-instellingen zijn te groot om in de cloud op te slaan."</string>
     <string name="iptv_status_sync_limit">"Vandaag te vaak opgeslagen. Synchronisatie gaat morgen verder."</string>
     <string name="iptv_status_sync_unreachable">"Synchronisatie niet bereikbaar. Wordt opnieuw geprobeerd."</string>
+    <string name="iptv_crash_no_details">"Er zijn geen crashgegevens opgeslagen."</string>
+    <string name="iptv_crash_title">"Nuvio One is gestopt"</string>
+    <string name="iptv_crash_help">"Om dit rapport te verzenden: plaats uw telefoon op dezelfde Wi-Fi als deze tv, scan de code met de camera van uw telefoon, tik op Kort rapport kopiëren en plak deze in uw bericht. Geen wifi? Maak in plaats daarvan een foto van dit scherm. Gebruik omhoog/omlaag om te bladeren."</string>
+    <string name="iptv_crash_restart">"Start de app opnieuw"</string>
+    <string name="iptv_crash_close">"Sluiten"</string>
+    <string name="iptv_crash_report_page_title">"Nuvio One crashrapport"</string>
 </resources>

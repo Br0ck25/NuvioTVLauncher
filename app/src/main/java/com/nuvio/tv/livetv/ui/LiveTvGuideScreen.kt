@@ -60,6 +60,7 @@ import androidx.compose.material.icons.filled.Search
 import androidx.compose.material.icons.filled.PhoneAndroid
 import androidx.compose.material.icons.filled.Tune
 import androidx.compose.ui.graphics.asImageBitmap
+import androidx.compose.ui.res.stringResource
 import androidx.compose.material3.Icon
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.CompositionLocalProvider
@@ -112,6 +113,7 @@ import com.nuvio.tv.livetv.model.EpgProgram
 import com.nuvio.tv.livetv.model.LiveChannel
 import com.nuvio.tv.livetv.model.LiveTvSettings
 import com.nuvio.tv.livetv.model.effectiveGuideSize
+import com.nuvio.tv.R
 import com.nuvio.tv.ui.theme.NuvioTheme
 import dev.chrisbanes.haze.hazeSource
 import dev.chrisbanes.haze.hazeEffect
@@ -137,22 +139,35 @@ private const val HOUR_BLOCK_MS = 60L * 60L * 1000L
 
 /** Reuse prepared listings while the channel's guide inputs stay unchanged. */
 @Composable
-private fun rememberGuidePrograms(ch: LiveChannel?, list: List<EpgProgram>, nowMs: Long, pastHours: Int): List<EpgProgram> =
-    remember(ch?.key, ch?.catchup?.days, list, Math.floorDiv(nowMs, HOUR_BLOCK_MS), pastHours) {
-        if (ch == null) emptyList() else prepareGuidePrograms(ch, list, nowMs, pastHours)
+private fun rememberGuidePrograms(ch: LiveChannel?, list: List<EpgProgram>, nowMs: Long, pastHours: Int): List<EpgProgram> {
+    val noGuideTitle = stringResource(R.string.iptv_guide_no_guide_available)
+    return remember(ch?.key, ch?.catchup?.days, list, Math.floorDiv(nowMs, HOUR_BLOCK_MS), pastHours, noGuideTitle) {
+        if (ch == null) emptyList() else prepareGuidePrograms(ch, list, nowMs, pastHours, noGuideTitle)
     }
+}
 
 /** "Today", "Tomorrow", "Yesterday", or the day ("Sat, Oct 10") for the guide's time ruler. */
+@Composable
 private fun guideDayLabel(windowStart: Long, now: Long): String {
     val dayOf = { ms: Long -> java.util.Calendar.getInstance().apply { timeInMillis = ms }.let { it.get(java.util.Calendar.YEAR) * 1000 + it.get(java.util.Calendar.DAY_OF_YEAR) } }
     val shown = dayOf(windowStart)
     val today = dayOf(now)
     return when (shown) {
-        today -> "Today"
-        dayOf(now + 24 * 3_600_000L) -> "Tomorrow"
-        dayOf(now - 24 * 3_600_000L) -> "Yesterday"
+        today -> stringResource(R.string.iptv_guide_today)
+        dayOf(now + 24 * 3_600_000L) -> stringResource(R.string.iptv_guide_tomorrow)
+        dayOf(now - 24 * 3_600_000L) -> stringResource(R.string.iptv_guide_yesterday)
         else -> java.text.SimpleDateFormat("EEE, MMM d", java.util.Locale.getDefault()).format(java.util.Date(windowStart))
     }
+}
+
+/** The built-in group names follow the app language; your own group names stay as they are. */
+@Composable
+private fun guideGroupTitle(group: ChannelGroup): String = when (group.id) {
+    ChannelGroup.FAVORITES -> stringResource(R.string.iptv_guide_favorites)
+    ChannelGroup.RECENT -> stringResource(R.string.iptv_guide_recently_watched)
+    ChannelGroup.ALL -> stringResource(R.string.iptv_guide_all_channels)
+    ChannelGroup.SEARCH -> stringResource(R.string.nav_search)
+    else -> group.title
 }
 
 /** The first midnight (device time) after [ms]. */
@@ -218,6 +233,7 @@ private fun LiveTvGuideScreenBody(
     // preview window to the whole screen and back. The picture never moves to a different
     // view, which is what froze it (or left it loading) on some TVs.
     var fullscreen by remember { mutableStateOf(false) }
+    val context = androidx.compose.ui.platform.LocalContext.current
     val sportsHandoffOnOpen = remember {
         com.nuvio.tv.livetv.sports.SportsWatchLaunch.singleHandoff.value != null
     }
@@ -271,22 +287,24 @@ private fun LiveTvGuideScreenBody(
     var gridHeightPx by remember { mutableIntStateOf(0) }
 
     /** The Record item for a show, or null when it can't be recorded (already over, no catch-up). */
+    @Composable
     fun recordLabel(ch: LiveChannel, p: EpgProgram?): String? {
         p ?: return null
         val nowMs = System.currentTimeMillis()
         val onNow = nowMs >= p.startMs && nowMs < p.stopMs
         return when {
-            onNow && recordingUntil.containsKey(ch.key) -> "Stop recording"
-            p.startMs in scheduledStarts[ch.key].orEmpty() -> "Cancel recording"
-            p.stopMs <= nowMs -> if (CatchupUrlBuilder.isAvailable(ch, p, nowMs)) "Save to Recordings" else null
-            else -> "Record"
+            onNow && recordingUntil.containsKey(ch.key) -> stringResource(R.string.iptv_ge_stop_recording)
+            p.startMs in scheduledStarts[ch.key].orEmpty() -> stringResource(R.string.iptv_ge_cancel_recording)
+            p.stopMs <= nowMs -> if (CatchupUrlBuilder.isAvailable(ch, p, nowMs)) stringResource(R.string.iptv_ge_save_to_recordings) else null
+            else -> stringResource(R.string.iptv_guide_record)
         }
     }
+    @Composable
     fun seriesLabel(ch: LiveChannel, p: EpgProgram?): String? {
         p ?: return null
         if (p.stopMs <= System.currentTimeMillis()) return null
         val n = com.nuvio.tv.livetv.data.LiveTvRepository.normalize(titleMarks(p.title).title)
-        return if (seriesList.any { it.channel.key == ch.key && it.norm == n }) "Stop recording series" else "Record series"
+        return if (seriesList.any { it.channel.key == ch.key && it.norm == n }) stringResource(R.string.iptv_ge_stop_recording_series) else stringResource(R.string.iptv_ge_record_series)
     }
     fun doRecord(ch: LiveChannel, p: EpgProgram) {
         val nowMs = System.currentTimeMillis()
@@ -347,7 +365,7 @@ private fun LiveTvGuideScreenBody(
                 fullscreen = false
                 fullscreenComing = false
                 com.nuvio.tv.livetv.sports.SportsWatchLaunch.cancelSingleHandoff(handoff)
-                com.nuvio.tv.livetv.record.LiveTvNotice.show("This stream is no longer available for this profile.")
+                com.nuvio.tv.livetv.record.LiveTvNotice.show(context.getString(R.string.iptv_ge_stream_gone))
                 return@LaunchedEffect
             }
             viewModel.preview(channel)
@@ -524,7 +542,7 @@ private fun LiveTvGuideScreenBody(
             runCatching { groupsFocus.requestFocus() }
         }
     }
-    val selectedGroupTitle = ui.groups.firstOrNull { it.id == ui.selectedGroupId }?.title ?: "All channels"
+    val selectedGroupTitle = ui.groups.firstOrNull { it.id == ui.selectedGroupId }?.let { guideGroupTitle(it) } ?: stringResource(R.string.iptv_guide_all_channels)
     // The group on screen gets its listings for every day ahead (Guide Days Ahead), in the
     // background, so scrolling ahead in it doesn't run out after half a day.
     // Also after a guide update, which keeps only the hours around now in memory.
@@ -708,7 +726,7 @@ private fun LiveTvGuideScreenBody(
         // A recording picked in Recordings or the Calendar.
         com.nuvio.tv.livetv.record.RecordingLaunch.take()?.let { r ->
             if (!viewModel.playRecording(r.recordingId, r.fromStart)) {
-                com.nuvio.tv.livetv.record.LiveTvNotice.show("That recording can't be played")
+                com.nuvio.tv.livetv.record.LiveTvNotice.show(context.getString(R.string.iptv_ge_recording_unplayable))
                 com.nuvio.tv.livetv.record.RecordingLaunch.takeReturn()?.let { onReturnTo(it) }
                 fullscreenComing = false
                 return@LaunchedEffect
@@ -1268,6 +1286,7 @@ private fun LiveTvGuideScreenBody(
                     visibilityLastRowFocus = groupVisibilityLastRowFocus,
                     playlistNames = playlistNames,
                     showPlaylistHeadings = settings.groupPlaylistHeadings,
+                    holdJumpMs = settings.groupHoldJumpMs.toLong(),
                     collapsed = collapsedPlaylists,
                     onToggleCollapse = { viewModel.togglePlaylistCollapsed(it) },
                     reorderingId = groupReorderId,
@@ -1381,7 +1400,7 @@ private fun LiveTvGuideScreenBody(
                         // Date and time above the channels (like TiviMate), or the Unassigned filter.
                         Box(Modifier.width(channelColWidth).padding(start = 8.dp)) {
                             LiveText(
-                                if (epgUnassignedOnly) "Unassigned channels" else guideDayLabel(windowStart, now),
+                                if (epgUnassignedOnly) stringResource(R.string.iptv_ge_epg_unassigned_channels) else guideDayLabel(windowStart, now),
                                 color = NuvioTheme.colors.TextPrimary,
                                 size = (13f * guideScale(settings)).sp,
                                 weight = FontWeight.Bold
@@ -1421,7 +1440,7 @@ private fun LiveTvGuideScreenBody(
                                 val dayName = java.text.SimpleDateFormat("EEE", java.util.Locale.getDefault()).format(java.util.Date(midnight))
                                 val isTomorrow = midnight - now in 0..(24 * 3_600_000L)
                                 LiveTag(
-                                    if (isTomorrow) "TOMORROW · ${dayName.uppercase()}" else dayName.uppercase(),
+                                    if (isTomorrow) stringResource(R.string.iptv_ge_tomorrow, dayName.uppercase()) else dayName.uppercase(),
                                     NuvioTheme.colors.FocusBackground,
                                     NuvioTheme.colors.FocusRing,
                                     Modifier
@@ -1538,9 +1557,9 @@ private fun LiveTvGuideScreenBody(
                                             favoritesMode = false
                                             com.nuvio.tv.livetv.record.LiveTvNotice.show(
                                                 when {
-                                                    after == before -> "$after ${if (after == 1) "favorite" else "favorites"} in this group"
-                                                    after > before -> "Added ${after - before} to Favorites"
-                                                    else -> "Removed ${before - after} from Favorites"
+                                                    after == before -> context.resources.getQuantityString(R.plurals.iptv_ge_favorites_in_group, after, after)
+                                                    after > before -> context.getString(R.string.iptv_ge_added_favorites, after - before)
+                                                    else -> context.getString(R.string.iptv_ge_removed_favorites, before - after)
                                                 }
                                             )
                                         }
@@ -1704,24 +1723,25 @@ private fun LiveTvGuideScreenBody(
                     ) {
                         when {
                             !ui.hasSources -> EmptyGuideMessage(
-                                title = "No playlists yet",
-                                body = "Add an M3U playlist, Xtream login or XMLTV guide in Settings › Live TV.",
-                                action = "Open Live TV settings",
+                                title = stringResource(R.string.iptv_guide_no_playlists),
+                                body = stringResource(R.string.iptv_guide_add_playlist_help),
+                                action = stringResource(R.string.iptv_guide_open_settings),
                                 onAction = onOpenSettings
                             )
                             channels.isEmpty() && status.loading -> EmptyGuideMessage(
-                                title = status.message ?: "Loading…",
-                                body = "Large playlists and guides can take several minutes the first time. It keeps going if you leave this screen, and next time it opens straight away.",
+                                title = status.message ?: stringResource(R.string.iptv_guide_loading),
+                                body = stringResource(R.string.iptv_guide_loading_help),
                                 action = null
                             )
                             channels.isEmpty() && ui.selectedGroupId == ChannelGroup.SEARCH -> EmptyGuideMessage(
-                                title = if (ui.searchQuery.isBlank()) "Search channels" else "No channels match \"${ui.searchQuery}\"",
-                                body = "Press OK on Search in the group list, or the search key on your remote.",
+                                title = if (ui.searchQuery.isBlank()) stringResource(R.string.iptv_guide_search_channels)
+                                else stringResource(R.string.iptv_guide_no_channels_match, ui.searchQuery),
+                                body = stringResource(R.string.iptv_guide_search_help),
                                 action = null
                             )
                             channels.isEmpty() -> EmptyGuideMessage(
-                                title = "No channels in this group",
-                                body = "Press left to pick another group.",
+                                title = stringResource(R.string.iptv_guide_no_channels_group),
+                                body = stringResource(R.string.iptv_guide_pick_another_group),
                                 action = null
                             )
                             else -> {
@@ -1898,10 +1918,10 @@ private fun LiveTvGuideScreenBody(
             val showLoading = rememberDelayedTrue(playback.isBuffering && playback.error == null, 1_200)
             val recStarting by viewModel.playback.recordingStarting.collectAsStateWithLifecycle()
             val text = when {
-                playback.channelKey == null -> "Press OK on a channel to preview"
+                playback.channelKey == null -> stringResource(R.string.iptv_guide_press_ok_preview)
                 playback.error != null -> null // shown with its reason below
-                recStarting -> "Starting the recording…"
-                showLoading -> "Loading…"
+                recStarting -> stringResource(R.string.iptv_guide_starting_recording)
+                showLoading -> stringResource(R.string.iptv_guide_loading)
                 else -> null
             }
             with(density) {
@@ -1912,10 +1932,10 @@ private fun LiveTvGuideScreenBody(
                     contentAlignment = Alignment.Center
                 ) {
                     text?.let { LiveText(it, color = NuvioTheme.colors.TextSecondary, size = 14.sp) }
-                    playback.error?.let { PlayerStatusMessage("Reconnecting…", it, compact = true) }
+                    playback.error?.let { PlayerStatusMessage(stringResource(R.string.iptv_ge_reconnecting), it, compact = true) }
                     playback.catchupTitle?.let {
                         LiveText(
-                            "ARCHIVE · $it",
+                            stringResource(R.string.iptv_ge_archive, it),
                             modifier = Modifier.align(Alignment.TopStart).padding(8.dp)
                                 .background(Color.Black.copy(alpha = 0.6f), RoundedCornerShape(6.dp))
                                 .padding(horizontal = 6.dp, vertical = 2.dp),
@@ -1944,9 +1964,9 @@ private fun LiveTvGuideScreenBody(
                     .glass(guideInfoGlass(settings.guideInfoBackground), RoundedCornerShape(10.dp))
                     .padding(horizontal = 16.dp, vertical = 12.dp)
             ) {
-                LiveText("Manage group visibility", size = 15.sp, weight = FontWeight.Bold)
+                LiveText(stringResource(R.string.iptv_ge_manage_group_visibility), size = 15.sp, weight = FontWeight.Bold)
                 Spacer(Modifier.height(4.dp))
-                LiveText("OK: show or hide group", color = NuvioTheme.colors.TextSecondary, size = 13.sp)
+                LiveText(stringResource(R.string.iptv_ge_ok_show_hide_group), color = NuvioTheme.colors.TextSecondary, size = 13.sp)
                 VisibilityBulkActions(
                     firstFocus = groupVisibilityActionsFocus,
                     onSelectAll = { groupHiddenPending = emptySet() },
@@ -1972,11 +1992,11 @@ private fun LiveTvGuideScreenBody(
                     },
                     onDone = ::finishGroupVisibility,
                 )
-                LiveText("Up at first / Down at last: actions", color = NuvioTheme.colors.TextSecondary, size = 12.sp)
-                LiveText("Actions: Down to first · Up to last", color = NuvioTheme.colors.TextSecondary, size = 12.sp)
-                LiveText("Left: hide all", color = NuvioTheme.colors.TextSecondary, size = 13.sp)
-                LiveText("Right: show all", color = NuvioTheme.colors.TextSecondary, size = 13.sp)
-                LiveText("Back: save and return", color = NuvioTheme.colors.TextSecondary, size = 13.sp)
+                LiveText(stringResource(R.string.iptv_ge_hint_actions), color = NuvioTheme.colors.TextSecondary, size = 12.sp)
+                LiveText(stringResource(R.string.iptv_ge_hint_actions2), color = NuvioTheme.colors.TextSecondary, size = 12.sp)
+                LiveText(stringResource(R.string.iptv_ge_left_hide_all), color = NuvioTheme.colors.TextSecondary, size = 13.sp)
+                LiveText(stringResource(R.string.iptv_ge_right_show_all), color = NuvioTheme.colors.TextSecondary, size = 13.sp)
+                LiveText(stringResource(R.string.iptv_ge_back_save_return), color = NuvioTheme.colors.TextSecondary, size = 13.sp)
             }
         }
         if (groupReorderMode) {
@@ -1987,28 +2007,28 @@ private fun LiveTvGuideScreenBody(
                     .glass(guideInfoGlass(settings.guideInfoBackground), RoundedCornerShape(10.dp))
                     .padding(horizontal = 16.dp, vertical = 12.dp)
             ) {
-                LiveText("Reorder groups", size = 15.sp, weight = FontWeight.Bold)
+                LiveText(stringResource(R.string.iptv_ge_reorder_groups), size = 15.sp, weight = FontWeight.Bold)
                 Spacer(Modifier.height(4.dp))
                 val hint: @Composable (String) -> Unit = { LiveText(it, color = NuvioTheme.colors.TextSecondary, size = 13.sp) }
                 when {
                     groupTicked.isNotEmpty() -> {
-                        hint("${groupTicked.size} selected")
-                        hint("Left / Right: move them to the top / bottom")
-                        hint("Hold OK: select or unselect another")
+                        hint(stringResource(R.string.iptv_ge_selected_count, groupTicked.size))
+                        hint(stringResource(R.string.iptv_ge_lr_top_bottom))
+                        hint(stringResource(R.string.iptv_ge_hold_more))
                     }
                     groupReorderId != null -> {
-                        hint("Up / Down: move the group")
-                        hint("Left / Right: straight to the top / bottom")
-                        hint("OK: put it down")
+                        hint(stringResource(R.string.iptv_ge_updown_move_group))
+                        hint(stringResource(R.string.iptv_ge_lr_straight))
+                        hint(stringResource(R.string.iptv_ge_ok_put_down))
                     }
                     else -> {
-                        hint("Up / Down: choose a group")
-                        hint("OK: pick it up to move")
-                        hint("Left / Right: send it to the top / bottom")
-                        hint("Hold OK: select several to move together")
+                        hint(stringResource(R.string.iptv_ge_updown_choose_group))
+                        hint(stringResource(R.string.iptv_ge_ok_pick_up))
+                        hint(stringResource(R.string.iptv_ge_lr_send))
+                        hint(stringResource(R.string.iptv_ge_hold_several))
                     }
                 }
-                hint("Back: save")
+                hint(stringResource(R.string.iptv_ge_back_save))
             }
         }
         if (reorderActive) {
@@ -2019,17 +2039,17 @@ private fun LiveTvGuideScreenBody(
                     .glass(guideInfoGlass(settings.guideInfoBackground), RoundedCornerShape(10.dp))
                     .padding(horizontal = 16.dp, vertical = 12.dp)
             ) {
-                LiveText("Reorder channels", size = 15.sp, weight = FontWeight.Bold)
+                LiveText(stringResource(R.string.iptv_ge_reorder_channels), size = 15.sp, weight = FontWeight.Bold)
                 Spacer(Modifier.height(4.dp))
                 if (reorderKey != null) {
-                    LiveText("Up / Down: move the channel", color = NuvioTheme.colors.TextSecondary, size = 13.sp)
-                    LiveText("CH+ / CH−: move 8 places", color = NuvioTheme.colors.TextSecondary, size = 13.sp)
-                    LiveText("OK: place it here", color = NuvioTheme.colors.TextSecondary, size = 13.sp)
+                    LiveText(stringResource(R.string.iptv_ge_updown_move_channel), color = NuvioTheme.colors.TextSecondary, size = 13.sp)
+                    LiveText(stringResource(R.string.iptv_ge_ch_move_8), color = NuvioTheme.colors.TextSecondary, size = 13.sp)
+                    LiveText(stringResource(R.string.iptv_ge_ok_place_here), color = NuvioTheme.colors.TextSecondary, size = 13.sp)
                 } else {
-                    LiveText("Up / Down: choose a channel", color = NuvioTheme.colors.TextSecondary, size = 13.sp)
-                    LiveText("OK: select it to move", color = NuvioTheme.colors.TextSecondary, size = 13.sp)
+                    LiveText(stringResource(R.string.iptv_ge_updown_choose_channel), color = NuvioTheme.colors.TextSecondary, size = 13.sp)
+                    LiveText(stringResource(R.string.iptv_ge_ok_select_move), color = NuvioTheme.colors.TextSecondary, size = 13.sp)
                 }
-                LiveText("Back: save and finish", color = NuvioTheme.colors.TextSecondary, size = 13.sp)
+                LiveText(stringResource(R.string.iptv_ge_back_save_finish), color = NuvioTheme.colors.TextSecondary, size = 13.sp)
             }
         }
         if (favoritesMode) {
@@ -2040,13 +2060,13 @@ private fun LiveTvGuideScreenBody(
                     .glass(guideInfoGlass(settings.guideInfoBackground), RoundedCornerShape(10.dp))
                     .padding(horizontal = 16.dp, vertical = 12.dp)
             ) {
-                LiveText("Pick favorites", size = 15.sp, weight = FontWeight.Bold)
+                LiveText(stringResource(R.string.iptv_ge_pick_favorites), size = 15.sp, weight = FontWeight.Bold)
                 Spacer(Modifier.height(4.dp))
-                LiveText("${favoritesChannels.count { it.key in pendingFavorites }} of ${favoritesChannels.size} picked", color = NuvioTheme.colors.TextSecondary, size = 13.sp)
-                LiveText("OK: add or remove ★", color = NuvioTheme.colors.TextSecondary, size = 13.sp)
-                LiveText("Left: remove all", color = NuvioTheme.colors.TextSecondary, size = 13.sp)
-                LiveText("Right: add all", color = NuvioTheme.colors.TextSecondary, size = 13.sp)
-                LiveText("Back: save and return", color = NuvioTheme.colors.TextSecondary, size = 13.sp)
+                LiveText(stringResource(R.string.iptv_ge_picked_count, favoritesChannels.count { it.key in pendingFavorites }, favoritesChannels.size), color = NuvioTheme.colors.TextSecondary, size = 13.sp)
+                LiveText(stringResource(R.string.iptv_ge_ok_star), color = NuvioTheme.colors.TextSecondary, size = 13.sp)
+                LiveText(stringResource(R.string.iptv_ge_left_remove_all), color = NuvioTheme.colors.TextSecondary, size = 13.sp)
+                LiveText(stringResource(R.string.iptv_ge_right_add_all), color = NuvioTheme.colors.TextSecondary, size = 13.sp)
+                LiveText(stringResource(R.string.iptv_ge_back_save_return), color = NuvioTheme.colors.TextSecondary, size = 13.sp)
             }
         }
         if (visibilityMode) {
@@ -2057,9 +2077,9 @@ private fun LiveTvGuideScreenBody(
                     .glass(guideInfoGlass(settings.guideInfoBackground), RoundedCornerShape(10.dp))
                     .padding(horizontal = 16.dp, vertical = 12.dp)
             ) {
-                LiveText("Manage visibility", size = 15.sp, weight = FontWeight.Bold)
+                LiveText(stringResource(R.string.iptv_ge_manage_visibility), size = 15.sp, weight = FontWeight.Bold)
                 Spacer(Modifier.height(4.dp))
-                LiveText("OK: show or hide channel", color = NuvioTheme.colors.TextSecondary, size = 13.sp)
+                LiveText(stringResource(R.string.iptv_ge_ok_show_hide_channel), color = NuvioTheme.colors.TextSecondary, size = 13.sp)
                 VisibilityBulkActions(
                     firstFocus = channelVisibilityActionsFocus,
                     onSelectAll = { pendingHidden = emptySet() },
@@ -2080,11 +2100,11 @@ private fun LiveTvGuideScreenBody(
                     },
                     onDone = ::finishChannelVisibility,
                 )
-                LiveText("Up at first / Down at last: actions", color = NuvioTheme.colors.TextSecondary, size = 12.sp)
-                LiveText("Actions: Down to first · Up to last", color = NuvioTheme.colors.TextSecondary, size = 12.sp)
-                LiveText("Left: hide all", color = NuvioTheme.colors.TextSecondary, size = 13.sp)
-                LiveText("Right: show all", color = NuvioTheme.colors.TextSecondary, size = 13.sp)
-                LiveText("Back: save and return", color = NuvioTheme.colors.TextSecondary, size = 13.sp)
+                LiveText(stringResource(R.string.iptv_ge_hint_actions), color = NuvioTheme.colors.TextSecondary, size = 12.sp)
+                LiveText(stringResource(R.string.iptv_ge_hint_actions2), color = NuvioTheme.colors.TextSecondary, size = 12.sp)
+                LiveText(stringResource(R.string.iptv_ge_left_hide_all), color = NuvioTheme.colors.TextSecondary, size = 13.sp)
+                LiveText(stringResource(R.string.iptv_ge_right_show_all), color = NuvioTheme.colors.TextSecondary, size = 13.sp)
+                LiveText(stringResource(R.string.iptv_ge_back_save_return), color = NuvioTheme.colors.TextSecondary, size = 13.sp)
             }
         }
 
@@ -2111,7 +2131,7 @@ private fun LiveTvGuideScreenBody(
                 automatic = epgAutoMatches[ch.key],
                 loading = status.loading || epgListsLoading,
                 statusMessage = status.message.takeIf { status.loading && !status.silent }
-                    ?: "Reading the guides' channel lists…".takeIf { epgListsLoading },
+                    ?: stringResource(R.string.iptv_ge_epg_reading).takeIf { epgListsLoading },
                 unassignedOnly = epgUnassignedOnly,
                 onToggleUnassigned = { epgUnassignedOnly = !epgUnassignedOnly },
                 onFullScan = { viewModel.fullEpgScan() },
@@ -2166,9 +2186,9 @@ private fun LiveTvGuideScreenBody(
             com.nuvio.tv.livetv.record.ManualRecordingDialog(
                 channel = ch,
                 use24h = settings.use24HourClock,
-                onSchedule = { title, start, stop ->
+                onSchedule = { title, start, stop, days ->
                     manualRecordingFor = null
-                    com.nuvio.tv.livetv.record.LiveTvNotice.show(viewModel.scheduler.addManual(ch, title, start, stop))
+                    com.nuvio.tv.livetv.record.LiveTvNotice.show(viewModel.scheduler.addManual(ch, title, start, stop, days))
                     scope.launch { delay(60); runCatching { gridFocus.requestFocus() } }
                 },
                 onDismiss = {
@@ -2217,9 +2237,9 @@ private fun LiveTvGuideScreenBody(
                 onRename = {
                     menuTarget = null
                     textPrompt = TextPrompt(
-                        title = "Rename channel",
+                        title = context.getString(R.string.iptv_ge_rename_channel),
                         initial = target.channel.name,
-                        hint = "Leave empty to use the playlist name",
+                        hint = context.getString(R.string.iptv_ge_leave_name),
                         onConfirm = { viewModel.renameChannel(target.channel, it) }
                     )
                 },
@@ -2228,9 +2248,9 @@ private fun LiveTvGuideScreenBody(
                 onRenumber = {
                     menuTarget = null
                     textPrompt = TextPrompt(
-                        title = "Channel number",
+                        title = context.getString(R.string.iptv_ge_channel_number),
                         initial = target.channel.number.toString(),
-                        hint = "Leave empty to use the playlist number",
+                        hint = context.getString(R.string.iptv_ge_leave_number),
                         numeric = true,
                         onConfirm = { viewModel.setChannelNumber(target.channel, it.trim().toIntOrNull()) }
                     )
@@ -2330,7 +2350,7 @@ private fun LiveTvGuideScreenBody(
                 title = prompt.title,
                 initial = prompt.initial,
                 hint = prompt.hint,
-                confirmLabel = "Save",
+                confirmLabel = stringResource(R.string.action_save),
                 numeric = prompt.numeric,
                 onDismiss = { textPrompt = null },
                 onConfirm = { value -> prompt.onConfirm(value); textPrompt = null }
@@ -2338,10 +2358,10 @@ private fun LiveTvGuideScreenBody(
         }
         pinGroup?.let { g ->
             TextInputDialog(
-                title = if (pinWrong) "Wrong PIN, try again" else if (pinRemovesLock) "Enter your PIN to remove the lock" else "\"${g.title}\" is locked. Enter your PIN",
+                title = if (pinWrong) stringResource(R.string.iptv_ge_wrong_pin) else if (pinRemovesLock) stringResource(R.string.iptv_ge_enter_pin_remove) else stringResource(R.string.iptv_ge_group_locked, "\"${g.title}\""),
                 initial = "",
-                hint = "PIN",
-                confirmLabel = if (pinRemovesLock) "Remove lock" else "Unlock",
+                hint = stringResource(R.string.iptv_ge_pin),
+                confirmLabel = if (pinRemovesLock) stringResource(R.string.iptv_ge_remove_lock) else stringResource(R.string.iptv_ge_unlock),
                 numeric = true,
                 onDismiss = { pinGroup = null; pinRemovesLock = false },
                 onConfirm = { pin ->
@@ -2360,15 +2380,15 @@ private fun LiveTvGuideScreenBody(
             GroupPickerDialog(
                 channel = ch,
                 groups = viewModel.copyTargets(ch),
-                title = "Copy \"${ch.name}\" to…",
+                title = stringResource(R.string.iptv_ge_copy_named, "\"${ch.name}\""),
                 onDismiss = { copyPickerFor = null },
                 onPick = { g -> viewModel.copyToGroup(g.id, ch); copyPickerFor = null },
                 onNewGroup = {
                     copyPickerFor = null
                     textPrompt = TextPrompt(
-                        title = "New group",
+                        title = context.getString(R.string.iptv_ge_new_group),
                         initial = "",
-                        hint = "Group name",
+                        hint = context.getString(R.string.iptv_ge_group_name),
                         onConfirm = { name -> viewModel.createGroupWith(name, ch) }
                     )
                 }
@@ -2383,9 +2403,9 @@ private fun LiveTvGuideScreenBody(
                 onNewGroup = {
                     groupPickerFor = null
                     textPrompt = TextPrompt(
-                        title = "New group",
+                        title = context.getString(R.string.iptv_ge_new_group),
                         initial = "",
-                        hint = "Group name",
+                        hint = context.getString(R.string.iptv_ge_group_name),
                         onConfirm = { name -> viewModel.createGroupWith(name, ch) }
                     )
                 }
@@ -2396,32 +2416,32 @@ private fun LiveTvGuideScreenBody(
             ActionMenuDialog(
                 title = g.title,
                 actions = buildList {
-                    add("Rename group" to {
+                    add(stringResource(R.string.iptv_ge_rename_group) to {
                         groupMenu = null
                         textPrompt = TextPrompt(
-                            title = "Rename group",
+                            title = context.getString(R.string.iptv_ge_rename_group),
                             initial = g.title,
-                            hint = if (isCustom) "Group name" else "Leave empty to use the playlist name",
+                            hint = if (isCustom) context.getString(R.string.iptv_ge_group_name) else context.getString(R.string.iptv_ge_leave_name),
                             onConfirm = { viewModel.renameGroup(g.id, it) }
                         )
                     })
                     if (viewModel.parentalEnabled()) {
-                        if (viewModel.isGroupLockSet(g.id)) add("Remove parental lock" to {
+                        if (viewModel.isGroupLockSet(g.id)) add(stringResource(R.string.iptv_ge_remove_parental_lock) to {
                             groupMenu = null
                             pinRemovesLock = true
                             pinWrong = false
                             pinGroup = g
-                        }) else add("Lock with PIN" to {
+                        }) else add(stringResource(R.string.iptv_ge_lock_with_pin) to {
                             groupMenu = null
                             viewModel.setGroupLocked(g.id, true)
                             if (ui.selectedGroupId == g.id) viewModel.selectGroup(ui.defaultGroupId)
                         })
                     }
-                    if (g.id != ChannelGroup.FAVORITES && g.id != ChannelGroup.RECENT && g.id != ChannelGroup.SEARCH) add("Pick favorites…" to {
+                    if (g.id != ChannelGroup.FAVORITES && g.id != ChannelGroup.RECENT && g.id != ChannelGroup.SEARCH) add(stringResource(R.string.iptv_ge_pick_favorites) to {
                         groupMenu = null
                         val list = viewModel.channelsInGroup(g.id)
                         if (list.isEmpty()) {
-                            com.nuvio.tv.livetv.record.LiveTvNotice.show("No channels in ${g.title}")
+                            com.nuvio.tv.livetv.record.LiveTvNotice.show(context.getString(R.string.iptv_ge_no_channels_in, g.title))
                         } else {
                             if (ui.selectedGroupId != g.id) viewModel.selectGroup(g.id)
                             favoritesChannels = list
@@ -2433,7 +2453,7 @@ private fun LiveTvGuideScreenBody(
                             scope.launch { delay(80); listState.scrollToItem(0); runCatching { gridFocus.requestFocus() } }
                         }
                     })
-                    add("Manage visibility" to {
+                    add(stringResource(R.string.iptv_ge_manage_visibility) to {
                         groupMenu = null
                         val all = viewModel.groupsWithHidden()
                         groupVisibilityList = all
@@ -2445,7 +2465,7 @@ private fun LiveTvGuideScreenBody(
                         }.map { it.id }.toSet()
                         scope.launch { delay(80); runCatching { groupsFocus.requestFocus() } }
                     })
-                    add("Reorder groups" to {
+                    add(stringResource(R.string.iptv_ge_reorder_groups) to {
                         groupMenu = null
                         groupWorking = ui.groups.filter { !it.special }
                         groupReorderId = g.id
@@ -2454,17 +2474,17 @@ private fun LiveTvGuideScreenBody(
                         groupReorderFocus = g.id
                         scope.launch { delay(80); runCatching { groupsFocus.requestFocus() } }
                     })
-                    add("Move up" to { viewModel.moveGroup(g.id, -1) })
-                    add("Move down" to { viewModel.moveGroup(g.id, 1) })
-                    add("New group" to {
+                    add(stringResource(R.string.iptv_settings_move_up) to { viewModel.moveGroup(g.id, -1) })
+                    add(stringResource(R.string.iptv_settings_move_down) to { viewModel.moveGroup(g.id, 1) })
+                    add(stringResource(R.string.iptv_ge_new_group) to {
                         groupMenu = null
                         textPrompt = TextPrompt(
-                            title = "New group", initial = "", hint = "Group name",
+                            title = context.getString(R.string.iptv_ge_new_group), initial = "", hint = context.getString(R.string.iptv_ge_group_name),
                             onConfirm = { name -> viewModel.createGroupWith(name, null) }
                         )
                     })
-                    add("Hide group" to { viewModel.hideGroup(g.id); groupMenu = null })
-                    if (isCustom) add("Delete group" to { viewModel.deleteGroup(g.id); groupMenu = null })
+                    add(stringResource(R.string.iptv_ge_hide_group_menu) to { viewModel.hideGroup(g.id); groupMenu = null })
+                    if (isCustom) add(stringResource(R.string.iptv_ge_delete_group) to { viewModel.deleteGroup(g.id); groupMenu = null })
                 },
                 onDismiss = { groupMenu = null }
             )
@@ -2579,7 +2599,7 @@ private fun GuideHeader(
             modifier = Modifier.fillMaxWidth().padding(start = 56.dp, end = 24.dp, top = 8.dp, bottom = 2.dp),
             verticalAlignment = Alignment.CenterVertically
         ) {
-            LiveText("Live TV", size = 16.sp, weight = FontWeight.Bold, modifier = Modifier.weight(1f))
+            LiveText(stringResource(R.string.iptv_settings_live_tv), size = 16.sp, weight = FontWeight.Bold, modifier = Modifier.weight(1f))
             status?.let { LiveText(it, color = NuvioTheme.colors.TextSecondary, size = 13.sp) }
             Spacer(Modifier.width(16.dp))
             GuideMultiviewButton(onOpen = onMultiview, onDown = onGearDown)
@@ -2666,11 +2686,11 @@ private fun GuideHeader(
                         // On now (red LIVE tag) and catch-up, as tags beside the channel.
                         if (GuideInfoPart.TAGS !in hid && block != null && now in block.startMs until block.stopMs) {
                             Spacer(Modifier.width(10.dp))
-                            LiveTag("LIVE", LIVE_RED, Color.White)
+                            LiveTag(stringResource(R.string.iptv_ge_tag_live), LIVE_RED, Color.White)
                         }
                         if (GuideInfoPart.TAGS !in hid && channel.catchup != null) {
                             Spacer(Modifier.width(6.dp))
-                            LiveTag("CATCH-UP", Color.Transparent, NuvioTheme.colors.TextSecondary,
+                            LiveTag(stringResource(R.string.iptv_ge_tag_catchup), Color.Transparent, NuvioTheme.colors.TextSecondary,
                                 Modifier.border(1.dp, NuvioTheme.colors.Border, RoundedCornerShape(5.dp)))
                         }
                     }
@@ -2695,7 +2715,7 @@ private fun GuideHeader(
                         p?.episode?.takeIf { settings.showEpisodeNumbers }?.let { add(it) }
                         if (GuideInfoPart.CATEGORY !in hid) p?.category?.let { add(it) }
                         // The standard panel shows catch-up as a tag; the small one has no room for it.
-                        if (small && channel.catchup != null) add("Catch-up")
+                        if (small && channel.catchup != null) add(stringResource(R.string.iptv_guide_catch_up))
                         // The small info panel has no channel line, so the playlist goes here.
                         if (small) playlistName?.let { add(it) }
                     }.joinToString("  ·  ")
@@ -2723,7 +2743,7 @@ private fun GuideHeader(
                     val lines = (maxHeight / lineHeight).toInt().coerceIn(1, 8)
                     ScrollingDescription(
                         text = about?.description?.takeIf { it.isNotBlank() }
-                            ?: p?.description ?: if (p == null) "No program information" else "",
+                            ?: p?.description ?: if (p == null) stringResource(R.string.iptv_guide_no_program_information) else "",
                         color = NuvioTheme.colors.TextSecondary,
                         size = textSize,
                         maxLines = lines
@@ -2755,20 +2775,20 @@ private fun GuideHeader(
                 Box(Modifier.fillMaxSize().onGloballyPositioned { onPreviewBounds(it.boundsInRoot()) })
                 androidx.compose.runtime.DisposableEffect(Unit) { onDispose { onPreviewBounds(null) } }
                 val overlay = when {
-                    playingKey == null -> "Press OK on a channel to preview"
+                    playingKey == null -> stringResource(R.string.iptv_guide_press_ok_preview)
                     playbackError != null -> null // shown with its reason below
-                    playbackBuffering -> "Loading…"
+                    playbackBuffering -> stringResource(R.string.iptv_guide_loading)
                     else -> null
                 }
                 overlay?.let {
                     LiveText(it, modifier = Modifier.align(Alignment.Center), color = NuvioTheme.colors.TextSecondary, size = 14.sp)
                 }
                 playbackError?.let {
-                    PlayerStatusMessage("Reconnecting…", it, modifier = Modifier.align(Alignment.Center), compact = true)
+                    PlayerStatusMessage(stringResource(R.string.iptv_ge_reconnecting), it, modifier = Modifier.align(Alignment.Center), compact = true)
                 }
                 catchupTitle?.let {
                     LiveText(
-                        "ARCHIVE · $it",
+                        stringResource(R.string.iptv_ge_archive, it),
                         modifier = Modifier.align(Alignment.TopStart).padding(8.dp)
                             .background(Color.Black.copy(alpha = 0.6f)).padding(horizontal = 6.dp, vertical = 2.dp),
                         size = 12.sp
@@ -2931,7 +2951,7 @@ private fun GuideRow(
             if (channel.catchup != null && !reorderMode && !moving && visible == null) {
                 Icon(
                     imageVector = Icons.Default.History,
-                    contentDescription = "Catch-up",
+                    contentDescription = stringResource(R.string.iptv_guide_catch_up),
                     tint = if (channelFocused) cell.text else NuvioTheme.colors.TextSecondary,
                     modifier = Modifier.size(gdp(14f))
                 )
@@ -2950,7 +2970,7 @@ private fun GuideRow(
                 Spacer(Modifier.width(6.dp))
                 Icon(
                     imageVector = Icons.Default.SwapVert,
-                    contentDescription = if (moving) "Moving" else "Can be moved",
+                    contentDescription = if (moving) stringResource(R.string.iptv_guide_moving) else stringResource(R.string.iptv_guide_can_be_moved),
                     tint = if (moving || nameFocused) cell.text else NuvioTheme.colors.TextSecondary,
                     modifier = Modifier.size(gdp(18f))
                 )
@@ -2960,7 +2980,7 @@ private fun GuideRow(
                 Spacer(Modifier.width(6.dp))
                 Icon(
                     imageVector = if (visible) Icons.Default.Visibility else Icons.Default.VisibilityOff,
-                    contentDescription = if (visible) "Shown" else "Hidden",
+                    contentDescription = if (visible) stringResource(R.string.iptv_guide_shown) else stringResource(R.string.iptv_guide_hidden),
                     // On the highlight, the highlight's text color (the accent color vanished on it).
                     tint = when {
                         channelFocused || nameFocused -> cell.text.copy(alpha = if (visible) 1f else 0.6f)
@@ -3024,7 +3044,7 @@ private fun GuideRow(
                     if (gw > 4.dp) strip += StripItem(
                         x = gx, width = gw,
                         // Something is on; the guide just doesn't say what.
-                        title = if (gw > 90.dp) "No information" else "",
+                        title = if (gw > 90.dp) stringResource(R.string.iptv_guide_no_information) else "",
                         subtitle = null,
                         fill = gapFill, edge = Color.White.copy(alpha = 0.09f),
                         text = NuvioTheme.colors.TextTertiary, italic = true
@@ -3094,7 +3114,7 @@ private fun GuideRow(
                 val x = xOf(focusedBlock.startMs)
                 val w = (xOf(focusedBlock.stopMs) - x).coerceAtLeast(2.dp)
                 ProgramBlock(
-                    title = "No information", subtitle = null, x = x, width = w,
+                    title = stringResource(R.string.iptv_guide_no_information), subtitle = null, x = x, width = w,
                     colors = liveCellColors(focused = true, idle = guideSurface()),
                     focused = true, progress = null, continuesLeft = false
                 )
@@ -3173,7 +3193,7 @@ private fun ProgramBlock(
                     Spacer(Modifier.width(6.dp))
                 }
                 if (liveTag && width > 90.dp) {
-                    LiveTag("LIVE", LIVE_RED, Color.White)
+                    LiveTag(stringResource(R.string.iptv_ge_tag_live), LIVE_RED, Color.White)
                     Spacer(Modifier.width(6.dp))
                 }
                 // The focused program scrolls when its title doesn't fit, like TiviMate.
@@ -3192,16 +3212,16 @@ private fun ProgramBlock(
                     }
                     if (newTag) {
                         Spacer(Modifier.width(6.dp))
-                        LiveTag("NEW", NuvioTheme.colors.Secondary, NuvioTheme.colors.OnSecondary)
+                        LiveTag(stringResource(R.string.iptv_ge_tag_new), NuvioTheme.colors.Secondary, NuvioTheme.colors.OnSecondary)
                     }
                 }
                 if (reminder && width > 60.dp) {
                     Spacer(Modifier.width(6.dp))
-                    Icon(Icons.Default.Notifications, contentDescription = "Reminder set", tint = colors.text, modifier = Modifier.size(gdp(13f)))
+                    Icon(Icons.Default.Notifications, contentDescription = stringResource(R.string.iptv_guide_reminder_set), tint = colors.text, modifier = Modifier.size(gdp(13f)))
                 }
                 if (catchup && width > 60.dp) {
                     Spacer(Modifier.width(6.dp))
-                    Icon(Icons.Default.History, contentDescription = "Catch-up", tint = colors.text.copy(alpha = 0.8f), modifier = Modifier.size(gdp(13f)))
+                    Icon(Icons.Default.History, contentDescription = stringResource(R.string.iptv_guide_catch_up), tint = colors.text.copy(alpha = 0.8f), modifier = Modifier.size(gdp(13f)))
                 }
             }
             subtitle?.let {
@@ -3347,10 +3367,10 @@ private fun VisibilityBulkActions(
         horizontalArrangement = Arrangement.spacedBy(8.dp),
     ) {
         LiveFocusRow(modifier = Modifier.width(128.dp).focusRequester(firstFocus), onClick = onSelectAll) { focused ->
-            LiveText("Select all", color = focusedTextColor(focused), size = 13.sp)
+            LiveText(stringResource(R.string.action_select_all), color = focusedTextColor(focused), size = 13.sp)
         }
         LiveFocusRow(modifier = Modifier.width(148.dp).focusRequester(secondFocus), onClick = onDeselectAll) { focused ->
-            LiveText("Deselect all", color = focusedTextColor(focused), size = 13.sp)
+            LiveText(stringResource(R.string.iptv_guide_deselect_all), color = focusedTextColor(focused), size = 13.sp)
         }
     }
 }
@@ -3387,6 +3407,8 @@ private fun GroupColumn(
     hiddenPending: Set<String>? = null,
     /** With several playlists, show each playlist's groups under its own heading (setting). */
     showPlaylistHeadings: Boolean = false,
+    /** Hold Up or Down this long (ms) to jump to the first or last group (setting). */
+    holdJumpMs: Long = 3_500L,
     onToggleGroupVisible: (String) -> Unit = {},
     onHideAllGroups: () -> Unit = {},
     onShowAllGroups: () -> Unit = {},
@@ -3544,7 +3566,7 @@ private fun GroupColumn(
                             groupHoldStartedAt = native.downTime
                             groupHoldJumped = false
                         } else if (!groupHoldJumped && groupHoldKey == e.key &&
-                            native.eventTime - groupHoldStartedAt >= 1_800L
+                            native.eventTime - groupHoldStartedAt >= holdJumpMs
                         ) {
                             groupHoldJumped = true
                             jumpToGroup(
@@ -3557,7 +3579,7 @@ private fun GroupColumn(
                     } else if (e.type == KeyEventType.KeyUp) {
                         val wasJumped = groupHoldJumped
                         val heldLongEnough = !wasJumped && groupHoldKey == e.key &&
-                            e.nativeKeyEvent.eventTime - groupHoldStartedAt >= 1_800L
+                            e.nativeKeyEvent.eventTime - groupHoldStartedAt >= holdJumpMs
                         groupHoldKey = null
                         groupHoldJumped = false
                         when {
@@ -3647,7 +3669,7 @@ private fun GroupColumn(
                     val isCollapsed = src in collapsed
                     item(key = "header:$src") {
                         PlaylistHeader(
-                            name = playlistNames[src] ?: "Playlist",
+                            name = playlistNames[src] ?: stringResource(R.string.iptv_ge_playlist),
                             groupCount = inSource.size,
                             collapsed = isCollapsed,
                             // Folded, but its group is the one showing: keep a way back to it.
@@ -3764,7 +3786,7 @@ private fun GroupSearchButton(modifier: Modifier, onFocusChange: (Boolean) -> Un
     ) {
         Icon(Icons.Default.Search, contentDescription = null, tint = colors.text, modifier = Modifier.size(gdp(16f)))
         Spacer(Modifier.width(8.dp))
-        LiveText("Search", color = colors.text, size = gsp(13f), weight = FontWeight.Medium)
+        LiveText(stringResource(R.string.nav_search), color = colors.text, size = gsp(13f), weight = FontWeight.Medium)
     }
 }
 
@@ -3820,7 +3842,7 @@ private fun GroupItem(
     ) {
         Spacer(Modifier.width(12.dp))
         LiveText(
-            group.title,
+            guideGroupTitle(group),
             modifier = Modifier.weight(1f),
             color = colors.text,
             size = gsp(14f),
@@ -3830,7 +3852,7 @@ private fun GroupItem(
         if (visible != null) {
             Icon(
                 imageVector = if (visible) Icons.Default.Visibility else Icons.Default.VisibilityOff,
-                contentDescription = if (visible) "Shown" else "Hidden",
+                contentDescription = if (visible) stringResource(R.string.iptv_guide_shown) else stringResource(R.string.iptv_guide_hidden),
                 tint = when {
                     focused -> colors.text.copy(alpha = if (visible) 1f else 0.6f)
                     visible -> NuvioTheme.colors.Secondary
@@ -3839,7 +3861,7 @@ private fun GroupItem(
                 modifier = Modifier.size(gdp(16f))
             )
         } else if (group.locked) {
-            Icon(Icons.Default.Lock, contentDescription = "Locked", tint = focusedSecondaryTextColor(focused), modifier = Modifier.size(gdp(14f)))
+            Icon(Icons.Default.Lock, contentDescription = stringResource(R.string.iptv_guide_locked), tint = focusedSecondaryTextColor(focused), modifier = Modifier.size(gdp(14f)))
         } else if (moving) {
             LiveText("⇅", color = colors.text, size = gsp(16f), weight = FontWeight.Bold)
         } else if (showCount && group.id != ChannelGroup.SEARCH) {
@@ -3912,59 +3934,59 @@ private fun ChannelContextMenu(
         LiveText(ch.group, color = NuvioTheme.colors.TextSecondary, size = 13.sp)
         Spacer(Modifier.height(14.dp))
         LazyColumn(verticalArrangement = Arrangement.spacedBy(4.dp)) {
-            item { MenuHeader("Watch", first = true) }
-            item { MenuItem("Watch full screen", Modifier.focusRequester(first), onWatch) }
-            item { MenuItem("Add to Multiview", onClick = { com.nuvio.tv.livetv.multiview.MultiviewQueue.addAndAnnounce(ch.key); onDismiss() }) }
+            item { MenuHeader(stringResource(R.string.iptv_guide_watch), first = true) }
+            item { MenuItem(stringResource(R.string.iptv_ge_watch_full_screen), Modifier.focusRequester(first), onWatch) }
+            item { MenuItem(stringResource(R.string.iptv_gear_add_multiview), onClick = { com.nuvio.tv.livetv.multiview.MultiviewQueue.addAndAnnounce(ch.key); onDismiss() }) }
             // On now, with catch-up or a recording running: start it over (right under Watch).
             if (canRestart && (program == null || (now >= program.startMs && now < program.stopMs))) item {
                 MenuItem(restartLabel, onClick = onRestart)
             }
-            if (canCatchup) item { MenuItem("Play from archive: ${program!!.title}", onClick = { onCatchup(program!!) }) }
+            if (canCatchup) item { MenuItem(stringResource(R.string.iptv_ge_play_from_archive, program!!.title), onClick = { onCatchup(program!!) }) }
             if (program != null || streamProgram != null) {
-                item { MenuHeader("This show") }
-                if (program != null) item { MenuItem("Program info", onClick = onProgramInfo) }
+                item { MenuHeader(stringResource(R.string.iptv_ge_this_show)) }
+                if (program != null) item { MenuItem(stringResource(R.string.iptv_ge_program_info), onClick = onProgramInfo) }
                 if (bell != null) item { MenuItem(bell.label, onClick = { bell.toggle(); onDismiss() }) }
                 if (streamProgram != null) {
-                    item { MenuItem("Find & stream \"${streamProgram.title}\" in Nuvio", onClick = { onFindInNuvio(streamProgram) }) }
+                    item { MenuItem(stringResource(R.string.iptv_ge_find_in_nuvio, "\"${streamProgram.title}\""), onClick = { onFindInNuvio(streamProgram) }) }
                 }
                 // Upcoming show: Remind me (or Cancel reminder), right in the long-press menu.
                 if (program != null && program.startMs > now) item {
-                    MenuItem(if (reminderSet) "Cancel reminder" else "Remind me", onClick = { onRemind(program) })
+                    MenuItem(if (reminderSet) stringResource(R.string.iptv_guide_cancel_reminder) else stringResource(R.string.iptv_guide_remind_me), onClick = { onRemind(program) })
                 }
             }
-            item { MenuHeader("Record") }
+            item { MenuHeader(stringResource(R.string.iptv_ge_record_header)) }
             if (program != null && recordLabel != null) item { MenuItem(recordLabel, onClick = { onRecord(program) }) }
             if (program != null && seriesLabel != null) item { MenuItem(seriesLabel, onClick = { onSeries(program) }) }
-            item { MenuItem("Schedule a recording…", onClick = onScheduleRecording) }
-            item { MenuHeader("Favorites & groups") }
-            item { MenuItem(if (isFavorite) "Remove from favorites" else "Add to favorites", onClick = onToggleFavorite) }
-            if (!inFavoritesGroup) item { MenuItem("Pick favorites in this group…", onClick = onPickFavorites) }
+            item { MenuItem(stringResource(R.string.iptv_ge_schedule_recording), onClick = onScheduleRecording) }
+            item { MenuHeader(stringResource(R.string.iptv_ge_favorites_groups)) }
+            item { MenuItem(if (isFavorite) stringResource(R.string.iptv_ge_remove_favorites) else stringResource(R.string.iptv_ge_add_favorites), onClick = onToggleFavorite) }
+            if (!inFavoritesGroup) item { MenuItem(stringResource(R.string.iptv_ge_pick_favorites_group), onClick = onPickFavorites) }
             if (isFavorite && inFavoritesGroup) {
-                item { MenuItem("Move up in favorites", onClick = { onMoveFavorite(-1) }) }
-                item { MenuItem("Move down in favorites", onClick = { onMoveFavorite(1) }) }
+                item { MenuItem(stringResource(R.string.iptv_ge_move_up_favorites), onClick = { onMoveFavorite(-1) }) }
+                item { MenuItem(stringResource(R.string.iptv_ge_move_down_favorites), onClick = { onMoveFavorite(1) }) }
             }
-            item { MenuItem("Add to group…", onClick = onAddToGroup) }
+            item { MenuItem(stringResource(R.string.iptv_ge_add_to_group), onClick = onAddToGroup) }
             if (customGroupId != null) {
-                item { MenuItem("Move up in this group", onClick = { onMoveInGroup(customGroupId, -1) }) }
-                item { MenuItem("Move down in this group", onClick = { onMoveInGroup(customGroupId, 1) }) }
-                item { MenuItem("Remove from this group", onClick = { onRemoveFromGroup(customGroupId) }) }
+                item { MenuItem(stringResource(R.string.iptv_ge_move_up_group), onClick = { onMoveInGroup(customGroupId, -1) }) }
+                item { MenuItem(stringResource(R.string.iptv_ge_move_down_group), onClick = { onMoveInGroup(customGroupId, 1) }) }
+                item { MenuItem(stringResource(R.string.iptv_ge_remove_from_group), onClick = { onRemoveFromGroup(customGroupId) }) }
             }
-            item { MenuItem("Copy channel…", onClick = onCopy) }
-            if (isCopyHere) item { MenuItem("Remove copy from this group", onClick = onRemoveCopy) }
-            item { MenuHeader("Edit channel") }
-            item { MenuItem("Rename channel", onClick = onRename) }
-            item { MenuItem("Change channel number", onClick = onRenumber) }
-            item { MenuItem("Assign EPG", onClick = onChangeEpg) }
-            item { MenuItem("Change logo", onClick = onChangeLogo) }
-            item { MenuHeader("Hide & arrange") }
-            item { MenuItem("Hide channel", onClick = onHide) }
-            item { MenuItem("Hide group \"${ch.group}\"", onClick = onHideGroup) }
-            item { MenuItem("Manage visibility", onClick = onManageVisibility) }
-            if (canReorder) item { MenuItem("Reorder channels", onClick = onReorder) }
-            item { MenuHeader("Guide") }
-            item { MenuItem("Update playlists & EPG", onClick = onRefresh) }
-            item { MenuItem("Guide display (info panel, preview…)", onClick = onGuideDisplay) }
-            item { MenuItem("Live TV settings", onClick = onSettings) }
+            item { MenuItem(stringResource(R.string.iptv_ge_copy_channel), onClick = onCopy) }
+            if (isCopyHere) item { MenuItem(stringResource(R.string.iptv_ge_remove_copy), onClick = onRemoveCopy) }
+            item { MenuHeader(stringResource(R.string.iptv_ge_edit_channel)) }
+            item { MenuItem(stringResource(R.string.iptv_ge_rename_channel), onClick = onRename) }
+            item { MenuItem(stringResource(R.string.iptv_ge_change_number), onClick = onRenumber) }
+            item { MenuItem(stringResource(R.string.iptv_guide_assign_epg), onClick = onChangeEpg) }
+            item { MenuItem(stringResource(R.string.iptv_guide_change_logo), onClick = onChangeLogo) }
+            item { MenuHeader(stringResource(R.string.iptv_ge_hide_arrange)) }
+            item { MenuItem(stringResource(R.string.iptv_gear_hide_channel), onClick = onHide) }
+            item { MenuItem(stringResource(R.string.iptv_ge_hide_group, "\"${ch.group}\""), onClick = onHideGroup) }
+            item { MenuItem(stringResource(R.string.iptv_ge_manage_visibility), onClick = onManageVisibility) }
+            if (canReorder) item { MenuItem(stringResource(R.string.iptv_ge_reorder_channels), onClick = onReorder) }
+            item { MenuHeader(stringResource(R.string.iptv_ge_guide_header)) }
+            item { MenuItem(stringResource(R.string.iptv_ge_update_playlists), onClick = onRefresh) }
+            item { MenuItem(stringResource(R.string.iptv_ge_guide_display), onClick = onGuideDisplay) }
+            item { MenuItem(stringResource(R.string.iptv_ge_live_tv_settings), onClick = onSettings) }
         }
     }
     LaunchedEffect(Unit) { delay(60); runCatching { first.requestFocus() } }
@@ -4162,19 +4184,19 @@ private fun EpgSidePanel(
             )
     ) {
         // Header
-        LiveText("Assign EPG", modifier = Modifier.padding(start = 12.dp), size = 24.sp, weight = FontWeight.ExtraBold)
+        LiveText(stringResource(R.string.iptv_guide_assign_epg), modifier = Modifier.padding(start = 12.dp), size = 24.sp, weight = FontWeight.ExtraBold)
         val filterName = sources.firstOrNull { it.sourceId == sourceFilter }?.name
         // What the channel uses now: your pick, or the automatic match (handy when a channel shows
         // the wrong listings, e.g. a guide's "Programming" placeholder).
-        val using = if (current?.isNone == true) "Unassigned: no guide (Automatic puts it back)" else (current ?: automatic)?.let { a ->
+        val using = if (current?.isNone == true) stringResource(R.string.iptv_ge_epg_unassigned_state) else (current ?: automatic)?.let { a ->
             val src = sources.firstOrNull { it.sourceId == a.sourceId }
             val name = src?.channels?.firstOrNull { it.id == a.xmltvId }?.displayName ?: a.xmltvId
-            (if (current != null) "Assigned: " else "Automatic: ") + name + (src?.let { " · ${it.label}" } ?: "")
-        } ?: "Automatic: no guide found"
+            (if (current != null) stringResource(R.string.iptv_ge_epg_assigned, name) else stringResource(R.string.iptv_ge_epg_automatic_value, name)) + (src?.let { " · ${it.label}" } ?: "")
+        } ?: stringResource(R.string.iptv_ge_epg_automatic_none)
         val sub = statusMessage ?: listOfNotNull(
             channel.name,
             using,
-            if (unassignedOnly) "Unassigned channels" else null,
+            if (unassignedOnly) stringResource(R.string.iptv_ge_epg_unassigned_channels) else null,
             filterName,
             query.takeIf { it.isNotBlank() }?.let { "\"$it\"" }
         ).joinToString("  ·  ")
@@ -4183,11 +4205,11 @@ private fun EpgSidePanel(
 
         // Buttons, as pills like Nuvio's menu items
         val buttons = listOf<Triple<androidx.compose.ui.graphics.vector.ImageVector, String, () -> Unit>>(
-            Triple(Icons.Default.Search, "Search") { searchOpen = true },
+            Triple(Icons.Default.Search, stringResource(R.string.nav_search)) { searchOpen = true },
             // Toggles the guide's channel list and this list between everything and unassigned only.
-            Triple(Icons.Default.FilterAlt, if (unassignedOnly) "All channels" else "Unassigned") { onToggleUnassigned() },
-            Triple(Icons.Default.Refresh, "Full scan") { onFullScan() },
-            Triple(Icons.Default.LinkOff, if (current?.isNone == true) "Automatic" else "Unassign") { onUnassign() }
+            Triple(Icons.Default.FilterAlt, if (unassignedOnly) stringResource(R.string.iptv_guide_all_channels) else stringResource(R.string.iptv_ge_epg_unassigned)) { onToggleUnassigned() },
+            Triple(Icons.Default.Refresh, stringResource(R.string.iptv_ge_epg_full_scan)) { onFullScan() },
+            Triple(Icons.Default.LinkOff, if (current?.isNone == true) stringResource(R.string.iptv_settings_automatic) else stringResource(R.string.iptv_ge_epg_unassign)) { onUnassign() }
         )
         Row(
             modifier = Modifier.fillMaxWidth().padding(horizontal = 4.dp),
@@ -4224,7 +4246,7 @@ private fun EpgSidePanel(
         // Which guide to pick from: one tap per guide (with how many channels each has).
         if (sources.size > 1) {
             Spacer(Modifier.height(8.dp))
-            val chips = listOf<Pair<String?, String>>(null to "All guides") +
+            val chips = listOf<Pair<String?, String>>(null to stringResource(R.string.iptv_ge_epg_all_guides)) +
                 sources.map { it.sourceId to "${it.name} (${it.channels.size})" }
             androidx.compose.foundation.lazy.LazyRow(
                 modifier = Modifier.fillMaxWidth().padding(horizontal = 4.dp),
@@ -4265,10 +4287,10 @@ private fun EpgSidePanel(
         if (rows.isEmpty()) {
             LiveText(
                 when {
-                    loading && sources.isEmpty() -> "Guides are still loading…"
-                    rowsReady == null && sources.isNotEmpty() -> "Loading guide channels…"
-                    sources.isEmpty() -> "No guides loaded. Add an EPG source in Live TV settings."
-                    else -> "No guide channels match."
+                    loading && sources.isEmpty() -> stringResource(R.string.iptv_guide_loading)
+                    rowsReady == null && sources.isNotEmpty() -> stringResource(R.string.iptv_guide_loading)
+                    sources.isEmpty() -> stringResource(R.string.iptv_guide_no_guides_loaded)
+                    else -> stringResource(R.string.iptv_guide_no_guide_channels_match)
                 },
                 modifier = Modifier.padding(12.dp),
                 color = NuvioTheme.colors.TextSecondary,
@@ -4315,19 +4337,19 @@ private fun EpgSidePanel(
 
     if (searchOpen) {
         TextInputDialog(
-            title = "Search guide channels",
+            title = stringResource(R.string.iptv_ge_epg_search_title),
             initial = query.ifBlank { seed },
-            hint = "Channel name or ID",
-            confirmLabel = "Search",
+            hint = stringResource(R.string.iptv_ge_epg_channel_name_id),
+            confirmLabel = stringResource(R.string.nav_search),
             onDismiss = { searchOpen = false },
             onConfirm = { q -> query = q.trim(); searchOpen = false }
         )
     }
     if (filterOpen) {
         ActionMenuDialog(
-            title = "Show channels from",
+            title = stringResource(R.string.iptv_ge_epg_show_from),
             actions = buildList<Pair<String, () -> Unit>> {
-                add(("All guides" + if (sourceFilter == null) "  ✓" else "") to { sourceFilter = null; filterOpen = false })
+                add((stringResource(R.string.iptv_ge_epg_all_guides) + if (sourceFilter == null) "  ✓" else "") to { sourceFilter = null; filterOpen = false })
                 sources.forEach { src ->
                     add(("${src.name} · ${src.label} (${src.channels.size})" + if (sourceFilter == src.sourceId) "  ✓" else "") to {
                         sourceFilter = src.sourceId
@@ -4544,15 +4566,15 @@ internal fun GroupPickerDialog(
     onDismiss: () -> Unit,
     onPick: (ChannelGroup) -> Unit,
     onNewGroup: () -> Unit,
-    title: String = "Add \"${channel.name}\" to…"
+    title: String? = null
 ) {
     val first = remember { FocusRequester() }
     LiveDialog(onDismiss = onDismiss, width = 460.dp) {
-        LiveText(title, size = 20.sp, weight = FontWeight.Bold)
+        LiveText(title ?: stringResource(R.string.iptv_ge_add_named, "\"${channel.name}\""), size = 20.sp, weight = FontWeight.Bold)
         Spacer(Modifier.height(14.dp))
         LazyColumn(verticalArrangement = Arrangement.spacedBy(4.dp)) {
-            item { MenuItem("+ New group", Modifier.focusRequester(first), onNewGroup) }
-            items(groups, key = { it.id }) { g -> MenuItem(g.title, onClick = { onPick(g) }) }
+            item { MenuItem("+ " + stringResource(R.string.iptv_ge_new_group), Modifier.focusRequester(first), onNewGroup) }
+            items(groups, key = { it.id }) { g -> MenuItem(guideGroupTitle(g), onClick = { onPick(g) }) }
         }
     }
     LaunchedEffect(Unit) { delay(60); runCatching { first.requestFocus() } }
@@ -4637,7 +4659,7 @@ private fun ProgramInfoDialog(
             LiveText(meta, color = NuvioTheme.colors.TextSecondary, size = 14.sp, maxLines = 2)
         }
         Spacer(Modifier.height(12.dp))
-        ScrollingDescription(p?.description ?: "No description available.", color = NuvioTheme.colors.TextSecondary, size = 16.sp, maxLines = 10)
+        ScrollingDescription(p?.description ?: stringResource(R.string.iptv_guide_no_description), color = NuvioTheme.colors.TextSecondary, size = 16.sp, maxLines = 10)
         Spacer(Modifier.height(18.dp))
         // Scrolls sideways if the buttons don't all fit.
         Row(
@@ -4650,26 +4672,29 @@ private fun ProgramInfoDialog(
             // For a show that hasn't started, streaming it through Nuvio is the main action.
             if (upcoming) {
                 LiveFocusRow(modifier = Modifier.focusRequester(first), onClick = { onFind(p!!) }) { f ->
-                    LiveText("Find & stream in Nuvio", color = focusedTextColor(f))
+                    LiveText(stringResource(R.string.iptv_guide_find_and_stream), color = focusedTextColor(f))
                 }
             }
             when {
-                live -> LiveFocusRow(modifier = Modifier.focusRequester(first), onClick = onWatch) { f -> LiveText("Watch", color = focusedTextColor(f)) }
-                archive -> LiveFocusRow(modifier = Modifier.focusRequester(first), onClick = { onCatchup(p!!) }) { f -> LiveText("Play from archive", color = focusedTextColor(f)) }
-                upcoming -> LiveFocusRow(onClick = onWatch) { f -> LiveText("Watch channel now", color = focusedTextColor(f)) }
-                else -> LiveFocusRow(modifier = Modifier.focusRequester(first), onClick = onWatch) { f -> LiveText("Watch channel now", color = focusedTextColor(f)) }
+                live -> LiveFocusRow(modifier = Modifier.focusRequester(first), onClick = onWatch) { f -> LiveText(stringResource(R.string.iptv_guide_watch), color = focusedTextColor(f)) }
+                archive -> LiveFocusRow(modifier = Modifier.focusRequester(first), onClick = { onCatchup(p!!) }) { f -> LiveText(stringResource(R.string.iptv_guide_play_from_archive), color = focusedTextColor(f)) }
+                upcoming -> LiveFocusRow(onClick = onWatch) { f -> LiveText(stringResource(R.string.iptv_guide_watch_channel_now), color = focusedTextColor(f)) }
+                else -> LiveFocusRow(modifier = Modifier.focusRequester(first), onClick = onWatch) { f -> LiveText(stringResource(R.string.iptv_guide_watch_channel_now), color = focusedTextColor(f)) }
             }
             if (p != null && !upcoming) {
-                LiveFocusRow(onClick = { onFind(p) }) { f -> LiveText("Find & stream in Nuvio", color = focusedTextColor(f)) }
+                LiveFocusRow(onClick = { onFind(p) }) { f -> LiveText(stringResource(R.string.iptv_guide_find_and_stream), color = focusedTextColor(f)) }
             }
             // On now, on a catch-up channel: start it over.
             if (p != null && now >= p.startMs && now < p.stopMs && canRestart) {
-                LiveFocusRow(onClick = onRestart) { f -> LiveText("Watch from the beginning", color = focusedTextColor(f)) }
+                LiveFocusRow(onClick = onRestart) { f -> LiveText(stringResource(R.string.iptv_guide_watch_from_beginning), color = focusedTextColor(f)) }
             }
             // Reminders: a message a minute before it starts, wherever you are in Nuvio.
             if (p != null && upcoming) {
                 LiveFocusRow(onClick = { onRemind(p) }) { f ->
-                    LiveText(if (reminderSet) "Cancel reminder" else "Remind me", color = focusedTextColor(f))
+                    LiveText(
+                        stringResource(if (reminderSet) R.string.iptv_guide_cancel_reminder else R.string.iptv_guide_remind_me),
+                        color = focusedTextColor(f)
+                    )
                 }
             }
             if (p != null && recordLabel != null) {
@@ -4682,10 +4707,19 @@ private fun ProgramInfoDialog(
                         if (b.on) Icons.Default.NotificationsActive else Icons.Default.NotificationsNone,
                         contentDescription = null, tint = focusedTextColor(f), modifier = Modifier.size(16.dp)
                     )
-                    LiveText(if (b.on) (if (b.isMovie) "On your Calendar" else "Bell on") else "Bell", color = focusedTextColor(f))
+                    LiveText(
+                        stringResource(
+                            when {
+                                !b.on -> R.string.iptv_guide_bell
+                                b.isMovie -> R.string.iptv_guide_on_calendar
+                                else -> R.string.iptv_guide_bell_on
+                            }
+                        ),
+                        color = focusedTextColor(f)
+                    )
                 }
             }
-            LiveFocusRow(onClick = onDismiss) { f -> LiveText("Close", color = focusedTextColor(f)) }
+            LiveFocusRow(onClick = onDismiss) { f -> LiveText(stringResource(R.string.action_close), color = focusedTextColor(f)) }
         }
     }
     LaunchedEffect(Unit) { delay(60); runCatching { first.requestFocus() } }
@@ -4694,10 +4728,10 @@ private fun ProgramInfoDialog(
 @Composable
 internal fun SearchDialog(initial: String, onDismiss: () -> Unit, onSearch: (String) -> Unit) {
     TextInputDialog(
-        title = "Search channels",
+        title = stringResource(R.string.iptv_guide_search_channels),
         initial = initial,
-        hint = "Channel name or number",
-        confirmLabel = "Search",
+        hint = stringResource(R.string.iptv_guide_channel_name_or_number),
+        confirmLabel = stringResource(R.string.nav_search),
         onDismiss = onDismiss,
         onConfirm = onSearch
     )
@@ -5031,10 +5065,10 @@ private fun LogoSidePanel(
     ) {
         Row(verticalAlignment = Alignment.CenterVertically, modifier = Modifier.padding(start = 12.dp)) {
             Column(Modifier.weight(1f)) {
-                LiveText("Change Logo", size = 24.sp, weight = FontWeight.ExtraBold)
+                LiveText(stringResource(R.string.iptv_guide_change_logo), size = 24.sp, weight = FontWeight.ExtraBold)
                 val sub = listOfNotNull(
                     channel.name,
-                    if (picked) "Using your pick" else "Using its own logo",
+                    stringResource(if (picked) R.string.iptv_guide_using_your_pick else R.string.iptv_guide_using_own_logo),
                     query.takeIf { it.isNotBlank() }?.let { "\"$it\"" }
                 ).joinToString("  ·  ")
                 LiveText(sub, color = NuvioTheme.colors.TextSecondary, size = 13.sp, marquee = true)
@@ -5047,10 +5081,10 @@ private fun LogoSidePanel(
         }
         Spacer(Modifier.height(14.dp))
         val buttons = listOf<Triple<androidx.compose.ui.graphics.vector.ImageVector, String, () -> Unit>>(
-            Triple(Icons.Default.Search, "Search") { searchOpen = true },
-            Triple(Icons.Default.PhoneAndroid, "From phone") { phoneOpen = true },
-            Triple(Icons.Default.Refresh, "Its own") { viewModel.setChannelLogo(channel, null) },
-            Triple(Icons.Default.Tune, "Sources") { sourcesOpen = true }
+            Triple(Icons.Default.Search, stringResource(R.string.nav_search)) { searchOpen = true },
+            Triple(Icons.Default.PhoneAndroid, stringResource(R.string.iptv_ge_logo_from_phone)) { phoneOpen = true },
+            Triple(Icons.Default.Refresh, stringResource(R.string.iptv_ge_logo_its_own)) { viewModel.setChannelLogo(channel, null) },
+            Triple(Icons.Default.Tune, stringResource(R.string.iptv_ge_logo_sources)) { sourcesOpen = true }
         )
         Row(Modifier.fillMaxWidth().padding(horizontal = 4.dp), horizontalArrangement = Arrangement.spacedBy(8.dp)) {
             buttons.forEachIndexed { i, (icon, label, action) ->
@@ -5081,13 +5115,17 @@ private fun LogoSidePanel(
 
         val list = choices.orEmpty()
         if (choices == null) {
-            LiveText("Finding logos…", modifier = Modifier.padding(12.dp), color = NuvioTheme.colors.TextSecondary)
+            LiveText(stringResource(R.string.iptv_guide_finding_logos), modifier = Modifier.padding(12.dp), color = NuvioTheme.colors.TextSecondary)
         } else if (list.isEmpty() && !libraryLoading) {
             LiveText(
-                if (query.isBlank()) "No logos found for this channel. Try Search with another name." else "No logos match \"$query\".",
+                if (query.isBlank()) stringResource(R.string.iptv_ge_logo_none_channel) else stringResource(R.string.iptv_ge_logo_none_query, "\"$query\""),
                 modifier = Modifier.padding(12.dp), color = NuvioTheme.colors.TextSecondary, maxLines = 3
             )
         }
+        val playlistLogosHeading = stringResource(R.string.iptv_ge_logo_from_playlists)
+        val guideLogosHeading = stringResource(R.string.iptv_ge_logo_from_guides)
+        val tmdbLogosHeading = stringResource(R.string.iptv_ge_logo_tmdb)
+        val libraryLogosHeading = stringResource(R.string.iptv_ge_logo_libraries)
         LazyColumn(
             state = listState,
             modifier = Modifier
@@ -5113,10 +5151,10 @@ private fun LogoSidePanel(
                 if (choice.group != lastGroup) {
                     lastGroup = choice.group
                     val heading = when (choice.group) {
-                        com.nuvio.tv.livetv.data.LogoChoice.PLAYLISTS -> "From your playlists"
-                        com.nuvio.tv.livetv.data.LogoChoice.GUIDES -> "From your guides"
-                        com.nuvio.tv.livetv.data.LogoChoice.TMDB -> "Show & movie logos (TMDB)"
-                        else -> "Logo libraries"
+                        com.nuvio.tv.livetv.data.LogoChoice.PLAYLISTS -> playlistLogosHeading
+                        com.nuvio.tv.livetv.data.LogoChoice.GUIDES -> guideLogosHeading
+                        com.nuvio.tv.livetv.data.LogoChoice.TMDB -> tmdbLogosHeading
+                        else -> libraryLogosHeading
                     }
                     item(key = "h$heading") {
                         LiveText(heading, modifier = Modifier.padding(start = 12.dp, top = 8.dp, bottom = 2.dp),
@@ -5134,17 +5172,17 @@ private fun LogoSidePanel(
                 }
             }
             if (libraryLoading) item(key = "loading") {
-                LiveText("Looking in the logo libraries and TMDB…", modifier = Modifier.padding(12.dp), color = NuvioTheme.colors.TextSecondary, size = 13.sp)
+                LiveText(stringResource(R.string.iptv_guide_looking_in_logo_libraries), modifier = Modifier.padding(12.dp), color = NuvioTheme.colors.TextSecondary, size = 13.sp)
             }
         }
     }
 
     if (searchOpen) {
         TextInputDialog(
-            title = "Search logos",
+            title = stringResource(R.string.iptv_ge_logo_search_title),
             initial = query.ifBlank { epgSearchSeed(channel.name) },
-            hint = "Channel name",
-            confirmLabel = "Search",
+            hint = stringResource(R.string.iptv_ge_logo_channel_name),
+            confirmLabel = stringResource(R.string.nav_search),
             onDismiss = { searchOpen = false },
             onConfirm = { q -> query = q.trim(); searchOpen = false }
         )
@@ -5175,16 +5213,16 @@ private fun LogoSidePanel(
 @Composable
 private fun LogoSourcesDialog(off: Set<String>, onToggle: (String) -> Unit, onDismiss: () -> Unit) {
     val sources = listOf(
-        "tv-logos" to "tv-logos library",
-        "iptv-org" to "iptv-org library",
-        "tmdb" to "Show & movie logos (TMDB)",
-        "playlists" to "Your playlists",
-        "guides" to "Your guides"
+        "tv-logos" to stringResource(R.string.iptv_ge_logo_tv_logos),
+        "iptv-org" to stringResource(R.string.iptv_ge_logo_iptv_org),
+        "tmdb" to stringResource(R.string.iptv_ge_logo_tmdb),
+        "playlists" to stringResource(R.string.iptv_ge_logo_your_playlists),
+        "guides" to stringResource(R.string.iptv_ge_logo_your_guides)
     )
     val first = remember { FocusRequester() }
     LiveDialog(onDismiss = onDismiss, width = 520.dp) {
-        LiveText("Logo Sources", size = 20.sp, weight = FontWeight.Bold)
-        LiveText("Where Change Logo looks. Turn off the ones you don't want in the list.", color = NuvioTheme.colors.TextSecondary, size = 13.sp, maxLines = 2)
+        LiveText(stringResource(R.string.iptv_guide_logo_sources), size = 20.sp, weight = FontWeight.Bold)
+        LiveText(stringResource(R.string.iptv_guide_logo_sources_help), color = NuvioTheme.colors.TextSecondary, size = 13.sp, maxLines = 2)
         Spacer(Modifier.height(10.dp))
         sources.forEachIndexed { i, (key, label) ->
             val on = key !in off
@@ -5193,11 +5231,11 @@ private fun LogoSourcesDialog(off: Set<String>, onToggle: (String) -> Unit, onDi
                 onClick = { onToggle(key) }
             ) { f ->
                 LiveText(label, color = focusedTextColor(f), size = 16.sp, modifier = Modifier.weight(1f))
-                LiveText(if (on) "On" else "Off", color = if (on) NuvioTheme.colors.Secondary else focusedSecondaryTextColor(f), size = 15.sp, weight = FontWeight.Bold)
+                LiveText(if (on) stringResource(R.string.iptv_gear_on) else stringResource(R.string.iptv_gear_off), color = if (on) NuvioTheme.colors.Secondary else focusedSecondaryTextColor(f), size = 15.sp, weight = FontWeight.Bold)
             }
         }
         Spacer(Modifier.height(6.dp))
-        MenuItem("Done", onClick = onDismiss)
+        MenuItem(stringResource(R.string.iptv_settings_group_tags_done), onClick = onDismiss)
     }
     LaunchedEffect(Unit) { delay(80); runCatching { first.requestFocus() } }
 }
@@ -5250,14 +5288,15 @@ private fun LogoChoiceRow(choice: com.nuvio.tv.livetv.data.LogoChoice, inUse: Bo
 /** A logo's address typed on a phone: a QR code opens a small page on the home network. */
 @Composable
 private fun LogoFromPhoneDialog(channelName: String, onDismiss: () -> Unit, onUrl: (String) -> Unit) {
+    val context = androidx.compose.ui.platform.LocalContext.current
     var received by remember { mutableStateOf<String?>(null) }
     var problem by remember { mutableStateOf<String?>(null) }
     var handle by remember { mutableStateOf<com.nuvio.tv.livetv.crash.PhoneInputServer.Handle?>(null) }
     var noNetwork by remember { mutableStateOf(false) }
     androidx.compose.runtime.DisposableEffect(Unit) {
         val h = com.nuvio.tv.livetv.crash.PhoneInputServer.start(
-            title = "Logo for $channelName",
-            prompt = "Paste the web address of the logo (a picture link ending in .png, .jpg, .svg…), then tap Send to TV.",
+            title = context.getString(R.string.iptv_ge_logo_for, channelName),
+            prompt = context.getString(R.string.iptv_ge_logo_paste),
             placeholder = "https://…/logo.png"
         ) { v -> received = v }
         handle = h
@@ -5267,16 +5306,16 @@ private fun LogoFromPhoneDialog(channelName: String, onDismiss: () -> Unit, onUr
     LaunchedEffect(received) {
         val v = received ?: return@LaunchedEffect
         if (v.startsWith("http://", true) || v.startsWith("https://", true)) onUrl(v)
-        else problem = "That isn't a web address (it should start with http:// or https://). Try again from your phone."
+        else problem = context.getString(R.string.iptv_ge_logo_not_url)
     }
     val qr = remember(handle?.url) {
         handle?.url?.let { runCatching { com.nuvio.tv.core.qr.QrCodeGenerator.generate(it, 360) }.getOrNull() }
     }
     LiveDialog(onDismiss = onDismiss, width = 620.dp) {
-        LiveText("Logo from your phone", size = 20.sp, weight = FontWeight.Bold)
+        LiveText(stringResource(R.string.iptv_guide_logo_from_phone), size = 20.sp, weight = FontWeight.Bold)
         Spacer(Modifier.height(8.dp))
         if (noNetwork) {
-            LiveText("Connect this TV to Wi-Fi to send a logo from your phone.", color = NuvioTheme.colors.TextSecondary, size = 14.sp, maxLines = 3)
+            LiveText(stringResource(R.string.iptv_guide_logo_from_phone_help), color = NuvioTheme.colors.TextSecondary, size = 14.sp, maxLines = 3)
         } else {
             Row(horizontalArrangement = Arrangement.spacedBy(18.dp), verticalAlignment = Alignment.CenterVertically) {
                 qr?.let {
@@ -5288,7 +5327,7 @@ private fun LogoFromPhoneDialog(channelName: String, onDismiss: () -> Unit, onUr
                 }
                 Column(Modifier.weight(1f)) {
                     LiveText(
-                        "1. Put your phone on the same Wi-Fi as this TV.\n2. Scan the code with your phone's camera.\n3. Paste the logo's web address and tap Send to TV.",
+                        stringResource(R.string.iptv_ge_logo_phone_steps),
                         color = NuvioTheme.colors.TextSecondary, size = 14.sp, maxLines = 6
                     )
                     handle?.url?.let { LiveText(it.removePrefix("http://"), size = 13.sp, modifier = Modifier.padding(top = 8.dp)) }
@@ -5297,6 +5336,6 @@ private fun LogoFromPhoneDialog(channelName: String, onDismiss: () -> Unit, onUr
             }
         }
         Spacer(Modifier.height(12.dp))
-        MenuItem("Close", onClick = onDismiss)
+        MenuItem(stringResource(R.string.action_close), onClick = onDismiss)
     }
 }

@@ -1,0 +1,27 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <string name="vpn_phone_title">"VPN hinzuf?gen"</string>
+    <string name="vpn_phone_connected_to">"Verbunden mit %1$s"</string>
+    <string name="vpn_phone_heading">"WireGuard-Profil hinzuf?gen"</string>
+    <string name="vpn_phone_instructions">"W?hle deine WireGuard-.conf-Datei. Der Fernseher liest sie, verschl?sselt sie und speichert sie auf diesem Ger?t."</string>
+    <string name="vpn_phone_choose">".conf-Datei w?hlen"</string>
+    <string name="vpn_phone_selected">"Ausgew?hlt: %1$s"</string>
+    <string name="vpn_phone_send">"An Fernseher senden"</string>
+    <string name="vpn_phone_sending">"Wird gesendet?"</string>
+    <string name="vpn_phone_received">"Gesendet. Pr?fe deinen Fernseher."</string>
+    <string name="vpn_phone_too_large">"Diese Datei ist zu gro?."</string>
+    <string name="vpn_phone_unreachable">"Der Fernseher ist nicht erreichbar."</string>
+    <string name="vpn_phone_nothing">"W?hle zuerst eine .conf-Datei."</string>
+    <string name="vpn_phone_network">"Nur Ger?te in diesem Netzwerk k?nnen diese Seite ?ffnen. Dein Profil wird direkt an den Fernseher gesendet."</string>
+    <string name="vpn_phone_add">"Vom Handy hinzuf?gen"</string>
+    <string name="vpn_phone_add_detail">"QR-Code scannen und die .conf-Datei am Handy w?hlen"</string>
+    <string name="vpn_phone_dialog_title">"VPN-Profil vom Handy hinzuf?gen"</string>
+    <string name="vpn_phone_qr">"QR-Code"</string>
+    <string name="vpn_phone_waiting">"Warte auf dein Handy?"</string>
+    <string name="vpn_phone_received_tv">"Profil empfangen. Wird gespeichert?"</string>
+    <string name="vpn_phone_steps">"1. Verbinde dein Handy mit demselben WLAN wie diesen Fernseher.
+2. Scanne den Code mit der Handy-Kamera.
+3. W?hle die .conf-Datei und tippe auf An Fernseher senden."</string>
+    <string name="vpn_phone_address">"Oder ?ffne %1$s"</string>
+    <string name="vpn_phone_no_network">"Kein Heimnetzwerk gefunden. Verbinde diesen Fernseher mit WLAN und versuche es erneut."</string>
+</resources>

@@ -33,6 +33,8 @@ import androidx.compose.ui.focus.focusProperties
 import androidx.compose.ui.focus.focusRequester
 import androidx.compose.ui.focus.onFocusChanged
 import androidx.compose.ui.layout.ContentScale
+import androidx.compose.ui.res.stringResource
+import com.nuvio.tv.R
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
@@ -93,7 +95,7 @@ fun OnDemandSearchRow(
     val scope = rememberCoroutineScope()
     var providerItem by remember { mutableStateOf<VodItem?>(null) }
     var opening by remember { mutableStateOf(false) }
-    com.nuvio.tv.livetv.ui.SearchResultsRow(title = "On Demand", modifier = modifier) {
+    com.nuvio.tv.livetv.ui.SearchResultsRow(title = stringResource(R.string.iptv_settings_on_demand), modifier = modifier) {
         itemsIndexed(results.items, key = { _, it -> it.uid }) { index, item ->
             OnDemandSearchCard(
                 item = item,

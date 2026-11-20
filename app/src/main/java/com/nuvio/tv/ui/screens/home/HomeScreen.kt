@@ -173,7 +173,12 @@ fun HomeScreen(
         }
     }
 
-    val onNavigateToDetailStable = remember(onNavigateToDetail) { onNavigateToDetail }
+    val onNavigateToDetailStable = remember(onNavigateToDetail, viewModel) {
+        { itemId: String, itemType: String, addonBaseUrl: String ->
+            viewModel.beginTrailerHandoff(itemId)
+            onNavigateToDetail(itemId, itemType, addonBaseUrl)
+        }
+    }
     val latestContinueWatchingClickAction = androidx.compose.runtime.rememberUpdatedState(uiState.continueWatchingClickAction)
     val onContinueWatchingClickStable = remember(onContinueWatchingClick, onNavigateToDetail) {
         { item: ContinueWatchingItem ->
@@ -181,7 +186,10 @@ fun HomeScreen(
             // Nuvio details page behind their `nuviovod:` id.
             val onDemand = item is ContinueWatchingItem.InProgress &&
                 com.nuvio.tv.livetv.ondemand.VodHomeIds.isOnDemandContentId(item.progress.contentId)
-            if (!onDemand && latestContinueWatchingClickAction.value.opensDetails(item)) {
+            // YouTube fork: these have no Nuvio details page; they always resume in the player.
+            val youtube = item is ContinueWatchingItem.InProgress &&
+                com.nuvio.tv.youtube.YouTubeProgress.isYouTubeId(item.progress.contentId)
+            if (!onDemand && !youtube && latestContinueWatchingClickAction.value.opensDetails(item)) {
                 when (item) {
                     is ContinueWatchingItem.InProgress -> onNavigateToDetail(item.progress.contentId, item.progress.contentType, "")
                     is ContinueWatchingItem.NextUp -> onNavigateToDetail(item.info.contentId, item.info.contentType, "")

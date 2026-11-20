@@ -19,6 +19,9 @@ import kotlinx.coroutines.async
 import kotlinx.coroutines.coroutineScope
 import kotlinx.coroutines.delay
 import kotlinx.coroutines.flow.MutableStateFlow
+import androidx.annotation.StringRes
+import com.nuvio.tv.R
+import com.nuvio.tv.core.util.withAppLocale
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.asStateFlow
 import kotlinx.coroutines.flow.collectLatest
@@ -30,13 +33,13 @@ import kotlinx.coroutines.withContext
 import javax.inject.Inject
 
 /** The top tabs of the Music section. Library and Settings join these in a later wave. */
-enum class MusicTab(val title: String) {
-    HOME("Home"),
-    DISCOVER("Discover"),
-    EXPLORE("Explore"),
-    LIBRARY("Library"),
-    LOCAL("Local"),
-    SEARCH("Search")
+enum class MusicTab(val title: String, @StringRes val titleRes: Int) {
+    HOME("Home", R.string.music_tab_home),
+    DISCOVER("Discover", R.string.music_tab_discover),
+    EXPLORE("Explore", R.string.music_tab_explore),
+    LIBRARY("Library", R.string.music_tab_library),
+    LOCAL("Local", R.string.music_tab_local),
+    SEARCH("Search", R.string.music_tab_search)
 }
 
 data class MusicHomeState(
@@ -172,6 +175,9 @@ class MusicViewModel @Inject constructor(
         const val TAG = "MusicVM"
     }
 
+    private fun text(@StringRes id: Int, vararg args: Any): String =
+        context.withAppLocale().getString(id, *args)
+
     private val _state = MutableStateFlow(MusicUiState())
     val state: StateFlow<MusicUiState> = _state.asStateFlow()
 
@@ -234,7 +240,7 @@ class MusicViewModel @Inject constructor(
         return when {
             raw.contains("403") || lower.contains("automated queries") ||
                 raw.contains("<html", ignoreCase = true) || lower.contains("unusual traffic") ->
-                "YouTube Music is temporarily limiting requests. Wait a few minutes, then try again."
+                text(R.string.music_error_limiting)
             raw.isBlank() -> fallback
             else -> raw
         }
@@ -364,7 +370,7 @@ class MusicViewModel @Inject constructor(
                         it.copy(
                             home = it.home.copy(
                                 loading = false,
-                                error = friendlyMusicError(error, "Couldn't load your music."),
+                                error = friendlyMusicError(error, text(R.string.music_error_load)),
                                 account = false
                             )
                         )
@@ -464,7 +470,7 @@ class MusicViewModel @Inject constructor(
                         it.copy(
                             accountLibrary = it.accountLibrary.copy(
                                 loading = false,
-                                error = friendlyMusicError(error, "Couldn't load your music library.")
+                                error = friendlyMusicError(error, text(R.string.music_error_library))
                             )
                         )
                     }
@@ -539,7 +545,7 @@ class MusicViewModel @Inject constructor(
                         else it.copy(
                             search = it.search.copy(
                                 loading = false,
-                                error = friendlyMusicError(error, "Search failed.")
+                                error = friendlyMusicError(error, text(R.string.music_error_search))
                             )
                         )
                     }
@@ -725,7 +731,7 @@ class MusicViewModel @Inject constructor(
                         else it.copy(
                             detail = it.detail.copy(
                                 loading = false,
-                                error = friendlyMusicError(error, "Couldn't open this page.")
+                                error = friendlyMusicError(error, text(R.string.music_error_page))
                             )
                         )
                     }
@@ -750,7 +756,7 @@ class MusicViewModel @Inject constructor(
             openDetail(
                 browseId = direct,
                 title = name,
-                subtitle = "Artist",
+                subtitle = text(R.string.music_p2_artist),
                 thumbnailUrl = song.thumbnailUrl,
                 type = BrowseType.ARTIST
             )
@@ -766,7 +772,7 @@ class MusicViewModel @Inject constructor(
                 openDetail(
                     browseId = id,
                     title = name,
-                    subtitle = "Artist",
+                    subtitle = text(R.string.music_p2_artist),
                     thumbnailUrl = song.thumbnailUrl,
                     type = BrowseType.ARTIST
                 )
@@ -782,7 +788,7 @@ class MusicViewModel @Inject constructor(
         if (direct != null) {
             openDetail(
                 browseId = direct,
-                title = song.albumName?.takeIf { it.isNotBlank() } ?: "Album",
+                title = song.albumName?.takeIf { it.isNotBlank() } ?: text(R.string.music_p2_album),
                 subtitle = song.artist,
                 thumbnailUrl = song.thumbnailUrl,
                 type = BrowseType.ALBUM
@@ -798,7 +804,7 @@ class MusicViewModel @Inject constructor(
             val id = full?.albumId?.takeIf { it.isNotBlank() } ?: return@launch
             openDetail(
                 browseId = id,
-                title = full.albumName?.takeIf { it.isNotBlank() } ?: "Album",
+                title = full.albumName?.takeIf { it.isNotBlank() } ?: text(R.string.music_p2_album),
                 subtitle = song.artist,
                 thumbnailUrl = song.thumbnailUrl,
                 type = BrowseType.ALBUM
@@ -856,7 +862,7 @@ class MusicViewModel @Inject constructor(
                         else it.copy(
                             detail = it.detail.copy(
                                 loading = false,
-                                error = friendlyMusicError(error, "Couldn't open this page.")
+                                error = friendlyMusicError(error, text(R.string.music_error_page))
                             )
                         )
                     }
@@ -946,7 +952,7 @@ class MusicViewModel @Inject constructor(
                                 releases = releases,
                                 charts = charts,
                                 error = if (releases.isEmpty() && charts.isEmpty()) {
-                                    friendlyMusicError(error, "Couldn't load Explore.")
+                                    friendlyMusicError(error, text(R.string.music_error_explore))
                                 } else {
                                     null
                                 }
@@ -993,7 +999,7 @@ class MusicViewModel @Inject constructor(
                         else it.copy(
                             explore = it.explore.copy(
                                 selectedLoading = false,
-                                selectedError = friendlyMusicError(error, "Couldn't open this category.")
+                                selectedError = friendlyMusicError(error, text(R.string.music_error_category))
                             )
                         )
                     }

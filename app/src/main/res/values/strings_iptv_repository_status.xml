@@ -42,4 +42,6 @@
         <item quantity="one">\"%1$s\" expires in %2$d day</item>
         <item quantity="other">\"%1$s\" expires in %2$d days</item>
     </plurals>
+
+    <string name="iptv_repository_status_reading_addon_channels">"Reading channels from your add-ons…"</string>
 </resources>

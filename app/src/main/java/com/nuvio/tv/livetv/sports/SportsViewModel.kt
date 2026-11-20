@@ -7,6 +7,7 @@ import com.nuvio.tv.livetv.data.LiveTvRepository
 import com.nuvio.tv.livetv.model.EpgProgram
 import com.nuvio.tv.livetv.model.LiveChannel
 import com.nuvio.tv.livetv.player.LiveTvPlaybackController
+import com.nuvio.tv.livetv.record.LiveTvNotice
 import dagger.hilt.android.lifecycle.HiltViewModel
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.delay
@@ -95,6 +96,22 @@ class SportsViewModel @Inject constructor(
     /** Tunes Live TV to the channel (the screen then opens it full screen). */
     fun watch(m: ChannelMatch) {
         playback.play(m.channel)
+    }
+
+    /** An official or YouTube highlight: resolved, then opened in the main player. */
+    private var highlightJob: kotlinx.coroutines.Job? = null
+
+    fun playHighlight(video: SportsVideo, ev: SportsEvent, onReady: (SportsHighlightPlayback) -> Unit) {
+        highlightJob?.cancel()
+        highlightJob = viewModelScope.launch {
+            LiveTvNotice.show("Opening the video\u2026")
+            val playback = runCatching { repo.highlightPlayback(video, ev) }.getOrNull()
+            if (playback == null) {
+                LiveTvNotice.show("That video can't be played right now. Try another one.")
+                return@launch
+            }
+            onReady(playback)
+        }
     }
 
     // ---- the video window (the same player as Live TV's preview and full screen)

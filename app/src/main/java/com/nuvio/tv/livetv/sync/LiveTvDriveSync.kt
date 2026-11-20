@@ -1,4 +1,4 @@
-﻿package com.nuvio.tv.livetv.sync
+package com.nuvio.tv.livetv.sync
 
 import android.content.Context
 import androidx.annotation.StringRes
@@ -57,12 +57,11 @@ data class SignInPrompt(val userCode: String, val url: String, val qrUrl: String
 /**
  * Syncs the Live TV setup through the user's own Google Drive.
  *
- * The data goes in a file the app creates in the user's Drive (scope drive.file): it lives in
- * the user's Drive, and nothing is stored anywhere else. Google's TV device flow does not accept
- * drive.appdata, so drive.file is the normal path. Sign-in uses Google's "TVs and limited input
- * devices" flow: the TV shows a code, the user approves on their phone. Sync is "newest wins":
- * changes are backed up shortly after they happen, and a newer copy from another TV is applied
- * when the app starts or when you tap Restore.
+ * The data goes in Drive's hidden app data folder (scope drive.appdata): it lives in the user's
+ * Drive, only this app can read it, and nothing is stored anywhere else. Sign-in uses Google's
+ * "TVs and limited input devices" flow: the TV shows a code, the user approves on their phone.
+ * Sync is "newest wins": changes are backed up shortly after they happen, and a newer copy from
+ * another TV is applied when the app starts or when you tap Restore.
  */
 @Singleton
 class LiveTvDriveSync @Inject constructor(
@@ -78,29 +77,13 @@ class LiveTvDriveSync @Inject constructor(
     private val http = ForkHttp.builder()
         // IPv4 first, like Nuvio's own connections: many VPNs (and some routers) leave IPv6
         // half working, and each Google address then hung until it timed out.
-        .dns(com.nuvio.tv.core.network.IPv4FirstDns())
+        .dns(com.nuvio.tv.core.network.IPv4FirstDns(com.nuvio.tv.livetv.data.ForkDns.app))
         .connectTimeout(20, TimeUnit.SECONDS)
         .readTimeout(30, TimeUnit.SECONDS)
         .build()
 
     private val clientId = BuildConfig.GOOGLE_DRIVE_CLIENT_ID
     private val clientSecret = BuildConfig.GOOGLE_DRIVE_CLIENT_SECRET
-
-    init {
-        // A refresh token is tied to the OAuth client that issued it. When the app moves to its
-        // own Google Cloud project, the old token stops working; clear it so the TV asks to
-        // reconnect instead of failing every sync.
-        if (store.getString(KEY_CLIENT_ID, null) != clientId) {
-            store.edit()
-                .putString(KEY_CLIENT_ID, clientId)
-                .remove(KEY_REFRESH)
-                .remove(KEY_EMAIL)
-                .remove(KEY_FILE_ID)
-                .remove(KEY_LAST_HASH)
-                .remove(KEY_MODE)
-                .apply()
-        }
-    }
 
     private val _state = MutableStateFlow(loadState())
     val state: StateFlow<DriveSyncState> = _state.asStateFlow()
@@ -202,13 +185,7 @@ class LiveTvDriveSync @Inject constructor(
                 return@launch
             }
             val url = codes.optString("verification_url").ifBlank { "https://www.google.com/device" }
-            // Google does not return verification_uri_complete for this flow, but its device
-            // page accepts ?user_code= and opens with the code filled in, so the QR scan needs
-            // no typing. (The Music Drive sign-in already uses the same link.)
-            val qrUrl = codes.optString("verification_uri_complete").ifBlank {
-                val separator = if ('?' in url) '&' else '?'
-                "$url${separator}user_code=$userCode"
-            }
+            val qrUrl = codes.optString("verification_uri_complete").ifBlank { url }
             val expiresAt = System.currentTimeMillis() + codes.optLong("expires_in", 1800) * 1000
             var interval = codes.optLong("interval", 5).coerceAtLeast(5)
             _state.value = _state.value.copy(busy = false, signIn = SignInPrompt(userCode, url, qrUrl, expiresAt))
@@ -444,8 +421,11 @@ class LiveTvDriveSync @Inject constructor(
         appliedAtMs = System.currentTimeMillis()
         try {
             val before = prefs.exportForSync()
+            val playlistsBefore = prefs.currentPlaylists()
             val changed = prefs.importFromSync(data)
             val after = prefs.exportForSync()
+            com.nuvio.tv.livetv.model.PlaylistServerChanges.lines(playlistsBefore, prefs.currentPlaylists())
+                .forEach { com.nuvio.tv.livetv.model.LiveTvLoadReport.add(it) }
             // What really changed here. Nothing: no reload at all (it used to reload Live TV,
             // reading the guide again, on every sync, often twice at start-up).
             val keys = (before.keys().asSequence() + after.keys().asSequence()).toSet()
@@ -454,7 +434,7 @@ class LiveTvDriveSync @Inject constructor(
                 com.nuvio.tv.livetv.model.LiveTvLoadReport.add("Sync: other TV's setup is the same as this one; nothing to reload")
                 return
             }
-            com.nuvio.tv.livetv.model.LiveTvLoadReport.add("Sync: applied changes from your other TV (${keys.take(6).joinToString()}${if (keys.size > 6) "â€¦" else ""})")
+            com.nuvio.tv.livetv.model.LiveTvLoadReport.add("Sync: applied changes from your other TV (${keys.take(6).joinToString()}${if (keys.size > 6) "…" else ""})")
             // Download any playlists or guides this TV doesn't have yet, playlists whose address
             // or login changed on the other TV, and rebuild the guide.
             repository.reloadAfterSync(changed)
@@ -495,18 +475,6 @@ class LiveTvDriveSync @Inject constructor(
             // playlists only the other TVs had.
             val (first, second) = if (localWinsWithoutBase) local to remote else remote to local
             val out = JSONObject(first.toString())
-            // A first sync must not drop settings only this TV has (a group order set here,
-            // a rename, â€¦). The old code only merged playlists and guides, so a local group
-            // order was removed when the other copy had never saved one.
-            second.keys().forEach { k -> if (!out.has(k)) out.put(k, second.get(k)) }
-            // Favorites and hidden channels/groups are personal choices: keep both TVs'
-            // entries on a first sync instead of letting one copy overwrite the other.
-            unionPersonal(out, first, second)
-            // The user's own arrangements are not per-TV settings: keep this TV's group
-            // order on a first sync even when the other copy has a different one.
-            local.keys().forEach { k ->
-                if (k.replace(Regex("""_p\d+$"""), "") in LOCAL_ORDER_KEYS) out.put(k, local.get(k))
-            }
             for (k in SOURCE_LISTS) {
                 val a = first.optJSONObject(k)
                 val b = second.optJSONObject(k)
@@ -542,7 +510,13 @@ class LiveTvDriveSync @Inject constructor(
                     }.getOrNull()
                 } else null
                 val shell = (local.optJSONObject(k) ?: remote.optJSONObject(k))
+                // Favorites, hidden channels and groups, your own groups: combined item by item, so
+                // a favorite added on the phone and another added on a TV are both kept.
+                val itemsMerged = if (listMerged == null) runCatching {
+                    mergeItems(k, base.optJSONObject(k), local.optJSONObject(k), remote.optJSONObject(k))
+                }.getOrNull() else null
                 when {
+                    itemsMerged != null -> out.put(k, itemsMerged)
                     listMerged != null && shell != null -> out.put(k, JSONObject(shell.toString()).put("v", listMerged))
                     local.has(k) -> out.put(k, local.get(k))
                     else -> out.remove(k)
@@ -563,7 +537,7 @@ class LiveTvDriveSync @Inject constructor(
         val local = read(localRaw)
         val remote = read(remoteRaw)
         val merged = LinkedHashMap<String, JSONObject>()
-        // The other TV's sources, with its additions and edits.
+        // The other TV's order, with its additions and edits.
         for ((id, r) in remote) {
             val l = local[id]
             val b = base[id]
@@ -579,29 +553,107 @@ class LiveTvDriveSync @Inject constructor(
                     l.keys().forEach { f ->
                         if (l.opt(f)?.toString() != b.opt(f)?.toString()) m.put(f, l.get(f))
                     }
+                    // A setting cleared on this TV since the last sync. Some are only saved while
+                    // they're set (a playlist's switched-off guides: turning the last one back on
+                    // leaves nothing saved), so the other TV's old value kept coming back.
+                    b.keys().forEach { f -> if (!l.has(f)) m.remove(f) }
                     merged[id] = m
                 }
             }
         }
         // Added on this TV since the last sync.
-        for ((id, l) in local) if (id !in remote && id !in base) merged[id] = l
-
-        // Playlist order is part of the setup. The sources are the same objects either way, so
-        // comparing their fields alone used to overwrite a reorder with the other TV's order.
-        // Keep this TV's order when it was changed since the last sync; otherwise use the other
-        // TV's order, with anything only this TV has appended.
-        val common = base.keys.filter { it in local && it in remote }
-        val localOrder = local.keys.filter { it in common }
-        val baseOrder = base.keys.filter { it in common }
-        val localReordered = localOrder.size >= 2 && localOrder != baseOrder
-        val order = if (localReordered) {
-            local.keys + remote.keys.filter { it !in local }
-        } else {
-            remote.keys + local.keys.filter { it !in remote }
+        for ((id, l) in local) {
+            if (id !in remote && id !in base) merged[id] = l
         }
-        val result = org.json.JSONArray()
-        for (id in order) merged[id]?.let { result.put(it) }
-        return result.toString()
+        // Moved on this TV since the last sync: that order is kept (it used to be dropped, so a
+        // reorder came back undone and was never saved). Sources only the other TV has follow after.
+        val baseOrder = base.keys.filter { it in local }
+        val localOrder = local.keys.filter { it in base }
+        val out = org.json.JSONArray()
+        if (baseOrder != localOrder) {
+            local.keys.forEach { id -> merged.remove(id)?.let { out.put(it) } }
+            merged.values.forEach { out.put(it) }
+        } else {
+            merged.values.forEach { out.put(it) }
+        }
+        return out.toString()
+    }
+
+    /**
+     * Three-way merge of one of the item lists in [ITEM_KEYS] (per profile too, "favorites_p2"):
+     * items added or removed on this device since the last sync are added or removed, everything
+     * else comes from the other device. Null (whole-value rules apply) for any other key, or when
+     * the other device has no value for it.
+     */
+    private fun mergeItems(k: String, b: JSONObject?, l: JSONObject?, r: JSONObject?): JSONObject? {
+        val name = k.replace(PROFILE_SUFFIX, "")
+        if (name !in ITEM_KEYS || r == null) return null
+        val shell = JSONObject((l ?: r).toString())
+        return when (name) {
+            in SET_ITEM_KEYS -> {
+                fun set(e: JSONObject?) = e?.optJSONArray("v")?.let { a -> (0 until a.length()).map { a.getString(it) } }.orEmpty()
+                shell.put("t", "s").put("v", org.json.JSONArray(mergeList(set(b), set(l), set(r))))
+            }
+            "favorites" -> {
+                fun list(e: JSONObject?) = strings(e?.optString("v"))
+                shell.put("v", org.json.JSONArray(mergeList(list(b), list(l), list(r))).toString())
+            }
+            "channel_copies" -> {
+                fun map(e: JSONObject?): Map<String, List<String>> {
+                    val raw = e?.optString("v"); if (raw.isNullOrBlank()) return emptyMap()
+                    val o = JSONObject(raw)
+                    return o.keys().asSequence().associateWith { g -> o.optJSONArray(g)?.let { a -> (0 until a.length()).map { a.getString(it) } }.orEmpty() }
+                }
+                val bm = map(b); val lm = map(l); val rm = map(r)
+                val out = JSONObject()
+                mergeList(bm.keys.toList(), lm.keys.toList(), rm.keys.toList()).forEach { g ->
+                    val v = mergeList(bm[g].orEmpty(), lm[g].orEmpty(), rm[g].orEmpty())
+                    if (v.isNotEmpty()) out.put(g, org.json.JSONArray(v))
+                }
+                shell.put("v", out.toString())
+            }
+            "custom_groups" -> {
+                fun groups(e: JSONObject?) = readSources(e?.optString("v"))
+                fun keys(o: JSONObject?) = o?.optJSONArray("keys")?.let { a -> (0 until a.length()).map { a.getString(it) } }.orEmpty()
+                val bg = groups(b); val lg = groups(l); val rg = groups(r)
+                val out = org.json.JSONArray()
+                mergeList(bg.keys.toList(), lg.keys.toList(), rg.keys.toList()).forEach { id ->
+                    val lo = lg[id]; val bo = bg[id]; val ro = rg[id]
+                    val g = JSONObject((ro ?: lo)!!.toString())
+                    if (lo != null && bo != null && ro != null) {
+                        if (lo.optString("name") != bo.optString("name")) g.put("name", lo.optString("name"))
+                        g.put("keys", org.json.JSONArray(mergeList(keys(bo), keys(lo), keys(ro))))
+                    }
+                    out.put(g)
+                }
+                shell.put("v", out.toString())
+            }
+            else -> null
+        }
+    }
+
+    private fun strings(raw: String?): List<String> {
+        if (raw.isNullOrBlank()) return emptyList()
+        val a = org.json.JSONArray(raw)
+        return (0 until a.length()).map { a.getString(it) }
+    }
+
+    /**
+     * [remote] without what this device removed since [base], plus what it added. If this device
+     * also reordered the items, its order is kept (the other device's additions go after).
+     */
+    internal fun mergeList(base: List<String>, local: List<String>, remote: List<String>): List<String> {
+        val baseSet = base.toHashSet(); val localSet = local.toHashSet()
+        val removedHere = base.filterTo(HashSet()) { it !in localSet }
+        val kept = LinkedHashSet<String>()
+        remote.forEach { if (it !in removedHere) kept += it }
+        local.forEach { if (it !in baseSet) kept += it }
+        val movedHere = base.filter { it in localSet } != local.filter { it in baseSet }
+        if (!movedHere) return kept.toList()
+        val out = LinkedHashSet<String>()
+        local.forEach { if (it in kept) out += it }
+        out += kept
+        return out.toList()
     }
 
     private fun readSources(raw: String?): LinkedHashMap<String, JSONObject> {
@@ -630,42 +682,12 @@ class LiveTvDriveSync @Inject constructor(
         return result.toString()
     }
 
-    /**
-     * First sync: keep both TVs' favorites and hidden channels/groups. These are personal
-     * choices, not a setting where one TV's copy should replace the other's.
-     */
-    private fun unionPersonal(out: JSONObject, first: JSONObject, second: JSONObject) {
-        val keys = HashSet<String>()
-        first.keys().forEach { keys.add(it) }
-        second.keys().forEach { keys.add(it) }
-        for (k in keys) {
-            if (k.replace(Regex("""_p\d+$"""), "") !in PERSONAL_UNION_KEYS) continue
-            val a = first.optJSONObject(k) ?: continue
-            val b = second.optJSONObject(k) ?: continue
-            val ta = a.optString("t")
-            val tb = b.optString("t")
-            if (ta == "s" && tb == "s") {
-                val values = linkedSetOf<String>()
-                a.optJSONArray("v")?.let { for (i in 0 until it.length()) values.add(it.optString(i)) }
-                b.optJSONArray("v")?.let { for (i in 0 until it.length()) values.add(it.optString(i)) }
-                out.put(k, JSONObject(a.toString()).put("v", org.json.JSONArray(values)))
-            } else if (ta == "str" && tb == "str") {
-                val la = runCatching { org.json.JSONArray(a.optString("v")) }.getOrNull() ?: continue
-                val lb = runCatching { org.json.JSONArray(b.optString("v")) }.getOrNull() ?: continue
-                val values = linkedSetOf<String>()
-                for (i in 0 until la.length()) values.add(la.optString(i))
-                for (i in 0 until lb.length()) values.add(lb.optString(i))
-                out.put(k, JSONObject(a.toString()).put("v", org.json.JSONArray(values).toString()))
-            }
-        }
-    }
-
     private fun baseFile() = java.io.File(context.filesDir, "livetv_drive_base.json")
 
-    private fun readBase(): JSONObject? = runCatching { JSONObject(baseFile().readText()) }.getOrNull()
+    private fun readBase(): JSONObject? = runCatching { JSONObject(com.nuvio.vpn.android.VpnBackup.openCache(baseFile().readText())) }.getOrNull()
 
     private fun writeBase(data: JSONObject) {
-        runCatching { baseFile().writeText(data.toString()) }
+        runCatching { baseFile().writeText(com.nuvio.vpn.android.VpnBackup.sealCache(data.toString())) }
     }
 
     // ------------------------------------------------------------------ Google plumbing
@@ -685,7 +707,7 @@ class LiveTvDriveSync @Inject constructor(
                 )
             )
         }.getOrElse { e ->
-            // The reason too (timeout, blocked, no routeâ€¦), so a VPN or network problem shows.
+            // The reason too (timeout, blocked, no route…), so a VPN or network problem shows.
             val why = when (e) {
                 is java.net.SocketTimeoutException -> text(R.string.iptv_status_timed_out)
                 is java.net.UnknownHostException -> text(R.string.iptv_status_google_lookup_failed)
@@ -810,24 +832,20 @@ class LiveTvDriveSync @Inject constructor(
         const val TAG = "LiveTvDriveSync"
         /** Settings that are lists of sources, merged source by source. */
         val SOURCE_LISTS = setOf("playlists", "epg_sources")
-        /** The user's own ordering, kept from this TV on a first sync (also "_p2" copies). */
-        private val LOCAL_ORDER_KEYS = setOf("group_order", "vod_group_order", "side_menu_order")
-        /** Personal choices combined on a first sync (also "_p2" copies). */
-        private val PERSONAL_UNION_KEYS = setOf(
-            "favorites", "hidden_channels", "hidden_groups", "hidden_playlists", "vod_hidden_categories"
-        )
+        val SET_ITEM_KEYS = setOf("hidden_channels", "hidden_groups", "vod_hidden_categories")
+        val ITEM_KEYS = SET_ITEM_KEYS + setOf("favorites", "custom_groups", "channel_copies")
+        val PROFILE_SUFFIX = Regex("""_p\d+$""")
         const val MODE_APPDATA = "appdata"
         const val MODE_FILE = "file"
-        /** Tried in order until Google accepts one. Google's TV device flow currently refuses
-         * `drive.appdata`, so the app creates a normal Drive file instead. */
+        /** Tried in order until Google accepts one. */
         val SCOPE_ATTEMPTS = listOf(
-            "openid email https://www.googleapis.com/auth/drive.file" to MODE_FILE,
-            "openid email https://www.googleapis.com/auth/drive.appdata" to MODE_APPDATA
+            "openid email https://www.googleapis.com/auth/drive.appdata" to MODE_APPDATA,
+            "https://www.googleapis.com/auth/drive.appdata" to MODE_APPDATA,
+            "https://www.googleapis.com/auth/drive.file" to MODE_FILE
         )
         const val FILE_NAME = "Nuvio Live TV backup.json"
         val JSON = "application/json; charset=UTF-8".toMediaType()
         const val KEY_REFRESH = "refresh_token"
-        const val KEY_CLIENT_ID = "client_id"
         const val KEY_EMAIL = "email"
         const val KEY_AUTO = "auto_sync"
         const val KEY_FILE_ID = "file_id"

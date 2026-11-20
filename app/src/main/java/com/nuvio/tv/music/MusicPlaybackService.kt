@@ -15,6 +15,7 @@ import androidx.media3.common.util.UnstableApi
 import androidx.media3.session.MediaStyleNotificationHelper
 import com.nuvio.tv.MainActivity
 import com.nuvio.tv.R
+import com.nuvio.tv.core.util.withAppLocale
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.Job
@@ -119,10 +120,10 @@ class MusicPlaybackService : Service() {
         if (manager.getNotificationChannel(CHANNEL_ID) != null) return
         val channel = NotificationChannel(
             CHANNEL_ID,
-            "Music playback",
+            withAppLocale().getString(R.string.music_playback_channel_name),
             NotificationManager.IMPORTANCE_LOW
         ).apply {
-            description = "Controls for music playing in Nuvio"
+            description = withAppLocale().getString(R.string.music_playback_channel_description)
             setShowBadge(false)
             enableVibration(false)
             setSound(null, null)

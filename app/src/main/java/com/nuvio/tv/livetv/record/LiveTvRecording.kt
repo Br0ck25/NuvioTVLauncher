@@ -37,7 +37,9 @@ data class LiveTvRecording(
     /** Downloaded from the provider's catch-up (rather than recorded as it aired). */
     val fromCatchup: Boolean = false,
     /** Catch-up: how long the whole download should be (show plus extra time), in seconds; 0 = not known. */
-    val expectedSec: Double = 0.0
+    val expectedSec: Double = 0.0,
+    /** The media was mirrored to an SMB share; [dir] only holds metadata and playlists. */
+    val smb: Boolean = false
 ) {
     val isRecording: Boolean get() = status == RecordingStatus.RECORDING
 
@@ -53,6 +55,7 @@ data class LiveTvRecording(
         put("seriesId", seriesId ?: "")
         put("fromCatchup", fromCatchup)
         put("expectedSec", expectedSec)
+        put("smb", smb)
     }
 
     companion object {
@@ -77,7 +80,8 @@ data class LiveTvRecording(
                 dir = dir,
                 seriesId = o.optString("seriesId").ifBlank { null },
                 fromCatchup = o.optBoolean("fromCatchup", false),
-                expectedSec = o.optDouble("expectedSec", 0.0).takeIf { !it.isNaN() } ?: 0.0
+                expectedSec = o.optDouble("expectedSec", 0.0).takeIf { !it.isNaN() } ?: 0.0,
+                smb = o.optBoolean("smb", false)
             )
         }.getOrNull()
     }

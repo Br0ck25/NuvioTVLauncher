@@ -1,0 +1,27 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <string name="vpn_phone_title">"Adicionar VPN"</string>
+    <string name="vpn_phone_connected_to">"Conectado a %1$s"</string>
+    <string name="vpn_phone_heading">"Adicionar um perfil WireGuard"</string>
+    <string name="vpn_phone_instructions">"Escolha o seu ficheiro .conf do WireGuard. A TV l?-o, cifra-o e guarda-o neste dispositivo."</string>
+    <string name="vpn_phone_choose">"Escolher ficheiro .conf"</string>
+    <string name="vpn_phone_selected">"Selecionado: %1$s"</string>
+    <string name="vpn_phone_send">"Enviar para a TV"</string>
+    <string name="vpn_phone_sending">"A enviar?"</string>
+    <string name="vpn_phone_received">"Enviado. Verifique a sua TV."</string>
+    <string name="vpn_phone_too_large">"Esse ficheiro ? demasiado grande."</string>
+    <string name="vpn_phone_unreachable">"N?o foi poss?vel contactar a TV."</string>
+    <string name="vpn_phone_nothing">"Escolha primeiro um ficheiro .conf."</string>
+    <string name="vpn_phone_network">"Apenas dispositivos nesta rede podem abrir esta p?gina. O seu perfil ? enviado diretamente para a TV."</string>
+    <string name="vpn_phone_add">"Adicionar do telem?vel"</string>
+    <string name="vpn_phone_add_detail">"Leia um c?digo QR e escolha o ficheiro .conf no telem?vel"</string>
+    <string name="vpn_phone_dialog_title">"Adicionar perfil VPN a partir do telem?vel"</string>
+    <string name="vpn_phone_qr">"C?digo QR"</string>
+    <string name="vpn_phone_waiting">"A aguardar o telem?vel?"</string>
+    <string name="vpn_phone_received_tv">"Perfil recebido. A guardar?"</string>
+    <string name="vpn_phone_steps">"1. Ligue o telem?vel ao mesmo Wi-Fi desta TV.
+2. Leia o c?digo com a c?mara do telem?vel.
+3. Escolha o ficheiro .conf e toque em Enviar para a TV."</string>
+    <string name="vpn_phone_address">"Ou abra %1$s"</string>
+    <string name="vpn_phone_no_network">"Nenhuma rede dom?stica encontrada. Ligue esta TV ao Wi-Fi e tente novamente."</string>
+</resources>

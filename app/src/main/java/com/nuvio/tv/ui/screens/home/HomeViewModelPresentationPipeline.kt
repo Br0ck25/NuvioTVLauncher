@@ -281,12 +281,14 @@ private data class ContinueWatchingPosterInput(
     val screens: Set<CustomPosterScreen>,
     val continueWatchingItems: List<ContinueWatchingItem>,
     val onDemandItems: List<ContinueWatchingItem>,
+    val youtubeItems: List<ContinueWatchingItem>,
     val upcomingItems: List<ContinueWatchingItem>,
 )
 
 private data class ContinueWatchingPosterOverlay(
     val continueWatchingItems: List<ContinueWatchingItem>,
     val onDemandItems: List<ContinueWatchingItem>,
+    val youtubeItems: List<ContinueWatchingItem>,
     val upcomingItems: List<ContinueWatchingItem>,
 )
 
@@ -304,13 +306,14 @@ internal fun HomeViewModel.observeModernHomePresentationPipeline() {
                     screens = state.customPosterEnabledScreens,
                     continueWatchingItems = state.continueWatchingItems,
                     onDemandItems = state.onDemandContinueWatchingItems,
+                    youtubeItems = state.youtubeContinueWatchingItems,
                     upcomingItems = state.upcomingItems,
                 )
             }
             .distinctUntilChanged()
             .map { input ->
                 if (!input.enabled) {
-                    ContinueWatchingPosterOverlay(emptyList(), emptyList(), emptyList())
+                    ContinueWatchingPosterOverlay(emptyList(), emptyList(), emptyList(), emptyList())
                 } else {
                     val pattern = patternForScreen(
                         input.pattern,
@@ -320,6 +323,7 @@ internal fun HomeViewModel.observeModernHomePresentationPipeline() {
                     ContinueWatchingPosterOverlay(
                         continueWatchingItems = input.continueWatchingItems.withCustomPosterUrls(pattern),
                         onDemandItems = input.onDemandItems.withCustomPosterUrls(pattern),
+                        youtubeItems = input.youtubeItems.withCustomPosterUrls(pattern),
                         upcomingItems = input.upcomingItems.withCustomPosterUrls(pattern),
                     )
                 }
@@ -332,6 +336,7 @@ internal fun HomeViewModel.observeModernHomePresentationPipeline() {
                     catalogRows = state.catalogRows,
                     continueWatchingItems = overlay.continueWatchingItems,
                     onDemandItems = overlay.onDemandItems,
+                    youtubeItems = overlay.youtubeItems,
                     upcomingItems = overlay.upcomingItems,
                     useLandscapePosters = state.modernLandscapePostersEnabled,
                     showCatalogTypeSuffix = state.catalogTypeSuffixEnabled,
@@ -349,6 +354,7 @@ internal fun HomeViewModel.observeModernHomePresentationPipeline() {
                 old.homeRows === new.homeRows
                     && old.continueWatchingItems == new.continueWatchingItems
                     && old.onDemandItems == new.onDemandItems
+                    && old.youtubeItems == new.youtubeItems
                     && old.upcomingItems == new.upcomingItems
                     && old.useLandscapePosters == new.useLandscapePosters
                     && old.showCatalogTypeSuffix == new.showCatalogTypeSuffix
@@ -480,6 +486,8 @@ internal fun HomeViewModel.requestTrailerPreviewPipeline(
                         if (trailerPreviewUrlsState[itemId] != fallbackSource.videoUrl) {
                             trailerPreviewUrlsState[itemId] = fallbackSource.videoUrl
                         }
+                        fallbackSource.youtubeKey?.let { trailerPreviewYoutubeKeys[itemId] = it }
+                            ?: trailerPreviewYoutubeKeys.remove(itemId)
                         val fallbackAudio = fallbackSource.audioUrl
                         if (fallbackAudio.isNullOrBlank()) {
                             trailerPreviewAudioUrlsState.remove(itemId)
@@ -494,12 +502,15 @@ internal fun HomeViewModel.requestTrailerPreviewPipeline(
                         }
                         trailerPreviewUrlsState.remove(itemId)
                         trailerPreviewAudioUrlsState.remove(itemId)
+                        trailerPreviewYoutubeKeys.remove(itemId)
                     }
                 } else {
                     val videoUrl = trailerSource.videoUrl
                     if (trailerPreviewUrlsState[itemId] != videoUrl) {
                         trailerPreviewUrlsState[itemId] = videoUrl
                     }
+                    trailerSource.youtubeKey?.let { trailerPreviewYoutubeKeys[itemId] = it }
+                        ?: trailerPreviewYoutubeKeys.remove(itemId)
                     val audioUrl = trailerSource.audioUrl
                     if (audioUrl.isNullOrBlank()) {
                         trailerPreviewAudioUrlsState.remove(itemId)

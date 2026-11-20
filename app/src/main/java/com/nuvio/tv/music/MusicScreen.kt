@@ -74,6 +74,7 @@ import androidx.tv.material3.Text
 import coil3.compose.AsyncImage
 import com.music.bitchord.data.model.BrowseType
 import com.music.bitchord.data.YtMusicRepository
+import androidx.compose.ui.res.stringResource
 import com.nuvio.tv.R
 import com.music.bitchord.data.model.HomeShelf
 import com.music.bitchord.data.model.ShelfItem
@@ -484,7 +485,7 @@ fun MusicScreen(
                             viewModel.openDetail(
                                 browseId = "account:playlist:${playlist.id}",
                                 title = playlist.title,
-                                subtitle = "Playlist",
+                                subtitle = context.getString(R.string.music_screen_playlist),
                                 thumbnailUrl = playlist.thumbnailUrl,
                                 type = BrowseType.PLAYLIST
                             )
@@ -507,7 +508,7 @@ fun MusicScreen(
                             viewModel.openDetail(
                                 browseId = artist.browseId,
                                 title = artist.name,
-                                subtitle = "Artist",
+                                subtitle = context.getString(R.string.music_p2_artist),
                                 thumbnailUrl = artist.thumbnailUrl,
                                 type = BrowseType.ARTIST
                             )
@@ -557,7 +558,7 @@ fun MusicScreen(
                             viewModel.openDetail(
                                 browseId = "account:playlist:${playlist.id}",
                                 title = playlist.title,
-                                subtitle = "YouTube Music account",
+                                subtitle = context.getString(R.string.music_screen_youtube_account),
                                 thumbnailUrl = playlist.thumbnailUrl,
                                 type = BrowseType.PLAYLIST
                             )
@@ -622,7 +623,7 @@ fun MusicScreen(
                             color = MusicPalette.accent
                         )
                         Text(
-                            text = spotifySync.progress ?: "Syncing Spotify…",
+                            text = spotifySync.progress ?: stringResource(R.string.music_spotify_syncing),
                             color = MusicPalette.text,
                             fontSize = 12.sp,
                             maxLines = 1,
@@ -852,7 +853,7 @@ private fun MusicNavigationPill(
         horizontalArrangement = Arrangement.spacedBy(2.dp)
     ) {
         MusicTopNavItem(
-            label = "Home",
+            label = stringResource(R.string.music_tab_home),
             selected = selectedTab == MusicTab.HOME,
             modifier = if (selectedTab == MusicTab.HOME) {
                 Modifier.focusRequester(initialFocus)
@@ -863,7 +864,7 @@ private fun MusicNavigationPill(
             onClick = { onTabSelected(MusicTab.HOME) }
         )
         MusicTopNavItem(
-            label = "Discover",
+            label = stringResource(R.string.music_tab_discover),
             selected = selectedTab == MusicTab.DISCOVER,
             modifier = if (selectedTab == MusicTab.DISCOVER) {
                 Modifier.focusRequester(initialFocus)
@@ -873,7 +874,7 @@ private fun MusicNavigationPill(
             onClick = { onTabSelected(MusicTab.DISCOVER) }
         )
         MusicTopNavItem(
-            label = "Explore",
+            label = stringResource(R.string.music_tab_explore),
             selected = selectedTab == MusicTab.EXPLORE,
             modifier = if (selectedTab == MusicTab.EXPLORE) {
                 Modifier.focusRequester(initialFocus)
@@ -883,7 +884,7 @@ private fun MusicNavigationPill(
             onClick = { onTabSelected(MusicTab.EXPLORE) }
         )
         MusicTopNavItem(
-            label = "Library",
+            label = stringResource(R.string.music_tab_library),
             selected = selectedTab == MusicTab.LIBRARY,
             modifier = if (selectedTab == MusicTab.LIBRARY) {
                 Modifier.focusRequester(initialFocus)
@@ -893,7 +894,7 @@ private fun MusicNavigationPill(
             onClick = { onTabSelected(MusicTab.LIBRARY) }
         )
         MusicTopNavItem(
-            label = "Local",
+            label = stringResource(R.string.music_tab_local),
             selected = selectedTab == MusicTab.LOCAL,
             modifier = if (selectedTab == MusicTab.LOCAL) {
                 Modifier.focusRequester(initialFocus)
@@ -903,7 +904,7 @@ private fun MusicNavigationPill(
             onClick = { onTabSelected(MusicTab.LOCAL) }
         )
         MusicTopNavItem(
-            label = "Search",
+            label = stringResource(R.string.music_tab_search),
             selected = selectedTab == MusicTab.SEARCH,
             modifier = if (selectedTab == MusicTab.SEARCH) {
                 Modifier.focusRequester(initialFocus)
@@ -913,13 +914,13 @@ private fun MusicNavigationPill(
             onClick = { onTabSelected(MusicTab.SEARCH) }
         )
         MusicTopNavItem(
-            label = "Party",
+            label = stringResource(R.string.music_sidebar_party),
             selected = false,
             live = partyRunning,
             onClick = onOpenParty
         )
         MusicTopNavItem(
-            label = "Integrations",
+            label = stringResource(R.string.music_sidebar_integrations),
             selected = false,
             onClick = onOpenIntegrations
         )
@@ -1094,7 +1095,7 @@ private fun MusicSettingsButton(onClick: () -> Unit) {
     ) {
         Icon(
             Icons.Default.Settings,
-            contentDescription = "Music settings",
+            contentDescription = stringResource(R.string.music_settings_content_description),
             tint = if (focused) MusicPalette.text else MusicPalette.textSecondary,
             modifier = Modifier.size(17.dp)
         )
@@ -1121,14 +1122,14 @@ private fun MusicAccountButton(name: String?, avatar: String?, onClick: () -> Un
         if (avatar != null) {
             AsyncImage(
                 model = avatar,
-                contentDescription = name ?: "YouTube Music account",
+                contentDescription = name ?: stringResource(R.string.music_p2_youtube_music_account),
                 contentScale = ContentScale.Crop,
                 modifier = Modifier.fillMaxSize().clip(CircleShape)
             )
         } else {
             Icon(
                 Icons.Default.AccountCircle,
-                contentDescription = if (name == null) "Sign in to YouTube Music" else name,
+                contentDescription = if (name == null) stringResource(R.string.music_p2_sign_in_to_youtube_music) else name,
                 tint = if (focused) MusicPalette.text else MusicPalette.textSecondary,
                 modifier = Modifier.size(20.dp)
             )

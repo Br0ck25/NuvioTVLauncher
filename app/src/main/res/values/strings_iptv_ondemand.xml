@@ -1,0 +1,17 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <string name="iptv_od_nothing">"Nothing to show yet"</string>
+    <string name="iptv_od_nothing_help">"Turn on On Demand for a playlist in Settings → Live TV, or show some groups with the settings button."</string>
+    <string name="iptv_od_see_all">"See all"</string>
+    <string name="iptv_od_sort_group">"Sort %1$s"</string>
+    <string name="iptv_od_this_group">"this group"</string>
+    <string name="iptv_od_fix_poster">"Fix poster"</string>
+    <string name="iptv_od_fix_poster_hint">"The movie or series name, and the year if you know it, like Dune (2021). Leave it empty to go back to automatic."</string>
+    <string name="iptv_od_loading_details">"Loading details."</string>
+    <string name="iptv_od_choose_version">"Choose a version"</string>
+    <string name="iptv_od_no_episodes">"The provider didn't list any episodes."</string>
+
+    <string name="iptv_od_multiple_versions">"Your provider has this title more than once."</string>
+
+    <string name="iptv_od_default_sort">"Default (%1$s)"</string>
+</resources>

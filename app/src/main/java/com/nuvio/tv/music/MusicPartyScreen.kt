@@ -49,6 +49,8 @@ import androidx.compose.runtime.snapshotFlow
 import androidx.compose.runtime.withFrameNanos
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.res.stringResource
+import com.nuvio.tv.R
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.focus.FocusRequester
 import androidx.compose.ui.focus.focusRequester
@@ -110,7 +112,7 @@ internal fun MusicPartyScreen(onClose: () -> Unit) {
                 )
                 Column(Modifier.weight(1f)) {
                     Text(
-                        text = "Party",
+                        text = stringResource(R.string.music_sidebar_party),
                         color = MusicPalette.text,
                         fontFamily = MusicDisplay,
                         fontSize = 34.sp,
@@ -119,7 +121,7 @@ internal fun MusicPartyScreen(onClose: () -> Unit) {
                     )
                     Spacer(Modifier.height(2.dp))
                     Text(
-                        text = "Everyone on this Wi-Fi can add songs.",
+                        text = stringResource(R.string.music_party_everyone),
                         color = MusicPalette.textMuted,
                         fontSize = 13.sp
                     )
@@ -187,7 +189,7 @@ private fun PartyStartContent(
             }
             Spacer(Modifier.height(20.dp))
             Text(
-                text = "Start a listening party",
+                text = stringResource(R.string.music_party_start_title),
                 color = MusicPalette.text,
                 fontFamily = MusicDisplay,
                 fontSize = 36.sp,
@@ -196,8 +198,7 @@ private fun PartyStartContent(
             )
             Spacer(Modifier.height(8.dp))
             Text(
-                text = "Guests scan one QR code, search the music catalogue on their phone, " +
-                    "and add songs to this TV's queue. No app or account needed.",
+                text = stringResource(R.string.music_party_start_help),
                 color = MusicPalette.textSecondary,
                 fontSize = 14.sp,
                 lineHeight = 20.sp,
@@ -205,14 +206,14 @@ private fun PartyStartContent(
             )
             Spacer(Modifier.height(24.dp))
             Row(horizontalArrangement = Arrangement.spacedBy(12.dp)) {
-                PartyStep("1", "Scan", "Point a phone camera at the TV.")
-                PartyStep("2", "Search", "Find a song, artist or album.")
-                PartyStep("3", "Add", "It lands in the shared queue.")
+                PartyStep("1", stringResource(R.string.music_party_step_scan), stringResource(R.string.music_party_step_scan_help))
+                PartyStep("2", stringResource(R.string.nav_search), stringResource(R.string.music_party_step_search_help))
+                PartyStep("3", stringResource(R.string.music_party_step_add), stringResource(R.string.music_party_step_add_help))
             }
             Spacer(Modifier.height(28.dp))
             PartyPillButton(
                 icon = Icons.Default.Groups,
-                label = "Start party",
+                label = stringResource(R.string.music_party_start_button),
                 primary = true,
                 modifier = Modifier.focusRequester(startFocus),
                 onClick = onStart
@@ -254,14 +255,15 @@ private fun PartyActiveContent(
             Spacer(Modifier.height(8.dp))
             PartyPillButton(
                 icon = Icons.Default.FactCheck,
-                label = if (party.requireApproval) "Approval: On" else "Approval: Off",
+                label = if (party.requireApproval) stringResource(R.string.music_party_approval_on)
+                else stringResource(R.string.music_party_approval_off),
                 modifier = Modifier.fillMaxWidth(),
                 onClick = onToggleApproval
             )
             Spacer(Modifier.height(7.dp))
             PartyPillButton(
                 icon = Icons.Default.StopCircle,
-                label = "End party",
+                label = stringResource(R.string.music_party_end),
                 destructive = true,
                 modifier = Modifier.fillMaxWidth(),
                 onClick = onEnd
@@ -280,19 +282,20 @@ private fun PartyActiveContent(
             Row(horizontalArrangement = Arrangement.spacedBy(9.dp)) {
                 PartyPillButton(
                     icon = if (party.locked) Icons.Default.LockOpen else Icons.Default.Lock,
-                    label = if (party.locked) "Unlock" else "Lock",
+                    label = if (party.locked) stringResource(R.string.music_party_unlock)
+                    else stringResource(R.string.music_party_lock),
                     modifier = Modifier.weight(1f).focusRequester(controlsFocus),
                     onClick = onLock
                 )
                 PartyPillButton(
                     icon = Icons.Default.SkipNext,
-                    label = "Skip",
+                    label = stringResource(R.string.music_party_skip),
                     modifier = Modifier.weight(1f),
                     onClick = onSkip
                 )
                 PartyPillButton(
                     icon = Icons.Default.DeleteSweep,
-                    label = "Clear up next",
+                    label = stringResource(R.string.music_party_clear_up_next),
                     modifier = Modifier.weight(1f),
                     onClick = onClearUpNext
                 )
@@ -304,7 +307,7 @@ private fun PartyActiveContent(
                     verticalAlignment = Alignment.CenterVertically
                 ) {
                     Text(
-                        text = "Requests",
+                        text = stringResource(R.string.music_party_requests),
                         color = MusicPalette.text,
                         fontFamily = MusicDisplay,
                         fontSize = 18.sp,
@@ -319,7 +322,7 @@ private fun PartyActiveContent(
                     )
                     Spacer(Modifier.weight(1f))
                     Text(
-                        text = "Approve or decline",
+                        text = stringResource(R.string.music_party_approve_decline),
                         color = MusicPalette.textMuted,
                         fontSize = 10.sp
                     )
@@ -335,7 +338,7 @@ private fun PartyActiveContent(
                 }
                 if (party.pending.size > 3) {
                     Text(
-                        text = "+${party.pending.size - 3} more waiting",
+                        text = stringResource(R.string.music_party_more_waiting, party.pending.size - 3),
                         color = MusicPalette.textMuted,
                         fontSize = 10.sp,
                         modifier = Modifier.padding(start = 4.dp, bottom = 4.dp)
@@ -352,7 +355,7 @@ private fun PartyActiveContent(
                 verticalAlignment = Alignment.CenterVertically
             ) {
                 Text(
-                    text = "Up next",
+                    text = stringResource(R.string.music_p2_up_next),
                     color = MusicPalette.text,
                     fontFamily = MusicDisplay,
                     fontSize = 21.sp,
@@ -367,7 +370,7 @@ private fun PartyActiveContent(
                 Spacer(Modifier.weight(1f))
                 if (upNext.isNotEmpty()) {
                     Text(
-                        text = "Select to play · trash to remove",
+                        text = stringResource(R.string.music_party_select_trash),
                         color = MusicPalette.textMuted,
                         fontSize = 10.sp
                     )
@@ -386,9 +389,9 @@ private fun PartyActiveContent(
                         Spacer(Modifier.height(8.dp))
                         Text(
                             text = if (now == null) {
-                                "Waiting for the first song."
+                                stringResource(R.string.music_party_waiting_first)
                             } else {
-                                "Nothing queued. Guests can add the next one."
+                                stringResource(R.string.music_party_nothing_queued)
                             },
                             color = MusicPalette.textSecondary,
                             fontSize = 13.sp
@@ -446,7 +449,7 @@ private fun PartyQrCard(url: String?) {
             if (bitmap != null) {
                 Image(
                     bitmap = bitmap.asImageBitmap(),
-                    contentDescription = "Party join QR code",
+                    contentDescription = stringResource(R.string.music_party_qr),
                     contentScale = ContentScale.Fit,
                     modifier = Modifier.fillMaxSize()
                 )
@@ -461,14 +464,14 @@ private fun PartyQrCard(url: String?) {
         }
         Spacer(Modifier.height(10.dp))
         Text(
-            text = "Scan to join",
+            text = stringResource(R.string.music_party_scan_join),
             color = MusicPalette.text,
             fontSize = 17.sp,
             fontWeight = FontWeight.Bold
         )
         Spacer(Modifier.height(4.dp))
         Text(
-            text = url ?: "Connect the TV to Wi-Fi or Ethernet.",
+            text = url ?: stringResource(R.string.music_party_connect_wifi),
             color = if (url == null) MusicPalette.error else MusicPalette.textMuted,
             fontSize = 10.sp,
             maxLines = 2,
@@ -503,9 +506,9 @@ private fun PartyStatusCard(locked: Boolean, additions: Int, urlMissing: Boolean
         )
         Text(
             text = when {
-                urlMissing -> "No network address"
-                locked -> "Additions locked"
-                else -> "Open to guests"
+                urlMissing -> stringResource(R.string.music_party_no_network)
+                locked -> stringResource(R.string.music_party_locked_status)
+                else -> stringResource(R.string.music_party_open_guests)
             },
             color = if (locked) MusicPalette.accentCoral else MusicPalette.text,
             fontSize = 12.sp,
@@ -513,7 +516,7 @@ private fun PartyStatusCard(locked: Boolean, additions: Int, urlMissing: Boolean
         )
         Spacer(Modifier.weight(1f))
         Text(
-            text = "$additions added",
+            text = stringResource(R.string.music_party_added_count, additions),
             color = MusicPalette.textMuted,
             fontSize = 10.sp
         )
@@ -548,9 +551,9 @@ private fun PartyNowPlaying(
         Column(Modifier.weight(1f)) {
             Text(
                 text = when {
-                    song == null -> "WAITING"
-                    isPlaying -> "NOW PLAYING"
-                    else -> "PAUSED"
+                    song == null -> stringResource(R.string.music_party_waiting_upper)
+                    isPlaying -> stringResource(R.string.music_p2_now_playing)
+                    else -> stringResource(R.string.music_party_paused_upper)
                 },
                 color = if (song == null) MusicPalette.textMuted else MusicPalette.accentTeal,
                 fontSize = 9.sp,
@@ -559,7 +562,7 @@ private fun PartyNowPlaying(
             )
             Spacer(Modifier.height(4.dp))
             Text(
-                text = song?.title ?: "Waiting for the first song",
+                text = song?.title ?: stringResource(R.string.music_party_waiting_first),
                 color = MusicPalette.text,
                 fontSize = 19.sp,
                 fontWeight = FontWeight.Bold,
@@ -567,7 +570,7 @@ private fun PartyNowPlaying(
                 overflow = TextOverflow.Ellipsis
             )
             Text(
-                text = song?.artist ?: "The queue starts when a guest adds something.",
+                text = song?.artist ?: stringResource(R.string.music_party_queue_starts),
                 color = MusicPalette.textSecondary,
                 fontSize = 12.sp,
                 maxLines = 1,
@@ -576,7 +579,7 @@ private fun PartyNowPlaying(
             if (addedBy != null) {
                 Spacer(Modifier.height(2.dp))
                 Text(
-                    text = "Added by $addedBy",
+                    text = stringResource(R.string.music_party_added_by, addedBy),
                     color = MusicPalette.textMuted,
                     fontSize = 10.sp
                 )
@@ -659,13 +662,13 @@ private fun PartyPendingRow(
         }
         PartyMiniAction(
             icon = Icons.Default.Check,
-            label = "Approve ${request.song.title}",
+            label = stringResource(R.string.music_party_approve, request.song.title),
             tint = MusicPalette.accentTeal,
             onClick = onApprove
         )
         PartyMiniAction(
             icon = Icons.Default.Close,
-            label = "Decline ${request.song.title}",
+            label = stringResource(R.string.music_party_decline, request.song.title),
             tint = MusicPalette.accentCoral,
             onClick = onReject
         )
@@ -783,7 +786,7 @@ private fun PartyTrashButton(onClick: () -> Unit) {
     ) {
         Icon(
             Icons.Default.Delete,
-            contentDescription = "Remove from queue",
+            contentDescription = stringResource(R.string.music_party_remove_queue),
             tint = if (focused) MusicPalette.background else MusicPalette.textMuted,
             modifier = Modifier.size(16.dp)
         )
@@ -854,7 +857,7 @@ private fun PartyLivePill(locked: Boolean) {
                 .background(if (locked) MusicPalette.accentCoral else MusicPalette.accentTeal)
         )
         Text(
-            text = if (locked) "LOCKED" else "PARTY LIVE",
+            text = if (locked) stringResource(R.string.music_party_locked_upper) else stringResource(R.string.music_party_live_upper),
             color = if (locked) MusicPalette.accentCoral else MusicPalette.accentTeal,
             fontSize = 9.sp,
             letterSpacing = 1.2.sp,
@@ -946,7 +949,7 @@ private fun PartyCloseButton(modifier: Modifier = Modifier, onClick: () -> Unit)
     ) {
         Icon(
             Icons.AutoMirrored.Filled.ArrowBack,
-            contentDescription = "Close party",
+            contentDescription = stringResource(R.string.action_close),
             tint = if (focused) MusicPalette.background else MusicPalette.text,
             modifier = Modifier.size(20.dp)
         )

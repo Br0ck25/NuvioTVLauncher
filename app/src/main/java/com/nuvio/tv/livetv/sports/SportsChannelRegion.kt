@@ -13,6 +13,8 @@ import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
+import androidx.compose.ui.res.stringResource
+import com.nuvio.tv.R
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
@@ -173,7 +175,7 @@ internal fun RegionDialog(
     val selected = remember { FocusRequester() }
     fun count(n: Int) = if (n == 1) "1 channel" else "$n channels"
     SportsDialog(onDismiss = onDismiss, width = 520.dp) {
-        LiveText("Channels from", color = Color.White, size = 20.sp, weight = FontWeight.Bold)
+        LiveText(stringResource(R.string.iptv_sports_channels_from), color = Color.White, size = 20.sp, weight = FontWeight.Bold)
         LiveText(
             "Shows only that region's channels for every game (handy for commentary in your language). " +
                 "Reminders and Watch now use them first too. The others are one click away.",
