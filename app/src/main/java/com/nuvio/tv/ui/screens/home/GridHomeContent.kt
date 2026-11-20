@@ -727,7 +727,8 @@ fun GridHomeContent(
                         cardStyle = uiState.continueWatchingCardStyle,
                         cornerRadius = posterCardStyle.cornerRadius,
                         posterCardWidth = posterCardStyle.width,
-                        posterCardHeight = posterCardStyle.height
+                        posterCardHeight = posterCardStyle.height,
+                        isUpcomingSection = true
                     )
                 }
             }
