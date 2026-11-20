@@ -543,6 +543,8 @@ sentry {
 }
 
 dependencies {
+    implementation("eu.agno3.jcifs:jcifs-ng:2.1.10")
+    implementation("org.slf4j:slf4j-android:1.7.30")
     implementation(project(":vpn-core"))
     implementation(project(":vpn-android"))
     // YouTube hub engine (SmartTube MediaServiceCore, MIT)

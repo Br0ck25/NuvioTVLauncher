@@ -113,4 +113,19 @@
     <string name="iptv_rec_stop_repeating">"Stop Repeating"</string>
     <string name="iptv_rec_repeat_detail">"%1$s ? %2$s at %3$s. Stopping it also cancels the airings it set that haven't started; what's recorded is kept."</string>
     <string name="iptv_rec_done">"Done"</string>
+
+    <string name="iptv_rec_smb_set_up">"Set up SMB share"</string>
+    <string name="iptv_rec_smb_change">"Change SMB share"</string>
+    <string name="iptv_rec_smb_not_set_up">"Not set up"</string>
+    <string name="iptv_rec_smb_desc">"Record straight to a folder on your NAS, router or server share."</string>
+    <string name="iptv_rec_smb_share">"Share"</string>
+    <string name="iptv_rec_smb_folder">"Folder (optional)"</string>
+    <string name="iptv_rec_smb_domain">"Domain (optional)"</string>
+    <string name="iptv_rec_smb_port">"Port"</string>
+    <string name="iptv_rec_smb_remove">"Remove this share"</string>
+    <string name="iptv_rec_smb_credentials_note">"The username and password are kept encrypted on this device."</string>
+    <string name="iptv_rec_smb_saved">"Saved. New recordings go to this share."</string>
+    <string name="iptv_rec_smb_connected">"Connected: %1$s"</string>
+    <string name="iptv_rec_smb_failed">"Couldn\'t connect: %1$s"</string>
+    <string name="iptv_rec_smb_removed">"SMB share removed. New recordings go to this device."</string>
 </resources>

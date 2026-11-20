@@ -7,4 +7,5 @@
     <string name="iptv_storage_not_ready">Not ready yet. Wait a moment and open this list again.</string>
     <string name="iptv_storage_no_app_folder">Android didn\'t give the app a folder on it. Unplug the drive and plug it back in, or restart the box.</string>
     <string name="iptv_storage_unusable_state">Not usable right now (%1$s).</string>
+    <string name="iptv_storage_network_share">Network share (SMB)</string>
 </resources>

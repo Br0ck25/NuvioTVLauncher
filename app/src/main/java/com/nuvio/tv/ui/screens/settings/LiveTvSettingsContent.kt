@@ -258,6 +258,7 @@ private sealed interface LiveDialog {
     data object LoadReport : LiveDialog
     data object HomeRowSource : LiveDialog
     data object HomeRowTitle : LiveDialog
+    data object SmbShare : LiveDialog
     data class ConfirmDeletePlaylist(val source: PlaylistSource) : LiveDialog
     data class ConfirmDeleteEpg(val source: EpgSource) : LiveDialog
     /** "Are you sure?" before a reset, clear or similar. */
@@ -356,6 +357,8 @@ internal fun LiveTvSettingsContent(
     page: LiveTvPage = LiveTvPage.ALL
 ) {
     val context = LocalContext.current
+    // Outlives the SMB dialog: the connection test keeps running and reports after it closes.
+    val pageScope = androidx.compose.runtime.rememberCoroutineScope()
     // HUB: one Live TV page with its own row of tabs; the tab picked is the page shown.
     val hub = page == LiveTvPage.HUB
     var tab by remember { mutableStateOf(LiveTvPage.MAIN) }
@@ -1687,7 +1690,8 @@ internal fun LiveTvSettingsContent(
                 val driveProblems = remember("recordings" in open) { com.nuvio.tv.livetv.record.RecordingStorage.problems(recContext) }
                 val chosen = drives.firstOrNull { it.id == s.recordingStorage }
                 fun driveLabel(c: com.nuvio.tv.livetv.record.RecordingStorage.Choice) =
-                    c.label + " · " + com.nuvio.tv.livetv.record.RecordingStorage.sizeLabel(c.freeBytes, context.settingsLocale) + context.getString(R.string.iptv_settings_free)
+                    if (c.freeBytes <= 0L) c.label
+                    else c.label + " · " + com.nuvio.tv.livetv.record.RecordingStorage.sizeLabel(c.freeBytes, context.settingsLocale) + context.getString(R.string.iptv_settings_free)
                 var pickingDrive by remember { mutableStateOf(false) }
                 LiveSection(
                     title = context.getString(R.string.iptv_settings_recordings),
@@ -1703,6 +1707,13 @@ internal fun LiveTvSettingsContent(
                         else context.getString(R.string.iptv_settings_where_new_recordings_go_to_move_ones_already),
                         value = chosen?.label ?: context.getString(R.string.iptv_settings_this_device),
                         onClick = { pickingDrive = true }
+                    )
+                    SettingsActionRow(
+                        title = context.getString(if (com.nuvio.tv.livetv.record.RecordingStorage.isSmbConfigured(recContext)) R.string.iptv_rec_smb_change else R.string.iptv_rec_smb_set_up),
+                        subtitle = context.getString(R.string.iptv_rec_smb_desc),
+                        value = com.nuvio.tv.livetv.record.RecordingStorage.smbLabel(recContext)
+                            ?: context.getString(R.string.iptv_rec_smb_not_set_up),
+                        onClick = { dialog = LiveDialog.SmbShare }
                     )
                     SettingsActionRow(
                         title = context.getString(R.string.iptv_settings_start_recording_early),
@@ -1735,7 +1746,11 @@ internal fun LiveTvSettingsContent(
                         actions = drives.map { c ->
                             (driveLabel(c) + if (c.id == (chosen?.id ?: "")) "  ✓" else "") to {
                                 pickingDrive = false
-                                update { it.copy(recordingStorage = c.id) }
+                                if (c.isSmb && !com.nuvio.tv.livetv.record.RecordingStorage.isSmbConfigured(recContext)) {
+                                    dialog = LiveDialog.SmbShare
+                                } else {
+                                    update { it.copy(recordingStorage = c.id) }
+                                }
                             }
                         } + driveProblems.map { p ->
                             // Plugged in but not usable: say why instead of leaving it out.
@@ -2029,6 +2044,75 @@ internal fun LiveTvSettingsContent(
             onDismiss = close,
             onConfirm = { t -> update { it.copy(homeRowTitle = t.trim()) }; close() }
         )
+        LiveDialog.SmbShare -> {
+            val existing = remember { com.nuvio.tv.livetv.record.RecordingStorage.smbConfig(context) }
+            SourceFormDialog(
+                title = context.getString(R.string.iptv_storage_network_share),
+                fields = listOf(
+                    FormField(context.getString(R.string.iptv_settings_server), "192.168.1.10", existing?.host.orEmpty()),
+                    FormField(context.getString(R.string.iptv_rec_smb_share), "Recordings", existing?.share.orEmpty()),
+                    FormField(context.getString(R.string.iptv_rec_smb_folder), "Nuvio", existing?.folder.orEmpty()),
+                    FormField(context.getString(R.string.iptv_settings_username), "", existing?.username.orEmpty()),
+                    FormField(context.getString(R.string.iptv_settings_password), "", existing?.password.orEmpty()),
+                    FormField(context.getString(R.string.iptv_rec_smb_port), "445", existing?.port?.toString() ?: "445"),
+                    FormField(context.getString(R.string.iptv_rec_smb_domain), "", existing?.domain.orEmpty())
+                ),
+                onDismiss = close,
+                preserveWhitespaceAt = setOf(4),
+                validate = { v ->
+                    when {
+                        v[0].isBlank() -> "Enter the server name or IP address."
+                        v[1].isBlank() -> "Enter the share name."
+                        (v[5].toIntOrNull() ?: 0) !in 1..65535 -> "The port must be a number from 1 to 65535."
+                        else -> null
+                    }
+                },
+                toggle = if (existing != null) context.getString(R.string.iptv_rec_smb_remove) to false else null,
+                onSave = { v, remove ->
+                    if (remove) {
+                        com.nuvio.tv.livetv.record.RecordingStorage.clearSmbConfig(context)
+                        update { it.copy(recordingStorage = "") }
+                        android.widget.Toast.makeText(
+                            context,
+                            context.getString(R.string.iptv_rec_smb_removed),
+                            android.widget.Toast.LENGTH_SHORT
+                        ).show()
+                        close()
+                    } else {
+                        val config = com.nuvio.tv.livetv.record.SmbConfig(
+                            host = v[0].trim(),
+                            share = v[1].trim(),
+                            folder = v[2].trim(),
+                            username = v[3].trim(),
+                            password = v[4],
+                            port = v[5].toIntOrNull() ?: 445,
+                            domain = v[6].trim()
+                        )
+                        com.nuvio.tv.livetv.record.RecordingStorage.saveSmbConfig(context, config)
+                        update { it.copy(recordingStorage = com.nuvio.tv.livetv.record.RecordingStorage.SMB_ID) }
+                        close()
+                        pageScope.launch {
+                            val result = kotlinx.coroutines.withContext(kotlinx.coroutines.Dispatchers.IO) {
+                                com.nuvio.tv.livetv.record.RecordingStorage.testSmbConfig(config)
+                            }
+                            android.widget.Toast.makeText(
+                                context,
+                                result.fold(
+                                    onSuccess = { context.getString(R.string.iptv_rec_smb_connected, it) },
+                                    onFailure = {
+                                        context.getString(
+                                            R.string.iptv_rec_smb_failed,
+                                            it.message ?: it.javaClass.simpleName
+                                        )
+                                    }
+                                ),
+                                android.widget.Toast.LENGTH_LONG
+                            ).show()
+                        }
+                    }
+                }
+            )
+        }
         LiveDialog.ButtonTester -> com.nuvio.tv.livetv.ui.RemoteButtonTester(onClose = close)
         LiveDialog.LoadReport -> com.nuvio.tv.livetv.ui.LoadReportDialog(onDismiss = close)
         LiveDialog.PosterTest -> {
@@ -3011,7 +3095,7 @@ private fun SourceFormDialog(
     val values = remember { fields.map { mutableStateOf(it.initial) } }
     var showAdvanced by remember { mutableStateOf(false) }
     var formError by remember { mutableStateOf<String?>(null) }
-    var toggleValue by remember { mutableStateOf(toggle?.second ?: true) }
+    var toggleValue by remember { mutableStateOf(toggle?.second ?: false) }
     var toggle2Value by remember { mutableStateOf(toggle2?.second ?: true) }
     var toggleLiveValue by remember { mutableStateOf(toggleLive?.second ?: true) }
     val firstField = remember { FocusRequester() }
