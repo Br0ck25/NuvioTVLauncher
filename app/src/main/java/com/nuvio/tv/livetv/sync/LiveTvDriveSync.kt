@@ -390,6 +390,7 @@ class LiveTvDriveSync @Inject constructor(
             busy = false,
             lastSyncMs = store.getLong(KEY_LAST_SYNC, 0L),
             message = when {
+                result.exceptionOrNull() is DrivePermissionMissing -> text(R.string.iptv_status_google_drive_not_granted)
                 result.isFailure -> text(R.string.iptv_status_backup_failed, result.exceptionOrNull()?.message ?: text(R.string.iptv_status_network_error))
                 emptyRefused -> text(R.string.iptv_status_backup_empty)
                 force -> text(R.string.iptv_status_drive_backed_up)
@@ -438,6 +439,7 @@ class LiveTvDriveSync @Inject constructor(
             busy = false,
             lastSyncMs = store.getLong(KEY_LAST_SYNC, 0L),
             message = when {
+                result.exceptionOrNull() is DrivePermissionMissing -> text(R.string.iptv_status_google_drive_not_granted)
                 result.isFailure -> text(R.string.iptv_status_restore_failed, result.exceptionOrNull()?.message ?: text(R.string.iptv_status_network_error))
                 result.getOrNull() == null && force && !onlyIfExists -> text(R.string.iptv_status_drive_no_backup)
                 applied && force -> text(R.string.iptv_status_drive_restored)
@@ -681,6 +683,20 @@ class LiveTvDriveSync @Inject constructor(
 
     // ------------------------------------------------------------------ Google plumbing
 
+    /** Google refused this connection's token for lack of the Drive permission: disconnect it so the user can connect again. */
+    private fun dropConnectionNeedingDrivePermission() {
+        store.edit()
+            .remove(KEY_REFRESH)
+            .remove(KEY_FILE_ID)
+            .remove(KEY_LAST_HASH)
+            .apply()
+        accessToken = null
+        _state.value = _state.value.copy(connected = false, busy = false, message = text(R.string.iptv_status_google_drive_not_granted))
+    }
+
+    /** Thrown when Drive says the token lacks the Drive scope; the connection was already dropped with its own message. */
+    private class DrivePermissionMissing : Exception("Drive permission missing")
+
     /** A valid access token, refreshed when needed. Null (and disconnected) if sign-in was revoked. */
     private suspend fun token(): String? {
         val refresh = store.getString(KEY_REFRESH, null) ?: return null
@@ -714,6 +730,14 @@ class LiveTvDriveSync @Inject constructor(
                 .remove(KEY_LAST_HASH)
                 .apply()
             _state.value = _state.value.copy(connected = false, message = text(R.string.iptv_status_drive_access_removed))
+            return null
+        }
+        // A connection saved before the sign-in scope check (or one where the Drive box was left
+        // unticked) has a token Google will refuse for every request. Say so once and disconnect,
+        // instead of failing every sync with "HTTP 403 insufficientPermissions".
+        val granted = res.optString("scope")
+        if (granted.isNotBlank() && "auth/drive" !in granted) {
+            dropConnectionNeedingDrivePermission()
             return null
         }
         val access = res.optString("access_token").ifBlank { return null }
@@ -788,6 +812,10 @@ class LiveTvDriveSync @Inject constructor(
                     ).distinct().joinToString("/")
                 }.getOrNull().orEmpty()
                 Log.w(TAG, "Drive HTTP ${r.code}: ${text.take(300)}")
+                if (r.code == 403 && reason.contains("insufficientPermissions", ignoreCase = true)) {
+                    dropConnectionNeedingDrivePermission()
+                    throw DrivePermissionMissing()
+                }
                 error(if (reason.isNotBlank()) "HTTP ${r.code} $reason" else "HTTP ${r.code}")
             }
             text
