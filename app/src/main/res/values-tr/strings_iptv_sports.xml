@@ -126,4 +126,8 @@
     <string name="iptv_sports_search_hint">"Takımları ve ligleri arayın"</string>
     <string name="iptv_sports_person_hint">"Bir oyuncu, sürücü, dövüşçü veya takım"</string>
     <string name="iptv_sports_last_met">"Son buluşma %1$s"</string>
+    <string name="iptv_sports_official_videos">"RESM? VE YOUTUBE"</string>
+    <string name="iptv_sports_from_addons">"EKLENT?LER?N?ZDEN"</string>
+    <string name="iptv_sports_finding_highlights">"?nemli anlar aran?yor?"</string>
+    <string name="iptv_sports_no_official_highlights">"Bu ma? i?in hen?z resmi ?nemli an yok."</string>
 </resources>

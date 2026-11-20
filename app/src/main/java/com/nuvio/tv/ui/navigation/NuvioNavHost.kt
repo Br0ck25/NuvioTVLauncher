@@ -1973,6 +1973,20 @@ private fun PlaybackNavHost(
             // Live TV fork: the Sports page (scores, schedules, which of your channels show each game).
             if (sportsShown) com.nuvio.tv.livetv.sports.SportsScreen(
                 onOpenLive = { com.nuvio.tv.livetv.sports.openLiveTvFullscreen(navController) },
+                onPlayHighlight = { playback ->
+                    navController.navigate(
+                        Screen.Player.createRoute(
+                            streamUrl = playback.streamUrl,
+                            title = playback.title,
+                            contentId = playback.contentId,
+                            contentType = playback.contentType,
+                            addonName = playback.addonName,
+                            poster = playback.poster,
+                            videoId = playback.videoId,
+                            startFromBeginning = playback.startFromBeginning
+                        )
+                    )
+                },
                 onOpenMultiview = { channelKey ->
                     com.nuvio.tv.livetv.sports.SportsWatchLaunch.request(2, channelKey)
                     navController.navigate(Screen.SportsMultiview.route) { launchSingleTop = true }

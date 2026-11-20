@@ -350,8 +350,7 @@ class LiveTvPlaybackController @Inject constructor(
     private fun clipFinished(): Boolean {
         val p = _player ?: return false
         val ch = currentChannel ?: return false
-        if (ch.sourceId != com.nuvio.tv.livetv.sports.SportsVideos.SOURCE_ID &&
-            ch.sourceId != com.nuvio.tv.livetv.sports.SportsAddonSource.SOURCE_ID) return false
+        if (ch.sourceId != com.nuvio.tv.livetv.sports.SportsAddonSource.SOURCE_ID) return false
         if (sawLive || p.isCurrentMediaItemDynamic) return false
         val d = p.duration
         return d != C.TIME_UNSET && d > 0
@@ -362,8 +361,7 @@ class LiveTvPlaybackController @Inject constructor(
         val ch = currentChannel
         if (p != null && p.isCurrentMediaItemDynamic) sawLive = true
         _ownTimeline.value = p != null &&
-            (ch?.sourceId == com.nuvio.tv.livetv.sports.SportsAddonSource.SOURCE_ID ||
-                ch?.sourceId == com.nuvio.tv.livetv.sports.SportsVideos.SOURCE_ID) &&
+            ch?.sourceId == com.nuvio.tv.livetv.sports.SportsAddonSource.SOURCE_ID &&
             _state.value.catchupTitle == null && _shiftStartedAt.value == null && _recordingPlayback.value == null &&
             p.isCurrentMediaItemSeekable && p.duration != C.TIME_UNSET &&
             // Live: only with a real rewind window (a short one would run out while paused, so
@@ -2326,17 +2324,6 @@ class LiveTvPlaybackController @Inject constructor(
     }
 
     private fun buildMediaSource(url: String, headers: Map<String, String>, isLive: Boolean): androidx.media3.exoplayer.source.MediaSource {
-        // A YouTube highlight from Sports: its picture and sound are two files, played together
-        // the way trailers are (read in pieces, as YouTube slows down whole-file downloads).
-        if (currentChannel?.sourceId == com.nuvio.tv.livetv.sports.SportsVideos.SOURCE_ID) {
-            com.nuvio.tv.livetv.sports.SportsVideos.soundFor(url)?.let { sound ->
-                val factory = androidx.media3.exoplayer.source.DefaultMediaSourceFactory(com.nuvio.tv.data.trailer.YoutubeChunkedDataSourceFactory())
-                return androidx.media3.exoplayer.source.MergingMediaSource(
-                    factory.createMediaSource(MediaItem.fromUri(url)),
-                    factory.createMediaSource(MediaItem.fromUri(sound))
-                )
-            }
-        }
         return com.nuvio.tv.livetv.multiview.LiveTvMediaSourceBuilder(
             drm = currentChannel?.drm,
             forcedMime = forcedMime,

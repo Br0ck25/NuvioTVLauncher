@@ -165,6 +165,8 @@ private val LIST_WIDTH = 470.dp
 fun SportsScreen(
     /** Live TV is playing the picked channel: open it full screen. */
     onOpenLive: () -> Unit,
+    /** An official or YouTube highlight was picked: open it in the main player. */
+    onPlayHighlight: (SportsHighlightPlayback) -> Unit = {},
     /** Back on a game opened from another page (the Calendar): that page's route. */
     onReturnTo: (route: String) -> Unit = {},
     viewModel: SportsViewModel = hiltViewModel(),
@@ -372,6 +374,7 @@ fun SportsScreen(
                 viewModel = viewModel,
                 onChoose = { m -> choose(opened, m) },
                 onPlayReplay = { m -> SportsLaunch.openedFromSports(opened.id); viewModel.watch(m); onOpenLive() },
+                onPlayOfficial = { video -> viewModel.playHighlight(video, opened) { onPlayHighlight(it) } },
                 onFromStart = { m -> fromStart(opened, m) },
                 onFix = { fixFor = opened },
                 onTable = { tableReq = TableRequest(opened.leagueId, opened.sides.map { it.team.id }.toSet()) },
@@ -1300,6 +1303,8 @@ private fun GamePage(
     onChoose: (ChannelMatch) -> Unit,
     /** A replay or highlights video from a sports addon (finished games). */
     onPlayReplay: (ChannelMatch) -> Unit,
+    /** An official or YouTube highlight (finished games): a VOD in the main player. */
+    onPlayOfficial: (SportsVideo) -> Unit,
     onFromStart: (ChannelMatch) -> Unit,
     onFix: () -> Unit,
     /** OK on the Table panel: the league's whole table. */
@@ -1347,17 +1352,28 @@ private fun GamePage(
         onDispose { viewModel.repo.closeGame(ev.id) }
     }
     val vodLooked = viewModel.repo.vodMatches.collectAsStateWithLifecycle().value[ev.id]
-    val official = viewModel.repo.videoMatches.collectAsStateWithLifecycle().value[ev.id]
-    // Official highlights and condensed games (ESPN, NHL, MLB, YouTube) go in the same list.
-    val replays = remember(vodLooked, official) { SportsVideos.merge(vodLooked.orEmpty(), official.orEmpty()) }
+    val official = viewModel.repo.officialVideos.collectAsStateWithLifecycle().value[ev.id]
+    val addonReplays = vodLooked.orEmpty()
     val vodAddons = viewModel.repo.vodAddons.collectAsStateWithLifecycle().value[ev.id]
-    // A finished game: once replays turn up, put the highlight on the first one (once per visit).
+    // A finished game: the first official highlight takes the highlight; when there are none,
+    // the first add-on replay does (once per visit).
     val firstReplay = remember(ev.id) { FocusRequester() }
+    val firstOfficial = remember(ev.id) { FocusRequester() }
     var replayFocused by remember(ev.id) { mutableStateOf(false) }
-    LaunchedEffect(ev.id, replays.isNotEmpty()) {
-        if (ev.state == GameState.POST && replays.isNotEmpty() && !replayFocused) {
-            delay(150)
-            if (runCatching { firstReplay.requestFocus() }.isSuccess) replayFocused = true
+    LaunchedEffect(ev.id, official?.size, vodLooked?.size) {
+        if (ev.state != GameState.POST || official == null || replayFocused) return@LaunchedEffect
+        val target = if (official.isNotEmpty()) firstOfficial
+        else if (addonReplays.isNotEmpty()) firstReplay
+        else null
+        if (target != null) {
+            // Let the new rows compose before asking for focus; a recycled list can miss the first try.
+            for (attempt in 0 until 4) {
+                delay(100)
+                if (runCatching { target.requestFocus() }.isSuccess) {
+                    replayFocused = true
+                    break
+                }
+            }
         }
     }
     val plays = rememberScoringPlays(ev, settings.hideScores, viewModel)
@@ -1421,32 +1437,77 @@ private fun GamePage(
             onDismiss = { pickRegion = false }
         )
     }
-    // Finished games: replays and highlights come only from sports addons, so this list goes first
-    // and says where they come from when there are none.
+    // Finished games: official highlights first, then the replays from your sports add-ons.
+    // The list scrolls as one; when official highlights are still being found, a small row says so.
     val replaysBlock: @Composable () -> Unit = {
-        SectionHeader(stringResource(R.string.iptv_sports_replays_highlights))
-        when {
-            replays.isNotEmpty() -> LazyColumn(
-                Modifier.heightIn(max = 126.dp).keepFocusWhileHeld(horizontal = false),
-                verticalArrangement = Arrangement.spacedBy(4.dp),
-                contentPadding = PaddingValues(horizontal = 6.dp, vertical = 4.dp)
-            ) {
-                itemsIndexed(replays, key = { _, m -> m.channel.key }) { i, m ->
-                    ChannelLine(m.channel, m.how, modifier = if (i == 0) Modifier.focusRequester(firstReplay) else Modifier,
-                        onClick = { onPlayReplay(m) })
+        val videos = official
+        LazyColumn(
+            Modifier.heightIn(max = 240.dp).keepFocusWhileHeld(horizontal = false),
+            verticalArrangement = Arrangement.spacedBy(4.dp),
+            contentPadding = PaddingValues(horizontal = 6.dp, vertical = 4.dp)
+        ) {
+            item(key = "official-header") {
+                SectionHeader(stringResource(R.string.iptv_sports_official_videos))
+            }
+            when {
+                videos == null -> item(key = "official-loading") {
+                    LiveText(
+                        stringResource(R.string.iptv_sports_finding_highlights),
+                        color = SportsLook.Dim, size = 12.sp,
+                        modifier = Modifier.padding(start = 6.dp, bottom = 4.dp)
+                    )
+                }
+                videos.isEmpty() -> item(key = "official-none") {
+                    LiveText(
+                        stringResource(R.string.iptv_sports_no_official_highlights),
+                        color = SportsLook.Dim, size = 12.sp, maxLines = 2,
+                        modifier = Modifier.padding(start = 6.dp, bottom = 4.dp)
+                    )
+                }
+                else -> itemsIndexed(videos, key = { _, v -> "official:${v.id}" }) { i, video ->
+                    val channel = remember(video) { SportsHighlights.displayChannel(video) }
+                    ChannelLine(
+                        channel, SportsHighlights.detail(video),
+                        modifier = if (i == 0) Modifier.focusRequester(firstOfficial) else Modifier,
+                        onClick = { onPlayOfficial(video) }
+                    )
                 }
             }
-            vodLooked == null || official == null -> LiveText(stringResource(R.string.iptv_sports_looking_addons), color = SportsLook.Dim, size = 12.sp,
-                modifier = Modifier.padding(start = 6.dp, bottom = 4.dp))
-            vodAddons != null && vodAddons.isEmpty() -> LiveText(
-                stringResource(R.string.iptv_sports_replays_none),
-                color = SportsLook.Dim, size = 12.sp, maxLines = 3, modifier = Modifier.padding(start = 6.dp, bottom = 4.dp)
-            )
-            else -> LiveText(
-                (vodAddons?.takeIf { it.isNotEmpty() }?.let { stringResource(R.string.iptv_sports_no_replay_in, it.joinToString(", ")) }
-                    ?: stringResource(R.string.iptv_sports_no_replay_addons)),
-                color = SportsLook.Dim, size = 12.sp, maxLines = 3, modifier = Modifier.padding(start = 6.dp, bottom = 4.dp)
-            )
+            item(key = "addons-header") {
+                Spacer(Modifier.height(6.dp))
+                SectionHeader(stringResource(R.string.iptv_sports_from_addons))
+            }
+            when {
+                addonReplays.isNotEmpty() -> itemsIndexed(addonReplays, key = { _, m -> "addon:${m.channel.key}" }) { i, m ->
+                    ChannelLine(
+                        m.channel, m.how,
+                        modifier = if (i == 0) Modifier.focusRequester(firstReplay) else Modifier,
+                        onClick = { onPlayReplay(m) }
+                    )
+                }
+                vodLooked == null -> item(key = "addons-loading") {
+                    LiveText(
+                        stringResource(R.string.iptv_sports_looking_addons), color = SportsLook.Dim, size = 12.sp,
+                        modifier = Modifier.padding(start = 6.dp, bottom = 4.dp)
+                    )
+                }
+                vodAddons != null && vodAddons.isEmpty() -> item(key = "addons-none") {
+                    LiveText(
+                        stringResource(R.string.iptv_sports_replays_none),
+                        color = SportsLook.Dim, size = 12.sp, maxLines = 3,
+                        modifier = Modifier.padding(start = 6.dp, bottom = 4.dp)
+                    )
+                }
+                else -> item(key = "addons-empty") {
+                    LiveText(
+                        (vodAddons?.takeIf { it.isNotEmpty() }?.let {
+                            stringResource(R.string.iptv_sports_no_replay_in, it.joinToString(", "))
+                        } ?: stringResource(R.string.iptv_sports_no_replay_addons)),
+                        color = SportsLook.Dim, size = 12.sp, maxLines = 3,
+                        modifier = Modifier.padding(start = 6.dp, bottom = 4.dp)
+                    )
+                }
+            }
         }
         Spacer(Modifier.height(6.dp))
     }

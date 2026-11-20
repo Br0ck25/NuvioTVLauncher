@@ -37,6 +37,10 @@
     <string name="iptv_sports_tables">"Tables"</string>
     <string name="iptv_sports_next_7_days">"%1$s · the next 7 days"</string>
     <string name="iptv_sports_replays_highlights">"REPLAYS &amp; HIGHLIGHTS"</string>
+    <string name="iptv_sports_official_videos">"OFFICIAL &amp; YOUTUBE"</string>
+    <string name="iptv_sports_from_addons">"FROM YOUR ADD-ONS"</string>
+    <string name="iptv_sports_finding_highlights">"Finding highlights…"</string>
+    <string name="iptv_sports_no_official_highlights">"No official highlights for this game yet."</string>
     <string name="iptv_sports_looking_addons">"Looking in your sports add-ons…"</string>
     <string name="iptv_sports_watch_on_channels">"WATCH ON YOUR CHANNELS"</string>
     <string name="iptv_sports_looking_channels">"Looking through your channels…"</string>

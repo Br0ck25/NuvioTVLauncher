@@ -5,6 +5,10 @@
 - New: built-in WireGuard VPN. Import a WireGuard `.conf` (including NordVPN's manual WireGuard files) from your phone by scanning the QR code under Settings > VPN. The profile is read and encrypted on the TV; the private key is never shown in the QR code.
 - Choose **HTTP streams only** to protect HTTP playback while HTTPS stays direct, or **Full app** to protect all Nuvio traffic. OpenVPN is not included.
 
+## Sports
+
+- Finished games now show official highlights and condensed games from ESPN, NHL, MLB and YouTube above the replays from your sports add-ons. YouTube results come from the OneTube engine, are checked against the teams, and are cached on the TV for six hours. Official videos open in the main player; NHL Brightcove links are resolved when picked, and Back returns to the game page.
+
 ## Nuvio + IPTV 1.2.0-beta.2.1
 
 - Sports: official highlights and condensed games (ESPN, NHL, MLB and YouTube), replays and highlights from sports add-ons for every sport, and AFCON qualifying with qualification status.

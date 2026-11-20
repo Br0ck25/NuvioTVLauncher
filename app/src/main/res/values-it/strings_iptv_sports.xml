@@ -126,4 +126,8 @@
     <string name="iptv_sports_search_hint">"Cerca squadre e campionati"</string>
     <string name="iptv_sports_person_hint">"Un giocatore, pilota, combattente o squadra"</string>
     <string name="iptv_sports_last_met">"Ultimo incontro %1$s"</string>
+    <string name="iptv_sports_official_videos">"UFFICIALI E YOUTUBE"</string>
+    <string name="iptv_sports_from_addons">"DAI TUOI ADD-ON"</string>
+    <string name="iptv_sports_finding_highlights">"Ricerca degli highlights?"</string>
+    <string name="iptv_sports_no_official_highlights">"Nessun highlight ufficiale per questa partita, per ora."</string>
 </resources>

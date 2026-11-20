@@ -43,6 +43,7 @@ import java.text.SimpleDateFormat
 import java.util.Calendar
 import java.util.Locale
 import java.util.TimeZone
+import org.json.JSONObject
 import javax.inject.Inject
 import javax.inject.Singleton
 
@@ -60,12 +61,10 @@ class SportsRepository @Inject constructor(
     private val guideDb: EpgDatabase,
     private val playback: LiveTvPlaybackController,
     private val addonSource: SportsAddonSource,
-    youTube: com.nuvio.tv.data.trailer.InAppYouTubeExtractor
+    private val youTube: com.nuvio.tv.data.trailer.InAppYouTubeExtractor
 ) {
     private val scope = CoroutineScope(SupervisorJob() + Dispatchers.IO)
     private val feeds = SportsFeeds()
-    // Official highlights and condensed games (ESPN, NHL, MLB, YouTube via TheSportsDB).
-    private val videos = SportsVideos({ feeds.dataRaw(it) }, youTube)
     // In the app's cache (see SportsDiskCache); made again if "Clear cache" emptied it meanwhile.
     private val sportsDir = SportsDiskCache.directory(context.filesDir, context.cacheDir)
     private val dir: File get() = sportsDir.apply { mkdirs() }
@@ -458,11 +457,11 @@ class SportsRepository @Inject constructor(
         }
     }
 
-    // ---- official videos (see SportsVideos)
+    // ---- official videos (see SportsHighlights)
 
-    private val _videos = MutableStateFlow<Map<String, List<ChannelMatch>>>(emptyMap())
+    private val _officialVideos = MutableStateFlow<Map<String, List<SportsVideo>>>(emptyMap())
     /** Finished games: event id -> their official highlights, recaps and condensed games. */
-    val videoMatches: StateFlow<Map<String, List<ChannelMatch>>> = _videos.asStateFlow()
+    val officialVideos: StateFlow<Map<String, List<SportsVideo>>> = _officialVideos.asStateFlow()
     private val videoAt = java.util.concurrent.ConcurrentHashMap<String, Long>()
     private val videoJobs = java.util.concurrent.ConcurrentHashMap<String, kotlinx.coroutines.Job>()
 
@@ -470,29 +469,79 @@ class SportsRepository @Inject constructor(
     private fun lookForVideos(ev: SportsEvent) {
         if (ev.state != GameState.POST) return
         val at = videoAt[ev.id]
-        val have = _videos.value[ev.id]
+        val have = _officialVideos.value[ev.id]
         val fresh = if (have.isNullOrEmpty()) VIDEO_EMPTY_FRESH_MS else VIDEO_FRESH_MS
         if (at != null && System.currentTimeMillis() - at < fresh) return
         if (videoJobs[ev.id]?.isActive == true) return
         videoJobs[ev.id] = scope.launch {
             try {
-                val espn = runCatching { summaryFor(ev)?.videos }.getOrNull().orEmpty()
-                val found = videos.find(ev, espn).map { SportsVideos.match(it) }
-                _videos.update { it + (ev.id to found) }
+                val found = highlights(ev)
+                _officialVideos.update { it + (ev.id to found) }
                 videoAt[ev.id] = System.currentTimeMillis()
             } catch (e: kotlinx.coroutines.CancellationException) {
                 throw e
             } catch (_: Throwable) {
-                _videos.update { if (it.containsKey(ev.id)) it else it + (ev.id to emptyList()) }
+                _officialVideos.update { if (it.containsKey(ev.id)) it else it + (ev.id to emptyList()) }
             } finally {
                 videoJobs.remove(ev.id)
             }
         }
     }
 
-    /** A picked video ready to play (NHL's and YouTube's links are worked out now); null: it can't be. */
-    suspend fun playableVideo(ch: LiveChannel): LiveChannel? =
-        if (SportsVideos.needsResolving(ch)) videos.playable(ch) else ch
+    /** Official highlights and YouTube highlights for a finished game (cached on the device). */
+    suspend fun highlights(ev: SportsEvent): List<SportsVideo> {
+        SportsHighlights.cached(context, ev)?.let { return it }
+        val summary = runCatching { summaryFor(ev) }.getOrNull()
+        return SportsHighlights.load(context, ev, summary?.espnSummary)
+    }
+
+    /** The URL to play a picked highlight; NHL links are resolved now. */
+    suspend fun highlightUrl(video: SportsVideo): String? = SportsHighlights.playableUrl(video)
+
+    /**
+     * One picked official video, ready for the main player. YouTube highlights are resolved with
+     * the app's extractor so they keep the same progress/SponsorBlock behaviour as OneTube.
+     */
+    suspend fun highlightPlayback(video: SportsVideo, ev: SportsEvent? = null): SportsHighlightPlayback? = withContext(Dispatchers.IO) {
+        val youtubeId = video.youtubeId
+        if (youtubeId != null) {
+            val url = youTube.extractSingleUrl("https://www.youtube.com/watch?v=$youtubeId")
+                ?.takeIf { it.isNotBlank() }
+                ?: return@withContext null
+            SportsHighlightPlayback(
+                streamUrl = url,
+                title = video.title,
+                contentType = "youtube",
+                contentId = com.nuvio.tv.youtube.YouTubeProgress.ID_PREFIX + youtubeId,
+                addonName = "OneTube",
+                poster = "https://i.ytimg.com/vi/$youtubeId/hqdefault.jpg",
+                videoId = youtubeId,
+                startFromBeginning = false,
+            )
+        } else {
+            val url = highlightUrl(video)?.takeIf { it.isNotBlank() }
+            if (url == null) {
+                // The cached NHL link is stale: drop the game's list and look again in the background.
+                ev?.let {
+                    SportsHighlights.clearCache(context, it)
+                    videoAt.remove(it.id)
+                    _officialVideos.update { known -> known - it.id }
+                    lookForVideos(it)
+                }
+                return@withContext null
+            }
+            SportsHighlightPlayback(
+                streamUrl = url,
+                title = video.title,
+                contentType = "sports",
+                contentId = "sports-highlight:${video.id}",
+                addonName = video.source,
+                poster = null,
+                videoId = null,
+                startFromBeginning = true,
+            )
+        }
+    }
 
     /** One look through your sports addons for [ev], shown add-on by add-on as each answers; true when something was found. */
     private suspend fun lookInAddons(ev: SportsEvent): Boolean {
@@ -522,6 +571,7 @@ class SportsRepository @Inject constructor(
     /** The game page was closed: stop looking. */
     fun closeGame(eventId: String) {
         addonJobs.remove(eventId)?.cancel()
+        videoJobs.remove(eventId)?.cancel()
     }
 
     /** Live TV's "Switch to a backup channel" setting: also covers moving to another channel showing the game. */
@@ -2371,8 +2421,8 @@ class SportsRepository @Inject constructor(
     /** A game's summary as last asked: when, the score then, its scoring plays and the rest. */
     private class GameSummary(
         val at: Long, val sig: String, val plays: List<ScoringPlay>, val extras: GameExtras,
-        /** The game's videos in ESPN's summary (highlights, big plays). */
-        val videos: List<SportsVideos.Video> = emptyList()
+        /** ESPN's raw game summary, for the official highlights (null for non-ESPN games). */
+        val espnSummary: JSONObject? = null
     )
     // The 50 games last opened; older ones are asked again if opened later.
     private val summaryCache = object : LinkedHashMap<String, GameSummary>(64, 0.75f, true) {
@@ -2414,8 +2464,9 @@ class SportsRepository @Inject constructor(
         }.getOrNull() ?: return@withContext cached
         val plays = if (ev.state == GameState.PRE) emptyList() else runCatching { SportsFeeds.parseSummary(root) }.getOrDefault(emptyList())
         val extras = runCatching { SportsExtras.parse(root, ev, league.sport) }.getOrDefault(GameExtras())
-        val clips = if (tsdbId != null || ev.state == GameState.PRE) emptyList() else runCatching { SportsVideos.espn(root) }.getOrDefault(emptyList())
-        GameSummary(System.currentTimeMillis(), sig, plays, extras, clips).also { synchronized(summaryCache) { summaryCache[ev.id] = it } }
+        val espnSummary = if (tsdbId != null || ev.state == GameState.PRE) null else root
+        GameSummary(System.currentTimeMillis(), sig, plays, extras, espnSummary)
+            .also { synchronized(summaryCache) { summaryCache[ev.id] = it } }
     }
 
     /** The game's scoring plays (touchdowns, goals…), when ESPN has them. */

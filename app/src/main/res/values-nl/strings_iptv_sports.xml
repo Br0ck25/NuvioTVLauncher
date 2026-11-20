@@ -126,4 +126,8 @@
     <string name="iptv_sports_search_hint">"Zoek teams en competities"</string>
     <string name="iptv_sports_person_hint">"Een speler, coureur, vechter of team"</string>
     <string name="iptv_sports_last_met">"Laatst ontmoet %1$s"</string>
+    <string name="iptv_sports_official_videos">"OFFICIEEL &amp; YOUTUBE"</string>
+    <string name="iptv_sports_from_addons">"VAN JE ADD-ONS"</string>
+    <string name="iptv_sports_finding_highlights">"Hoogtepunten zoeken?"</string>
+    <string name="iptv_sports_no_official_highlights">"Nog geen offici?le hoogtepunten voor deze wedstrijd."</string>
 </resources>

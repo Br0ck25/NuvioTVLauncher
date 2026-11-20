@@ -7,6 +7,7 @@ import com.nuvio.tv.livetv.data.LiveTvRepository
 import com.nuvio.tv.livetv.model.EpgProgram
 import com.nuvio.tv.livetv.model.LiveChannel
 import com.nuvio.tv.livetv.player.LiveTvPlaybackController
+import com.nuvio.tv.livetv.record.LiveTvNotice
 import dagger.hilt.android.lifecycle.HiltViewModel
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.delay
@@ -97,28 +98,19 @@ class SportsViewModel @Inject constructor(
         playback.play(m.channel)
     }
 
-    private var videoJob: kotlinx.coroutines.Job? = null
+    /** An official or YouTube highlight: resolved, then opened in the main player. */
+    private var highlightJob: kotlinx.coroutines.Job? = null
 
-    /**
-     * A replay or highlights video picked on a finished game: played full screen ([onReady] opens
-     * Live TV). NHL's and YouTube's videos are worked out first (a moment).
-     */
-    fun playReplay(m: ChannelMatch, onReady: () -> Unit) {
-        videoJob?.cancel()
-        if (!SportsVideos.needsResolving(m.channel)) {
-            watch(m)
-            onReady()
-            return
-        }
-        videoJob = viewModelScope.launch {
-            com.nuvio.tv.livetv.record.LiveTvNotice.show("Opening the video…")
-            val ch = runCatching { repo.playableVideo(m.channel) }.getOrNull()
-            if (ch == null) {
-                com.nuvio.tv.livetv.record.LiveTvNotice.show("That video can't be played right now. Try another one.")
+    fun playHighlight(video: SportsVideo, ev: SportsEvent, onReady: (SportsHighlightPlayback) -> Unit) {
+        highlightJob?.cancel()
+        highlightJob = viewModelScope.launch {
+            LiveTvNotice.show("Opening the video\u2026")
+            val playback = runCatching { repo.highlightPlayback(video, ev) }.getOrNull()
+            if (playback == null) {
+                LiveTvNotice.show("That video can't be played right now. Try another one.")
                 return@launch
             }
-            playback.play(ch)
-            onReady()
+            onReady(playback)
         }
     }
 
