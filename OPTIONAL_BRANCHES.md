@@ -34,3 +34,19 @@ their release yet, that file is included and listed below.
 - Upgrading existing users: `opt-on-demand-db-fix` is the one I would not skip; per-profile settings
   files (`_p2` and so on) are only read by the two per-profile branches.
 - The default "Nuvio One credit" and README are already in the launcher branch.
+
+## Deleted branches (recreate with `git branch <name> <sha>` then push)
+
+Removed on 2026-11-20 after checking that every commit is in `dev` (the WIP merge branch had one unfinished commit, kept here by SHA).
+The latest beta build (Release run #65) came from `hotfix/17.2.1` at `2587f1d0e`, so that branch was kept.
+
+| Branch | Tip SHA |
+|---|---|
+| `feat/per-profile-livetv` | `6f7639127a1b0169a78ec2cafef864f9dd7be72d` |
+| `feat/per-profile-youtube` | `e1a52b40e1ef5ecd2580997ac235fdfaf7a1ff86` |
+| `nuvioone-base` | `6295b6c2c8e21a1d254d2741860fb93ab09dce36` |
+| `nuvioone-port` | `b8cc9479158e60453bbdef98847d9b4e8c8a7589` |
+| `profile-port` | `0f24c473488654496ca9ef781294ce06f4f2ac18` |
+| `sync/nuvioone-branches` | `0edd2ba5e7f43ae465ccee2f26a1fcf79c3acb68` |
+| `sync/nuvioone-livetv-green` | `9d44e3d0ca1b52ea1a7c6df479275a750164fb9e` |
+| `wip/nuvioone-livetv-merge` | `fae7a8bae4df4b5a10d6b2e04e99190978faf2e0` |
