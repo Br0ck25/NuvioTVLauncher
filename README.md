@@ -13,7 +13,7 @@
 
 [What is it](#what-is-it) · [OneTube (YouTube)](#onetube-youtube-built-in) · [Music](#music) · [Live TV, Sports and Calendar](#live-tv-sports-and-calendar) · [VPN](#vpn) · [Media servers](#media-servers) · [Install](#installation) · [Setup](#getting-started) · [Remote controls](CONTROLS.md) · [Bugs](#reporting-bugs-and-asking-for-features) · [Support](#support-the-project) · [Credits](#credits)
 
-**Fire TV Downloader codes:** `arm64-v8a` **2145572** · `armeabi-v7a` **6269910** · `universal` **3522884**
+**Downloader codes:** `arm64-v8a` **2145572** · `armeabi-v7a` **6269910** · `universal` **3522884**
 
 </div>
 
