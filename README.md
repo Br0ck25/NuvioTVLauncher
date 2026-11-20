@@ -1,6 +1,6 @@
 <div align="center">
 
-<img src="assets/branding/nuvio-one-m-banner.png" alt="Nuvio One M" width="820" />
+<img src="assets/branding/nuvio-one-tv-banner.png" alt="Nuvio One" width="820" />
 
 # Nuvio One
 
