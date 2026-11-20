@@ -23,6 +23,8 @@ import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.PaddingValues
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.Spacer
+import androidx.compose.foundation.layout.fillMaxSize
+import androidx.compose.foundation.layout.fillMaxHeight
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.padding
@@ -45,7 +47,12 @@ import androidx.compose.ui.focus.onFocusChanged
 import androidx.compose.ui.focus.focusProperties
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.graphicsLayer
+import androidx.compose.ui.draw.clipToBounds
+import androidx.compose.ui.layout.layout
+import androidx.compose.ui.layout.onSizeChanged
 import androidx.compose.ui.platform.LocalContext
+import androidx.compose.ui.res.stringResource
+import com.nuvio.tv.R
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
@@ -264,15 +271,14 @@ private fun LiveTvHomeRowContent(
     // first channel, so the page doesn't lurch while the row is still growing.
     var catcherFocused by remember { mutableStateOf(false) }
     var rowHasFocus by remember { mutableStateOf(false) }
-    // With an update banner above the page, Up from the Live TV row goes on to the banner: the
-    // spot is skipped while the row has the highlight (it used to catch Up, so the banner could
-    // never be reached while the row was there).
-    val bannerShown by LiveTvHomeReveal.updateBannerShown.collectAsStateWithLifecycle()
     Box(
         modifier = Modifier
             .fillMaxWidth()
             .height(1.dp)
-            .focusProperties { canFocus = !(bannerShown && rowHasFocus) }
+            // While the highlight is in the row this spot steps aside, so Up goes on to what is above (the
+            // update banner, or the Notifications and Settings buttons) instead of landing here and
+            // being sent back down. All layouts (Modern too, which has the same top buttons).
+            .focusProperties { canFocus = !rowHasFocus }
             .onFocusChanged {
                 catcherFocused = it.isFocused
                 if (it.isFocused) LiveTvHomeReveal.open.value = true
@@ -298,27 +304,12 @@ private fun LiveTvHomeRowContent(
     val alpha by androidx.compose.animation.core.animateFloatAsState(
         1f, label = "liveRowAlpha"
     )
-    androidx.compose.animation.AnimatedVisibility(
-        visible = open,
-        enter = androidx.compose.animation.expandVertically(
-            animationSpec = androidx.compose.animation.core.tween(OPEN_MS, easing = androidx.compose.animation.core.FastOutSlowInEasing),
-            expandFrom = Alignment.Bottom
-        ) + androidx.compose.animation.fadeIn(androidx.compose.animation.core.tween(OPEN_MS)),
-        exit = androidx.compose.animation.shrinkVertically(
-            animationSpec = androidx.compose.animation.core.tween(CLOSE_MS, easing = androidx.compose.animation.core.FastOutSlowInEasing),
-            shrinkTowards = Alignment.Bottom
-        ) + androidx.compose.animation.fadeOut(androidx.compose.animation.core.tween(CLOSE_MS))
-    ) {
+    LiveTvRowVisibility(open = open, pageList = LocalLiveTvPageListState.current) {
         Column(
             modifier = Modifier
                 .fillMaxWidth()
-                // The Live TV row is the top of the page: Up stays put (instead of landing on the
-                // spot above it, which would close the row), unless the update banner is there.
-                .onPreviewKeyEvent { e ->
-                    !bannerShown &&
-                        e.key == androidx.compose.ui.input.key.Key.DirectionUp &&
-                        e.type == androidx.compose.ui.input.key.KeyEventType.KeyDown
-                }
+                // Up leaves the row for what is above it: the update banner, or the TV inputs,
+                // Notifications and Settings buttons (see the spot above). Same in every layout.
                 .onFocusChanged {
                     if (rowHasFocus && !it.hasFocus) {
                         LiveTvHomeFocus.lostAt = android.os.SystemClock.uptimeMillis()
@@ -329,10 +320,26 @@ private fun LiveTvHomeRowContent(
                     LiveTvHomeFocus.rowHasFocus = it.hasFocus
                 }
                 .graphicsLayer { this.alpha = alpha }
-                .padding(vertical = 6.dp)
+                // Classic and Grid: no extra padding, so the gaps match Continue Watching's (Modern keeps its own).
+                // Modern: the row shares a list item with Continue Watching, so it needs the gap the list puts
+                // between its own rows (spacing.xl) below it, or Continue Watching's title sits right under the tiles.
+                .padding(
+                    top = if (hideUnlessFocused) 6.dp else 0.dp,
+                    bottom = if (hideUnlessFocused) NuvioTheme.spacing.xl else 0.dp
+                )
         ) {
-            Row(modifier = Modifier.padding(start = startPadding, end = startPadding, bottom = 8.dp), verticalAlignment = Alignment.CenterVertically) {
-                val title = settings.homeRowTitle.ifBlank { "Live TV" }
+            Row(
+                modifier = Modifier.padding(start = startPadding, end = startPadding, bottom = if (hideUnlessFocused) 14.dp else NuvioTheme.spacing.lg), // Modern: its rows use 14.dp (rowTitleBottom)
+                verticalAlignment = Alignment.CenterVertically
+            ) {
+                // Your own title wins; otherwise the title says what the row holds.
+                val title = settings.homeRowTitle.ifBlank {
+                    when (settings.homeRowSource) {
+                        "recent" -> stringResource(R.string.iptv_settings_recently_watched)
+                        "favorites", "" -> stringResource(R.string.iptv_settings_favorites)
+                        else -> "Live TV"
+                    }
+                }
                 if (titleStyle != null) {
                     androidx.tv.material3.Text(text = title, style = titleStyle, color = NuvioTheme.colors.TextPrimary)
                 } else {
@@ -342,7 +349,8 @@ private fun LiveTvHomeRowContent(
             LazyRow(
                 state = listState,
                 contentPadding = PaddingValues(start = startPadding, end = maxOf(startPadding, 24.dp)),
-                horizontalArrangement = Arrangement.spacedBy(10.dp)
+                // The same gap as Upcoming and Continue Watching, so the cards line up with the rows around them.
+                horizontalArrangement = Arrangement.spacedBy(com.nuvio.tv.ui.components.rememberHomeTile()?.gap ?: 10.dp)
             ) {
                 itemsIndexed(entries, key = { _, it -> it.channel.key }) { index, e ->
                     val requester = cardFocus.getOrPut(e.channel.key) { androidx.compose.ui.focus.FocusRequester() }
@@ -386,6 +394,10 @@ private fun LiveTvHomeRowContent(
     }
 }
 
+/**
+ * One channel, drawn like an Upcoming card: the channel's logo where the poster goes, a small pill
+ * (LIVE, or NEXT when "show next" is on), the show's name, and the channel with how long is left.
+ */
 @OptIn(ExperimentalFoundationApi::class)
 @Composable
 private fun HomeCard(
@@ -400,20 +412,24 @@ private fun HomeCard(
     onClick: () -> Unit
 ) {
     var focused by remember { mutableStateOf(false) }
-    val colors = liveCellColors(focused = focused, idle = NuvioTheme.colors.BackgroundElevated)
     val shape = RoundedCornerShape(com.nuvio.tv.livetv.ui.liveCorner())
     val p = entry.now
+    val next = entry.next
+    val cardHeight = if (compact) 64.dp else 88.dp
+    // Two tiles wide, like the Upcoming cards (the height stays 88).
+    val homeTile = com.nuvio.tv.ui.components.rememberHomeTile()
+    val cardWidth = if (compact) (homeTile?.width ?: 260.dp) else (homeTile?.wideWidth ?: 330.dp)
+    // No focus zoom: Upcoming and Continue Watching cards only get the border, and a 4% bigger card looked like a
+    // different size from the Upcoming cards it is meant to match.
     Row(
         modifier = modifier
-            .width(if (compact) 180.dp else 230.dp)
-            .height(if (compact) 54.dp else 72.dp)
+            .width(cardWidth)
+            .height(cardHeight)
             .clip(shape)
-            .background(colors.background)
-            // A light white outline so cards stand out from the background; the highlight color
-            // takes over when a card is highlighted.
+            .background(NuvioTheme.colors.BackgroundCard.copy(alpha = 0.92f))
             .border(
                 if (focused) 2.dp else 1.dp,
-                if (focused) colors.border else Color.White.copy(alpha = 0.22f),
+                if (focused) NuvioTheme.colors.FocusRing else Color.White.copy(alpha = 0.12f),
                 shape
             )
             .onFocusChanged { focused = it.isFocused; if (it.isFocused) onFocused() }
@@ -422,49 +438,174 @@ private fun HomeCard(
                 indication = null,
                 onClick = onClick
             )
-            .padding(horizontal = 10.dp, vertical = 6.dp),
+            .padding(8.dp),
         verticalAlignment = Alignment.CenterVertically
     ) {
-        Box(modifier = Modifier.width(if (compact) 40.dp else 48.dp), contentAlignment = Alignment.Center) {
-            ChannelLogo(entry.channel.logo, if (compact) 34.dp else 42.dp)
-        }
-        Spacer(Modifier.width(8.dp))
-        Column(modifier = Modifier.weight(1f)) {
-            Row(verticalAlignment = Alignment.CenterVertically) {
-                if (playing) {
-                    LiveText("● ", color = NuvioTheme.colors.Error, size = 10.sp)
-                }
-                LiveText(
-                    p?.title ?: entry.channel.name,
-                    color = colors.text, size = 13.sp, weight = FontWeight.SemiBold, marquee = focused
+        // Where an Upcoming card has its poster: the logo on a dark tile.
+        Box(
+            modifier = Modifier
+                .width(if (compact) 80.dp else 112.dp)
+                .fillMaxHeight()
+                .clip(RoundedCornerShape(6.dp))
+                .background(Color.Black.copy(alpha = 0.35f)),
+            contentAlignment = Alignment.Center
+        ) {
+            // A channel made from a Home list has no logo of its own: show the artwork of what's on it now, filling the
+            // tile like an Upcoming poster, instead of an empty box.
+            val art = p?.icon?.takeIf { it.isNotBlank() }
+            if (entry.channel.logo.isNullOrBlank() && art != null) {
+                coil3.compose.AsyncImage(
+                    model = art,
+                    contentDescription = null,
+                    contentScale = androidx.compose.ui.layout.ContentScale.Crop,
+                    modifier = Modifier.fillMaxSize()
                 )
+            } else {
+                ChannelLogo(entry.channel.logo, if (compact) 36.dp else 50.dp)
             }
-            if (!compact) {
-                if (p != null) {
-                    Spacer(Modifier.height(4.dp))
+        }
+        Column(
+            modifier = Modifier.weight(1f).fillMaxHeight().padding(start = 12.dp, end = 6.dp),
+            verticalArrangement = Arrangement.spacedBy(3.dp, Alignment.CenterVertically)
+        ) {
+            // Everything the Nuvio Plus IPTV card shows, in this card's layout: the show (with a red dot while it is
+            // the channel playing), the channel's number and name with how long is left, and the next show when
+            // "show next" is on. The pill says what the card is: LIVE, or CH when there is no listing.
+            Row(verticalAlignment = Alignment.CenterVertically) {
+                if (!compact) {
+                    val pill = if (p != null) "LIVE" to Color(0xFF0284C7) else "CH ${entry.channel.number}" to Color(0xFF334155)
                     Box(
-                        modifier = Modifier.fillMaxWidth().height(3.dp).clip(RoundedCornerShape(2.dp))
-                            .background(Color.White.copy(alpha = 0.18f))
+                        modifier = Modifier
+                            .clip(RoundedCornerShape(4.dp))
+                            .background(pill.second)
+                            .padding(horizontal = 7.dp, vertical = 2.dp)
                     ) {
-                        Box(
-                            modifier = Modifier.fillMaxWidth(p.progress(now)).height(3.dp)
-                                .background(if (focused) colors.text else NuvioTheme.colors.Secondary)
+                        androidx.tv.material3.Text(
+                            text = pill.first,
+                            style = androidx.tv.material3.MaterialTheme.typography.labelSmall.copy(
+                                fontWeight = FontWeight.SemiBold,
+                                letterSpacing = 0.5.sp
+                            ),
+                            color = Color.White,
+                            maxLines = 1,
+                            softWrap = false
                         )
                     }
-                    Spacer(Modifier.height(3.dp))
+                    Spacer(Modifier.width(8.dp))
                 }
-                val sub = if (showNext && entry.next != null) {
-                    "Next: ${formatClock(entry.next.startMs, use24h)} ${entry.next.title}"
-                } else {
-                    listOfNotNull("${entry.channel.number}  ${entry.channel.name}", p?.let { minutesLeftLabel(it.stopMs, now) })
-                        .joinToString(" · ")
+                if (playing) LiveText("● ", color = NuvioTheme.colors.Error, size = 12.sp)
+                LiveText(
+                    p?.title ?: entry.channel.name,
+                    modifier = Modifier.weight(1f),
+                    color = NuvioTheme.colors.TextPrimary, size = if (compact) 14.sp else 16.sp,
+                    weight = FontWeight.SemiBold, marquee = focused
+                )
+            }
+            val sub = if (p != null || entry.channel.number != 0) {
+                listOfNotNull("${entry.channel.number}  ${entry.channel.name}", p?.let { minutesLeftLabel(it.stopMs, now) })
+                    .joinToString(" · ")
+            } else entry.channel.name
+            LiveText(sub, color = NuvioTheme.extendedColors.textSecondary, size = 12.sp, marquee = focused)
+            // How far through the show it is: between what's playing and what's next.
+            if (!compact && p != null) {
+                Box(
+                    modifier = Modifier.fillMaxWidth().height(3.dp).clip(RoundedCornerShape(2.dp))
+                        .background(Color.White.copy(alpha = 0.18f))
+                ) {
+                    Box(
+                        modifier = Modifier.fillMaxWidth(p.progress(now)).height(3.dp)
+                            .background(NuvioTheme.colors.Secondary)
+                    )
                 }
-                LiveText(sub, color = if (focused) colors.text else NuvioTheme.colors.TextSecondary, size = 10.sp, marquee = focused)
+            }
+            if (!compact && showNext && next != null) {
+                LiveText(
+                    "Next: ${formatClock(next.startMs, use24h)} ${next.title}",
+                    color = NuvioTheme.extendedColors.textSecondary, size = 12.sp, marquee = focused
+                )
             }
         }
     }
 }
 
 /** How long the Live TV row takes to slide open / closed on the home screen. */
+/**
+ * Modern layout: the page's vertical list, so closing the row (the highlight goes down to Continue Watching) can keep the
+ * rows below it still on screen while the row gives its space back. Null in the other layouts.
+ */
+val LocalLiveTvPageListState = androidx.compose.runtime.staticCompositionLocalOf<androidx.compose.foundation.lazy.LazyListState?> { null }
+
+/**
+ * Shows [content] while [open]. Opening fades in at full height. Closing used to fade and then drop the row's height in
+ * one step: the page had already scrolled to the new highlight with the row at full height, so everything below jumped up
+ * and then scrolled back. With the page's list available, the row now fades out at full height (the page scrolls to the
+ * new highlight meanwhile), then gives its height back gradually while the list is scrolled the other way by the same
+ * amount each frame, so nothing on screen moves.
+ */
+@Composable
+private fun LiveTvRowVisibility(
+    open: Boolean,
+    pageList: androidx.compose.foundation.lazy.LazyListState?,
+    content: @Composable () -> Unit
+) {
+    if (pageList == null) {
+        androidx.compose.animation.AnimatedVisibility(
+            visible = open,
+            enter = androidx.compose.animation.fadeIn(androidx.compose.animation.core.tween(OPEN_MS)),
+            exit = androidx.compose.animation.fadeOut(androidx.compose.animation.core.tween(CLOSE_MS))
+        ) { content() }
+        return
+    }
+    var present by remember { mutableStateOf(open) }
+    var fullHeightPx by remember { androidx.compose.runtime.mutableIntStateOf(0) }
+    var shrink by remember { androidx.compose.runtime.mutableFloatStateOf(0f) }
+    val fade by androidx.compose.animation.core.animateFloatAsState(
+        targetValue = if (open) 1f else 0f,
+        animationSpec = androidx.compose.animation.core.tween(if (open) OPEN_MS else CLOSE_MS),
+        label = "liveRowFade"
+    )
+    androidx.compose.runtime.LaunchedEffect(open) {
+        if (open) {
+            shrink = 0f
+            present = true
+        } else if (present) {
+            // Faded out; the page scrolls to the new highlight meanwhile with the row still at full height.
+            kotlinx.coroutines.delay(CLOSE_MS.toLong())
+            val total = fullHeightPx.toFloat()
+            var done = 0f
+            androidx.compose.animation.core.animate(
+                initialValue = 0f,
+                targetValue = 1f,
+                animationSpec = androidx.compose.animation.core.tween(CLOSE_MS)
+            ) { value, _ ->
+                shrink = value
+                val step = (value - done) * total
+                done = value
+                // The rows below move up by what the row gives back; scroll the list back by the same so they stay put.
+                // (Measured on a TiVo: the opposite sign doubled the jump and pushed Continue Watching off the top.)
+                if (step != 0f) pageList.dispatchRawDelta(-step)
+            }
+            present = false
+        }
+    }
+    if (present) {
+        Box(
+            modifier = Modifier
+                .clipToBounds()
+                .layout { measurable, constraints ->
+                    val placeable = measurable.measure(constraints)
+                    val h = (placeable.height * (1f - shrink)).toInt()
+                    layout(placeable.width, h) { placeable.place(0, 0) }
+                }
+        ) {
+            Box(
+                modifier = Modifier
+                    .onSizeChanged { if (shrink == 0f) fullHeightPx = it.height }
+                    .graphicsLayer { alpha = fade }
+            ) { content() }
+        }
+    }
+}
+
 private const val OPEN_MS = 280
 private const val CLOSE_MS = 220
