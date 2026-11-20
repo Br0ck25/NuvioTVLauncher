@@ -23,7 +23,7 @@
 
 ## Built on Nuvio One
 
-Nuvio Launcher is a fork of **[Nuvio One](https://github.com/zoga2o3-ops/Nuvio-One)** by zoga2o3, which is itself built on [Nuvio](https://github.com/NuvioMedia/NuvioTV) and [NuvioPlusIPTV](https://github.com/homelessbrian/NuvioPlusIPTV). From Nuvio One this app gets **OneTube** (YouTube built in), **Music**, the Live TV guide, Sports hub, recordings and On Demand, and Nuvio One's sync and sports data services. On top of that it adds the launcher: it can be your TV's Home screen, with a phone-driven setup, an Apps row and page, remote button mapping, per-profile settings and more.
+Nuvio Launcher is a fork of **[Nuvio One](https://github.com/zoga2o3-ops/Nuvio-One)** by zoga2o3, which is itself built on [Nuvio](https://github.com/NuvioMedia/NuvioTV) and [NuvioPlusIPTV](https://github.com/homelessbrian/NuvioPlusIPTV). From Nuvio One this app gets **OneTube** (YouTube built in), **Music**, the Live TV guide, Sports hub, recordings and On Demand, and Nuvio One's sync and sports data services. On top of that it adds the launcher: it can be your TV's Home screen, with a phone-driven setup, an Apps row and page, remote button mapping and more.
 
 ---
 
@@ -253,9 +253,6 @@ Music has its own page in the side menu, with top tabs, an Up Next list and plai
 ---
 
 ## Live TV features
-
-### List channels (Home rows as TV channels)
-Turn any Home row, collection folder or library list into a scheduled Live TV channel. Open **Settings → Live TV → List Channels**, pick the rows you want, and each becomes a channel in the Live TV guide with its own schedule. Press OK on one to play it through your debrid service or addons, and the next title starts when one ends. These channels count as a source, so the guide shows them even with no playlist added. They play like live TV (no seek bar), and torrent-only streams aren't played.
 
 ### A proper TV guide
 - **TiviMate-style guide:** channels down the side, a timeline across, and a line marking "now" (which you can hide). It fits **8 or more channels** on screen.

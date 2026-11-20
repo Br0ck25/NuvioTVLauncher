@@ -55,3 +55,17 @@ The latest beta build (Release run #65) came from `hotfix/17.2.1` at `2587f1d0e`
 `pr/home-tile-size`, `pr/livetv-row` and `pr/upcoming-row` were deleted from origin while they still had commits that are not in `dev`.
 They were saved as `claude/archive-pr-home-tile-size` (`69a6666`), `claude/archive-pr-livetv-row` (`454c98e`) and `claude/archive-pr-upcoming-row` (`b9dcba8`).
 Not yet compared with `opt-home-tile-sizes` and `opt-live-tv-home-row`; delete these three once that check is done.
+
+
+## README text for features that are on optional branches
+Removed from the README because the launcher branch does not have the feature. Paste back when you merge the branch.
+
+**`opt-live-tv-my-lists`** (goes under "Live TV features", before "A proper TV guide"):
+
+```markdown
+### List channels (Home rows as TV channels)
+Turn any Home row, collection folder or library list into a scheduled Live TV channel. Open **Settings → Live TV → List Channels**, pick the rows you want, and each becomes a channel in the Live TV guide with its own schedule. Press OK on one to play it through your debrid service or addons, and the next title starts when one ends. These channels count as a source, so the guide shows them even with no playlist added. They play like live TV (no seek bar), and torrent-only streams aren't played.
+```
+
+**`opt-per-profile-live-tv`** and **`opt-per-profile-music-onetube`**: the intro in "Built on Nuvio One" said
+"remote button mapping, per-profile settings and more". Put "per-profile settings" back after "remote button mapping".
