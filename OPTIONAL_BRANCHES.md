@@ -25,7 +25,7 @@ nine reproduces the shipped build's files, except for the differences listed und
 | `opt-home-tile-sizes` | Tile size for Continue Watching, Upcoming and collections; Upcoming card size | 8 |
 | `opt-full-settings-all-profiles` | Every profile gets the full Settings, add-ons screen and side-menu pages | 8 |
 | `opt-updater` | The shipped updater: download progress, install result handling, relaunch receiver, Android 9 and older | 6 |
-| `opt-docs-and-sync` | Performance and Monet notes, privacy text, `sync-upstream.yml` (still follows Nuvio One's `main`) | 7 |
+| `opt-docs-and-sync` | Performance and Monet notes, privacy text and issue-template links. (`sync-upstream.yml` is now in the launcher branch itself, following Nuvio One's `hotfix/17.2.1`) | 7 |
 | `opt-on-demand-db-fix` | **Superseded.** The same fix is already in the launcher branch (database stays at version 10, `onDowngrade` keeps a version 11 file). Safe to delete | n/a |
 | `opt-nuvioone-unreleased` | **Reference only.** Nuvio One's `fix/livetv-green` at `ab5e959`: what they have after their last release | n/a |
 
