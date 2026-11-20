@@ -26,7 +26,10 @@ data class TorboxTorrentDataDto(
     @Json(name = "id") val id: Int? = null,
     @Json(name = "hash") val hash: String? = null,
     @Json(name = "name") val name: String? = null,
-    @Json(name = "files") val files: List<TorboxTorrentFileDto>? = null
+    @Json(name = "files") val files: List<TorboxTorrentFileDto>? = null,
+    /** Torbox has finished fetching the torrent, or already has it (what a list channel waits for). */
+    @Json(name = "download_finished") val downloadFinished: Boolean? = null,
+    @Json(name = "download_present") val downloadPresent: Boolean? = null
 )
 
 @JsonClass(generateAdapter = true)

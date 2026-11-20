@@ -245,6 +245,7 @@ private sealed interface LiveDialog {
     data object GroupHoldChoice : LiveDialog
     data object HighlightChoice : LiveDialog
     data object CustomGroups : LiveDialog
+    data object ListChannels : LiveDialog
     data object ChannelRow : LiveDialog
     data object ConfirmRestore : LiveDialog
     data object PinCheck : LiveDialog
@@ -699,6 +700,7 @@ internal fun LiveTvSettingsContent(
                         onClick = { dialog = LiveDialog.GroupTags }
                     )
                     SettingsActionRow(context.getString(R.string.iptv_settings_my_groups), context.getString(R.string.iptv_settings_groups_you_created_select_one_to_delete_it), "${user.customGroups.size}", onClick = { dialog = LiveDialog.CustomGroups })
+                    SettingsActionRow("List Channels", "Channels made from your Home rows, collection folders and library lists: they play one title after another, like live TV", "${com.nuvio.tv.livetv.lists.ListChannels.channels.value.size}", onClick = { dialog = LiveDialog.ListChannels })
                     SubHeading(context.getString(R.string.iptv_settings_clear_reset))
                     SettingsActionRow(context.getString(R.string.iptv_settings_clear_favorites), context.getString(R.string.iptv_settings_removes_every_channel_from_favorites), "${user.favorites.size}", onClick = {
                         confirm(context.getString(R.string.iptv_settings_clear_favorites_2), context.getString(R.string.iptv_settings_every_channel_is_taken_out_of_favorites), context.getString(R.string.action_clear)) { viewModel.clearFavorites() }
@@ -2417,6 +2419,7 @@ internal fun LiveTvSettingsContent(
             onOptionSelected = { v -> update { it.copy(solidHighlight = v) }; close() },
             onDismiss = close
         )
+        LiveDialog.ListChannels -> ListChannelsDialog(onDismiss = close)
         LiveDialog.CustomGroups -> UnhideDialog(
             title = context.getString(R.string.iptv_settings_my_groups_2),
             entries = user.customGroups.map { it.id to "${it.name} (${it.channelKeys.size})" },
