@@ -133,6 +133,13 @@ class OnDemandDatabase @Inject constructor(@ApplicationContext private val appCo
         )
     }
 
+    /**
+     * A database written by the older Nuvio Plus based beta is version 11. That only added one extra
+     * table over version 10 (M3U series episodes), which this build never reads, so keep everything
+     * as it is instead of failing with "can't downgrade database from version 11 to 10".
+     */
+    override fun onDowngrade(db: SQLiteDatabase, oldVersion: Int, newVersion: Int) = Unit
+
     override fun onUpgrade(db: SQLiteDatabase, oldVersion: Int, newVersion: Int) {
         // Version 2 only adds the poster cache; the imported catalogs are kept.
         if (oldVersion < 2) createPosterTable(db)
