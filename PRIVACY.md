@@ -22,4 +22,4 @@ The app may offer optional debug or playback reports to help diagnose problems. 
 
 ## Contact
 
-For privacy questions, contact zoga2o3@gmail.com.
+For privacy questions, open an issue at https://github.com/Br0ck25/NuvioTVLauncher/issues.
