@@ -63,7 +63,7 @@ object MusicWebDav {
     fun init(context: Context) {
         val app = context.applicationContext
         appContext = app
-        val prefs = app.getSharedPreferences(PREFS, Context.MODE_PRIVATE)
+        val prefs = com.nuvio.tv.core.profile.ActiveProfile.prefs(app, PREFS)
         _config.value = WebDavConfig(
             url = prefs.getString(KEY_URL, "").orEmpty(),
             username = prefs.getString(KEY_USER, "").orEmpty(),
@@ -76,7 +76,7 @@ object MusicWebDav {
         appContext = app
         val normalized = url.trim().let { if (it.endsWith("/")) it else "$it/" }
         _config.value = WebDavConfig(normalized, username.trim(), password)
-        app.getSharedPreferences(PREFS, Context.MODE_PRIVATE).edit()
+        com.nuvio.tv.core.profile.ActiveProfile.prefs(app, PREFS).edit()
             .putString(KEY_URL, normalized)
             .putString(KEY_USER, username.trim())
             .putString(KEY_PASSWORD, password)
@@ -87,7 +87,7 @@ object MusicWebDav {
         val app = context.applicationContext
         appContext = app
         _config.value = WebDavConfig()
-        app.getSharedPreferences(PREFS, Context.MODE_PRIVATE).edit().clear().apply()
+        com.nuvio.tv.core.profile.ActiveProfile.prefs(app, PREFS).edit().clear().apply()
     }
 
     /** Headers for ExoPlayer when it opens a URL from this server. */

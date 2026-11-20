@@ -19,12 +19,56 @@ internal object MusicSecurePreferences {
     private const val TAG = "MusicSecurePrefs"
     private val opened = HashMap<String, SharedPreferences>()
 
+    /**
+     * The first profile keeps the original files; every other profile has its own (names get "_p<id>"). A profile
+     * that already existed when sign-ins became per profile starts with a copy of the first profile's values.
+     */
     @Synchronized
     fun open(
         context: Context,
         encryptedName: String,
         plainName: String,
         legacyName: String? = null
+    ): SharedPreferences {
+        val profile = com.nuvio.tv.core.profile.ActiveProfile.id
+        if (profile <= 1) return openFiles(context, encryptedName, plainName, legacyName)
+        val mine = openFiles(
+            context,
+            com.nuvio.tv.core.profile.ActiveProfile.prefsName(encryptedName, profile),
+            com.nuvio.tv.core.profile.ActiveProfile.prefsName(plainName, profile),
+            null
+        )
+        if (!mine.getBoolean(COPIED, false)) {
+            if (!com.nuvio.tv.core.profile.ActiveProfile.baselineReady.isCompleted) {
+                runCatching {
+                    kotlinx.coroutines.runBlocking { kotlinx.coroutines.withTimeoutOrNull(1_500) { com.nuvio.tv.core.profile.ActiveProfile.baselineReady.await() } }
+                }
+            }
+            val edit = mine.edit().putBoolean(COPIED, true)
+            if (com.nuvio.tv.core.profile.ActiveProfile.isLegacy(profile)) {
+                openFiles(context, encryptedName, plainName, legacyName).all.forEach { (k, v) ->
+                    when (v) {
+                        is String -> edit.putString(k, v)
+                        is Boolean -> edit.putBoolean(k, v)
+                        is Int -> edit.putInt(k, v)
+                        is Long -> edit.putLong(k, v)
+                        is Float -> edit.putFloat(k, v)
+                        is Set<*> -> edit.putStringSet(k, v.filterIsInstance<String>().toSet())
+                    }
+                }
+            }
+            edit.apply()
+        }
+        return mine
+    }
+
+    private const val COPIED = "__copied_from_first_profile"
+
+    private fun openFiles(
+        context: Context,
+        encryptedName: String,
+        plainName: String,
+        legacyName: String?
     ): SharedPreferences {
         opened[encryptedName]?.let { return it }
         val app = context.applicationContext

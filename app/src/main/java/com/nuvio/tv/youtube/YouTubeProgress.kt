@@ -33,7 +33,7 @@ object YouTubeProgress {
         if (positionMs < 1000) return
         val app = context.applicationContext
         runCatching {
-            app.getSharedPreferences(PREFS, Context.MODE_PRIVATE).edit()
+            com.nuvio.tv.core.profile.ActiveProfile.prefs(app, PREFS).edit()
                 .putString(videoId, "$positionMs,$durationMs").apply()
         }
 
@@ -58,7 +58,7 @@ object YouTubeProgress {
     fun localPercent(context: Context, videoId: String?): Int {
         if (videoId == null) return 0
         val v = runCatching {
-            context.applicationContext.getSharedPreferences(PREFS, Context.MODE_PRIVATE).getString(videoId, null)
+            com.nuvio.tv.core.profile.ActiveProfile.prefs(context.applicationContext, PREFS).getString(videoId, null)
         }.getOrNull() ?: return 0
         val parts = v.split(',')
         val pos = parts.getOrNull(0)?.toLongOrNull() ?: return 0
