@@ -78,6 +78,7 @@ class LiveTvPreferences @Inject constructor(
         val playlists = stringPreferencesKey("playlists")
         val epgs = stringPreferencesKey("epg_sources")
         val addonChannels = stringPreferencesKey("addon_channels")
+        val listChannels = stringPreferencesKey("list_channels")
 
         val showInSidebar = booleanPreferencesKey("show_in_sidebar")
         val showImportProgress = booleanPreferencesKey("show_import_progress")
@@ -919,6 +920,20 @@ class LiveTvPreferences @Inject constructor(
 
     suspend fun editCalendarPlans(transform: (String) -> String) {
         store.edit { it[Keys.calendarPlans] = transform(it[Keys.calendarPlans] ?: "") }
+    }
+
+    /**
+     * The Home-list channels (My Lists) made in the active profile, as JSON. They live in this store, not just on the TV, so Google
+     * Drive and cloud sync carry them to another TV or back after a reinstall. "" until a TV has saved them once. What is playing
+     * now stays on each TV. Each profile has its own copy (the first profile keeps the original key, the others use "_p<id>").
+     */
+    val listChannelDefs: Flow<String> =
+        kotlinx.coroutines.flow.combine(store.data, profileManager.activeProfileId) { p, id -> p[my(Keys.listChannels, id)] ?: "" }
+            .distinctUntilChanged()
+
+    /** Saves [json] as profile [profileId]'s channels (the profile they were made in, even if another is showing by now). */
+    suspend fun saveListChannelDefs(profileId: Int, json: String) {
+        store.edit { it[my(Keys.listChannels, profileId)] = json }
     }
 
     // ---------- settings ----------
