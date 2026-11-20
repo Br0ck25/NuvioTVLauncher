@@ -14,7 +14,7 @@ No Spotify client secret is stored on the TV, and no token is sent to the phone 
 1. Create an app at <https://developer.spotify.com/dashboard>.
 2. Add this **exact** redirect URI to the app:
    `https://<your-host>/<path>/callback.html`
-   For example: `https://zoga2o3-ops.github.io/Nuvio-One/spotify-link/callback.html`.
+   For example: `https://br0ck25.github.io/NuvioTVLauncher/spotify-link/callback.html`.
 3. Request the scopes:
    `playlist-read-private playlist-read-collaborative user-library-read user-read-private`
 4. Host `index.html` and `callback.html` together over HTTPS (GitHub Pages, Cloudflare Pages, any static host). The callback page must be reachable at the redirect URI above.
