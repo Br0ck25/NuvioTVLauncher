@@ -26,6 +26,8 @@ data class HomeUiState(
      * mapped back to the provider's items instead.
      */
     val onDemandContinueWatchingItems: List<ContinueWatchingItem> = emptyList(),
+    /** YouTube fork: videos started on the YouTube page, shown only when that row is switched on. */
+    val youtubeContinueWatchingItems: List<ContinueWatchingItem> = emptyList(),
     val upcomingItems: List<ContinueWatchingItem> = emptyList(),
     val isLoading: Boolean = true,
     val layoutPreferencesReady: Boolean = false,

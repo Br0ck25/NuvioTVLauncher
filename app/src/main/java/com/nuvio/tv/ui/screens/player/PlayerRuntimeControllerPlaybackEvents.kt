@@ -1100,7 +1100,14 @@ internal fun PlayerRuntimeController.saveWatchProgressInternal(position: Long, d
         if (position >= 1000) com.nuvio.tv.livetv.record.RecordingResume.save(context, contentId, position, duration)
         // YouTube fork: also keep the bar on the card, and tell YouTube when signed in.
         if (com.nuvio.tv.youtube.YouTubeProgress.isYouTubeId(contentId)) {
-            com.nuvio.tv.youtube.YouTubeProgress.record(context, contentId, position, duration)
+            com.nuvio.tv.youtube.YouTubeProgress.record(
+                context = context,
+                contentId = contentId,
+                positionMs = position,
+                durationMs = duration,
+                title = contentName ?: title,
+                poster = poster,
+            )
         }
         return
     }

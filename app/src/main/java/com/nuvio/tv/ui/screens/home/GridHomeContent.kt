@@ -214,6 +214,7 @@ fun GridHomeContent(
     }
     val continueWatchingOffset =
         (if (continueWatchingItems.isNotEmpty()) 1 else 0) +
+            (if (uiState.youtubeContinueWatchingItems.isNotEmpty()) 1 else 0) +
             (if (uiState.onDemandContinueWatchingItems.isNotEmpty()) 1 else 0)
 
     LaunchedEffect(gridItems, gridFocusState.hasSavedFocus, gridFocusState.focusedItemKey) {
@@ -265,6 +266,7 @@ fun GridHomeContent(
         gridFocusState.focusedItemKey == "hero"
     val firstGridItemFocusRequester = remember { FocusRequester() }
     val hasContinueWatching = continueWatchingItems.isNotEmpty() ||
+        uiState.youtubeContinueWatchingItems.isNotEmpty() ||
         uiState.onDemandContinueWatchingItems.isNotEmpty()
     val hasStandaloneFocusableGridItem = remember(gridItems) {
         gridItems.any { it is GridItem.Content || it is GridItem.SeeAll }
@@ -606,6 +608,39 @@ fun GridHomeContent(
                         posterCardHeight = posterCardStyle.height
                     )
                     }
+                }
+            }
+
+            // YouTube fork: videos started on the YouTube page, in their own row.
+            if (uiState.continueWatchingEnabled && uiState.youtubeContinueWatchingItems.isNotEmpty()) {
+                item(
+                    key = "youtube_continue_watching",
+                    span = { GridItemSpan(maxLineSpan) },
+                    contentType = "youtube_continue_watching"
+                ) {
+                    GridContinueWatchingSection(
+                        modifier = Modifier.fillMaxWidth(),
+                        fullWidth = gridWidth,
+                        items = uiState.youtubeContinueWatchingItems,
+                        title = stringResource(R.string.youtube_continue_watching),
+                        showLiveTvHint = false,
+                        showOptionsMenu = false,
+                        focusedItemIndex = if (
+                            shouldRequestInitialFocus && !hasHero && continueWatchingItems.isEmpty()
+                        ) 0 else -1,
+                        onItemClick = onContinueWatchingClick,
+                        onStartFromBeginning = onContinueWatchingStartFromBeginning,
+                        showManualPlayOption = false,
+                        onPlayManually = {},
+                        onDetailsClick = {},
+                        onRemoveItem = {},
+                        blurUnwatchedEpisodes = uiState.blurUnwatchedEpisodes,
+                        useEpisodeThumbnails = uiState.useEpisodeThumbnailsInCw,
+                        cardStyle = uiState.continueWatchingCardStyle,
+                        cornerRadius = posterCardStyle.cornerRadius,
+                        posterCardWidth = posterCardStyle.width,
+                        posterCardHeight = posterCardStyle.height
+                    )
                 }
             }
 

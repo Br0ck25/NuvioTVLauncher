@@ -398,6 +398,7 @@ class HomeViewModel @Inject constructor(
             loadContinueWatching()
             observeContinueWatchingReleases()
             observeOnDemandContinueWatching()
+            observeYouTubeContinueWatching()
             watchedSeriesStateHolder.loadFromDisk()
             observeExternalMetaPrefetchPreference()
             observeContinueWatchingSortMode()
@@ -501,7 +502,7 @@ class HomeViewModel @Inject constructor(
         cwLastShowIdSiblings = emptyMap()
         cwLastWatchedEpisodeCounts = emptyMap()
         watchedSeriesStateHolder.clearValidationState()
-        _uiState.update { it.copy(continueWatchingItems = emptyList(), onDemandContinueWatchingItems = emptyList(), upcomingItems = emptyList()) }
+        _uiState.update { it.copy(continueWatchingItems = emptyList(), onDemandContinueWatchingItems = emptyList(), youtubeContinueWatchingItems = emptyList(), upcomingItems = emptyList()) }
         // Bump trigger so the pipeline's collectLatest restarts with fresh state.
         cwPipelineRefreshTrigger.value++
     }

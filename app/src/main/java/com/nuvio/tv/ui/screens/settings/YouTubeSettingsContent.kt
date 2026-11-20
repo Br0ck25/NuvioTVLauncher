@@ -81,6 +81,7 @@ internal fun YouTubeSettingsContent(
     var showContentRegion by remember { mutableStateOf(false) }
     var posterColumns by remember { mutableStateOf(YouTubeSettings.posterColumns(context)) }
     var clockOn by remember { mutableStateOf(YouTubeSettings.showClock(context)) }
+    var continueWatchingHome by remember { mutableStateOf(YouTubeSettings.continueWatchingOnHome(context)) }
 
     Column(
         modifier = Modifier.fillMaxSize().verticalScroll(rememberScrollState()),
@@ -149,6 +150,15 @@ internal fun YouTubeSettingsContent(
                 onToggle = {
                     clockOn = !clockOn
                     YouTubeSettings.setShowClock(context, clockOn)
+                }
+            )
+            SettingsToggleRow(
+                title = stringResource(R.string.youtube_settings_continue_watching_on_home),
+                subtitle = stringResource(R.string.youtube_settings_continue_watching_on_home_desc),
+                checked = continueWatchingHome,
+                onToggle = {
+                    continueWatchingHome = !continueWatchingHome
+                    YouTubeSettings.setContinueWatchingOnHome(context, continueWatchingHome)
                 }
             )
         }

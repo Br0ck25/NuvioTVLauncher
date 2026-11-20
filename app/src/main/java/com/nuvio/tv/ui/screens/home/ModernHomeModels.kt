@@ -33,6 +33,8 @@ internal const val MODERN_CONTINUE_WATCHING_ROW_KEY = "continue_watching"
 internal const val MODERN_UPCOMING_ROW_KEY = "upcoming_section"
 /** Live TV fork: the On Demand titles you started, in their own row. */
 internal const val MODERN_ON_DEMAND_ROW_KEY = "on_demand_continue_watching"
+/** YouTube fork: videos started on the YouTube page, in their own row. */
+internal const val MODERN_YOUTUBE_ROW_KEY = "youtube_continue_watching"
 internal val MODERN_LANDSCAPE_LOGO_GRADIENT = Brush.verticalGradient(
     colorStops = arrayOf(
         0.0f to Color.Transparent,
@@ -204,6 +206,11 @@ class ModernCarouselRowBuildCache {
     var onDemandUseLandscapePosters: Boolean = false
     var onDemandShowImdbRatings: Boolean = true
     var onDemandRow: HeroCarouselRow? = null
+    var youTubeItems: List<ContinueWatchingItem> = emptyList()
+    var youTubeTitle: String = ""
+    var youTubeUseLandscapePosters: Boolean = false
+    var youTubeShowImdbRatings: Boolean = true
+    var youTubeRow: HeroCarouselRow? = null
     internal val catalogRows = java.util.concurrent.ConcurrentHashMap<String, ModernCatalogRowBuildCacheEntry>()
     internal val collectionRows = java.util.concurrent.ConcurrentHashMap<String, ModernCollectionRowBuildCacheEntry>()
     // per-item cache: rowKey -> (itemId -> cached carousel item + source MetaPreview)

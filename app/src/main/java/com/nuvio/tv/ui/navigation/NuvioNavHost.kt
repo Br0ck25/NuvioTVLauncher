@@ -406,6 +406,60 @@ private fun PlaybackNavHost(
                 }
             }
 
+            // YouTube fork: a YouTube card resumes in Nuvio's player, resolving the stream first.
+            val youtubeExtractor = androidx.compose.runtime.remember(context) {
+                runCatching {
+                    dagger.hilt.android.EntryPointAccessors.fromApplication(
+                        context.applicationContext,
+                        com.nuvio.tv.youtube.YouTubePlaybackEntryPoint::class.java
+                    ).youTubeExtractor()
+                }.getOrNull()
+            }
+            val youtubePlayScope = androidx.compose.runtime.rememberCoroutineScope()
+            fun playYouTubeContinueWatching(
+                item: ContinueWatchingItem,
+                startFromBeginning: Boolean
+            ): Boolean {
+                val progress = (item as? ContinueWatchingItem.InProgress)?.progress ?: return false
+                if (!com.nuvio.tv.youtube.YouTubeProgress.isYouTubeId(progress.contentId)) return false
+                val videoId = progress.contentId.removePrefix(
+                    com.nuvio.tv.youtube.YouTubeProgress.ID_PREFIX
+                )
+                val extractor = youtubeExtractor
+                if (extractor == null) {
+                    Toast.makeText(context, R.string.youtube_continue_unavailable, Toast.LENGTH_SHORT).show()
+                    return true
+                }
+                youtubePlayScope.launch {
+                    val url = runCatching {
+                        extractor.extractSingleUrl("https://www.youtube.com/watch?v=$videoId")
+                    }.getOrNull()?.takeIf { it.isNotBlank() }
+                    if (url == null) {
+                        Toast.makeText(
+                            context,
+                            R.string.youtube_continue_unavailable,
+                            Toast.LENGTH_SHORT
+                        ).show()
+                        return@launch
+                    }
+                    navController.navigate(
+                        Screen.Player.createRoute(
+                            streamUrl = url,
+                            title = progress.name,
+                            contentId = progress.contentId,
+                            contentType = "youtube",
+                            contentName = progress.name,
+                            poster = progress.poster,
+                            videoId = videoId,
+                            addonName = "OneTube",
+                            returnToHomeOnBack = true,
+                            startFromBeginning = startFromBeginning
+                        )
+                    )
+                }
+                return true
+            }
+
             // Live TV fork: get Live TV ready in the background, so the guide is there when opened.
             androidx.compose.runtime.LaunchedEffect(Unit) {
                 runCatching { com.nuvio.tv.livetv.startup.LiveTvPreload.start(context) }
@@ -441,6 +495,9 @@ private fun PlaybackNavHost(
                     )
                 },
                 onContinueWatchingClick = onContinueWatchingClick@{ item ->
+                    if (playYouTubeContinueWatching(item, startFromBeginning = false)) {
+                        return@onContinueWatchingClick
+                    }
                     if (com.nuvio.tv.livetv.ondemand.VodHomeIds.isOnDemandContentId(
                             (item as? ContinueWatchingItem.InProgress)?.progress?.contentId
                         )
@@ -457,6 +514,9 @@ private fun PlaybackNavHost(
                     navController.navigate(createContinueWatchingRoute(item))
                 },
                 onContinueWatchingStartFromBeginning = onContinueWatchingStartFromBeginning@{ item ->
+                    if (playYouTubeContinueWatching(item, startFromBeginning = true)) {
+                        return@onContinueWatchingStartFromBeginning
+                    }
                     if (com.nuvio.tv.livetv.ondemand.VodHomeIds.isOnDemandContentId(
                             (item as? ContinueWatchingItem.InProgress)?.progress?.contentId
                         )

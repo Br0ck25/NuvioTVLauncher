@@ -19,6 +19,7 @@ internal data class ModernHomePresentationInput(
     val catalogRows: List<CatalogRow>,
     val continueWatchingItems: List<ContinueWatchingItem>,
     val onDemandItems: List<ContinueWatchingItem> = emptyList(),
+    val youtubeItems: List<ContinueWatchingItem> = emptyList(),
     val upcomingItems: List<ContinueWatchingItem>,
     val useLandscapePosters: Boolean,
     val showCatalogTypeSuffix: Boolean,
@@ -129,6 +130,46 @@ internal fun buildModernHomePresentation(
         } else {
             cache.onDemandItems = emptyList()
             cache.onDemandRow = null
+        }
+
+        // YouTube fork: videos started on the YouTube page, in their own row.
+        val strYouTubeContinueWatching = localizedContext.getString(R.string.youtube_continue_watching)
+        if (input.youtubeItems.isNotEmpty()) {
+            val reuseYouTubeRow =
+                cache.youTubeRow != null &&
+                    cache.youTubeItems == input.youtubeItems &&
+                    cache.youTubeTitle == strYouTubeContinueWatching &&
+                    cache.youTubeUseLandscapePosters == input.useLandscapePosters &&
+                    cache.youTubeShowImdbRatings == input.showImdbRatings
+            val youTubeRow = if (reuseYouTubeRow) {
+                checkNotNull(cache.youTubeRow)
+            } else {
+                HeroCarouselRow(
+                    key = MODERN_YOUTUBE_ROW_KEY,
+                    title = strYouTubeContinueWatching,
+                    globalRowIndex = -1,
+                    items = input.youtubeItems.map { item ->
+                        buildContinueWatchingItem(
+                            item = item,
+                            useLandscapePosters = input.useLandscapePosters,
+                            showImdbRatings = input.showImdbRatings,
+                            detailImdbRatingsVisibility = input.detailImdbRatingsVisibility,
+                            airsDateTemplate = strAirsDate,
+                            upcomingLabel = strUpcoming,
+                            context = localizedContext
+                        )
+                    }.asStable()
+                )
+            }
+            cache.youTubeItems = input.youtubeItems
+            cache.youTubeTitle = strYouTubeContinueWatching
+            cache.youTubeUseLandscapePosters = input.useLandscapePosters
+            cache.youTubeShowImdbRatings = input.showImdbRatings
+            cache.youTubeRow = youTubeRow
+            add(youTubeRow)
+        } else {
+            cache.youTubeItems = emptyList()
+            cache.youTubeRow = null
         }
 
         // Upcoming row (SPLIT_UPCOMING mode)

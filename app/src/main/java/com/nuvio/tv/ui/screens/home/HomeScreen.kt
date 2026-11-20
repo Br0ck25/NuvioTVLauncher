@@ -166,7 +166,10 @@ fun HomeScreen(
             // Nuvio details page behind their `nuviovod:` id.
             val onDemand = item is ContinueWatchingItem.InProgress &&
                 com.nuvio.tv.livetv.ondemand.VodHomeIds.isOnDemandContentId(item.progress.contentId)
-            if (!onDemand && latestContinueWatchingClickAction.value.opensDetails(item)) {
+            // YouTube fork: these have no Nuvio details page; they always resume in the player.
+            val youtube = item is ContinueWatchingItem.InProgress &&
+                com.nuvio.tv.youtube.YouTubeProgress.isYouTubeId(item.progress.contentId)
+            if (!onDemand && !youtube && latestContinueWatchingClickAction.value.opensDetails(item)) {
                 when (item) {
                     is ContinueWatchingItem.InProgress -> onNavigateToDetail(item.progress.contentId, item.progress.contentType, "")
                     is ContinueWatchingItem.NextUp -> onNavigateToDetail(item.info.contentId, item.info.contentType, "")
