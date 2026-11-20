@@ -107,6 +107,11 @@ internal class LoopbackAdbSetup(private val context: Context) : LocalAdbSetup {
             if (exempt) "Done. Android will keep this app running in the background, so recordings, updates and sync run on time. If the TV restarts and recordings stop firing, run this again."
             else "The commands ran, but this TV didn't confirm the Doze exemption. Some TVs ignore parts of this; the rest still applies."
         }
+        DeviceAction.OPTIMIZE_SPEED -> {
+            val result = shell(manager, DeviceCommands.optimizeSpeed(context.packageName))
+            if (result.contains("Success", ignoreCase = true)) "Done. The app is compiled for speed, so it should start faster. An app update undoes it; this app repeats it after an update on a TV it has been set up on."
+            else "The TV did not accept the compile command (${result.trim().take(120).ifEmpty { "no answer" }}). Nothing was changed."
+        }
         DeviceAction.ENABLE_OVERRIDE -> {
             enableOverride(manager)
             "Home button override is on. It stays on after a restart."

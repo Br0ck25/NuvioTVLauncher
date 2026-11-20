@@ -17,6 +17,9 @@ enum class DeviceAction(val id: String) {
     /** Stop Android limiting this app in the background (standby bucket, background restrictions, Doze), so recordings, guide updates and sync run on time. */
     KEEP_RUNNING("keep-running"),
 
+    /** Pre-compile the app (`speed-profile`), which about halves its start-up time on a slow box. Lost on every update; the app repeats it after one. */
+    OPTIMIZE_SPEED("optimize-speed"),
+
     /** FLauncher's way: turn off the Google TV launcher so only this launcher is left. Optional and risky; see the warning on the setup page. */
     DISABLE_STOCK("disable-stock"),
 
@@ -57,6 +60,12 @@ object DeviceCommands {
         "cmd appops set $pkg RUN_ANY_IN_BACKGROUND allow",
         "dumpsys deviceidle whitelist +$pkg"
     )
+    /**
+     * Compiles [pkg] ahead of time from its own profile. Android leaves a freshly installed app uncompiled until the TV
+     * has been idle and charging for a while, which on a TV is rare; measured on a TiVo Stream 4K this took the launcher's
+     * start from about 2.1 s to 1.1 s. `speed-profile` was faster than `speed` there, and smaller. An update undoes it.
+     */
+    fun optimizeSpeed(pkg: String) = "cmd package compile -m speed-profile -f $pkg"
     /** The command that lists the Doze-exempt apps, to check [keepRunning] took. */
     val listDozeWhitelist = "dumpsys deviceidle whitelist"
     val resolveHome = "cmd package resolve-activity $HOME_QUERY"
