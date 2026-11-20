@@ -230,7 +230,9 @@ fun SettingsScreen(
         return
     }
 
-    val isEssentialMode = loadedExperienceMode == ExperienceMode.ESSENTIAL
+    // Every profile gets the full Settings (layout, playback, advanced, plugins), so
+    // Essential mode no longer hides any of it. The mode still shapes first-run setup.
+    val isEssentialMode = false
 
     val visibleCategories = remember(isPrimaryProfileActive, isEssentialMode, isWatchPartyAvailable) {
         visibleSettingsCategories(

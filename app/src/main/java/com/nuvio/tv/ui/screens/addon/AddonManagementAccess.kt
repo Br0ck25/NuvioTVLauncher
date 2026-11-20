@@ -16,7 +16,6 @@ internal object AddonManagementAccess {
     ): AddonWebConfigMode {
         return when {
             isReadOnly(profile) -> AddonWebConfigMode.COLLECTIONS_ONLY
-            experienceMode == ExperienceMode.ESSENTIAL -> AddonWebConfigMode.ADDONS_ONLY
             else -> AddonWebConfigMode.FULL
         }
     }
