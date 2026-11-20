@@ -50,3 +50,8 @@ The latest beta build (Release run #65) came from `hotfix/17.2.1` at `2587f1d0e`
 | `sync/nuvioone-branches` | `0edd2ba5e7f43ae465ccee2f26a1fcf79c3acb68` |
 | `sync/nuvioone-livetv-green` | `9d44e3d0ca1b52ea1a7c6df479275a750164fb9e` |
 | `wip/nuvioone-livetv-merge` | `fae7a8bae4df4b5a10d6b2e04e99190978faf2e0` |
+
+## Archived before deletion
+`pr/home-tile-size`, `pr/livetv-row` and `pr/upcoming-row` were deleted from origin while they still had commits that are not in `dev`.
+They were saved as `claude/archive-pr-home-tile-size` (`69a6666`), `claude/archive-pr-livetv-row` (`454c98e`) and `claude/archive-pr-upcoming-row` (`b9dcba8`).
+Not yet compared with `opt-home-tile-sizes` and `opt-live-tv-home-row`; delete these three once that check is done.
