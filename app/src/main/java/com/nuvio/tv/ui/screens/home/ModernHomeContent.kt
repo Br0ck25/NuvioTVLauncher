@@ -425,7 +425,7 @@ fun ModernHomeContent(
                         (item.payload as? ModernPayload.CollectionFolder)?.focusKey == selection.focusKey
                     }
                 }
-                is ModernPayload.ContinueWatching -> true
+                is ModernPayload.ContinueWatching, is ModernPayload.InstalledApp -> true
             }
         } ?: false
         if (staleSelection) {
@@ -699,6 +699,15 @@ fun ModernHomeContent(
         ContinueWatchingCardStyle.POSTER -> portraitCatalogCardHeight
         ContinueWatchingCardStyle.WIDE -> continueWatchingCardWidth * WIDE_CARD_HEIGHT_RATIO
         ContinueWatchingCardStyle.CARD -> continueWatchingCardWidth / 1.77f
+    }
+
+    // The tile every row shares: Continue Watching's 16:9 card size, whatever style it is set to.
+    val modernTileWidth = portraitBaseWidth * 1.24f * continueWatchingScale
+    val modernTileGap = NuvioTheme.spacing.md
+    androidx.compose.runtime.SideEffect {
+        com.nuvio.tv.ui.components.HomeTiles.publish(
+            com.nuvio.tv.ui.components.HomeTile(modernTileWidth, modernTileWidth / 1.77f, modernTileGap)
+        )
     }
 
     val localConfiguration = LocalConfiguration.current

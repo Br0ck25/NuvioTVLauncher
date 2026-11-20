@@ -212,7 +212,15 @@ class CatalogOrderViewModel @Inject constructor(
         followAddonsOrder: Boolean = false
     ): List<CatalogOrderItem> {
         val defaultEntries = buildDefaultCatalogEntries(addons)
-        val collectionEntries = collections.map { collection ->
+        // Launcher: the Apps row is listed like a collection, so it can be moved and turned off here.
+        val appsEntry = CatalogOrderEntry(
+            key = com.nuvio.tv.core.apps.INSTALLED_APPS_CATALOG_KEY,
+            disableKey = com.nuvio.tv.core.apps.INSTALLED_APPS_CATALOG_KEY,
+            catalogName = "Apps",
+            addonName = "Installed apps",
+            typeLabel = "apps"
+        )
+        val collectionEntries = listOf(appsEntry) + collections.map { collection ->
             CatalogOrderEntry(
                 key = "collection_${collection.id}",
                 disableKey = "collection_${collection.id}",
@@ -225,7 +233,7 @@ class CatalogOrderViewModel @Inject constructor(
         val availableMap = allEntries.associateBy { it.key }
         val defaultOrderKeys = allEntries.map { it.key }
 
-        val effectiveOrder: List<String>
+        val rawOrder: List<String>
         if (followAddonsOrder) {
             // In follow mode, addon catalogs stay in manifest order.
             // Collections are positioned based on their relative position in savedOrderKeys.
@@ -277,10 +285,10 @@ class CatalogOrderViewModel @Inject constructor(
                 }
                 // Normalize: ensure collections sit at addon block boundaries, not mid-block.
                 // If a collection is between two catalogs of the same addon, push it after that block.
-                effectiveOrder = normalizeCollectionPositions(result, availableMap)
+                rawOrder = normalizeCollectionPositions(result, availableMap)
             } else {
                 // No saved order - addon manifest order + collections at end
-                effectiveOrder = addonKeys + collectionKeys.toList()
+                rawOrder = addonKeys + collectionKeys.toList()
             }
         } else {
             val savedValid = savedOrderKeys
@@ -291,8 +299,14 @@ class CatalogOrderViewModel @Inject constructor(
 
             val savedKeySet = savedValid.toSet()
             val missing = defaultOrderKeys.filterNot { it in savedKeySet }
-            effectiveOrder = savedValid + missing
+            rawOrder = savedValid + missing
         }
+
+        // Until the user has placed the Apps row, Home shows it first; show it first here too.
+        val appsKey = com.nuvio.tv.core.apps.INSTALLED_APPS_CATALOG_KEY
+        val effectiveOrder = if (appsKey !in savedOrderKeys && appsKey in rawOrder) {
+            listOf(appsKey) + rawOrder.filterNot { it == appsKey }
+        } else rawOrder
 
         return effectiveOrder.mapIndexedNotNull { index, key ->
             val entry = availableMap[key] ?: return@mapIndexedNotNull null

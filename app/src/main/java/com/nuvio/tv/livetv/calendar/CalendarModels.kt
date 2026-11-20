@@ -309,15 +309,19 @@ object SideMenuPages {
     const val DISCOVER = "discover"
     const val YOUTUBE = "youtube"
     const val MUSIC = "music"
+    /** Launcher: every installed app (and the Apps row on Home). */
+    const val APPS = "apps"
+    /** Settings is always at the bottom of the menu (not in the order); this only lets it be taken off the menu. */
+    const val SETTINGS = "settings"
 
     val DEFAULT_ORDER = listOf(
-        HOME, DISCOVER, SEARCH, LIBRARY, CALENDAR, LIVE_TV, SPORTS, ON_DEMAND, RECORDINGS, YOUTUBE, MUSIC
+        HOME, DISCOVER, SEARCH, LIBRARY, APPS, CALENDAR, LIVE_TV, SPORTS, ON_DEMAND, RECORDINGS, YOUTUBE, MUSIC
     )
 
     val NAMES = mapOf(
         HOME to "Home", SEARCH to "Search", LIBRARY to "Library", CALENDAR to "Calendar", LIVE_TV to "Live TV",
         SPORTS to "Sports", ON_DEMAND to "On Demand", DISCOVER to "Discover", RECORDINGS to "Recordings",
-        YOUTUBE to "OneTube", MUSIC to "Music"
+        YOUTUBE to "OneTube", MUSIC to "Music", APPS to "Apps"
     )
 
     /** The order as saved, with any page it doesn't mention in its usual place. */

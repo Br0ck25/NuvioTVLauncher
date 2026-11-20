@@ -93,8 +93,13 @@ fun HomeScreen(
     onContinueWatchingStartFromBeginning: (ContinueWatchingItem) -> Unit = onContinueWatchingClick,
     onContinueWatchingPlayManually: (ContinueWatchingItem) -> Unit = onContinueWatchingClick,
     onNavigateToCatalogSeeAll: (String, String, String) -> Unit = { _, _, _ -> },
-    onNavigateToFolderDetail: (String, String) -> Unit = { _, _ -> }
+    onNavigateToFolderDetail: (String, String) -> Unit = { _, _ -> },
+    onNavigateToSettings: () -> Unit = {}
 ) {
+    // Launcher: the gear and bell at the top right open these panels.
+    var showSettingsDrawer by rememberSaveable { mutableStateOf(false) }
+    var showNotificationsDrawer by rememberSaveable { mutableStateOf(false) }
+
     val uiState by viewModel.uiState.collectAsStateWithLifecycle()
 
     // Home was the only major screen without a lifecycle observer, so nothing ever told it to
@@ -114,11 +119,21 @@ fun HomeScreen(
     val modernPresentation by viewModel.modernHomePresentation.collectAsStateWithLifecycle()
     val initialCwResolved by viewModel.initialCwResolved.collectAsStateWithLifecycle()
     val scrollToTopTrigger by viewModel.scrollToTopTrigger.collectAsStateWithLifecycle()
+    // Launcher: Home closes the top-right panels.
+    var handledPanelCloseTrigger by rememberSaveable { mutableStateOf(scrollToTopTrigger) }
+    LaunchedEffect(scrollToTopTrigger) {
+        if (scrollToTopTrigger != handledPanelCloseTrigger) {
+            handledPanelCloseTrigger = scrollToTopTrigger
+            showSettingsDrawer = false
+            showNotificationsDrawer = false
+        }
+    }
     val effectiveAutoplayEnabled by viewModel.effectiveAutoplayEnabled.collectAsStateWithLifecycle(
         initialValue = false
     )
     val hasCatalogContent = uiState.catalogRows.any { it.items.isNotEmpty() }
     val hasCollectionContent = uiState.homeRows.any { it is HomeRow.CollectionRow }
+    val hasInstalledAppsContent = uiState.homeRows.any { it is HomeRow.InstalledApps && it.apps.isNotEmpty() }
     val hasHeroContent = uiState.heroItems.isNotEmpty()
     val modernPresentationReady =
         uiState.homeLayout != HomeLayout.MODERN ||
@@ -195,7 +210,7 @@ fun HomeScreen(
         modernPresentationReady
     ) {
         // Track that addons are known (even if isLoading flipped too fast to catch).
-        if (uiState.installedAddonsCount > 0) {
+        if (uiState.installedAddonsCount > 0 || (hasInstalledAppsContent && !uiState.isLoading)) {
             catalogLoadingStarted = true
         }
         // Wait until catalog loading has completed with content AND the CW
@@ -206,7 +221,7 @@ fun HomeScreen(
             initialCwResolved &&
             modernPresentationReady &&
             // When addons are installed, require at least one catalog row.
-            (hasCatalogContent || uiState.installedAddonsCount == 0)
+            (hasCatalogContent || hasInstalledAppsContent || uiState.installedAddonsCount == 0)
         ) {
             Log.d("HomeGate", "RELEASE: catalogs=$hasCatalogContent cwResolved=$initialCwResolved cwItems=${uiState.continueWatchingItems.size} addons=${uiState.installedAddonsCount}")
             homeStableGateReleased = true
@@ -244,13 +259,14 @@ fun HomeScreen(
     val hasAnyContent = uiState.catalogRows.isNotEmpty() ||
         (uiState.continueWatchingEnabled && uiState.continueWatchingItems.isNotEmpty()) ||
         uiState.heroItems.isNotEmpty() ||
-        hasCollectionContent
+        hasCollectionContent ||
+        hasInstalledAppsContent
     val showStartupLoader = when {
         !uiState.layoutPreferencesReady -> true
         uiState.isLoading && !hasAnyContent -> true
-        uiState.error == noAddonsError && uiState.catalogRows.isEmpty() -> !homeStableGateReleased
-        uiState.error == noCatalogAddonsError && uiState.catalogRows.isEmpty() && !hasCollectionContent && !hasHeroContent -> !homeStableGateReleased
-        uiState.error != null && uiState.catalogRows.isEmpty() -> false
+        uiState.error == noAddonsError && uiState.catalogRows.isEmpty() && !hasInstalledAppsContent -> !homeStableGateReleased
+        uiState.error == noCatalogAddonsError && uiState.catalogRows.isEmpty() && !hasCollectionContent && !hasHeroContent && !hasInstalledAppsContent -> !homeStableGateReleased
+        uiState.error != null && uiState.catalogRows.isEmpty() && !hasInstalledAppsContent -> false
         !uiState.isLoading && !hasAnyContent -> !homeStableGateReleased
         else -> !homeStableGateReleased || !modernPresentationReady || !showHomeContentWithAnimation
     }
@@ -282,7 +298,7 @@ fun HomeScreen(
                 Unit
             }
 
-            uiState.error == noAddonsError && uiState.catalogRows.isEmpty() -> {
+            uiState.error == noAddonsError && uiState.catalogRows.isEmpty() && !hasInstalledAppsContent -> {
                 if (!homeStableGateReleased) {
                     Unit
                 } else {
@@ -299,7 +315,7 @@ fun HomeScreen(
                 }
             }
 
-            uiState.error == noCatalogAddonsError && uiState.catalogRows.isEmpty() && !hasCollectionContent && !hasHeroContent -> {
+            uiState.error == noCatalogAddonsError && uiState.catalogRows.isEmpty() && !hasCollectionContent && !hasHeroContent && !hasInstalledAppsContent -> {
                 if (!homeStableGateReleased) {
                     Unit
                 } else {
@@ -316,7 +332,7 @@ fun HomeScreen(
                 }
             }
 
-            uiState.error != null && uiState.catalogRows.isEmpty() -> {
+            uiState.error != null && uiState.catalogRows.isEmpty() && !hasInstalledAppsContent -> {
                 ErrorState(
                     message = uiState.error ?: stringResource(R.string.error_generic),
                     onRetry = { viewModel.onEvent(HomeEvent.OnRetry) }
@@ -458,6 +474,24 @@ fun HomeScreen(
                     color = NuvioTheme.colors.TextPrimary
                 )
             }
+        }
+
+        // Launcher: settings, notifications and TV inputs at the top right of Home.
+        if (!showHomeLoader) {
+            HomeTopBarHeader(
+                onNotificationsClick = { showNotificationsDrawer = true },
+                onSettingsClick = { showSettingsDrawer = true },
+                modifier = Modifier.align(Alignment.TopEnd)
+            )
+        }
+        if (showSettingsDrawer) {
+            HomeSettingsDrawer(
+                onDismiss = { showSettingsDrawer = false },
+                onOpenNuvioSettings = onNavigateToSettings
+            )
+        }
+        if (showNotificationsDrawer) {
+            NotificationsDrawer(onDismiss = { showNotificationsDrawer = false })
         }
     }
 

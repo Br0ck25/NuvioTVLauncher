@@ -145,6 +145,18 @@ fun ClassicHomeContent(
             ContinueWatchingCardStyle.CARD -> if (globalLandscape) classicLandscapeCatalogHeight else classicSecondaryPosterCardStyle.width
         }
     }
+    // The tile every row shares: Continue Watching's 16:9 card size, whatever style it is set to.
+    val classicTileGap = NuvioTheme.spacing.lg
+    val classicHomeTile = remember(classicSecondaryPosterCardStyle, classicLandscapeCatalogWidth, classicLandscapeCatalogHeight, globalLandscape, classicTileGap) {
+        if (globalLandscape) {
+            com.nuvio.tv.ui.components.HomeTile(classicLandscapeCatalogWidth, classicLandscapeCatalogHeight, classicTileGap)
+        } else {
+            com.nuvio.tv.ui.components.HomeTile(
+                classicSecondaryPosterCardStyle.width * (16f / 9f), classicSecondaryPosterCardStyle.width, classicTileGap
+            )
+        }
+    }
+    androidx.compose.runtime.SideEffect { com.nuvio.tv.ui.components.HomeTiles.publish(classicHomeTile) }
     // Match catalog poster label style so CW poster titles look the same as catalog ones.
     val classicPosterTitleStyle = if (uiState.continueWatchingCardStyle == ContinueWatchingCardStyle.POSTER) {
         MaterialTheme.typography.titleMedium
@@ -286,6 +298,7 @@ fun ClassicHomeContent(
             when (row) {
                 is HomeRow.Catalog -> row.row.stableKey()
                 is HomeRow.CollectionRow -> "collection_${row.collection.id}"
+                is HomeRow.InstalledApps -> com.nuvio.tv.core.apps.INSTALLED_APPS_CATALOG_KEY
                 is HomeRow.PlaceholderCatalog -> row.stableCatalogKey
             }
         }
@@ -849,6 +862,7 @@ fun ClassicHomeContent(
                         "${r.stableKey()}_$index"
                     }
                     is HomeRow.CollectionRow -> "collection_${item.collection.id}"
+                    is HomeRow.InstalledApps -> com.nuvio.tv.core.apps.INSTALLED_APPS_CATALOG_KEY
                     is HomeRow.PlaceholderCatalog -> "${item.stableCatalogKey}_$index"
                 }
             },
@@ -856,6 +870,7 @@ fun ClassicHomeContent(
                 when (item) {
                     is HomeRow.Catalog -> "catalog_row"
                     is HomeRow.CollectionRow -> "collection_row"
+                    is HomeRow.InstalledApps -> "installed_apps_row"
                     is HomeRow.PlaceholderCatalog -> "catalog_row"
                 }
             }
@@ -992,6 +1007,11 @@ fun ClassicHomeContent(
                             }
                         }
                     )
+                }
+
+                is HomeRow.InstalledApps -> {
+                    // Launcher: the installed apps, placed like any other row.
+                    com.nuvio.tv.ui.components.InstalledAppsHomeRow(startPadding = NuvioTheme.spacing.xxxl, titleStyle = MaterialTheme.typography.headlineMedium)
                 }
 
                 is HomeRow.PlaceholderCatalog -> { }

@@ -2,6 +2,7 @@ package com.nuvio.tv.data.local
 
 import android.util.Log
 import androidx.datastore.preferences.core.booleanPreferencesKey
+import kotlinx.coroutines.launch
 import androidx.datastore.preferences.core.edit
 import androidx.datastore.preferences.core.intPreferencesKey
 import androidx.datastore.preferences.core.Preferences
@@ -77,6 +78,7 @@ class LayoutPreferenceDataStore @Inject constructor(
     private val disabledHomeCatalogKeysKey = stringPreferencesKey("disabled_home_catalog_keys")
     private val customCatalogTitlesKey = stringPreferencesKey("custom_catalog_titles")
     private val sidebarCollapsedKey = booleanPreferencesKey("sidebar_collapsed_by_default")
+    private val floatingPillShowsProfileKey = booleanPreferencesKey("floating_pill_shows_profile")
     private val modernSidebarEnabledKey = booleanPreferencesKey("modern_sidebar_enabled")
     private val legacyModernSidebarEnabledKey = booleanPreferencesKey("glass_sidepanel_enabled")
     private val modernSidebarBlurEnabledKey = booleanPreferencesKey("modern_sidebar_blur_enabled")
@@ -93,6 +95,7 @@ class LayoutPreferenceDataStore @Inject constructor(
     private val focusedPosterBackdropTrailerPlaybackTargetKey =
         stringPreferencesKey("focused_poster_backdrop_trailer_playback_target")
     private val posterCardWidthDpKey = intPreferencesKey("poster_card_width_dp")
+    private val homeTileWidthDpKey = intPreferencesKey("home_tile_width_dp")
     private val posterCardHeightDpKey = intPreferencesKey("poster_card_height_dp")
     private val posterCardCornerRadiusDpKey = intPreferencesKey("poster_card_corner_radius_dp")
     private val cardDepthEnabledKey = booleanPreferencesKey("card_depth_enabled")
@@ -233,6 +236,11 @@ class LayoutPreferenceDataStore @Inject constructor(
         prefs[sidebarCollapsedKey] ?: false
     }
 
+    /** The floating pill (Modern sidebar) shows the profile's picture and name instead of the page's icon and name. */
+    val floatingPillShowsProfile: Flow<Boolean> = profileFlow { prefs ->
+        prefs[floatingPillShowsProfileKey] ?: false
+    }
+
     val modernSidebarEnabled: Flow<Boolean> = profileFlow { prefs ->
         prefs[modernSidebarEnabledKey] ?: prefs[legacyModernSidebarEnabledKey] ?: false
     }
@@ -313,6 +321,22 @@ class LayoutPreferenceDataStore @Inject constructor(
 
     val posterCardWidthDp: Flow<Int> = profileFlow { prefs ->
         positiveOrDefault(prefs[posterCardWidthDpKey], DEFAULT_POSTER_CARD_WIDTH_DP)
+    }
+
+    /**
+     * The size for the Home tiles (Continue Watching, Upcoming, Live TV, apps), as a poster width preset (104 to 140):
+     * a tile is the size of a landscape poster at that preset. Null follows the poster Width setting.
+     */
+    val homeTileWidthDp: Flow<Int?> = profileFlow { prefs -> prefs[homeTileWidthDpKey]?.takeIf { it > 0 } }
+
+    init {
+        // Home's tiles read the size from HomeTiles, which they share with the Apps page. The scale is the chosen
+        // preset against the poster width the layouts already size their tiles from, so "follow" is exactly 1.
+        scope.launch {
+            kotlinx.coroutines.flow.combine(posterCardWidthDp, homeTileWidthDp) { poster, tile ->
+                if (tile == null) 1f else tile / poster.toFloat()
+            }.collect { com.nuvio.tv.ui.components.HomeTiles.setScale(it) }
+        }
     }
 
     val posterCardHeightDp: Flow<Int> = profileFlow { prefs ->
@@ -578,6 +602,10 @@ class LayoutPreferenceDataStore @Inject constructor(
         }
     }
 
+    suspend fun setFloatingPillShowsProfile(enabled: Boolean) {
+        store().edit { prefs -> prefs[floatingPillShowsProfileKey] = enabled }
+    }
+
     suspend fun setModernSidebarEnabled(enabled: Boolean) {
         store().edit { prefs ->
             prefs[modernSidebarEnabledKey] = enabled
@@ -686,6 +714,12 @@ class LayoutPreferenceDataStore @Inject constructor(
     suspend fun setPosterCardWidthDp(widthDp: Int) {
         store().edit { prefs ->
             prefs[posterCardWidthDpKey] = positiveOrDefault(widthDp, DEFAULT_POSTER_CARD_WIDTH_DP)
+        }
+    }
+
+    suspend fun setHomeTileWidthDp(widthDp: Int?) {
+        store().edit { prefs ->
+            if (widthDp == null) prefs.remove(homeTileWidthDpKey) else prefs[homeTileWidthDpKey] = widthDp
         }
     }
 

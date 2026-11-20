@@ -102,6 +102,7 @@ fun SideMenuSettingsContent(initialFocusRequester: FocusRequester? = null) {
             }
         }
         SideMenuPages.SEARCH -> PageRow("Search", "Search movies, shows, channels and On Demand", id !in hidden) { setHidden(id, id !in hidden) }
+        SideMenuPages.APPS -> PageRow("Apps", "Every app on this device. The Apps row on Home is placed in Reorder Home Catalogs", id !in hidden) { setHidden(id, id !in hidden) }
         SideMenuPages.LIBRARY -> PageRow("Library", "Your saved movies and shows", id !in hidden) { setHidden(id, id !in hidden) }
         SideMenuPages.DISCOVER -> PageRow(
             "Discover", "Browse by genre, network and more", discover != DiscoverLocation.OFF,
@@ -195,7 +196,7 @@ fun SideMenuSettingsContent(initialFocusRequester: FocusRequester? = null) {
                 }
             }
             item(key = "pages") {
-                SettingsGroupCard(title = "Pages", subtitle = "OK turns a page on or off. The arrows move it up or down the menu. Settings always stays at the bottom.") {
+                SettingsGroupCard(title = "Pages", subtitle = "OK turns a page on or off. The arrows move it up or down the menu. Settings stays at the bottom when it's on the menu.") {
                     order.forEachIndexed { index, id ->
                         val r = rowFor(id)
                         Row(verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(8.dp)) {
@@ -220,6 +221,12 @@ fun SideMenuSettingsContent(initialFocusRequester: FocusRequester? = null) {
                             ArrowButton(up = false, enabled = index < order.lastIndex) { move(id, 1) }
                         }
                     }
+                    SettingsToggleRow(
+                        title = "Settings",
+                        subtitle = "Off: Settings leaves the side menu. The gear at the top of Home still opens it.",
+                        checked = SideMenuPages.SETTINGS !in hidden,
+                        onToggle = { setHidden(SideMenuPages.SETTINGS, SideMenuPages.SETTINGS !in hidden) }
+                    )
                 }
             }
             item(key = "look") {

@@ -44,12 +44,14 @@ import javax.inject.Inject
 @HiltAndroidApp
 class NuvioApplication : Application(), SingletonImageLoader.Factory {
 
-    @Inject lateinit var startupSyncService: StartupSyncService
-    @Inject lateinit var androidTvChannelSyncService: AndroidTvChannelSyncService
-    @Inject lateinit var sentrySettingsDataStore: SentrySettingsDataStore
-    @Inject lateinit var imagePerformancePreferences: ImagePerformancePreferences
-    @Inject lateinit var simklAnimeIdPreferenceHolder: SimklAnimeIdPreferenceHolder
-    @Inject lateinit var serverUserStateProjection: ServerUserStateProjection
+    // Lazy: these are only needed by the deferred start-up below (or when the image loader is first built), so Hilt does not build them (and everything
+    // they depend on) on the main thread before the launcher's accessibility service can bind.
+    @Inject lateinit var androidTvChannelSyncService: dagger.Lazy<AndroidTvChannelSyncService>
+    @Inject lateinit var sentrySettingsDataStore: dagger.Lazy<SentrySettingsDataStore>
+    @Inject lateinit var startupSyncService: dagger.Lazy<StartupSyncService>
+    @Inject lateinit var imagePerformancePreferences: dagger.Lazy<ImagePerformancePreferences>
+    @Inject lateinit var simklAnimeIdPreferenceHolder: dagger.Lazy<SimklAnimeIdPreferenceHolder>
+    @Inject lateinit var serverUserStateProjection: dagger.Lazy<ServerUserStateProjection>
 
     companion object {
         /**
@@ -84,12 +86,11 @@ class NuvioApplication : Application(), SingletonImageLoader.Factory {
     @androidx.annotation.OptIn(androidx.media3.common.util.UnstableApi::class)
     override fun onCreate() {
         // Before super.onCreate(): Hilt creates injected services there, and the budget is read once.
+        com.nuvio.tv.core.launcher.StartupTiming.mark(this, "Application.onCreate start")
         MemoryBudget.init(this)
         super.onCreate()
-        SentryInitializer.start(this, sentrySettingsDataStore)
+        com.nuvio.tv.core.launcher.StartupTiming.mark(this, "dependency graph ready (super.onCreate)")
         PluginRuntimeHooks.onApplicationCreate(this)
-        androidTvChannelSyncService.start()
-        serverUserStateProjection.start()
         // Load locale synchronously so it's available before Activity.attachBaseContext.
         // SharedPreferences reads are fast (cached in memory after first access).
         val tag = getSharedPreferences("app_locale", Context.MODE_PRIVATE)
@@ -97,6 +98,21 @@ class NuvioApplication : Application(), SingletonImageLoader.Factory {
         LocaleCache.localeTag = tag ?: ""
         // Keep the chosen YouTube content region ready before the first feed request.
         com.nuvio.tv.youtube.YouTubeContentRegion.apply(this)
+        com.nuvio.tv.core.launcher.StartupTiming.mark(this, "Application.onCreate done")
+        // After a restart the launcher's accessibility service can only take over from the TV's own launcher
+        // once this process has finished starting (about 15 s on a Chromecast with Google TV while it boots).
+        // Anything the first frame and the takeover do not need runs on a background thread instead.
+        kotlin.concurrent.thread(name = "app-startup", isDaemon = true) {
+            runCatching { SentryInitializer.start(this, sentrySettingsDataStore.get()) }
+            // Creating these starts their own work (the account sync, the Simkl id flow), as it did when they were eager.
+            runCatching { startupSyncService.get() }
+            runCatching { simklAnimeIdPreferenceHolder.get() }
+            runCatching { androidTvChannelSyncService.get().start() }
+            runCatching { serverUserStateProjection.get().start() }
+            // Launcher: keeps this app's own accessibility service switched on once the phone setup has
+            // granted the permission. Reads system settings, so it runs off the main thread.
+            runCatching { com.nuvio.tv.core.launcher.AccessibilityWatchdog.start(this) }
+        }
     }
 
     @androidx.annotation.OptIn(androidx.media3.common.util.UnstableApi::class)
@@ -189,7 +205,7 @@ class NuvioApplication : Application(), SingletonImageLoader.Factory {
             .crossfade(false)
             .precision(coil3.size.Precision.INEXACT)
             .allowHardware(false)
-            .allowRgb565(imagePerformancePreferences.rgb565Enabled)
+            .allowRgb565(imagePerformancePreferences.get().rgb565Enabled)
             .bitmapFactoryMaxParallelism(4)
             .build()
     }

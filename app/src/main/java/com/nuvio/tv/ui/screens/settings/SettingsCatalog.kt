@@ -24,6 +24,8 @@ internal enum class SettingsCategory(val group: SettingsRailGroup) {
     CALENDAR(SettingsRailGroup.WATCH), // Live TV fork
     INTEGRATION(SettingsRailGroup.SERVICES),
     TRACKING(SettingsRailGroup.SERVICES),
+    DEFAULT_LAUNCHER(SettingsRailGroup.SYSTEM), // Launcher
+    REMOTE_BUTTONS(SettingsRailGroup.SYSTEM), // Launcher
     ADVANCED(SettingsRailGroup.SYSTEM),
     ABOUT(SettingsRailGroup.SYSTEM),
     DEBUG(SettingsRailGroup.SYSTEM),
