@@ -14,6 +14,9 @@ enum class DeviceAction(val id: String) {
     /** Let this launcher read notifications, for the bell at the top right of Home. */
     ENABLE_NOTIFICATIONS("enable-notifications"),
 
+    /** Stop Android limiting this app in the background (standby bucket, background restrictions, Doze), so recordings, guide updates and sync run on time. */
+    KEEP_RUNNING("keep-running"),
+
     /** FLauncher's way: turn off the Google TV launcher so only this launcher is left. Optional and risky; see the warning on the setup page. */
     DISABLE_STOCK("disable-stock"),
 
@@ -43,6 +46,19 @@ object DeviceCommands {
     fun setHome(component: String) = "cmd package set-home-activity $component"
     /** Grants the notification-listener access that normally needs a trip through Settings. */
     fun allowNotificationListener(component: String) = "cmd notification allow_listener $component"
+    /**
+     * Keeps Android from limiting [pkg] in the background: the "active" standby bucket, the two background
+     * app-ops, and the Doze exemption. Scheduled recordings, guide and playlist updates and Drive sync depend on it
+     * when the TV has been idle or in standby. Each one is harmless on a TV that doesn't support it.
+     */
+    fun keepRunning(pkg: String) = listOf(
+        "am set-standby-bucket $pkg active",
+        "cmd appops set $pkg RUN_IN_BACKGROUND allow",
+        "cmd appops set $pkg RUN_ANY_IN_BACKGROUND allow",
+        "dumpsys deviceidle whitelist +$pkg"
+    )
+    /** The command that lists the Doze-exempt apps, to check [keepRunning] took. */
+    val listDozeWhitelist = "dumpsys deviceidle whitelist"
     val resolveHome = "cmd package resolve-activity $HOME_QUERY"
     val listHomes = "cmd package query-activities $HOME_QUERY"
     /** Stock launchers seen on Google TV / Android TV. Nuvio's takeover needs the stock one to stay enabled. */
