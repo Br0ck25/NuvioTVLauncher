@@ -160,6 +160,10 @@
 -dontwarn java.beans.ConstructorProperties
 -dontwarn java.beans.Transient
 
+# Audio Sync speech recognition uses JNI to read configuration fields by name.
+-keep class com.k2fsa.sherpa.onnx.** { *; }
+-keep interface com.k2fsa.sherpa.onnx.** { *; }
+
 # YouTube fork: SmartTube's MediaServiceCore reads YouTube's JSON into classes by field name, calls into a
 # JavaScript engine, and builds its requests with reflection. Shrinking or renaming any of it breaks YouTube.
 -keep class com.liskovsoft.** { *; }

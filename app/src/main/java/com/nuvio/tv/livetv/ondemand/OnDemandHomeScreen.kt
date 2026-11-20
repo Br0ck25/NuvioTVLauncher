@@ -125,7 +125,8 @@ fun OnDemandHomeScreen(
         com.nuvio.tv.core.player.TrailerPlayerPool(
             context.applicationContext,
             entry.playerSettingsDataStore(),
-            entry.trailerSettingsDataStore()
+            entry.trailerSettingsDataStore(),
+            entry.youTubeExtractor()
         )
     }
     androidx.compose.runtime.DisposableEffect(ownPool) { onDispose { runCatching { ownPool.release() } } }
@@ -660,6 +661,7 @@ private fun KindTab(label: String, selected: Boolean, onClick: () -> Unit) {
 interface OnDemandPlayerEntryPoint {
     fun playerSettingsDataStore(): com.nuvio.tv.data.local.PlayerSettingsDataStore
     fun trailerSettingsDataStore(): com.nuvio.tv.data.local.TrailerSettingsDataStore
+    fun youTubeExtractor(): com.nuvio.tv.data.trailer.InAppYouTubeExtractor
 }
 
 /**

@@ -13,6 +13,10 @@ import com.android.build.gradle.internal.tasks.CompileArtProfileTask
 import com.android.build.gradle.internal.tasks.L8DexDesugarLibTask
 import java.io.File
 import java.util.Properties
+import java.net.URI
+import java.security.MessageDigest
+import java.nio.file.Files
+import java.nio.file.StandardCopyOption
 
 // Copies the per-API dex metadata (.dm) files AGP builds next to the binary ART profile into the APK's assets, so the
 // in-app updater can install the next version together with its profile and have it compiled at install time.
@@ -149,8 +153,8 @@ android {
         testInstrumentationRunner = "androidx.test.runner.AndroidJUnitRunner"
         minSdk = 24
         targetSdk = 36
-        versionCode = 1078
-        versionName = "1.2.0-beta.1"
+        versionCode = 1080
+        versionName = "1.2.0-beta.3"
 
         buildConfigField("String", "PARENTAL_GUIDE_API_URL", "\"${localProperties.getProperty("PARENTAL_GUIDE_API_URL", "")}\"")
         buildConfigField("String", "INTRODB_API_URL", "\"${localProperties.getProperty("INTRODB_API_URL", "")}\"")
@@ -376,6 +380,8 @@ android {
     packaging {
         jniLibs {
             useLegacyPackaging = true
+            // Audio Sync uses the JNI API; these unused native APIs duplicate runtime code.
+            excludes += listOf("lib/*/libsherpa-onnx-c-api.so", "lib/*/libsherpa-onnx-cxx-api.so")
             // Keep one consistent native set across dependencies.
             pickFirsts += listOf(
                 "lib/*/libc++_shared.so",
@@ -542,7 +548,37 @@ sentry {
     }
 }
 
+// Same pinned speech runtime as Reshaped tester. Download only during a build, never at
+// configuration time, and verify the upstream release before adding it to the classpath.
+val sherpaOnnxVersion = "1.13.8"
+val sherpaOnnxSha256 = "633c24321e06b1fe79feafa03ea16cbc0f8a286641e2da3559bac91bdb13bd96"
+val sherpaOnnxAar = layout.buildDirectory.file("audio-sync/sherpa-onnx-$sherpaOnnxVersion.aar")
+val downloadAudioSyncRuntime by tasks.registering {
+    inputs.property("version", sherpaOnnxVersion)
+    inputs.property("sha256", sherpaOnnxSha256)
+    outputs.file(sherpaOnnxAar)
+    doLast {
+        val aar = sherpaOnnxAar.get().asFile
+        aar.parentFile.mkdirs()
+        val partial = File(aar.path + ".part")
+        val url = URI("https://github.com/k2-fsa/sherpa-onnx/releases/download/v$sherpaOnnxVersion/sherpa-onnx-$sherpaOnnxVersion.aar")
+        try {
+            url.toURL().openConnection().apply {
+                connectTimeout = 30_000
+                readTimeout = 60_000
+            }.getInputStream().use { input -> partial.outputStream().use { input.copyTo(it) } }
+            val digest = MessageDigest.getInstance("SHA-256")
+                .digest(partial.readBytes()).joinToString("") { "%02x".format(it) }
+            check(digest == sherpaOnnxSha256) { "Checksum mismatch for $url" }
+            Files.move(partial.toPath(), aar.toPath(), StandardCopyOption.REPLACE_EXISTING)
+        } finally {
+            partial.delete()
+        }
+    }
+}
+
 dependencies {
+    implementation(files(sherpaOnnxAar).builtBy(downloadAudioSyncRuntime))
     implementation("eu.agno3.jcifs:jcifs-ng:2.1.10")
     implementation("org.slf4j:slf4j-android:1.7.30")
     implementation(project(":vpn-core"))
@@ -714,7 +750,7 @@ dependencies {
     androidTestImplementation(libs.androidx.test.ext.junit)
     androidTestImplementation(libs.androidx.test.runner)
     testImplementation("junit:junit:4.13.2")
-    testImplementation(kotlin("test-junit"))
+    testImplementation(kotlin("test"))
     testImplementation("org.json:json:20240303")
     testImplementation("org.jetbrains.kotlinx:kotlinx-coroutines-test:1.8.1")
     testImplementation("io.mockk:mockk:1.13.12")
