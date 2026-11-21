@@ -1903,7 +1903,7 @@ class LiveTvPreferences @Inject constructor(
 
     // ---------- JSON helpers ----------
 
-    private fun decodePlaylists(raw: String?): List<PlaylistSource> {
+    internal fun decodePlaylists(raw: String?): List<PlaylistSource> {
         if (raw.isNullOrBlank()) return emptyList()
         return runCatching {
             val arr = JSONArray(raw)
@@ -1947,7 +1947,7 @@ class LiveTvPreferences @Inject constructor(
         }.getOrDefault(emptyList())
     }
 
-    private fun encodePlaylists(list: List<PlaylistSource>): String {
+    internal fun encodePlaylists(list: List<PlaylistSource>): String {
         val arr = JSONArray()
         list.forEach { s ->
             arr.put(

@@ -10,6 +10,7 @@ import com.nuvio.tv.core.auth.AuthManager
 import com.nuvio.tv.domain.model.AuthState
 import com.nuvio.tv.domain.model.ServerConfiguration
 import com.nuvio.tv.livetv.data.LiveTvPreferences
+import com.nuvio.tv.livetv.model.PlaylistSource
 import dagger.hilt.android.qualifiers.ApplicationContext
 import io.github.jan.supabase.auth.Auth
 import kotlinx.coroutines.CoroutineScope
@@ -61,6 +62,13 @@ enum class CloudPrompt {
 }
 
 enum class CloudChoice { UseSaved, Combine, Later }
+
+/** A playlist that is in the saved setup but not on this TV. */
+data class RecoverablePlaylist(
+    val name: String,
+    val detail: String,
+    val source: PlaylistSource
+)
 
 /**
  * Keeps the Live TV setup the same on every TV signed in to the same Nuvio account.
@@ -249,6 +257,81 @@ class LiveTvCloudSync @Inject constructor(
             }
         }
     }
+
+    /**
+     * Playlists in the saved setup (current and previous copy) that are not on this TV.
+     * Read-only: nothing is changed here.
+     */
+    suspend fun recoverablePlaylists(): Result<List<RecoverablePlaylist>> =
+        withContext(Dispatchers.IO) {
+            mutex.withLock {
+                if (userId == null) {
+                    return@withLock Result.failure(
+                        IllegalStateException(text(R.string.iptv_status_sync_sign_in_again))
+                    )
+                }
+                _state.value = _state.value.copy(busy = true, message = null)
+                val result = runCatching {
+                    val current = fetch()
+                    if (current is Remote.Failed) error(failText(current.code))
+                    val currentData = (current as? Remote.Found)?.data
+                    val previousData = fetchPrevious()
+                    val cloud = listOfNotNull(currentData, previousData).flatMap { data ->
+                        prefs.decodePlaylists(data.optJSONObject("playlists")?.optString("v"))
+                    }
+                    PlaylistRecovery.missing(cloud, prefs.currentPlaylists()).map { source ->
+                        RecoverablePlaylist(
+                            name = source.name.ifBlank { PlaylistRecovery.detail(source) },
+                            detail = PlaylistRecovery.detail(source),
+                            source = source
+                        )
+                    }
+                }
+                _state.value = _state.value.copy(busy = false)
+                result
+            }
+        }
+
+    /**
+     * Adds [playlists] to this TV and saves the combined setup. Existing playlists stay;
+     * nothing is replaced or removed.
+     */
+    suspend fun restorePlaylists(playlists: List<PlaylistSource>): Result<Int> =
+        withContext(Dispatchers.IO) {
+            mutex.withLock {
+                val uid = userId ?: return@withLock Result.failure(
+                    IllegalStateException(text(R.string.iptv_status_sync_sign_in_again))
+                )
+                if (playlists.isEmpty()) return@withLock Result.success(0)
+                _state.value = _state.value.copy(busy = true, message = null)
+                val result = runCatching {
+                    val current = fetch()
+                    val revision = (current as? Remote.Found)?.revision ?: 0
+                    val local = prefs.exportForSync()
+                    val localPlaylists =
+                        prefs.decodePlaylists(local.optJSONObject("playlists")?.optString("v"))
+                    val add = PlaylistRecovery.missing(playlists, localPlaylists)
+                    if (add.isEmpty()) return@runCatching 0
+                    val merged = localPlaylists + add
+                    local.put(
+                        "playlists",
+                        JSONObject().put("t", "str").put("v", prefs.encodePlaylists(merged))
+                    )
+                    applyShared(local)
+                    val savedData = localView()
+                    when (val putResult = put(revision, savedData)) {
+                        is Put.Saved -> saved(uid, savedData, emptySet())
+                        else -> Unit
+                    }
+                    add.size
+                }
+                _state.value = _state.value.copy(
+                    busy = false,
+                    lastSyncMs = store.getLong(KEY_LAST_SYNC, 0L)
+                )
+                result
+            }
+        }
 
     // ------------------------------------------------------------------ bringing a Google Drive backup over
 
@@ -592,6 +675,12 @@ class LiveTvCloudSync @Inject constructor(
             reply.code == 404 -> Remote.None
             else -> Remote.Failed(reply.code)
         }
+    }
+
+    /** The copy before the latest save, or null when there is none. */
+    private suspend fun fetchPrevious(): JSONObject? {
+        val reply = call("GET", "/v1/setup/previous")
+        return if (reply.code == 200) reply.json?.optJSONObject("data") else null
     }
 
     private suspend fun put(baseRevision: Int, data: JSONObject): Put {

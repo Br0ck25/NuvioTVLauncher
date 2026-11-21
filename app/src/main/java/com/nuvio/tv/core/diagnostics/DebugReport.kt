@@ -58,13 +58,16 @@ object DebugReportBuilder {
             appendLine("environment=${BuildConfig.SENTRY_ENVIRONMENT}")
             appendLine("sentry=${if (BuildConfig.SENTRY_DSN.isBlank()) "not configured" else "configured"}")
             appendLine("reportUpload=${if (BuildConfig.DEBUG_REPORT_DISCORD_WEBHOOK.isBlank()) "not configured" else "configured"}")
-            appendLine(
-                "account=" + when (authState) {
-                    is AuthState.FullAccount -> "signed in"
-                    AuthState.SignedOut -> "signed out"
-                    AuthState.Loading -> "loading"
+            when (authState) {
+                is AuthState.FullAccount -> {
+                    appendLine("account=signed in")
+                    // Stable, non-reversible: lets support find the sync row without the UUID
+                    // appearing in a public report.
+                    appendLine("accountSupportCode=${SupportCode.forUserId(authState.userId)}")
                 }
-            )
+                AuthState.SignedOut -> appendLine("account=signed out")
+                AuthState.Loading -> appendLine("account=loading")
+            }
 
             section("DEVICE")
             appendLine("manufacturer=${Build.MANUFACTURER}")

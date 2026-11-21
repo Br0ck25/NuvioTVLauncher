@@ -265,6 +265,15 @@ private sealed interface LiveDialog {
     data class Confirm(val title: String, val message: String, val label: String, val action: () -> Unit) : LiveDialog
 }
 
+/** The states of the "Recover Playlists" dialog. */
+private sealed interface PlaylistRecoveryState {
+    data object Loading : PlaylistRecoveryState
+    data class Found(val playlists: List<com.nuvio.tv.livetv.sync.RecoverablePlaylist>) : PlaylistRecoveryState
+    data object Empty : PlaylistRecoveryState
+    data class Error(val message: String) : PlaylistRecoveryState
+    data class Done(val count: Int) : PlaylistRecoveryState
+}
+
 private val EPG_OFFSETS = (-48..48).map { it * 30 }
 
 private fun dnsLabel(context: Context, value: com.nuvio.tv.livetv.data.DnsChoice) = when (value) {
@@ -380,6 +389,7 @@ internal fun LiveTvSettingsContent(
     val status by viewModel.status.collectAsStateWithLifecycle()
     val accounts by viewModel.accounts.collectAsStateWithLifecycle()
     var dialog by remember { mutableStateOf<LiveDialog?>(null) }
+    var recoverState by remember { mutableStateOf<PlaylistRecoveryState?>(null) }
     var dnsChoice by remember { mutableStateOf(com.nuvio.tv.livetv.data.ForkDns.choice) }
     val drive by viewModel.driveSync.state.collectAsStateWithLifecycle()
     val cloud by viewModel.cloudSync.state.collectAsStateWithLifecycle()
@@ -465,6 +475,22 @@ internal fun LiveTvSettingsContent(
                         ) { viewModel.cloudSync.importFromDrive() }
                     },
                     onSyncNow = { viewModel.cloudSync.syncNow() },
+                    onRecoverPlaylists = {
+                        recoverState = PlaylistRecoveryState.Loading
+                        pageScope.launch {
+                            recoverState = viewModel.cloudSync.recoverablePlaylists().fold(
+                                onSuccess = { list ->
+                                    if (list.isEmpty()) PlaylistRecoveryState.Empty
+                                    else PlaylistRecoveryState.Found(list)
+                                },
+                                onFailure = {
+                                    PlaylistRecoveryState.Error(
+                                        it.message ?: context.getString(R.string.iptv_settings_recover_playlists_failed)
+                                    )
+                                }
+                            )
+                        }
+                    },
                     onRestorePrevious = {
                         confirm(
                             context.getString(R.string.iptv_settings_restore_the_earlier_copy),
@@ -2442,6 +2468,79 @@ internal fun LiveTvSettingsContent(
             onDismiss = close
         )
     }
+
+    when (val recovery = recoverState) {
+        null -> Unit
+        PlaylistRecoveryState.Loading -> ActionListDialog(
+            title = context.getString(R.string.iptv_settings_recover_playlists),
+            subtitle = context.getString(R.string.iptv_settings_recover_playlists_checking),
+            actions = listOf(
+                context.getString(R.string.iptv_settings_recover_playlists_close) to { recoverState = null }
+            ),
+            onDismiss = { recoverState = null }
+        )
+        is PlaylistRecoveryState.Found -> {
+            val names = recovery.playlists.take(5).joinToString(", ") { it.name } +
+                if (recovery.playlists.size > 5) " +${recovery.playlists.size - 5}" else ""
+            ActionListDialog(
+                title = context.getString(R.string.iptv_settings_recover_playlists),
+                subtitle = context.getString(
+                    R.string.iptv_settings_recover_playlists_found,
+                    recovery.playlists.size,
+                    names
+                ),
+                actions = listOf(
+                    context.getString(R.string.iptv_settings_recover_playlists_restore_all) to {
+                        recoverState = PlaylistRecoveryState.Loading
+                        pageScope.launch {
+                            recoverState = viewModel.cloudSync.restorePlaylists(
+                                recovery.playlists.map { it.source }
+                            ).fold(
+                                onSuccess = { PlaylistRecoveryState.Done(it) },
+                                onFailure = {
+                                    PlaylistRecoveryState.Error(
+                                        it.message ?: context.getString(
+                                            R.string.iptv_settings_recover_playlists_failed
+                                        )
+                                    )
+                                }
+                            )
+                        }
+                    },
+                    context.getString(R.string.action_cancel) to { recoverState = null }
+                ),
+                onDismiss = { recoverState = null }
+            )
+        }
+        PlaylistRecoveryState.Empty -> ActionListDialog(
+            title = context.getString(R.string.iptv_settings_recover_playlists),
+            subtitle = context.getString(R.string.iptv_settings_recover_playlists_none),
+            actions = listOf(
+                context.getString(R.string.iptv_settings_recover_playlists_close) to { recoverState = null }
+            ),
+            onDismiss = { recoverState = null }
+        )
+        is PlaylistRecoveryState.Error -> ActionListDialog(
+            title = context.getString(R.string.iptv_settings_recover_playlists),
+            subtitle = recovery.message,
+            actions = listOf(
+                context.getString(R.string.iptv_settings_recover_playlists_close) to { recoverState = null }
+            ),
+            onDismiss = { recoverState = null }
+        )
+        is PlaylistRecoveryState.Done -> ActionListDialog(
+            title = context.getString(R.string.iptv_settings_recover_playlists),
+            subtitle = if (recovery.count > 0) {
+                context.getString(R.string.iptv_settings_recover_playlists_restored, recovery.count)
+            } else {
+                context.getString(R.string.iptv_settings_recover_playlists_none)
+            },
+            actions = listOf(
+                context.getString(R.string.iptv_settings_recover_playlists_close) to { recoverState = null }
+            ),
+            onDismiss = { recoverState = null }
+        )
+    }
 }
 
 // ==================================================================== loading line
@@ -2550,6 +2649,7 @@ private fun CloudSyncCard(
     driveAvailable: Boolean,
     onImportDrive: () -> Unit,
     onSyncNow: () -> Unit,
+    onRecoverPlaylists: () -> Unit,
     onRestorePrevious: () -> Unit,
     onTurnOff: () -> Unit,
     onDelete: () -> Unit
@@ -2584,6 +2684,7 @@ private fun CloudSyncCard(
                         color = NuvioTheme.colors.TextSecondary
                     )
                     SettingsActionRow(context.getString(R.string.iptv_settings_turn_on), context.getString(R.string.iptv_settings_save_this_tv_s_setup_and_keep_every), onClick = onTurnOn)
+                    SettingsActionRow(context.getString(R.string.iptv_settings_recover_playlists), context.getString(R.string.iptv_settings_recover_playlists_subtitle), onClick = onRecoverPlaylists)
                     if (driveAvailable) SettingsActionRow(context.getString(R.string.iptv_settings_import_from_google_drive_2), context.getString(R.string.iptv_settings_bring_your_google_drive_backup_over_to_this), onClick = onImportDrive)
                 }
                 else -> {
@@ -2599,6 +2700,7 @@ private fun CloudSyncCard(
                         SettingsToggleRow(title, description, part in enabledParts, { onTogglePart(part) })
                     }
                     SettingsActionRow(context.getString(R.string.iptv_settings_sync_now), context.getString(R.string.iptv_settings_changes_also_sync_by_themselves_a_few_seconds), onClick = onSyncNow)
+                    SettingsActionRow(context.getString(R.string.iptv_settings_recover_playlists), context.getString(R.string.iptv_settings_recover_playlists_subtitle), onClick = onRecoverPlaylists)
                     SettingsActionRow(context.getString(R.string.iptv_settings_restore_earlier_copy), context.getString(R.string.iptv_settings_go_back_to_the_copy_saved_before_the), onClick = onRestorePrevious)
                     if (driveAvailable) SettingsActionRow(context.getString(R.string.iptv_settings_import_from_google_drive_2), context.getString(R.string.iptv_settings_bring_your_google_drive_backup_over_to_this), onClick = onImportDrive)
                     SettingsActionRow(context.getString(R.string.iptv_settings_turn_off_setup_sync), context.getString(R.string.iptv_settings_stop_syncing_on_this_tv_the_saved_copy), onClick = onTurnOff)
