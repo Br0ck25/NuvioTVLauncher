@@ -242,6 +242,24 @@ internal object SmbClient {    private val contexts = ConcurrentHashMap<String, 
 
     fun exists(config: SmbConfig, relative: String): Boolean =
         runCatching { file(config, relative).exists() }.getOrDefault(false)
+
+    /** Directories directly under [relative] (the recording folders on the share). */
+    fun listDirs(config: SmbConfig, relative: String): List<SmbFile> =
+        runCatching {
+            file(config, relative).listFiles()?.filter { it.isDirectory }.orEmpty()
+        }.getOrDefault(emptyList())
+
+    fun openInputStream(config: SmbConfig, relative: String): java.io.InputStream? =
+        runCatching { file(config, relative).openInputStream() }.getOrNull()
+
+    fun openOutputStream(config: SmbConfig, relative: String): java.io.OutputStream? =
+        runCatching {
+            val target = file(config, relative)
+            target.parent?.takeIf { it.isNotBlank() }?.let { parent ->
+                SmbFile(parent, context(config)).mkdirs()
+            }
+            target.openOutputStream()
+        }.getOrNull()
 }
 
 /**
