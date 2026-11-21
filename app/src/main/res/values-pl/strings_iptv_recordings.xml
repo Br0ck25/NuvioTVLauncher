@@ -113,4 +113,18 @@
     <string name="iptv_rec_stop_repeating">"Przestań powtarzać"</string>
     <string name="iptv_rec_repeat_detail">"%1$s? %2$s o %3$s. Zatrzymanie powoduje również anulowanie ustawionych emisji, które się nie rozpoczęły; to, co zostało zapisane, zostaje zachowane."</string>
     <string name="iptv_rec_done">"Zrobione"</string>
+    <string name="iptv_rec_combine">"Połącz w jeden plik"</string>
+    <string name="iptv_rec_combine_title">"Połącz nagranie"</string>
+    <string name="iptv_rec_combine_share">"Zapisz w udziale SMB (Exports)"</string>
+    <string name="iptv_rec_combine_device">"Zapisz obok nagrania"</string>
+    <string name="iptv_rec_combine_progress">"Łączenie nagrania"</string>
+    <string name="iptv_rec_combine_done">"Połączono w %1$s"</string>
+    <string name="iptv_rec_combine_failed">"Nie udało się połączyć: %1$s"</string>
+    <string name="iptv_rec_combine_stop_first">"Najpierw zatrzymaj nagranie."</string>
+    <string name="iptv_rec_combine_no_config">"Najpierw skonfiguruj udział SMB."</string>
+    <string name="iptv_rec_combine_no_pieces">"To nagranie nie ma segmentów do połączenia."</string>
+    <string name="iptv_rec_combine_separate">"To nagranie ma oddzielny obraz i dźwięk. Wyeksportuj je w aplikacji komputerowej."</string>
+    <string name="iptv_rec_combine_not_ts">"To nagranie nie jest w formacie MPEG-TS."</string>
+    <string name="iptv_rec_combine_busy">"Trwa już łączenie innego nagrania."</string>
+    <string name="iptv_rec_combine_smb_only">"Na razie nagrania SMB można łączyć tylko z powrotem na udział."</string>
 </resources>
