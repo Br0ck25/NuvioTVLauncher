@@ -60,7 +60,6 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.focus.FocusRequester
 import androidx.compose.ui.focus.focusProperties
 import androidx.compose.ui.focus.focusRequester
-import androidx.compose.ui.focus.focusProperties
 import androidx.compose.ui.focus.onFocusChanged
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.SolidColor
@@ -102,6 +101,7 @@ import com.nuvio.tv.domain.model.LocalScraperResult
 import com.nuvio.tv.domain.model.PluginRepository
 import com.nuvio.tv.domain.model.ScraperInfo
 import com.nuvio.tv.ui.components.LoadingIndicator
+import com.nuvio.tv.ui.components.NuvioDialog
 import kotlinx.coroutines.delay
 import java.text.SimpleDateFormat
 import java.util.Date
@@ -139,7 +139,26 @@ fun PluginScreenContent(
     var repoUrl by remember { mutableStateOf("") }
     val listState = rememberLazyListState()
     val manageFromPhoneFocusRequester = remember { FocusRequester() }
+    val deleteDialogFocusRequester = remember { FocusRequester() }
+    val pluginGroupingFocusRequester = remember { FocusRequester() }
+    val repoDeleteFocusRequesters = remember { mutableMapOf<String, FocusRequester>() }
+    var repoPendingDeletion by remember { mutableStateOf<PluginRepository?>(null) }
+    var repoRefocusRequester by remember { mutableStateOf<FocusRequester?>(null) }
     var hasEnteredQrMode by remember { mutableStateOf(false) }
+
+    LaunchedEffect(repoPendingDeletion) {
+        if (repoPendingDeletion != null) {
+            repeat(2) { withFrameNanos { } }
+            runCatching { deleteDialogFocusRequester.requestFocus() }
+        }
+    }
+
+    LaunchedEffect(repoRefocusRequester) {
+        val requester = repoRefocusRequester ?: return@LaunchedEffect
+        repeat(2) { withFrameNanos { } }
+        runCatching { requester.requestFocus() }
+        repoRefocusRequester = null
+    }
 
     DisposableEffect(Unit) {
         onDispose { viewModel.stopQrMode() }
@@ -243,6 +262,7 @@ fun PluginScreenContent(
                 PluginStreamGroupingCard(
                     groupStreamsByRepository = uiState.groupStreamsByRepository,
                     isReadOnly = viewModel.isReadOnly,
+                    focusRequester = pluginGroupingFocusRequester,
                     onGroupStreamsByRepositoryChange = {
                         viewModel.onEvent(PluginUiEvent.SetGroupStreamsByRepository(it))
                     }
@@ -273,10 +293,11 @@ fun PluginScreenContent(
                     repository = repo,
                     repoScrapers = repoScrapers,
                     onRefresh = { viewModel.onEvent(PluginUiEvent.RefreshRepository(repo.id)) },
-                    onRemove = { viewModel.onEvent(PluginUiEvent.RemoveRepository(repo.id)) },
+                    onRemove = { repoPendingDeletion = repo },
                     onToggleAll = { enabled ->
                         viewModel.onEvent(PluginUiEvent.ToggleAllScrapersForRepo(repo.id, enabled))
                     },
+                    removeFocusRequester = repoDeleteFocusRequesters.getOrPut(repo.id) { FocusRequester() },
                     isLoading = uiState.isLoading,
                     isReadOnly = viewModel.isReadOnly
                 )
@@ -342,6 +363,49 @@ fun PluginScreenContent(
             )
         }
     }
+
+    repoPendingDeletion?.let { repo ->
+        NuvioDialog(
+            onDismiss = {
+                repoRefocusRequester = repoDeleteFocusRequesters[repo.id]
+                repoPendingDeletion = null
+            },
+            title = stringResource(R.string.plugin_repo_delete_confirm_title),
+            subtitle = stringResource(R.string.plugin_repo_delete_confirm_message),
+            suppressFirstKeyUp = false
+        ) {
+            Row(
+                modifier = Modifier.fillMaxWidth(),
+                horizontalArrangement = Arrangement.spacedBy(NuvioTheme.spacing.md, Alignment.End)
+            ) {
+                Button(
+                    onClick = {
+                        repoRefocusRequester = repoDeleteFocusRequesters[repo.id]
+                        repoPendingDeletion = null
+                    },
+                    modifier = Modifier
+                        .focusRequester(deleteDialogFocusRequester)
+                        .semantics { role = Role.Button }
+                ) {
+                    Text(stringResource(R.string.plugin_repo_delete_no))
+                }
+                Button(
+                    onClick = {
+                        val index = uiState.repositories.indexOfFirst { it.id == repo.id }
+                        val neighborId = uiState.repositories.getOrNull(index + 1)?.id
+                            ?: uiState.repositories.getOrNull(index - 1)?.id
+                        repoRefocusRequester = neighborId?.let { repoDeleteFocusRequesters[it] }
+                            ?: pluginGroupingFocusRequester
+                        viewModel.onEvent(PluginUiEvent.RemoveRepository(repo.id))
+                        repoPendingDeletion = null
+                    },
+                    modifier = Modifier.semantics { role = Role.Button }
+                ) {
+                    Text(stringResource(R.string.plugin_repo_delete_yes))
+                }
+            }
+        }
+    }
     }
 }
 
@@ -349,6 +413,7 @@ fun PluginScreenContent(
 private fun PluginStreamGroupingCard(
     groupStreamsByRepository: Boolean,
     isReadOnly: Boolean,
+    focusRequester: FocusRequester,
     onGroupStreamsByRepositoryChange: (Boolean) -> Unit
 ) {
     Surface(
@@ -359,6 +424,7 @@ private fun PluginStreamGroupingCard(
         },
         modifier = Modifier
             .fillMaxWidth()
+            .focusRequester(focusRequester)
             .semantics {
                 role = Role.Switch
                 toggleableState = if (groupStreamsByRepository) ToggleableState.On else ToggleableState.Off
@@ -1111,6 +1177,7 @@ private fun RepositoryCard(
     onRefresh: () -> Unit,
     onRemove: () -> Unit,
     onToggleAll: (Boolean) -> Unit,
+    removeFocusRequester: FocusRequester,
     isLoading: Boolean,
     isReadOnly: Boolean = false
 ) {
@@ -1245,6 +1312,7 @@ private fun RepositoryCard(
                     onClick = onRemove,
                     enabled = !isLoading,
                     modifier = Modifier
+                        .focusRequester(removeFocusRequester)
                         .onFocusChanged { isRemoveFocused = it.isFocused }
                         .semantics { role = Role.Button },
                     colors = ButtonDefaults.colors(

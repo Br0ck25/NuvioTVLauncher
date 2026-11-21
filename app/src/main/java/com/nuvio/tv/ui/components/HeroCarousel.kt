@@ -58,8 +58,6 @@ import androidx.compose.ui.platform.LocalConfiguration
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.platform.LocalDensity
 import androidx.compose.ui.platform.LocalLayoutDirection
-import androidx.compose.ui.semantics.contentDescription
-import androidx.compose.ui.semantics.semantics
 import androidx.compose.ui.unit.LayoutDirection
 import androidx.compose.ui.text.style.TextDirection
 import androidx.compose.ui.text.style.TextOverflow
@@ -479,6 +477,7 @@ internal fun HeroCarouselBackdrop(
             .build()
     }
     val bgColor = NuvioTheme.colors.Background
+    val isRtl = LocalLayoutDirection.current == LayoutDirection.Rtl
 
     Box(
         modifier = modifier
@@ -527,8 +526,8 @@ internal fun HeroCarouselBackdrop(
                         1.0f to Color.Transparent
                     )
                 },
-                startX = 0f,
-                endX = leftEndX
+                startX = if (isRtl) size.width else 0f,
+                endX = if (isRtl) size.width - leftEndX else leftEndX
             )
             onDrawWithContent {
                 drawContent()
@@ -539,6 +538,7 @@ internal fun HeroCarouselBackdrop(
                 )
                 drawRect(
                     brush = leftGradient,
+                    topLeft = Offset(if (isRtl) size.width - leftEndX else 0f, 0f),
                     size = Size(leftEndX, size.height)
                 )
             }

@@ -13,9 +13,11 @@ import androidx.compose.runtime.remember
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.focus.FocusRequester
 import androidx.compose.ui.focus.focusRequester
+import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
+import com.nuvio.tv.R
 import com.nuvio.tv.livetv.ui.LiveDialog
 import com.nuvio.tv.livetv.ui.LiveText
 import com.nuvio.tv.livetv.ui.MenuItem
@@ -76,8 +78,8 @@ fun OnDemandVersionPicker(
 ) {
     val first = remember { FocusRequester() }
     LiveDialog(onDismiss = onDismiss, width = 560.dp) {
-        LiveText("Choose a version", size = 20.sp, weight = FontWeight.Bold)
-        LiveText("Your provider has this title more than once.", color = NuvioTheme.colors.TextSecondary, size = 13.sp)
+        LiveText(stringResource(R.string.iptv_od_choose_version), size = 20.sp, weight = FontWeight.Bold)
+        LiveText(stringResource(R.string.iptv_od_multiple_versions), color = NuvioTheme.colors.TextSecondary, size = 13.sp)
         Spacer(Modifier.height(12.dp))
         LazyColumn(modifier = Modifier.heightIn(max = 320.dp), verticalArrangement = Arrangement.spacedBy(2.dp)) {
             items(versions, key = { it.item.uid }) { v ->

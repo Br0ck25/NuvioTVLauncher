@@ -466,9 +466,10 @@ fun ClassicHomeContent(
             val cwOffset = if (uiState.continueWatchingEnabled && uiState.continueWatchingItems.isNotEmpty()) 1 else 0
             val liveTvOffset = if (liveTvRowAbove != null) 1 else 0
             val onDemandOffset = if (uiState.onDemandContinueWatchingItems.isNotEmpty()) 1 else 0
+            val youtubeOffset = if (uiState.youtubeContinueWatchingItems.isNotEmpty()) 1 else 0
             val upcomingOffset =
                 if (uiState.continueWatchingEnabled && uiState.upcomingItems.isNotEmpty()) 1 else 0
-            val rowsOffset = heroOffset + cwOffset + liveTvOffset + onDemandOffset + upcomingOffset
+            val rowsOffset = heroOffset + cwOffset + liveTvOffset + onDemandOffset + youtubeOffset + upcomingOffset
             for (idx in firstVisible.coerceAtLeast(0)..(lastVisible + prefetchAhead)) {
                 val rowIdx = idx - rowsOffset
                 val row = rows.getOrNull(rowIdx) ?: continue
@@ -740,6 +741,33 @@ fun ClassicHomeContent(
 }
         }
 
+        // YouTube fork: videos started on the YouTube page, in their own row.
+        if (uiState.continueWatchingEnabled && uiState.youtubeContinueWatchingItems.isNotEmpty()) {
+            item(key = "youtube_continue_watching", contentType = "youtube_continue_watching") {
+                ContinueWatchingSection(
+                    items = uiState.youtubeContinueWatchingItems,
+                    title = stringResource(R.string.youtube_continue_watching),
+                    showLiveTvHint = false,
+                    showOptionsMenu = false,
+                    onItemClick = { item -> onContinueWatchingClick(item) },
+                    onStartFromBeginning = onContinueWatchingStartFromBeginning,
+                    showManualPlayOption = false,
+                    onPlayManually = {},
+                    onDetailsClick = {},
+                    onRemoveItem = {},
+                    focusedItemIndex = if (
+                        shouldRequestInitialFocus &&
+                        !heroVisible &&
+                        (!uiState.continueWatchingEnabled || uiState.continueWatchingItems.isEmpty())
+                    ) 0 else -1,
+                    cardWidth = classicContinueWatchingCardWidth,
+                    imageHeight = classicContinueWatchingImageHeight,
+                    cardStyle = uiState.continueWatchingCardStyle,
+                    cornerRadius = posterCardStyle.cornerRadius,
+                    posterTitleOverride = classicPosterTitleStyle
+                )
+            }
+        }
         // Live TV fork: the Live TV row, below Continue watching (the default).
         if (liveTvRowAbove == false) item(key = "live_tv_home_below", contentType = "live_tv_home") {
             com.nuvio.tv.livetv.home.LiveTvHomeRow(above = false, startPadding = NuvioTheme.spacing.xxxl, titleStyle = MaterialTheme.typography.headlineMedium)
@@ -911,6 +939,7 @@ fun ClassicHomeContent(
                             !heroVisible &&
                             (!uiState.continueWatchingEnabled || uiState.continueWatchingItems.isEmpty()) &&
                             uiState.onDemandContinueWatchingItems.isEmpty() &&
+                            uiState.youtubeContinueWatchingItems.isEmpty() &&
                             index == 0
                     val focusedItemIndex = when {
                         shouldRestoreFocus -> focusState.focusedItemIndex

@@ -1,6 +1,7 @@
 package com.nuvio.tv.livetv.record
 
 import android.util.Log
+import jcifs.smb.SmbRandomAccessFile
 import java.io.BufferedReader
 import java.io.File
 import java.io.InputStreamReader
@@ -14,18 +15,34 @@ import kotlin.concurrent.thread
 /**
  * Hands recordings to Nuvio's player as ordinary web links (http://127.0.0.1:…/rec…/index.m3u8),
  * so they play with its full controls (seek bar, pause, audio and subtitle choice). Only this
- * device can reach it, and it only serves files inside the recordings folder.
+ * device can reach it, and it only serves files inside the recording's folder.
+ *
+ * A recording mirrored to SMB keeps its playlists here and its media pieces on the share, so a
+ * missing local file is read from the share instead. Watching while it records still reads the
+ * local staging copy, which the mirror removes only after everything is uploaded.
  */
 object LiveTvRecordingServer {
     private const val TAG = "LiveTvRecordingServer"
 
     @Volatile private var server: ServerSocket? = null
-    /** Recording id -> its folder (recordings can be on different drives). */
-    private val dirs = java.util.concurrent.ConcurrentHashMap<String, File>()
+
+    private data class Source(
+        val dir: File,
+        val smb: SmbConfig?,
+        val remoteDir: String
+    )
+
+    /** Recording id -> where its files are. */
+    private val sources = java.util.concurrent.ConcurrentHashMap<String, Source>()
 
     /** The link for a recording's playlist (starts the server if needed). */
-    fun urlFor(id: String, dir: File): String {
-        dirs[id] = dir
+    fun urlFor(
+        id: String,
+        dir: File,
+        smb: SmbConfig? = null,
+        remoteDir: String = id
+    ): String {
+        sources[id] = Source(dir, smb, remoteDir.trim('/'))
         val port = ensure()
         return "http://127.0.0.1:$port/$id/index.m3u8"
     }
@@ -63,21 +80,28 @@ object LiveTvRecordingServer {
         val parts = requestLine.split(' ')
         val method = parts.getOrNull(0) ?: "GET"
         val path = URLDecoder.decode(parts.getOrNull(1)?.substringBefore('?') ?: "/", "UTF-8").trimStart('/')
-        val base = dirs[path.substringBefore('/')] ?: return@use
-        val file = File(base, path.substringAfter('/', ""))
+        val id = path.substringBefore('/')
+        val base = sources[id] ?: return@use
+        val relative = path.substringAfter('/', "")
         val out = sock.getOutputStream()
+        if (relative.contains("..")) return@use
+        val local = File(base.dir, relative)
+        val remote = base.smb?.let { "${base.remoteDir}/$relative" }
+        fun remoteExists() = remote != null && SmbClient.exists(base.smb, remote)
+        fun available() = local.isFile || remoteExists()
         // A recording that has only just started: its playlist appears with the first piece, a
-        // few seconds in. Wait for it rather than answering "not found" straight away.
-        if (file.extension.equals("m3u8", true) && !file.isFile) {
+        // few seconds in. The mirror can also be a couple of seconds behind. Wait rather than
+        // answering "not found" straight away.
+        if (!available()) {
             var waited = 0
-            while (!file.isFile && waited < 15_000) { Thread.sleep(250); waited += 250 }
+            while (!available() && waited < 15_000) { Thread.sleep(250); waited += 250 }
         }
-        // Only files inside the recordings folder.
-        if (path.contains("..") || !file.canonicalPath.startsWith(base.canonicalPath) || !file.isFile) {
+        if (!available()) {
             out.write("HTTP/1.1 404 Not Found\r\nContent-Length: 0\r\nConnection: close\r\n\r\n".toByteArray())
             return@use
         }
-        val type = when (file.extension.lowercase()) {
+        val extension = relative.substringAfterLast('.', "").lowercase()
+        val type = when (extension) {
             "m3u8" -> "application/vnd.apple.mpegurl"
             "ts" -> "video/mp2t"
             "m4s", "mp4" -> "video/mp4"
@@ -87,7 +111,11 @@ object LiveTvRecordingServer {
         // and starts near the newest part. Watching it should start at the beginning (the
         // player's own resume position still applies), so say so in the playlist.
         if (type.contains("mpegurl")) {
-            val text = runCatching { file.readText() }.getOrDefault("")
+            val text = when {
+                local.isFile -> runCatching { local.readText() }.getOrDefault("")
+                remote != null -> SmbClient.readText(base.smb, remote).orEmpty()
+                else -> ""
+            }
             if (!text.contains("#EXT-X-ENDLIST") && !text.contains("#EXT-X-START") && !text.contains("#EXT-X-STREAM-INF")) {
                 val body = text.replaceFirst("#EXTM3U", "#EXTM3U\n#EXT-X-START:TIME-OFFSET=0,PRECISE=YES").toByteArray()
                 out.write(("HTTP/1.1 200 OK\r\nContent-Type: $type\r\nContent-Length: ${body.size}\r\n" +
@@ -97,7 +125,12 @@ object LiveTvRecordingServer {
                 return@use
             }
         }
-        val length = file.length()
+        val length = if (local.isFile) local.length()
+        else base.smb?.let { SmbClient.length(it, remote!!) } ?: 0L
+        if (length <= 0L) {
+            out.write("HTTP/1.1 404 Not Found\r\nContent-Length: 0\r\nConnection: close\r\n\r\n".toByteArray())
+            return@use
+        }
         val start = if (rangeStart >= 0) rangeStart.coerceAtMost(length) else 0L
         val end = if (rangeEnd >= 0) rangeEnd.coerceAtMost(length - 1) else length - 1
         val count = (end - start + 1).coerceAtLeast(0)
@@ -112,17 +145,31 @@ object LiveTvRecordingServer {
         head.append("Connection: close\r\n\r\n")
         out.write(head.toString().toByteArray())
         if (method.equals("HEAD", ignoreCase = true)) return@use
-        RandomAccessFile(file, "r").use { raf ->
-            raf.seek(start)
-            val buf = ByteArray(64 * 1024)
-            var left = count
-            while (left > 0) {
-                val n = raf.read(buf, 0, minOf(buf.size.toLong(), left).toInt())
-                if (n < 0) break
-                out.write(buf, 0, n)
-                left -= n
-            }
+        if (local.isFile) {
+            RandomAccessFile(local, "r").use { raf -> copy(raf::seek, raf::read, start, count, out) }
+        } else if (base.smb != null && remote != null) {
+            val raf: SmbRandomAccessFile? = SmbClient.randomAccess(base.smb, remote)
+            if (raf == null) return@use
+            raf.use { copy(it::seek, it::read, start, count, out) }
         }
         out.flush()
+    }
+
+    private fun copy(
+        seek: (Long) -> Unit,
+        read: (ByteArray, Int, Int) -> Int,
+        start: Long,
+        count: Long,
+        out: java.io.OutputStream
+    ) {
+        seek(start)
+        val buf = ByteArray(64 * 1024)
+        var left = count
+        while (left > 0) {
+            val n = read(buf, 0, minOf(buf.size.toLong(), left).toInt())
+            if (n < 0) break
+            out.write(buf, 0, n)
+            left -= n
+        }
     }
 }

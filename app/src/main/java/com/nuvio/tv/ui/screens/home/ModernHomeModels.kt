@@ -5,6 +5,8 @@ import androidx.compose.runtime.Stable
 import androidx.compose.ui.graphics.Brush
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.unit.dp
+import coil3.memory.MemoryCache
+import com.nuvio.tv.core.image.CustomPosterFallbackInterceptor
 import com.nuvio.tv.domain.model.CatalogRow
 import com.nuvio.tv.domain.model.Collection
 import com.nuvio.tv.domain.model.CollectionFolder
@@ -33,6 +35,8 @@ internal const val MODERN_CONTINUE_WATCHING_ROW_KEY = "continue_watching"
 internal const val MODERN_UPCOMING_ROW_KEY = "upcoming_section"
 /** Live TV fork: the On Demand titles you started, in their own row. */
 internal const val MODERN_ON_DEMAND_ROW_KEY = "on_demand_continue_watching"
+/** YouTube fork: videos started on the YouTube page, in their own row. */
+internal const val MODERN_YOUTUBE_ROW_KEY = "youtube_continue_watching"
 internal val MODERN_LANDSCAPE_LOGO_GRADIENT = Brush.verticalGradient(
     colorStops = arrayOf(
         0.0f to Color.Transparent,
@@ -206,6 +210,11 @@ class ModernCarouselRowBuildCache {
     var onDemandUseLandscapePosters: Boolean = false
     var onDemandShowImdbRatings: Boolean = true
     var onDemandRow: HeroCarouselRow? = null
+    var youTubeItems: List<ContinueWatchingItem> = emptyList()
+    var youTubeTitle: String = ""
+    var youTubeUseLandscapePosters: Boolean = false
+    var youTubeShowImdbRatings: Boolean = true
+    var youTubeRow: HeroCarouselRow? = null
     internal val catalogRows = java.util.concurrent.ConcurrentHashMap<String, ModernCatalogRowBuildCacheEntry>()
     internal val collectionRows = java.util.concurrent.ConcurrentHashMap<String, ModernCollectionRowBuildCacheEntry>()
     // per-item cache: rowKey -> (itemId -> cached carousel item + source MetaPreview)
@@ -304,6 +313,28 @@ internal fun ModernCarouselItem.catalogCardRequestMetrics(
         base.height * (16f / 9f)
     }
     return base.copy(width = maxOf(base.width, expandedWidth))
+}
+
+internal fun ModernCarouselItem.cardImageFallbackUrl(landscapeCustomPoster: Boolean): String? =
+    if (landscapeCustomPoster) {
+        metaPreview?.background ?: heroPreview.backdrop ?: metaPreview?.rawPosterUrl
+    } else {
+        metaPreview?.rawPosterUrl
+    }
+
+internal fun cardImageMemoryCacheKey(
+    url: String,
+    widthPx: Int,
+    heightPx: Int,
+    fallbackUrl: String?,
+    revalidationKey: Int = 0
+): MemoryCache.Key {
+    val key = "${url}_${widthPx}x${heightPx}_v$revalidationKey"
+    return if (!fallbackUrl.isNullOrBlank() && fallbackUrl != url) {
+        MemoryCache.Key(key, mapOf(CustomPosterFallbackInterceptor.FALLBACK_URL_KEY to fallbackUrl))
+    } else {
+        MemoryCache.Key(key)
+    }
 }
 
 

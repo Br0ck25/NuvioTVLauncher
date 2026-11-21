@@ -1,5 +1,8 @@
 package com.nuvio.tv.ui.screens.player
 
+import com.nuvio.tv.data.repository.AddonEventDispatcher
+import com.nuvio.tv.data.repository.AddonPlayerAction
+import com.nuvio.tv.data.repository.AddonPlayerEventTarget
 import android.app.Activity
 import android.content.Context
 import android.media.AudioDeviceCallback
@@ -78,6 +81,7 @@ class PlayerRuntimeController(
     internal val subtitleRepository: com.nuvio.tv.domain.repository.SubtitleRepository,
     internal val parentalGuideRepository: ParentalGuideRepository,
     internal val trackingScrobbleCoordinator: TrackingScrobbleCoordinator,
+    internal val addonEventDispatcher: AddonEventDispatcher,
     internal val traktEpisodeMappingService: TraktEpisodeMappingService,
     internal val skipIntroRepository: SkipIntroRepository,
     internal val playerSettingsDataStore: PlayerSettingsDataStore,
@@ -268,8 +272,12 @@ class PlayerRuntimeController(
     internal var autoSelectedSourceUrl: String? = currentStreamUrl.takeIf {
         navigationArgs.autoPlayNav && it.isNotBlank() && !it.startsWith("torrent://")
     }
-    internal var sourceFallbackAttempts = 0
-    internal val sourceFallbackTriedKeys = mutableSetOf<String>()
+
+    /** The sources the stream screen tried before this one, so the fallback goes on from them. */
+    private val sourcesTriedBeforePlayback = SourceFallbackHandoff.take(initialStreamUrl, currentStreamUrl)
+        ?.takeIf { autoSelectedSourceUrl != null }
+    internal var sourceFallbackAttempts = sourcesTriedBeforePlayback?.attempts ?: 0
+    internal val sourceFallbackTriedKeys = sourcesTriedBeforePlayback?.keys.orEmpty().toMutableSet()
     internal var sourceFallbackJob: Job? = null
     internal var sourceStartupTimeoutJob: Job? = null
 
@@ -277,6 +285,7 @@ class PlayerRuntimeController(
     fun getCurrentHeaders(): Map<String, String> = currentHeaders
 
     fun stopAndRelease() {
+        vpnSettingsSubscription.close()
         leavePartyPlayback()
         // Cache counters only reach the card on a natural finish, so capture them when the user exits too.
         val diagnostics = lastPlaybackDiagnosticsForReport
@@ -660,6 +669,15 @@ class PlayerRuntimeController(
     internal var currentMediaSession: MediaSession? = null
     internal var mpvMediaSessionPlayer: MpvMediaSessionPlayer? = null
     internal var ffmpegAudioRenderer: FfmpegAudioRenderer? = null
+    private val vpnSettingsSubscription = com.nuvio.vpn.android.VpnPlaybackProtection.observeSettings {
+        if (currentStreamUrl.isNotBlank()) {
+            val wasPaused = !_uiState.value.isPlaying
+            _exoPlayer?.stop()
+            releaseMpvPlayer()
+            initializePlayer(currentStreamUrl, currentHeaders, overrideInternalPlayerEngine = currentInternalPlayerEngine, startPaused = wasPaused)
+        }
+    }
+    internal var nativeVpnProxy: com.nuvio.vpn.android.VpnPlaybackProtection.NativeProxy? = null
     internal var mpvView: NuvioMpvSurfaceView? = null
     internal val subtitleCueTracker = SubtitleCueTracker()
     internal val styledSubtitles = StyledSubtitlePresenter()
@@ -761,6 +779,8 @@ class PlayerRuntimeController(
     internal var pendingSeekTelemetryReadyAssumed: Boolean = false
 
     internal var currentScrobbleItem: TrackingMediaReference? = null
+    internal var activeAddonPlayerEventTarget: AddonPlayerEventTarget? = null
+    internal var lastAddonPlayerAction: AddonPlayerAction? = null
     internal var currentTraktEpisodeMapping: EpisodeMappingEntry? = null
     internal var currentTraktEpisodeMappingKey: String? = null
     internal var hasSentScrobbleStartForCurrentItem: Boolean = false

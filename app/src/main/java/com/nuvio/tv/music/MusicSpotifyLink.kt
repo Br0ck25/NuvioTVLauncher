@@ -3,7 +3,9 @@ package com.nuvio.tv.music
 import android.content.Context
 import android.content.SharedPreferences
 import com.nuvio.tv.BuildConfig
+import com.nuvio.tv.R
 import com.nuvio.tv.core.server.DeviceIpAddress
+import com.nuvio.tv.core.util.withAppLocale
 import fi.iki.elonen.NanoHTTPD
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Dispatchers
@@ -55,6 +57,7 @@ object MusicSpotifyLink {
     private val scope = CoroutineScope(SupervisorJob() + Dispatchers.IO)
     private var prefs: SharedPreferences? = null
     private var loadedProfile = -1
+    private var appContext: Context? = null
     private var server: SpotifyCallbackServer? = null
     private var session: LinkSession? = null
     private var timeoutJob: Job? = null
@@ -71,6 +74,9 @@ object MusicSpotifyLink {
     fun isConfigured(): Boolean =
         BuildConfig.SPOTIFY_CLIENT_ID.isNotBlank() && BuildConfig.SPOTIFY_LINK_BASE_URL.isNotBlank()
 
+    private fun text(id: Int): String =
+        appContext?.withAppLocale()?.getString(id).orEmpty()
+
     @Synchronized
     fun init(context: Context) {
         if (prefs != null && loadedProfile == com.nuvio.tv.core.profile.ActiveProfile.id) return
@@ -81,6 +87,7 @@ object MusicSpotifyLink {
             PREFS_PLAIN
         )
         prefs = store
+        appContext = context.applicationContext
         val refresh = store.getString(KEY_REFRESH, null).orEmpty()
         val name = store.getString(KEY_NAME, null).orEmpty()
         _state.update {
@@ -101,8 +108,7 @@ object MusicSpotifyLink {
                 it.copy(
                     running = false,
                     url = null,
-                    error = "Spotify linking isn't set up in this build. Add SPOTIFY_CLIENT_ID and " +
-                        "SPOTIFY_LINK_BASE_URL, then build again."
+                    error = text(R.string.music_spotify_link_not_configured)
                 )
             }
             return
@@ -119,7 +125,7 @@ object MusicSpotifyLink {
                 it.copy(
                     running = false,
                     url = null,
-                    error = "No network address found. Connect the TV to Wi-Fi or Ethernet."
+                    error = text(R.string.music_no_network)
                 )
             }
             return
@@ -151,7 +157,7 @@ object MusicSpotifyLink {
                     _state.update {
                         it.copy(
                             running = false,
-                            error = "The Spotify link expired. Show a new QR code."
+                            error = text(R.string.music_spotify_link_expired)
                         )
                     }
                 }
@@ -164,7 +170,7 @@ object MusicSpotifyLink {
                 it.copy(
                     running = false,
                     url = null,
-                    error = error.message ?: "Couldn't start the Spotify link."
+                    error = text(R.string.music_spotify_start_failed)
                 )
             }
         }
@@ -190,7 +196,7 @@ object MusicSpotifyLink {
             it.copy(
                 connected = false,
                 displayName = null,
-                message = "Spotify disconnected.",
+                message = text(R.string.music_integrations_spotify_disconnected),
                 error = null,
                 syncProgress = null,
                 syncResult = null
@@ -203,7 +209,7 @@ object MusicSpotifyLink {
         init(context)
         if (_state.value.busy) return
         _state.update {
-            it.copy(busy = true, syncProgress = "Reading your Spotify library…", syncResult = null, error = null)
+            it.copy(busy = true, syncProgress = text(R.string.music_spotify_reading_library), syncResult = null, error = null)
         }
         scope.launch {
             val token = ensureAccessToken(context)
@@ -224,8 +230,8 @@ object MusicSpotifyLink {
                         it.copy(
                             busy = false,
                             syncProgress = null,
-                            syncResult = "Imported ${result.matched} of ${result.tracks} tracks " +
-                                "from ${result.playlists} Spotify playlists."
+                            syncResult = text(R.string.music_spotify_imported_tracks)
+                                .format(result.matched, result.tracks, result.playlists)
                         )
                     }
                 },
@@ -234,7 +240,7 @@ object MusicSpotifyLink {
                         it.copy(
                             busy = false,
                             syncProgress = null,
-                            error = error.message ?: "The Spotify library couldn't be synced."
+                            error = error.message ?: text(R.string.music_spotify_library_sync_failed)
                         )
                     }
                 }
@@ -253,7 +259,7 @@ object MusicSpotifyLink {
         val refresh = store.getString(KEY_REFRESH, null).orEmpty()
         if (refresh.isBlank()) {
             _state.update {
-                it.copy(connected = false, error = "Link Spotify again to sync your library.")
+                it.copy(connected = false, error = text(R.string.music_spotify_link_again))
             }
             return null
         }
@@ -267,7 +273,7 @@ object MusicSpotifyLink {
             _state.update {
                 it.copy(
                     connected = false,
-                    error = "Spotify sign-in expired. Link the account again."
+                    error = text(R.string.music_spotify_sign_in_expired)
                 )
             }
             return null
@@ -278,7 +284,7 @@ object MusicSpotifyLink {
 
     private fun handleCallback(code: String?, state: String?, error: String?): String {
         val current = session
-        if (current == null) return "This link is no longer active. Show a new QR code on the TV."
+        if (current == null) return text(R.string.music_spotify_link_inactive)
         if (error != null) {
             stopServer()
             _state.update {
@@ -287,13 +293,15 @@ object MusicSpotifyLink {
                     url = null,
                     busy = false,
                     error = if (error == "access_denied") {
-                        "Spotify access was denied. Nothing was linked."
+                        text(R.string.music_spotify_access_denied)
                     } else {
-                        "Spotify returned an error: $error"
+                        appContext?.let {
+                            text(R.string.music_spotify_returned_error).format(error)
+                        } ?: "Spotify returned an error: $error"
                     }
                 )
             }
-            return "Spotify was not linked."
+            return text(R.string.music_spotify_not_linked)
         }
         if (state != current.state) {
             stopServer()
@@ -302,15 +310,15 @@ object MusicSpotifyLink {
                     running = false,
                     url = null,
                     busy = false,
-                    error = "The Spotify answer did not match this TV. Show a new QR code."
+                    error = text(R.string.music_spotify_answer_mismatch)
                 )
             }
-            return "The Spotify answer did not match this TV."
+            return text(R.string.music_spotify_answer_mismatch)
         }
         if (code.isNullOrBlank()) {
-            return "Spotify didn't return an authorization code. Show a new QR code on the TV."
+            return text(R.string.music_spotify_no_code)
         }
-        _state.update { it.copy(busy = true, message = "Finishing the Spotify link…", error = null) }
+        _state.update { it.copy(busy = true, message = text(R.string.music_spotify_finishing_link), error = null) }
         val tokens = runCatching {
             runBlocking {
                 withTimeoutOrNull(30_000L) {
@@ -330,16 +338,16 @@ object MusicSpotifyLink {
                     running = false,
                     url = null,
                     busy = false,
-                    error = "Spotify didn't accept the link. Show a new QR code."
+                    error = text(R.string.music_spotify_link_rejected)
                 )
             }
-            return "Spotify didn't accept the link."
+            return text(R.string.music_spotify_link_rejected)
         }
         val store = prefs
         if (store == null) {
             stopServer()
-            _state.update { it.copy(running = false, busy = false, error = "The TV isn't ready.") }
-            return "The TV isn't ready."
+            _state.update { it.copy(running = false, busy = false, error = text(R.string.music_spotify_tv_not_ready)) }
+            return text(R.string.music_spotify_tv_not_ready)
         }
         saveTokens(store, tokens, keepRefresh = tokens.refreshToken)
         val profile = runCatching {
@@ -358,11 +366,11 @@ object MusicSpotifyLink {
                 busy = false,
                 connected = true,
                 displayName = profile?.displayName ?: it.displayName,
-                message = "Spotify linked.",
+                message = text(R.string.music_spotify_linked),
                 error = null
             )
         }
-        return "Spotify linked. You can return to your TV."
+        return text(R.string.music_spotify_linked_browser)
     }
 
     private fun saveTokens(store: SharedPreferences, tokens: SpotifyTokens, keepRefresh: String?) {

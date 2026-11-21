@@ -63,6 +63,8 @@ import androidx.compose.ui.unit.Dp
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import androidx.tv.material3.Icon
+import androidx.compose.ui.res.stringResource
+import com.nuvio.tv.R
 import com.nuvio.tv.livetv.model.LiveChannel
 import com.nuvio.tv.ui.theme.NuvioTheme
 
@@ -105,17 +107,17 @@ internal object BarPart {
     const val BELL = "bell"
 
     /** In the order the toggles show, with what each is called there. */
-    val ALL: List<Triple<String, String, String?>> = listOf(
-        Triple(POSTER, "Poster", null),
-        Triple(CHANNEL, "Channel name & logo", null),
-        Triple(GROUP, "Group name", "On the bar and in the backups lists"),
-        Triple(TAGS, "Tags", "Live, quality, sound, catch-up"),
-        Triple(DESCRIPTION, "Description", null),
-        Triple(PROGRESS, "Progress bar", "Always shown while paused"),
-        Triple(CLOCK, "Clock", null),
-        Triple(NEXT, "Up next", null),
-        Triple(RECENT, "Quick channels tab", "The tab under the bar (▼ opens it)"),
-        Triple(BELL, "Bell", "Follow the show, or put the movie on your Calendar")
+    val ALL: List<Triple<String, Int, Int?>> = listOf(
+        Triple(POSTER, R.string.iptv_gear_part_poster, null),
+        Triple(CHANNEL, R.string.iptv_gear_part_channel, null),
+        Triple(GROUP, R.string.iptv_gear_part_group, R.string.iptv_gear_part_group_hint),
+        Triple(TAGS, R.string.iptv_gear_part_tags, R.string.iptv_gear_part_tags_hint),
+        Triple(DESCRIPTION, R.string.iptv_gear_part_description, null),
+        Triple(PROGRESS, R.string.iptv_gear_part_progress, R.string.iptv_gear_part_progress_hint),
+        Triple(CLOCK, R.string.iptv_gear_part_clock, null),
+        Triple(NEXT, R.string.iptv_gear_part_next, null),
+        Triple(RECENT, R.string.iptv_gear_part_recent, R.string.iptv_gear_part_recent_hint),
+        Triple(BELL, R.string.iptv_gear_part_bell, R.string.iptv_gear_part_bell_hint)
     )
 
     fun parse(raw: String): Set<String> = raw.split(',').map { it.trim() }.filter { it.isNotEmpty() }.toSet()
@@ -342,14 +344,14 @@ internal fun LiveTvPlayerPanel(
                             if (showTags) {
                                 when (mode) {
                                     PanelMode.LIVE -> LiveTag("● LIVE", LIVE_RED, Color.White)
-                                    PanelMode.CATCHUP -> LiveTag("CATCH-UP", accent, colors.OnSecondary)
-                                    PanelMode.SHIFT -> LiveTag(timeline?.status?.uppercase() ?: "PAUSED LIVE", Color.White.copy(alpha = 0.22f), Color.White)
+                                    PanelMode.CATCHUP -> LiveTag(stringResource(R.string.iptv_ge_tag_catchup), accent, colors.OnSecondary)
+                                    PanelMode.SHIFT -> LiveTag(timeline?.status?.uppercase() ?: stringResource(R.string.iptv_panel_paused_live), Color.White.copy(alpha = 0.22f), Color.White)
                                 }
                                 // The score first, so a long line of chips can't push it off the bar.
                                 if (mode == PanelMode.LIVE) com.nuvio.tv.livetv.sports.SportsScoreTag(channel.key)
                                 resolution?.let { Spacer(Modifier.width(6.dp)); GlassChip(it.uppercase()) }
                                 audioBadge?.let { Spacer(Modifier.width(6.dp)); GlassChip(it) }
-                                if (catchupAvailable && mode == PanelMode.LIVE) { Spacer(Modifier.width(6.dp)); GlassChip("CATCH-UP") }
+                                if (catchupAvailable && mode == PanelMode.LIVE) { Spacer(Modifier.width(6.dp)); GlassChip(stringResource(R.string.iptv_ge_tag_catchup)) }
                             }
                         }
                         Spacer(Modifier.height(4.dp))
@@ -437,7 +439,7 @@ internal fun LiveTvPlayerPanel(
                         if (showNext) {
                             if (showClock) Spacer(Modifier.height(4.dp))
                             LiveText(
-                                "UP NEXT" + (nextTime?.let { " · " + it.substringBefore(" –") } ?: ""),
+                                stringResource(R.string.iptv_panel_up_next) + (nextTime?.let { " · " + it.substringBefore(" –") } ?: ""),
                                 size = 10.sp, weight = FontWeight.Bold, color = colors.TextTertiary
                             )
                             LiveText(nextTitle!!, size = 13.sp, weight = FontWeight.Bold, color = colors.TextPrimary, maxLines = 2)
@@ -486,7 +488,7 @@ private fun MultiviewButton(focused: Boolean, onClick: () -> Unit) {
         horizontalArrangement = Arrangement.spacedBy(6.dp),
     ) {
         Icon(Icons.Default.GridView, contentDescription = null, tint = foreground, modifier = Modifier.size(15.dp))
-        LiveText("Multiview", size = 11.sp, weight = FontWeight.Bold, color = foreground)
+        LiveText(stringResource(R.string.iptv_gg_multiview), size = 11.sp, weight = FontWeight.Bold, color = foreground)
     }
 }
 
@@ -687,11 +689,11 @@ private fun RowHeader(lists: List<PanelRowTab>, selected: PanelRowTab, pillsFocu
             }
         }
         Spacer(Modifier.width(10.dp))
-        val keys = if (pillsFocused) listOf("◀ ▶" to "switch list", "▼" to "channels", "BACK" to "close")
+        val keys = if (pillsFocused) listOf("◀ ▶" to stringResource(R.string.iptv_panel_switch_list), "▼" to stringResource(R.string.iptv_panel_channels), "BACK" to stringResource(R.string.iptv_panel_close))
         else listOfNotNull(
-            if (lists.size > 1) "▲" to "pick a list" else null,
-            if (lists.size > 1) "▼" to "next list" else null,
-            "◀ ▶" to "channels", "OK" to "watch", "BACK" to "close"
+            if (lists.size > 1) "▲" to stringResource(R.string.iptv_panel_pick_list) else null,
+            if (lists.size > 1) "▼" to stringResource(R.string.iptv_panel_next_list) else null,
+            "◀ ▶" to stringResource(R.string.iptv_panel_channels), "OK" to stringResource(R.string.iptv_panel_watch), "BACK" to stringResource(R.string.iptv_panel_close)
         )
         keys.forEach { (k, what) ->
             LiveText(
@@ -734,12 +736,12 @@ private fun RecentRow(recent: List<PanelRecent>, focus: Int?, showClear: Boolean
             RecentTile(focused = f, width = 64.dp) {
                 Icon(Icons.Default.GridView, contentDescription = null, tint = fg, modifier = Modifier.size(16.dp))
                 Spacer(Modifier.height(3.dp))
-                LiveText("TV Guide", size = 10.sp, weight = FontWeight.SemiBold, color = fg)
+                LiveText(stringResource(R.string.iptv_panel_tv_guide), size = 10.sp, weight = FontWeight.SemiBold, color = fg)
             }
         }
         if (recent.isEmpty()) item(key = "empty") {
             Box(Modifier.height(TILE_H).padding(horizontal = 8.dp), contentAlignment = Alignment.Center) {
-                LiveText("No channels here yet", size = 11.sp, color = colors.TextTertiary)
+                LiveText(stringResource(R.string.iptv_panel_no_channels_yet), size = 11.sp, color = colors.TextTertiary)
             }
         }
         recent.forEachIndexed { i, r ->
@@ -754,7 +756,7 @@ private fun RecentRow(recent: List<PanelRecent>, focus: Int?, showClear: Boolean
                         {
                             if (showNumber) LiveText("${r.channel.number}", size = 9.sp, weight = FontWeight.Bold, color = fgDim)
                             Spacer(Modifier.weight(1f))
-                            if (watching) LiveText("WATCHING", size = 8.sp, weight = FontWeight.Bold, color = if (f) fg else LIVE_RED)
+                            if (watching) LiveText(stringResource(R.string.iptv_ge_playing), size = 8.sp, weight = FontWeight.Bold, color = if (f) fg else LIVE_RED)
                         }
                     } else null
                 ) {
@@ -772,7 +774,7 @@ private fun RecentRow(recent: List<PanelRecent>, focus: Int?, showClear: Boolean
             RecentTile(focused = f, width = 64.dp) {
                 Icon(Icons.Default.DeleteSweep, contentDescription = null, tint = fg, modifier = Modifier.size(16.dp))
                 Spacer(Modifier.height(3.dp))
-                LiveText("Clear", size = 10.sp, weight = FontWeight.SemiBold, color = fg)
+                LiveText(stringResource(R.string.iptv_panel_clear), size = 10.sp, weight = FontWeight.SemiBold, color = fg)
             }
         }
     }

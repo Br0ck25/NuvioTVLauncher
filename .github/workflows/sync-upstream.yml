@@ -2,10 +2,9 @@ name: Sync upstream
 
 # Every 6 hours: try merging each upstream into the launcher branch:
 #   nuvioone = zoga2o3-ops/Nuvio-One (the app this launcher is a fork of: OneTube, Music, Live TV, Sports).
-#   It is followed on the branch Nuvio One releases its betas from (hotfix/17.2.1 at the moment, which is where
-#   their Release workflow runs), not on `main`, which stops well before their latest release. When they start
-#   releasing from another branch, set the repository variable NUVIOONE_SYNC_BRANCH (Settings > Secrets and
-#   variables > Actions > Variables) instead of editing this file.
+#   It is followed on `main`, which is where Nuvio One publishes its releases now (1.2.0-beta.3.x and later).
+#   The old `hotfix/17.2.1` line stopped at 1.2.0-beta.1.17.2.1. Set the repository variable NUVIOONE_SYNC_BRANCH
+#   (Settings > Secrets and variables > Actions > Variables) if they start releasing from another branch again.
 # Nuvio and NuvioPlusIPTV are not synced directly: Nuvio One carries their changes. Pull individual fixes by cherry-pick.
 # Clean merge  -> pushed to the branch `sync/<name>` (review it, build it, merge it).
 # Conflicts    -> nothing is pushed; an issue lists the conflicting files.
@@ -22,7 +21,7 @@ permissions:
 
 env:
   BASE_BRANCH: dev
-  UPSTREAM_BRANCH: ${{ vars.NUVIOONE_SYNC_BRANCH || 'hotfix/17.2.1' }}
+  UPSTREAM_BRANCH: ${{ vars.NUVIOONE_SYNC_BRANCH || 'main' }}
 
 jobs:
   sync:

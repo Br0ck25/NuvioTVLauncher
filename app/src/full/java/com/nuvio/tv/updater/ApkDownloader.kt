@@ -17,7 +17,6 @@ class ApkDownloader @Inject constructor(
         url: String,
         destinationFile: File,
         expectedSha256: String? = null,
-        expectedSize: Long? = null,
         onProgress: (downloadedBytes: Long, totalBytes: Long?) -> Unit
     ): Result<File> {
         return runCatching {
@@ -34,8 +33,7 @@ class ApkDownloader @Inject constructor(
                 }
 
                 val body = response.body ?: error("Empty download body")
-                // Some servers send no length; the release lists the file's size, so progress still shows.
-                val total = body.contentLength().takeIf { it > 0 } ?: expectedSize?.takeIf { it > 0 }
+                val total = body.contentLength().takeIf { it > 0 }
                 val digest = MessageDigest.getInstance("SHA-256")
 
                 body.byteStream().use { input ->
@@ -59,7 +57,6 @@ class ApkDownloader @Inject constructor(
                         }
                         onProgress(downloaded, total)
                         output.flush()
-                        onProgress(downloaded, total)
                     }
                 }
 

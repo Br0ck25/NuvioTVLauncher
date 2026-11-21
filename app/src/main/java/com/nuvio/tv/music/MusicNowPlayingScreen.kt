@@ -109,11 +109,13 @@ import com.music.bitchord.data.model.Song
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.launch
 import kotlinx.coroutines.withContext
+import androidx.compose.ui.res.stringResource
+import com.nuvio.tv.R
 
-private enum class NowPlayingTab(val label: String) {
-    LYRICS("Lyrics"),
-    QUEUE("Up next"),
-    INFO("Info")
+private enum class NowPlayingTab(@androidx.annotation.StringRes val labelRes: Int) {
+    LYRICS(R.string.music_p2_lyrics),
+    QUEUE(R.string.music_p2_up_next),
+    INFO(R.string.music_p2_info)
 }
 
 @Composable
@@ -174,7 +176,7 @@ internal fun MusicNowPlayingScreen(
     val albumName = song?.albumName?.takeIf { it.isNotBlank() } ?: albumInfo?.second
     val canOpenAlbum = albumId != null && song?.localUri == null
     val albumLabel = albumName?.takeIf { it.isNotBlank() }
-        ?: if (canOpenAlbum) "Album" else null
+        ?: if (canOpenAlbum) stringResource(R.string.music_p2_album) else null
     val albumFocus = remember { FocusRequester() }
     var albumFocused by remember { mutableStateOf(false) }
     val windowInfo = LocalWindowInfo.current
@@ -252,13 +254,13 @@ internal fun MusicNowPlayingScreen(
             ) {
                 NowHeaderButton(
                     icon = Icons.Default.KeyboardArrowDown,
-                    label = "Close",
+                    label = stringResource(R.string.music_p2_close),
                     modifier = Modifier.focusProperties { down = playFocus },
                     onClick = onClose
                 )
                 Spacer(Modifier.width(14.dp))
                 Text(
-                    text = "NOW PLAYING",
+                    text = stringResource(R.string.music_p2_now_playing),
                     color = Color.White.copy(alpha = 0.62f),
                     fontSize = 11.sp,
                     letterSpacing = 2.4.sp,
@@ -275,11 +277,11 @@ internal fun MusicNowPlayingScreen(
                             else -> Icons.Default.Download
                         },
                         label = when {
-                            downloaded -> "Downloaded"
-                            downloadActive || downloadStarting -> "Cancel download"
+                            downloaded -> stringResource(R.string.music_p2_downloaded)
+                            downloadActive || downloadStarting -> stringResource(R.string.music_p2_cancel_download)
                             downloadEntry?.status == MusicDownloadStatus.FAILED ->
-                                "Retry download"
-                            else -> "Download this track"
+                                stringResource(R.string.music_p2_retry_download)
+                            else -> stringResource(R.string.music_p2_download_this_track)
                         },
                         active = downloaded,
                         progress = downloadProgress,
@@ -298,7 +300,7 @@ internal fun MusicNowPlayingScreen(
                 }
                 NowHeaderButton(
                     icon = if (lyricsExpanded) Icons.Default.FullscreenExit else Icons.Default.Fullscreen,
-                    label = if (lyricsExpanded) "Exit canvas" else "Canvas lyrics",
+                    label = if (lyricsExpanded) stringResource(R.string.music_p2_exit_canvas) else stringResource(R.string.music_p2_canvas_lyrics),
                     active = lyricsExpanded,
                     onClick = {
                         lyricsExpanded = !lyricsExpanded
@@ -308,7 +310,7 @@ internal fun MusicNowPlayingScreen(
                 Spacer(Modifier.width(8.dp))
                 NowHeaderButton(
                     icon = Icons.Default.Settings,
-                    label = "Music settings",
+                    label = stringResource(R.string.music_settings_screen_title),
                     onClick = onOpenSettings
                 )
             }
@@ -362,13 +364,13 @@ internal fun MusicNowPlayingScreen(
                                 ?: when {
                                     it.videoId.startsWith("webdav:") -> "WebDAV"
                                     it.videoId.startsWith("navidrome:") -> "Navidrome"
-                                    it.localUri != null || it.videoId.startsWith("local:") -> "This device"
+                                    it.localUri != null || it.videoId.startsWith("local:") -> stringResource(R.string.music_p2_this_device)
                                     else -> "YouTube"
                                 }
                         }
                         Text(
-                            text = source?.let { "PLAYING FROM ${it.uppercase()}" }
-                                ?: "PLAYING FROM NUVIO MUSIC",
+                            text = source?.let { stringResource(R.string.music_p2_playing_from_source, it.uppercase()) }
+                                ?: stringResource(R.string.music_p2_playing_from_nuvio_music),
                             color = MusicPalette.accentTeal,
                             fontSize = 10.sp,
                             letterSpacing = 1.8.sp,
@@ -376,7 +378,7 @@ internal fun MusicNowPlayingScreen(
                         )
                         Spacer(Modifier.height(6.dp))
                         Text(
-                            text = song?.title ?: "Nothing playing",
+                            text = song?.title ?: stringResource(R.string.music_p2_nothing_playing),
                             color = MusicPalette.text,
                             fontFamily = MusicDisplay,
                             fontSize = 42.sp,
@@ -426,7 +428,7 @@ internal fun MusicNowPlayingScreen(
                                 Spacer(Modifier.width(4.dp))
                                 Icon(
                                     Icons.Default.KeyboardArrowRight,
-                                    contentDescription = "Open artist",
+                                    contentDescription = stringResource(R.string.music_p2_open_artist),
                                     tint = if (artistFocused) MusicPalette.accent
                                     else Color.White.copy(alpha = 0.35f),
                                     modifier = Modifier.size(18.dp)
@@ -485,7 +487,7 @@ internal fun MusicNowPlayingScreen(
                                         Spacer(Modifier.width(4.dp))
                                         Icon(
                                             Icons.Default.KeyboardArrowRight,
-                                            contentDescription = "Open album",
+                                            contentDescription = stringResource(R.string.music_p2_open_album),
                                             tint = if (albumFocused) MusicPalette.accent
                                             else Color.White.copy(alpha = 0.30f),
                                             modifier = Modifier.size(16.dp)
@@ -515,7 +517,7 @@ internal fun MusicNowPlayingScreen(
                         ) {
                             MusicActionChip(
                                 icon = if (isLiked) Icons.Default.Favorite else Icons.Default.FavoriteBorder,
-                                label = if (isLiked) "Liked" else "Like",
+                                label = if (isLiked) stringResource(R.string.music_p2_liked) else stringResource(R.string.music_p2_like),
                                 modifier = Modifier.focusRequester(likeFocus),
                                 active = isLiked,
                                 onClick = {
@@ -534,19 +536,19 @@ internal fun MusicNowPlayingScreen(
                             )
                             MusicActionChip(
                                 icon = Icons.Default.PlaylistAdd,
-                                label = "Playlist",
+                                label = stringResource(R.string.music_screen_playlist),
                                 onClick = { if (song != null) showPlaylistPicker = true }
                             )
                             if (song?.localUri == null) {
                                 MusicActionChip(
                                     icon = Icons.Default.Radio,
-                                    label = "Radio",
+                                    label = stringResource(R.string.music_p2_radio),
                                     onClick = { song?.let { MusicPlayer.startRadio(it) } }
                                 )
                             }
                             MusicActionChip(
                                 icon = Icons.Default.Shuffle,
-                                label = if (state.shuffle) "Shuffle on" else "Shuffle",
+                                label = if (state.shuffle) stringResource(R.string.music_p2_shuffle_on) else stringResource(R.string.music_p2_shuffle),
                                 active = state.shuffle,
                                 onClick = { MusicPlayer.setShuffle(!state.shuffle) }
                             )
@@ -557,9 +559,9 @@ internal fun MusicNowPlayingScreen(
                                     Icons.Default.Repeat
                                 },
                                 label = when (state.repeatMode) {
-                                    RepeatMode.OFF -> "Repeat"
-                                    RepeatMode.ALL -> "Repeat all"
-                                    RepeatMode.ONE -> "Repeat one"
+                                    RepeatMode.OFF -> stringResource(R.string.music_p2_repeat)
+                                    RepeatMode.ALL -> stringResource(R.string.music_p2_repeat_all)
+                                    RepeatMode.ONE -> stringResource(R.string.music_p2_repeat_one)
                                 },
                                 active = state.repeatMode != RepeatMode.OFF,
                                 onClick = { MusicPlayer.cycleRepeat() }
@@ -567,7 +569,7 @@ internal fun MusicNowPlayingScreen(
                             if (state.videoAvailable && state.videoSong != null && song?.localUri == null) {
                                 MusicActionChip(
                                     icon = Icons.Default.Videocam,
-                                    label = "Music video",
+                                    label = stringResource(R.string.music_p2_music_video),
                                     active = false,
                                     onClick = {
                                         state.videoSong?.let { video ->
@@ -610,7 +612,7 @@ internal fun MusicNowPlayingScreen(
                             Modifier.fillMaxWidth(),
                             verticalAlignment = Alignment.CenterVertically
                         ) {
-                            TransportButton(Icons.Default.SkipPrevious, "Previous") {
+                            TransportButton(Icons.Default.SkipPrevious, stringResource(R.string.music_p2_previous)) {
                                 MusicPlayer.previous()
                             }
                             Spacer(Modifier.width(16.dp))
@@ -633,13 +635,13 @@ internal fun MusicNowPlayingScreen(
                             ) {
                                 Icon(
                                     if (state.isPlaying) Icons.Default.Pause else Icons.Default.PlayArrow,
-                                    contentDescription = if (state.isPlaying) "Pause" else "Play",
+                                    contentDescription = if (state.isPlaying) stringResource(R.string.music_p2_pause) else stringResource(R.string.music_action_play),
                                     tint = if (playFocused) Color.White else MusicPalette.background,
                                     modifier = Modifier.size(24.dp)
                                 )
                             }
                             Spacer(Modifier.width(16.dp))
-                            TransportButton(Icons.Default.SkipNext, "Next") {
+                            TransportButton(Icons.Default.SkipNext, stringResource(R.string.music_p2_next)) {
                                 MusicPlayer.next()
                             }
                         }
@@ -648,7 +650,7 @@ internal fun MusicNowPlayingScreen(
                         Row(Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.spacedBy(6.dp)) {
                             NowPlayingTab.entries.forEach { tab ->
                                 NowPlayingTabButton(
-                                    label = tab.label,
+                                    label = stringResource(tab.labelRes),
                                     selected = nowTab == tab,
                                     onClick = { nowTab = tab }
                                 )
@@ -842,9 +844,9 @@ private fun QueuePanel(
         Box(Modifier.fillMaxSize(), contentAlignment = Alignment.TopStart) {
             Text(
                 text = if (state.repeatMode == RepeatMode.ALL) {
-                    "The queue starts over when this ends."
+                    stringResource(R.string.music_p2_the_queue_starts_over_when)
                 } else {
-                    "This is the last track in the queue."
+                    stringResource(R.string.music_p2_this_is_the_last_track)
                 },
                 color = MusicPalette.textMuted,
                 fontSize = 12.sp
@@ -950,12 +952,12 @@ private fun NowInfoPanel(song: Song?, state: MusicPlayer.State, isLiked: Boolean
         song?.durationText.orEmpty()
     }
     val fields = listOf(
-        "Album" to (song?.albumName ?: "Single"),
-        "Artist" to (song?.artist ?: "Unknown artist"),
-        "Duration" to duration.ifBlank { "—" },
-        "Source" to if (song?.localUri != null) "This device" else "Streaming",
-        "Format" to if (song?.isVideo == true) "Video upload" else "Catalogue track",
-        "Library" to if (isLiked) "Liked" else "Not liked"
+        stringResource(R.string.music_p2_album) to (song?.albumName ?: stringResource(R.string.music_p2_single)),
+        stringResource(R.string.music_p2_artist) to (song?.artist ?: stringResource(R.string.music_p2_unknown_artist)),
+        stringResource(R.string.music_p2_duration) to duration.ifBlank { "—" },
+        stringResource(R.string.music_p2_source) to if (song?.localUri != null) stringResource(R.string.music_p2_this_device) else stringResource(R.string.music_p2_streaming),
+        stringResource(R.string.music_p2_format) to if (song?.isVideo == true) stringResource(R.string.music_p2_video_upload) else stringResource(R.string.music_p2_catalogue_track),
+        stringResource(R.string.music_tab_library) to if (isLiked) stringResource(R.string.music_p2_liked) else stringResource(R.string.music_p2_not_liked)
     )
     Column(
         Modifier.fillMaxSize().padding(top = 2.dp),
@@ -1004,7 +1006,7 @@ private fun LyricsPanel(
                 contentAlignment = Alignment.TopStart
             ) {
                 Text(
-                    text = "Play a track to see its lyrics.",
+                    text = stringResource(R.string.music_p2_play_a_track_to_see),
                     color = MusicPalette.textMuted,
                     fontSize = 13.sp
                 )
@@ -1063,7 +1065,7 @@ private fun LyricsPanel(
                     if (!timed) {
                         item(key = "lyrics-untimed") {
                             Text(
-                                text = "Lyrics aren't time-synced for this track.",
+                                text = stringResource(R.string.music_p2_lyrics_aren_t_time_synced),
                                 color = MusicPalette.textMuted,
                                 fontSize = 10.5.sp
                             )
@@ -1250,7 +1252,7 @@ private fun PlaylistPickerOverlay(
                 .padding(24.dp)
         ) {
             Text(
-                text = "Add to playlist",
+                text = stringResource(R.string.music_p2_add_to_playlist),
                 color = MusicPalette.text,
                 fontSize = 22.sp,
                 fontWeight = FontWeight.Bold
@@ -1263,7 +1265,7 @@ private fun PlaylistPickerOverlay(
                 item(key = "new-playlist") {
                     PickerRow(
                         icon = Icons.Default.Add,
-                        label = "New playlist",
+                        label = stringResource(R.string.music_action_new_playlist),
                         modifier = Modifier.focusRequester(firstFocus),
                         onClick = onCreate
                     )
@@ -1281,7 +1283,7 @@ private fun PlaylistPickerOverlay(
                 item(key = "cancel") {
                     PickerRow(
                         icon = Icons.Default.Close,
-                        label = "Cancel",
+                        label = stringResource(R.string.music_p2_cancel),
                         onClick = onDismiss
                     )
                 }

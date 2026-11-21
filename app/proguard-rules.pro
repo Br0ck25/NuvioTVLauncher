@@ -37,6 +37,16 @@
 -dontwarn org.bouncycastle.**
 -dontwarn org.openjsse.**
 
+# ── SMB (jcifs-ng / BouncyCastle) ─────────────────────────────────────────────
+# jcifs-ng builds a BouncyCastleProvider itself and asks it for MD4 (NTLM) and
+# AES-CMAC (SMB3 signing). BouncyCastle registers those algorithms from classes
+# loaded by name, so R8 strips them from release builds unless they are kept.
+# Without this, SMB fails with:
+#   NoSuchAlgorithmException: no such algorithm: MD4 for provider BC
+-keep class org.bouncycastle.jce.provider.** { *; }
+-keep class org.bouncycastle.jcajce.provider.** { *; }
+-keep class org.bouncycastle.crypto.** { *; }
+
 # ── Data classes (DTOs) ────────────────────────────────────────────────────────
 # Keep all DTO classes used with Moshi/Retrofit
 -keep class com.nuvio.tv.data.remote.dto.** { *; }
@@ -159,6 +169,10 @@
 
 -dontwarn java.beans.ConstructorProperties
 -dontwarn java.beans.Transient
+
+# Audio Sync speech recognition uses JNI to read configuration fields by name.
+-keep class com.k2fsa.sherpa.onnx.** { *; }
+-keep interface com.k2fsa.sherpa.onnx.** { *; }
 
 # YouTube fork: SmartTube's MediaServiceCore reads YouTube's JSON into classes by field name, calls into a
 # JavaScript engine, and builds its requests with reflection. Shrinking or renaming any of it breaks YouTube.

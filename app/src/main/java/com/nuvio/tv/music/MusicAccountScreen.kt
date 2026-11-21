@@ -52,7 +52,9 @@ import androidx.compose.ui.input.key.type
 import androidx.compose.ui.platform.LocalFocusManager
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextOverflow
+import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.unit.dp
+import com.nuvio.tv.R
 import androidx.compose.ui.unit.sp
 import androidx.tv.material3.Icon
 import androidx.tv.material3.Text
@@ -92,7 +94,7 @@ internal fun MusicAccountScreen(
                 )
                 Column {
                     Text(
-                        text = "YouTube Music",
+                        text = stringResource(R.string.music_account_title),
                         color = MusicPalette.text,
                         fontFamily = MusicDisplay,
                         fontSize = 34.sp,
@@ -102,9 +104,9 @@ internal fun MusicAccountScreen(
                     Spacer(Modifier.height(2.dp))
                     Text(
                         text = when {
-                            account.code != null -> "Waiting for sign-in approval"
-                            account.signedIn -> account.accountName ?: "Account"
-                            else -> "Not signed in"
+                            account.code != null -> stringResource(R.string.music_account_waiting_approval)
+                            account.signedIn -> account.accountName ?: stringResource(R.string.music_account_fallback)
+                            else -> stringResource(R.string.music_account_not_signed_in)
                         },
                         color = MusicPalette.textMuted,
                         fontSize = 13.sp
@@ -155,22 +157,22 @@ private fun SignInCodePanel(
         qr?.let {
             Image(
                 bitmap = it,
-                contentDescription = "QR code to sign in",
+                contentDescription = stringResource(R.string.music_account_qr),
                 modifier = Modifier.size(260.dp).clip(RoundedCornerShape(12.dp))
             )
         }
         Column(verticalArrangement = Arrangement.spacedBy(14.dp)) {
             Text(
-                text = "Sign in to YouTube Music",
+                text = stringResource(R.string.music_p2_sign_in_to_youtube_music),
                 color = MusicPalette.text,
                 fontSize = 22.sp,
                 fontWeight = FontWeight.SemiBold
             )
             Text(
                 text = if (qr != null) {
-                    "Scan the code with your phone, or go to ${account.url} and enter:"
+                    stringResource(R.string.music_account_scan_or_go, account.url)
                 } else {
-                    "On your phone or computer, go to ${account.url} and enter:"
+                    stringResource(R.string.music_account_go_and_enter, account.url)
                 },
                 color = MusicPalette.textSecondary,
                 fontSize = 15.sp
@@ -182,13 +184,13 @@ private fun SignInCodePanel(
                 fontWeight = FontWeight.Bold
             )
             Text(
-                text = "Waiting for you to approve it…",
+                text = stringResource(R.string.music_account_waiting_approve),
                 color = MusicPalette.textMuted,
                 fontSize = 14.sp
             )
             AccountAction(
                 icon = Icons.Default.Close,
-                label = "Cancel",
+                label = stringResource(R.string.action_cancel),
                 firstFocus = firstActionFocus,
                 onClick = onCancel
             )
@@ -226,13 +228,13 @@ private fun AccountsPanel(
         Spacer(Modifier.height(8.dp))
         AccountAction(
             icon = Icons.Default.Add,
-            label = "Add another account",
+            label = stringResource(R.string.music_account_add),
             firstFocus = if (account.accounts.isEmpty()) firstActionFocus else null,
             onClick = onAddAccount
         )
         AccountAction(
             icon = Icons.Default.Logout,
-            label = "Sign out of YouTube Music",
+            label = stringResource(R.string.music_account_sign_out_youtube),
             onClick = onSignOut
         )
     }
@@ -254,14 +256,13 @@ private fun SignedOutPanel(
         verticalArrangement = Arrangement.spacedBy(14.dp)
     ) {
         Text(
-            text = "Sign in to YouTube Music",
+            text = stringResource(R.string.music_p2_sign_in_to_youtube_music),
             color = MusicPalette.text,
             fontSize = 24.sp,
             fontWeight = FontWeight.Bold
         )
         Text(
-            text = "Your likes, playlists and personalised Home will follow the same Google " +
-                "account you use for YouTube on this TV.",
+            text = stringResource(R.string.music_account_follow_google),
             color = MusicPalette.textSecondary,
             fontSize = 15.sp
         )
@@ -271,7 +272,7 @@ private fun SignedOutPanel(
         Spacer(Modifier.height(4.dp))
         AccountAction(
             icon = Icons.Default.AccountCircle,
-            label = "Sign in with a TV code",
+            label = stringResource(R.string.music_account_tv_code),
             firstFocus = firstActionFocus,
             onClick = onSignIn
         )
@@ -360,7 +361,7 @@ private fun AccountAction(
         }
         if (selected) {
             Text(
-                text = "Current",
+                text = stringResource(R.string.music_account_current),
                 color = MusicPalette.accent,
                 fontSize = 12.sp,
                 fontWeight = FontWeight.SemiBold
@@ -402,7 +403,7 @@ private fun AccountCloseButton(onClick: () -> Unit, onDown: () -> Unit) {
     ) {
         Icon(
             Icons.Default.KeyboardArrowDown,
-            contentDescription = "Close account panel",
+            contentDescription = stringResource(R.string.music_account_close),
             tint = if (focused) MusicPalette.background else Color.White,
             modifier = Modifier.size(26.dp)
         )

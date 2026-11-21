@@ -3,7 +3,9 @@ package com.nuvio.tv.music
 import android.content.Context
 import android.os.Handler
 import android.os.Looper
+import com.nuvio.tv.R
 import com.nuvio.tv.core.server.DeviceIpAddress
+import com.nuvio.tv.core.util.withAppLocale
 import fi.iki.elonen.NanoHTTPD
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
@@ -30,6 +32,7 @@ object MusicNavidromeSetup {
     val state: StateFlow<NavidromeSetupState> = _state.asStateFlow()
 
     private var server: NavidromeSetupServer? = null
+    private var appContext: Context? = null
     private val handler = Handler(Looper.getMainLooper())
     private val timeout = Runnable {
         if (server != null) {
@@ -41,12 +44,13 @@ object MusicNavidromeSetup {
     fun start(context: Context): NavidromeSetupState {
         if (server != null) return _state.value
         val app = context.applicationContext
+        appContext = app
         MusicNavidrome.init(app)
         val token = UUID.randomUUID().toString().replace("-", "").take(12)
         val candidate = NavidromeSetupServer(app, token) { signedInAs ->
             _state.value = _state.value.copy(
                 connected = true,
-                message = "Connected as $signedInAs"
+                message = app.withAppLocale().getString(R.string.music_navidrome_connected_as, signedInAs)
             )
             handler.postDelayed({
                 runCatching { server?.stop() }
@@ -62,7 +66,7 @@ object MusicNavidromeSetup {
                 candidate.stop()
                 server = null
                 _state.value = NavidromeSetupState(
-                    error = "No network address found. Connect the TV to Wi-Fi or Ethernet."
+                    error = app.withAppLocale().getString(R.string.music_no_network)
                 )
             } else {
                 _state.value = NavidromeSetupState(
@@ -77,7 +81,7 @@ object MusicNavidromeSetup {
             runCatching { candidate.stop() }
             server = null
             _state.value = NavidromeSetupState(
-                error = it.message ?: "Couldn't start the phone setup page."
+                error = it.message ?: app.withAppLocale().getString(R.string.music_phone_setup_failed)
             )
             _state.value
         }
@@ -89,7 +93,7 @@ object MusicNavidromeSetup {
         runCatching { server?.stop() }
         server = null
         _state.value = if (expired) {
-            NavidromeSetupState(error = "The phone link expired. Show a new QR code.")
+            NavidromeSetupState(error = appContext?.withAppLocale()?.getString(R.string.music_link_expired))
         } else {
             NavidromeSetupState()
         }

@@ -44,4 +44,5 @@
         <item quantity="many">"« %1$s » expire dans %2$d jours"</item>
         <item quantity="other">"« %1$s » expire dans %2$d jours"</item>
     </plurals>
+    <string name="iptv_repository_status_reading_addon_channels">"Lecture des chaînes de vos modules complémentaires…"</string>
 </resources>

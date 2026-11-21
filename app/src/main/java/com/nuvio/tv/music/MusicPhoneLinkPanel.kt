@@ -30,6 +30,8 @@ import androidx.compose.runtime.setValue
 import androidx.compose.runtime.withFrameNanos
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.res.stringResource
+import com.nuvio.tv.R
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.focus.FocusRequester
 import androidx.compose.ui.focus.focusRequester
@@ -102,13 +104,13 @@ internal fun MusicPhoneLinkPanel(
                 Spacer(Modifier.width(10.dp))
                 Column(Modifier.weight(1f)) {
                     Text(
-                        text = "Link ${target.label} with phone",
+                        text = stringResource(R.string.music_phone_link_target, target.label),
                         color = MusicPalette.text,
                         fontSize = 21.sp,
                         fontWeight = FontWeight.Bold
                     )
                     Text(
-                        text = "Scan the code and fill the form on your phone. The TV keeps the typed form too.",
+                        text = stringResource(R.string.music_phone_scan_help),
                         color = MusicPalette.textSecondary,
                         fontSize = 11.sp
                     )
@@ -131,7 +133,7 @@ internal fun MusicPhoneLinkPanel(
                 if (qr != null) {
                     Image(
                         bitmap = qr.asImageBitmap(),
-                        contentDescription = "Phone link QR code",
+                        contentDescription = stringResource(R.string.music_phone_qr),
                         contentScale = ContentScale.Fit,
                         modifier = Modifier.fillMaxSize()
                     )
@@ -146,7 +148,7 @@ internal fun MusicPhoneLinkPanel(
             }
             Spacer(Modifier.height(10.dp))
             Text(
-                text = state.url ?: state.error ?: "Starting the phone page…",
+                text = state.url ?: state.error ?: stringResource(R.string.music_phone_starting),
                 color = if (state.error != null) MusicPalette.error else MusicPalette.textMuted,
                 fontSize = 9.sp,
                 maxLines = 2,
@@ -181,7 +183,7 @@ internal fun MusicPhoneLinkPanel(
             }
             Spacer(Modifier.height(14.dp))
             Text(
-                text = "Only reachable on the same Wi-Fi. This link expires after five minutes.",
+                text = stringResource(R.string.music_phone_wifi_help),
                 color = MusicPalette.textMuted,
                 fontSize = 9.sp,
                 textAlign = TextAlign.Center
@@ -190,13 +192,14 @@ internal fun MusicPhoneLinkPanel(
             Row(horizontalArrangement = Arrangement.spacedBy(9.dp)) {
                 PhoneLinkPill(
                     icon = Icons.Default.QrCode2,
-                    label = if (state.error != null) "Show new QR" else "New QR",
+                    label = if (state.error != null) stringResource(R.string.music_show_new_qr)
+                    else stringResource(R.string.music_new_qr),
                     primary = state.error != null,
                     onClick = { MusicPhoneSetup.start(context, target) }
                 )
                 PhoneLinkPill(
                     icon = Icons.Default.Close,
-                    label = "Done",
+                    label = stringResource(R.string.music_done),
                     onClick = onClose
                 )
             }
@@ -271,7 +274,7 @@ private fun PhoneLinkCloseButton(modifier: Modifier = Modifier, onClick: () -> U
     ) {
         Icon(
             Icons.Default.Close,
-            contentDescription = "Close phone link",
+            contentDescription = stringResource(R.string.action_close),
             tint = if (focused) MusicPalette.background else MusicPalette.textSecondary,
             modifier = Modifier.size(17.dp)
         )

@@ -60,4 +60,10 @@
     <string name="iptv_status_sync_too_big">"Tu configuración de TV en directo es demasiado grande para guardarla en la nube."</string>
     <string name="iptv_status_sync_limit">"Se ha guardado demasiadas veces hoy. La sincronización continuará mañana."</string>
     <string name="iptv_status_sync_unreachable">"No se ha podido conectar con el servicio de sincronización. Se volverá a intentar."</string>
+    <string name="iptv_crash_no_details">"No se guardaron detalles del accidente."</string>
+    <string name="iptv_crash_title">"Nuvio One se detuvo"</string>
+    <string name="iptv_crash_help">"Para enviar este informe: conecte su teléfono al mismo Wi-Fi que este televisor, escanee el código con la cámara de su teléfono, toque Copiar informe breve y péguelo en su mensaje. ¿Sin wifi? En su lugar, tome una foto de esta pantalla. Utilice arriba/abajo para desplazarse."</string>
+    <string name="iptv_crash_restart">"Reiniciar aplicación"</string>
+    <string name="iptv_crash_close">"Cerrar"</string>
+    <string name="iptv_crash_report_page_title">"Informe de fallo de Nuvio One"</string>
 </resources>

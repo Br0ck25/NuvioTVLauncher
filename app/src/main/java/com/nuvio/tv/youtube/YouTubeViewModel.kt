@@ -2,7 +2,10 @@ package com.nuvio.tv.youtube
 
 import android.content.Context
 import android.util.Log
+import androidx.annotation.StringRes
+import com.nuvio.tv.core.util.withAppLocale
 import androidx.lifecycle.ViewModel
+import com.nuvio.tv.R
 import androidx.lifecycle.viewModelScope
 import com.liskovsoft.mediaserviceinterfaces.ContentService
 import com.liskovsoft.mediaserviceinterfaces.data.MediaGroup
@@ -65,19 +68,25 @@ data class YtRow(
 )
 
 /** The feeds along the top. Grid feeds are one long list; the others are rows of videos. */
-enum class YtTab(val title: String, val needsSignIn: Boolean = false, val grid: Boolean = false) {
+enum class YtTab(
+    /** The English label the YouTube engine expects for this feed. */
+    val title: String,
+    @StringRes val titleRes: Int,
+    val needsSignIn: Boolean = false,
+    val grid: Boolean = false
+) {
     // No Trending: YouTube retired that page, and its requests are now refused.
-    HOME("Home"),
-    SUBSCRIPTIONS("Subscriptions", needsSignIn = true, grid = true),
-    HISTORY("History", needsSignIn = true, grid = true),
-    PLAYLISTS("Playlists", needsSignIn = true, grid = true),
-    LIVE("Live"),
-    MUSIC("Music"),
-    GAMING("Gaming"),
-    NEWS("News"),
-    SPORTS("Sports"),
-    SHORTS("Shorts", grid = true),
-    CHANNELS("Channels", needsSignIn = true, grid = true)
+    HOME("Home", R.string.onetube_tab_home),
+    SUBSCRIPTIONS("Subscriptions", R.string.onetube_tab_subscriptions, needsSignIn = true, grid = true),
+    HISTORY("History", R.string.onetube_tab_history, needsSignIn = true, grid = true),
+    PLAYLISTS("Playlists", R.string.onetube_tab_playlists, needsSignIn = true, grid = true),
+    LIVE("Live", R.string.onetube_tab_live),
+    MUSIC("Music", R.string.onetube_tab_music),
+    GAMING("Gaming", R.string.onetube_tab_gaming),
+    NEWS("News", R.string.onetube_tab_news),
+    SPORTS("Sports", R.string.onetube_tab_sports),
+    SHORTS("Shorts", R.string.onetube_tab_shorts, grid = true),
+    CHANNELS("Channels", R.string.onetube_tab_channels, needsSignIn = true, grid = true)
 }
 
 data class YtUiState(
@@ -143,7 +152,6 @@ class YouTubeViewModel @Inject constructor(
         const val LOOKUP_TIMEOUT_MS = 30_000L
         /** Total time a video may spend switching clients before the user gets an error. */
         const val LOOKUP_BUDGET_MS = 75_000L
-        const val LOOKUP_TIMEOUT_MESSAGE = "OneTube took too long to find this video. Try again."
         const val PREFETCH_DELAY_MS = 600L
         const val MAX_CACHED = 24
         const val MAX_HISTORY = 50
@@ -165,6 +173,9 @@ class YouTubeViewModel @Inject constructor(
 
     private val _state = MutableStateFlow(YtUiState())
     val state: StateFlow<YtUiState> = _state.asStateFlow()
+
+    private fun text(@StringRes id: Int, vararg args: Any): String =
+        context.withAppLocale().getString(id, *args)
 
     private val _error = MutableStateFlow<String?>(null)
     val error: StateFlow<String?> = _error.asStateFlow()
@@ -290,7 +301,7 @@ class YouTubeViewModel @Inject constructor(
         pushPage()
         _state.update {
             it.copy(loading = true, error = null, rows = emptyList(), grid = emptyList(), canLoadMore = false,
-                subTitle = "Results for \"${query.trim()}\"")
+                subTitle = text(R.string.onetube_results_for, query.trim()))
         }
         loadRows(query) {
             io.reactivex.Observable.fromCallable {
@@ -313,7 +324,7 @@ class YouTubeViewModel @Inject constructor(
         // A channel card with nothing behind it would make the engine return null ("fromNullable
         // result is null"), so say it plainly instead of trying to open it.
         if (item.kind == YtKind.CHANNEL && item.source.reloadPageKey == null && item.channelId == null) {
-            _error.value = "This channel can't be opened."
+            _error.value = text(R.string.onetube_error_channel)
             return
         }
         // Cards from the feeds often carry only a playlist id, with no continuation key.
@@ -321,7 +332,7 @@ class YouTubeViewModel @Inject constructor(
         if (item.kind == YtKind.PLAYLIST && item.source.reloadPageKey == null) {
             val playlistId = item.source.playlistId
             if (playlistId.isNullOrBlank()) {
-                _error.value = "This playlist can't be opened."
+                _error.value = text(R.string.onetube_error_playlist)
                 return
             }
             filtersOn = true
@@ -579,7 +590,7 @@ class YouTubeViewModel @Inject constructor(
                 Log.e(TAG, "couldn't load $label", e)
                 _state.update {
                     if (e is NoSuchElementException) it.copy(loading = false)
-                    else it.copy(loading = false, error = e.message ?: "Couldn't load $label")
+                    else it.copy(loading = false, error = e.message ?: text(R.string.onetube_load_failed))
                 }
             }
             _state.update { it.copy(loading = false) }
@@ -648,7 +659,7 @@ class YouTubeViewModel @Inject constructor(
                     _state.update {
                         // "Nothing came back" is an empty page, not a broken connection.
                         if (e is NoSuchElementException) it.copy(loading = false)
-                        else it.copy(loading = false, error = e.message ?: "Couldn't load $label")
+                        else it.copy(loading = false, error = e.message ?: text(R.string.onetube_load_failed))
                     }
                 }
             )
@@ -775,7 +786,7 @@ class YouTubeViewModel @Inject constructor(
                             .map {
                                 YtPlaylistRow(it.playlistId.orEmpty(), it.title.orEmpty(), it.isSelected)
                             },
-                        message = if (result.isFailure) "Couldn't load your playlists." else null
+                        message = if (result.isFailure) text(R.string.onetube_playlists_failed) else null
                     )
                 }
             }
@@ -816,11 +827,11 @@ class YouTubeViewModel @Inject constructor(
         if (menu.item.kind != YtKind.PLAYLIST) return
         val playlistId = menu.item.source.playlistId
         if (playlistId.isNullOrBlank()) {
-            _menu.update { it?.copy(message = "This playlist can't be deleted from here.") }
+            _menu.update { it?.copy(message = text(R.string.onetube_playlist_no_delete)) }
             return
         }
         if (!_state.value.signedIn) {
-            _menu.update { it?.copy(message = "Sign in to OneTube first, with the account button on the OneTube page.") }
+            _menu.update { it?.copy(message = text(R.string.onetube_sign_in_first)) }
             return
         }
         _menu.update { it?.copy(busy = true, message = null) }
@@ -837,7 +848,7 @@ class YouTubeViewModel @Inject constructor(
                 // Reload the feed so the deleted card disappears.
                 selectTab(_state.value.tab)
             } else {
-                _menu.update { it?.copy(busy = false, message = "Couldn't delete the playlist.") }
+                _menu.update { it?.copy(busy = false, message = text(R.string.onetube_playlist_delete_failed)) }
             }
         }
     }
@@ -871,9 +882,9 @@ class YouTubeViewModel @Inject constructor(
                         busy = false,
                         subscribed = if (ok) !wasSubscribed else current.subscribed,
                         message = if (ok) {
-                            if (wasSubscribed) "Unsubscribed" else "Subscribed"
+                            if (wasSubscribed) text(R.string.onetube_unsubscribed) else text(R.string.onetube_subscribed)
                         } else {
-                            "That didn't go through. Try again."
+                            text(R.string.onetube_try_again)
                         }
                     )
                 }
@@ -911,9 +922,9 @@ class YouTubeViewModel @Inject constructor(
                             current.playlists
                         },
                         message = if (ok) {
-                            if (row.contains) "Removed from ${row.title}" else "Saved to ${row.title}"
+                            if (row.contains) text(R.string.onetube_removed_from, row.title) else text(R.string.onetube_saved_to, row.title)
                         } else {
-                            "That didn't go through. Try again."
+                            text(R.string.onetube_try_again)
                         }
                     )
                 }
@@ -934,7 +945,7 @@ class YouTubeViewModel @Inject constructor(
         _menu.update { current ->
             current?.copy(
                 pinned = !menu.pinned,
-                message = if (menu.pinned) "Removed from the OneTube page" else "Pinned to the OneTube page"
+                message = if (menu.pinned) text(R.string.onetube_unpinned) else text(R.string.onetube_pinned)
             )
         }
     }
@@ -963,7 +974,7 @@ class YouTubeViewModel @Inject constructor(
         val menu = _menu.value ?: return
         val token = menu.item.source.feedbackToken?.takeIf { it.isNotBlank() }
         if (token == null) {
-            _menu.update { it?.copy(message = "This card can't be removed.") }
+            _menu.update { it?.copy(message = text(R.string.onetube_card_no_remove)) }
             return
         }
         _menu.update { it?.copy(busy = true) }
@@ -986,7 +997,7 @@ class YouTubeViewModel @Inject constructor(
                     )
                 }
             } else {
-                _menu.update { it?.copy(busy = false, message = "Couldn't remove this card.") }
+                _menu.update { it?.copy(busy = false, message = text(R.string.onetube_card_remove_failed)) }
             }
         }
     }
@@ -1072,7 +1083,7 @@ class YouTubeViewModel @Inject constructor(
         // spinner up for minutes; give each lookup a limit and keep the whole switch loop bounded.
         fun nextInfo(): MediaItemFormatInfo {
             val remaining = remainingMs()
-            if (remaining <= 0L) error(LOOKUP_TIMEOUT_MESSAGE)
+            if (remaining <= 0L) error(text(R.string.onetube_lookup_timeout))
             return service.mediaItemService.getFormatInfoObserve(videoId)
                 .timeout(minOf(LOOKUP_TIMEOUT_MS, remaining), TimeUnit.MILLISECONDS)
                 .blockingFirst()
@@ -1082,14 +1093,14 @@ class YouTubeViewModel @Inject constructor(
         } catch (e: Throwable) {
             if (!e.isLookupTimeout()) throw e
             Log.w(TAG, "first lookup $videoId timed out after ${since()}ms; switching client", e)
-            if (remainingMs() <= 0L) error(LOOKUP_TIMEOUT_MESSAGE)
+            if (remainingMs() <= 0L) error(text(R.string.onetube_lookup_timeout))
             service.switchNextClientNow()
             try {
                 nextInfo()
             } catch (e2: Throwable) {
                 if (e2.isLookupTimeout()) {
                     Log.w(TAG, "lookup $videoId still timed out after ${since()}ms", e2)
-                    error(LOOKUP_TIMEOUT_MESSAGE)
+                    error(text(R.string.onetube_lookup_timeout))
                 }
                 throw e2
             }
@@ -1107,7 +1118,7 @@ class YouTubeViewModel @Inject constructor(
             } catch (e: Throwable) {
                 if (e.isLookupTimeout()) {
                     Log.w(TAG, "lookup $videoId timed out after ${since()}ms", e)
-                    error(LOOKUP_TIMEOUT_MESSAGE)
+                    error(text(R.string.onetube_lookup_timeout))
                 }
                 throw e
             }
@@ -1143,7 +1154,7 @@ class YouTubeViewModel @Inject constructor(
                 ?: info.hlsManifestUrl
                 ?: info.dashManifestUrl
                 ?: info.urlFormats?.firstOrNull()?.url
-        } ?: error("OneTube didn't return a stream for this video. Try again in a moment.")
+        } ?: error(text(R.string.onetube_no_stream))
         Log.i(TAG, "ready $videoId after ${since()}ms")
         // Stream URLs are tied to the client that asked for them, so the player has to present
         // the same user-agent.
@@ -1378,7 +1389,7 @@ class YouTubeViewModel @Inject constructor(
                         rememberPlayed(item)
                         onReady(it)
                     },
-                    onFailure = { _error.value = it.message ?: "Couldn't play this video" }
+                    onFailure = { _error.value = it.message ?: text(R.string.onetube_play_failed) }
                 )
             } finally {
                 if (_resolving.value == id) _resolving.value = null
@@ -1392,17 +1403,17 @@ class YouTubeViewModel @Inject constructor(
         val signedIn = runCatching { service.signInService.isSigned }.getOrDefault(false)
         return when {
             "age" in r || "confirm your age" in r || "inappropriate" in r ->
-                if (signedIn) "This video is age-restricted, and your account can't play it."
-                else "This video is age-restricted. Sign in to OneTube to watch it."
-            "country" in r || "region" in r || "location" in r -> "This video isn't available in your country."
-            "private" in r -> "This video is private."
-            "member" in r || "join this channel" in r -> "This video is for channel members only."
-            "premiere" in r || "will begin" in r || "live event" in r -> "This video hasn't started yet."
-            "copyright" in r -> "This video was removed over a copyright claim."
+                if (signedIn) text(R.string.onetube_age_account)
+                else text(R.string.onetube_age_signin)
+            "country" in r || "region" in r || "location" in r -> text(R.string.onetube_country)
+            "private" in r -> text(R.string.onetube_private)
+            "member" in r || "join this channel" in r -> text(R.string.onetube_members)
+            "premiere" in r || "will begin" in r || "live event" in r -> text(R.string.onetube_not_started)
+            "copyright" in r -> text(R.string.onetube_copyright)
             "removed" in r || "terminated" in r || "no longer available" in r || "unavailable" in r ->
-                "This video has been removed or isn't available."
-            "sign in" in r -> "OneTube wants you to sign in to watch this one."
-            reason.isNullOrBlank() -> "This video can't be played."
+                text(R.string.onetube_unavailable)
+            "sign in" in r -> text(R.string.onetube_sign_in_watch)
+            reason.isNullOrBlank() -> text(R.string.onetube_cant_play)
             else -> reason
         }
     }

@@ -37,6 +37,20 @@ object YouTubeSettings {
     private const val KEY_CHAT_NAME_COLOR = "chat_name_color"
     private const val KEY_CHAT_BACKGROUND = "chat_background_opacity"
     private const val KEY_PINNED_PLAYLISTS = "pinned_playlists"
+    private const val KEY_CONTINUE_WATCHING_HOME = "continue_watching_home"
+
+    // Changes that Home listens to, so its YouTube row follows this page without a restart.
+    private val _homeRowChanges = kotlinx.coroutines.flow.MutableStateFlow(0)
+    val homeRowChanges: kotlinx.coroutines.flow.StateFlow<Int> = _homeRowChanges
+
+    /** Show the videos you started on the YouTube page in their own row on Home. */
+    fun continueWatchingOnHome(context: Context) =
+        prefs(context).getBoolean(KEY_CONTINUE_WATCHING_HOME, false)
+
+    fun setContinueWatchingOnHome(context: Context, on: Boolean) {
+        prefs(context).edit().putBoolean(KEY_CONTINUE_WATCHING_HOME, on).apply()
+        _homeRowChanges.value = _homeRowChanges.value + 1
+    }
 
     fun videoPreviews(context: Context) = prefs(context).getBoolean(KEY_VIDEO_PREVIEWS, true)
     fun setVideoPreviews(context: Context, on: Boolean) = prefs(context).edit().putBoolean(KEY_VIDEO_PREVIEWS, on).apply()

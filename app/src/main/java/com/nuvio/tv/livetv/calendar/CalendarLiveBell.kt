@@ -9,6 +9,9 @@ import androidx.compose.runtime.remember
 import androidx.compose.runtime.rememberCoroutineScope
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.platform.LocalContext
+import androidx.compose.ui.res.stringResource
+import com.nuvio.tv.R
+import com.nuvio.tv.core.util.withAppLocale
 import com.nuvio.tv.livetv.model.EpgProgram
 import com.nuvio.tv.livetv.model.LiveChannel
 import com.nuvio.tv.livetv.record.LiveTvNotice
@@ -54,10 +57,13 @@ fun rememberLiveBell(program: EpgProgram?, channel: LiveChannel?): LiveBell? {
     if (known && title == null) return null
     if (title == null) {
         // Still being worked out: ringing it works it out first.
-        return LiveBell(on = false, label = "Ring the bell", value = "Off", isMovie = false) {
+        return LiveBell(on = false, label = stringResource(R.string.iptv_cal_ring_bell), value = stringResource(R.string.iptv_gear_off), isMovie = false) {
             scope.launch {
                 val t = repo.liveTitle(program, channel)
-                LiveTvNotice.show(if (t == null) "Couldn't find \"${program.title}\" to follow" else repo.toggleLiveBell(t, program, channel))
+                LiveTvNotice.show(
+                    if (t == null) context.withAppLocale().getString(R.string.iptv_cal_not_found_follow, program.title)
+                    else repo.toggleLiveBell(t, program, channel)
+                )
             }
         }
     }

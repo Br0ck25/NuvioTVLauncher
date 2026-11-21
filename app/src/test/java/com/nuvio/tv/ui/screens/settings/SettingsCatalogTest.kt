@@ -29,6 +29,7 @@ class SettingsCatalogTest {
                 SettingsCategory.SPORTS,
                 SettingsCategory.YOUTUBE,
                 SettingsCategory.CALENDAR,
+                SettingsCategory.VPN,
                 SettingsCategory.INTEGRATION,
                 SettingsCategory.TRACKING,
                 SettingsCategory.DEFAULT_LAUNCHER,

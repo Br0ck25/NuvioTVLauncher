@@ -12,6 +12,7 @@ import androidx.core.app.NotificationCompat
 import androidx.core.content.ContextCompat
 import com.nuvio.tv.MainActivity
 import com.nuvio.tv.R
+import com.nuvio.tv.core.util.withAppLocale
 
 /**
  * Keeps the process alive while a listening party is open.
@@ -65,7 +66,7 @@ class MusicPartyService : Service() {
             getString(R.string.music_party_channel_name),
             NotificationManager.IMPORTANCE_LOW
         ).apply {
-            description = "Shown while a listening party is open"
+            description = withAppLocale().getString(R.string.music_party_channel_description)
             setShowBadge(false)
             enableVibration(false)
             setSound(null, null)
@@ -75,8 +76,8 @@ class MusicPartyService : Service() {
 
     private fun buildNotification() = NotificationCompat.Builder(this, CHANNEL_ID)
         .setSmallIcon(R.drawable.ic_music_notification)
-        .setContentTitle("Party is live")
-        .setContentText("Guests can add songs from the party page.")
+        .setContentTitle(withAppLocale().getString(R.string.music_party_notification_title))
+        .setContentText(withAppLocale().getString(R.string.music_party_notification_text))
         .setContentIntent(openAppIntent())
         .setOngoing(true)
         .setSilent(true)

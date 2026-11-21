@@ -1,0 +1,27 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <string name="vpn_phone_title">"A?adir VPN"</string>
+    <string name="vpn_phone_connected_to">"Conectado a %1$s"</string>
+    <string name="vpn_phone_heading">"A?adir un perfil de WireGuard"</string>
+    <string name="vpn_phone_instructions">"Elige tu archivo .conf de WireGuard. El televisor lo lee, lo cifra y lo guarda en este dispositivo."</string>
+    <string name="vpn_phone_choose">"Elegir archivo .conf"</string>
+    <string name="vpn_phone_selected">"Seleccionado: %1$s"</string>
+    <string name="vpn_phone_send">"Enviar al televisor"</string>
+    <string name="vpn_phone_sending">"Enviando?"</string>
+    <string name="vpn_phone_received">"Enviado. Revisa tu televisor."</string>
+    <string name="vpn_phone_too_large">"Ese archivo es demasiado grande."</string>
+    <string name="vpn_phone_unreachable">"No se pudo conectar con el televisor."</string>
+    <string name="vpn_phone_nothing">"Elige primero un archivo .conf."</string>
+    <string name="vpn_phone_network">"Solo los dispositivos de esta red pueden abrir esta p?gina. Tu perfil se env?a directamente al televisor."</string>
+    <string name="vpn_phone_add">"A?adir desde el tel?fono"</string>
+    <string name="vpn_phone_add_detail">"Escanea un c?digo QR y elige el archivo .conf en tu tel?fono"</string>
+    <string name="vpn_phone_dialog_title">"A?adir perfil de VPN desde tu tel?fono"</string>
+    <string name="vpn_phone_qr">"C?digo QR"</string>
+    <string name="vpn_phone_waiting">"Esperando a tu tel?fono?"</string>
+    <string name="vpn_phone_received_tv">"Perfil recibido. Guardando?"</string>
+    <string name="vpn_phone_steps">"1. Conecta tu tel?fono a la misma Wi-Fi que este televisor.
+2. Escanea el c?digo con la c?mara del tel?fono.
+3. Elige el archivo .conf y pulsa Enviar al televisor."</string>
+    <string name="vpn_phone_address">"O abre %1$s"</string>
+    <string name="vpn_phone_no_network">"No se encontr? una red dom?stica. Conecta este televisor a la Wi-Fi e int?ntalo de nuevo."</string>
+</resources>

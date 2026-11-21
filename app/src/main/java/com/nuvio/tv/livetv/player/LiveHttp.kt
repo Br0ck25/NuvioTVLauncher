@@ -17,7 +17,7 @@ object LiveHttp {
         var hops = 0
         while (true) {
             val requestHeaders = if (policy == null) headers else StalkerMediaPolicy.withoutPortalHeaders(headers) + policy.headersFor(current, secureContext)
-            val c = URL(current).openConnection() as HttpURLConnection
+            val c = com.nuvio.vpn.android.VpnHttpClient.openConnection(URL(current))
             policy?.observe(c)
             c.connectTimeout = 15_000
             c.readTimeout = readTimeoutMs

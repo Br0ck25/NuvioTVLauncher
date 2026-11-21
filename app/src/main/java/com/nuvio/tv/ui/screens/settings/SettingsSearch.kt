@@ -237,6 +237,11 @@ private val youTubeEntries = listOf(
     SettingsSearchResult(
         "youtube:history", "OneTube History", "OneTube · Watch history and subscriptions",
         SettingsCategory.YOUTUBE, keywords = "youtube onetube history subscriptions"
+    ),
+    SettingsSearchResult(
+        "youtube:continue-watching-home", "OneTube Continue Watching",
+        "OneTube · Videos you started, in a row on Home",
+        SettingsCategory.YOUTUBE, keywords = "youtube onetube continue watching home row resume"
     )
 )
 
@@ -317,6 +322,7 @@ private fun categoryKeywords(category: SettingsCategory): String = when (categor
     SettingsCategory.CALENDAR -> "calendar schedule"
     SettingsCategory.INTEGRATION -> "integration debrid tmdb mdblist anime skip"
     SettingsCategory.TRACKING -> "tracking trakt simkl mdblist scrobble"
+    SettingsCategory.VPN -> "vpn wireguard nordvpn profile tunnel"
     SettingsCategory.ADVANCED -> "advanced developer logs"
     SettingsCategory.ABOUT -> "about version updates"
     SettingsCategory.DEBUG -> "debug logs"

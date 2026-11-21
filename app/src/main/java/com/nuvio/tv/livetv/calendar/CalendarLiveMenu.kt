@@ -24,6 +24,8 @@ import androidx.compose.runtime.remember
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.res.stringResource
+import com.nuvio.tv.R
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.focus.FocusRequester
 import androidx.compose.ui.focus.focusRequester
@@ -241,7 +243,7 @@ internal fun ChannelPicker(
             listOfNotNull(
                 entry.episodeCode,
                 entry.airMs?.let { whenLabel(it, now, use24h).replaceFirstChar { c -> c.uppercase() } },
-                if (options.isEmpty()) "not found in your guide" else "found on ${options.size} of your channels"
+                if (options.isEmpty()) stringResource(R.string.iptv_cal_not_in_guide) else stringResource(R.string.iptv_cal_found_on, options.size)
             ).joinToString(" · "),
             size = 13.sp, color = NuvioTheme.colors.TextSecondary
         )
@@ -253,13 +255,13 @@ internal fun ChannelPicker(
                 LiveFocusRow(modifier = Modifier.fillMaxWidth().focusRequester(first), onClick = { onForget?.invoke() }) { focused ->
                     Column(Modifier.weight(1f)) {
                         LiveText(savedText, size = 13.sp, weight = FontWeight.SemiBold, color = focusedTextColor(focused), maxLines = 2)
-                        LiveText("OK: forget it (the Calendar picks the channel itself again)", size = 11.sp, color = focusedTextColor(focused).copy(alpha = 0.65f))
+                        LiveText(stringResource(R.string.iptv_cal_forget), size = 11.sp, color = focusedTextColor(focused).copy(alpha = 0.65f))
                     }
                 }
             }
             if (options.isEmpty()) item {
                 LiveText(
-                    "None of your channels were found showing it in your guide. Search for the channel below: it's used for this show from now on.",
+                    stringResource(R.string.iptv_cal_none_found),
                     size = 13.sp, color = NuvioTheme.colors.TextSecondary, maxLines = 3, modifier = Modifier.padding(12.dp)
                 )
             }
@@ -278,12 +280,12 @@ internal fun ChannelPicker(
                         LiveText(
                             listOfNotNull(
                                 h.group ?: h.playlist,
-                                if (h.favorite) "Favorite" else null,
-                                if (h.catchup) "catch-up" else null,
+                                if (h.favorite) stringResource(R.string.iptv_cal_favorite) else null,
+                                if (h.catchup) stringResource(R.string.iptv_cal_catchup) else null,
                                 when {
-                                    onNow -> "on now"
-                                    h.later -> "airs ${formatClock(h.startMs, use24h)} (later)"
-                                    else -> "starts ${formatClock(h.startMs, use24h)}"
+                                    onNow -> stringResource(R.string.iptv_cal_on_now)
+                                    h.later -> stringResource(R.string.iptv_cal_airs_at, formatClock(h.startMs, use24h))
+                                    else -> stringResource(R.string.iptv_cal_starts_at, formatClock(h.startMs, use24h))
                                 }
                             ).joinToString(" · "),
                             size = 12.sp, color = focusedTextColor(focused).copy(alpha = 0.7f), maxLines = 2
@@ -292,13 +294,13 @@ internal fun ChannelPicker(
                     Row(horizontalArrangement = Arrangement.spacedBy(4.dp)) {
                         if (isRecording(h)) LiveTag("● REC", LIVE_RED, Color.White)
                         when {
-                            h.mine -> LiveTag("YOUR CHANNEL", Color.White.copy(alpha = 0.16f), focusedTextColor(focused))
-                            h.channelKey == pickedKey -> LiveTag("YOUR CHANNEL", Color.White.copy(alpha = 0.16f), focusedTextColor(focused))
-                            i == 0 && !h.later -> LiveTag("BEST MATCH", Color.White.copy(alpha = 0.16f), focusedTextColor(focused))
-                            h.later -> LiveTag("LATER", Color.White.copy(alpha = 0.16f), focusedTextColor(focused))
+                            h.mine -> LiveTag(stringResource(R.string.iptv_cal_your_channel), Color.White.copy(alpha = 0.16f), focusedTextColor(focused))
+                            h.channelKey == pickedKey -> LiveTag(stringResource(R.string.iptv_cal_your_channel), Color.White.copy(alpha = 0.16f), focusedTextColor(focused))
+                            i == 0 && !h.later -> LiveTag(stringResource(R.string.iptv_cal_best_match), Color.White.copy(alpha = 0.16f), focusedTextColor(focused))
+                            h.later -> LiveTag(stringResource(R.string.iptv_cal_later), Color.White.copy(alpha = 0.16f), focusedTextColor(focused))
                             else -> Unit
                         }
-                        if (h.confirmed) LiveTag("THIS EPISODE", Color(0xFF1C6B45), Color.White)
+                        if (h.confirmed) LiveTag(stringResource(R.string.iptv_cal_this_episode), Color(0xFF1C6B45), Color.White)
                     }
                 }
             }
@@ -306,21 +308,21 @@ internal fun ChannelPicker(
                 LiveFocusRow(modifier = Modifier.fillMaxWidth().padding(top = 6.dp), onClick = { always = !always }) { focused ->
                     SwitchMark(always)
                     Spacer(Modifier.width(4.dp))
-                    LiveText("Always use this channel for ${entry.title}", size = 14.sp, color = focusedTextColor(focused))
+                    LiveText(stringResource(R.string.iptv_cal_always_use, entry.title), size = 14.sp, color = focusedTextColor(focused))
                 }
             }
             if (onSearchAll != null) item {
                 LiveFocusRow(modifier = Modifier.fillMaxWidth().then(if (options.isEmpty() && !savedRow) Modifier.focusRequester(first) else Modifier), onClick = onSearchAll) { focused ->
                     Column {
-                        LiveText("Search all my channels…", size = 15.sp, weight = FontWeight.SemiBold, color = focusedTextColor(focused))
-                        LiveText("For a channel that wasn't found: it's used for this show from now on", size = 11.sp, color = focusedTextColor(focused).copy(alpha = 0.65f))
+                        LiveText(stringResource(R.string.iptv_cal_search_all), size = 15.sp, weight = FontWeight.SemiBold, color = focusedTextColor(focused))
+                        LiveText(stringResource(R.string.iptv_cal_search_all_help), size = 11.sp, color = focusedTextColor(focused).copy(alpha = 0.65f))
                     }
                 }
             }
             if (options.isNotEmpty()) item {
                 LiveText(
-                    if (record) "OK records it on that channel"
-                    else "OK watches it (or records it, if it hasn't started there) · Hold OK to record",
+                    if (record) stringResource(R.string.iptv_cal_ok_records)
+                    else stringResource(R.string.iptv_cal_ok_watches),
                     size = 12.sp, color = NuvioTheme.colors.TextSecondary, maxLines = 2,
                     modifier = Modifier.padding(horizontal = 12.dp, vertical = 8.dp)
                 )
@@ -363,13 +365,13 @@ internal fun ShowChannelPicker(
     val keyboard = androidx.compose.ui.platform.LocalSoftwareKeyboardController.current
     LaunchedEffect(Unit) { delay(80); runCatching { if (initial.isBlank()) field.requestFocus() else firstResult.requestFocus() } }
     LiveDialog(onDismiss = onDismiss, width = 620.dp) {
-        LiveText("THE CHANNEL FOR THIS SHOW", size = 11.sp, weight = FontWeight.Bold, color = NuvioTheme.colors.TextSecondary)
+        LiveText(stringResource(R.string.iptv_cal_channel_for_show), size = 11.sp, weight = FontWeight.Bold, color = NuvioTheme.colors.TextSecondary)
         LiveText(title, size = 20.sp, weight = FontWeight.Bold, maxLines = 2)
-        LiveText("Its episodes are watched and recorded on the channel you pick, whatever your guide calls them.",
+        LiveText(stringResource(R.string.iptv_cal_channel_help),
             size = 12.sp, color = NuvioTheme.colors.TextSecondary, maxLines = 2)
         Spacer(Modifier.height(10.dp))
         com.nuvio.tv.livetv.ui.LiveTextField(
-            value = q, onValueChange = { q = it }, hint = "Type part of the channel's name", focusRequester = field,
+            value = q, onValueChange = { q = it }, hint = stringResource(R.string.iptv_cal_type_channel), focusRequester = field,
             onDone = {
                 keyboard?.hide()
                 if (list.isNotEmpty()) runCatching { firstResult.requestFocus() }
@@ -379,11 +381,11 @@ internal fun ShowChannelPicker(
         LazyColumn(Modifier.heightIn(max = 360.dp)) {
             if (hasPick) item {
                 LiveFocusRow(modifier = Modifier.fillMaxWidth(), onClick = { onPick(null) }) { focused ->
-                    LiveText("Use the guide's channels again", size = 15.sp, weight = FontWeight.SemiBold, color = focusedTextColor(focused))
+                    LiveText(stringResource(R.string.iptv_cal_use_guide), size = 15.sp, weight = FontWeight.SemiBold, color = focusedTextColor(focused))
                 }
             }
             if (q.trim().length >= 2 && list.isEmpty()) item {
-                LiveText("No channel names match.", size = 13.sp, color = NuvioTheme.colors.TextSecondary, modifier = Modifier.padding(12.dp))
+                LiveText(stringResource(R.string.iptv_cal_no_channel_names), size = 13.sp, color = NuvioTheme.colors.TextSecondary, modifier = Modifier.padding(12.dp))
             }
             itemsIndexed(list) { i, ch ->
                 LiveFocusRow(
@@ -574,13 +576,13 @@ fun CalendarSavedChannelsDialog(onDismiss: () -> Unit) {
     val first = remember { FocusRequester() }
     LaunchedEffect(list.size) { delay(80); runCatching { first.requestFocus() } }
     LiveDialog(onDismiss = onDismiss, width = 620.dp) {
-        LiveText("Saved Channels", size = 21.sp, weight = FontWeight.Bold)
-        LiveText("Channels you told the Calendar to use, for a network or for one show. OK forgets one: the Calendar picks the channel itself again.",
+        LiveText(stringResource(R.string.iptv_cal_saved_channels), size = 21.sp, weight = FontWeight.Bold)
+        LiveText(stringResource(R.string.iptv_cal_saved_help),
             size = 12.sp, color = NuvioTheme.colors.TextSecondary, maxLines = 3)
         Spacer(Modifier.height(10.dp))
         if (list.isEmpty()) {
-            LiveText("Nothing saved.", size = 14.sp, color = NuvioTheme.colors.TextSecondary, modifier = Modifier.padding(12.dp))
-            com.nuvio.tv.livetv.ui.MenuItem("Close", Modifier.focusRequester(first)) { onDismiss() }
+            LiveText(stringResource(R.string.iptv_cal_nothing_saved), size = 14.sp, color = NuvioTheme.colors.TextSecondary, modifier = Modifier.padding(12.dp))
+            com.nuvio.tv.livetv.ui.MenuItem(stringResource(R.string.action_close), Modifier.focusRequester(first)) { onDismiss() }
         } else {
             LazyColumn(Modifier.heightIn(max = 440.dp)) {
                 itemsIndexed(list, key = { _, c -> c.pickKey }) { i, c ->

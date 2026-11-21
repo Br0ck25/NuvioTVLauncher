@@ -10,6 +10,9 @@ import androidx.compose.ui.platform.LocalContext
 import com.nuvio.tv.R
 import com.nuvio.tv.LocalRootContentInset
 import androidx.compose.foundation.layout.Box
+import androidx.compose.foundation.layout.fillMaxSize
+import com.nuvio.tv.core.player.LocalBackgroundTrailerController
+import com.nuvio.tv.ui.components.BackgroundTrailerLayer
 import androidx.compose.foundation.layout.padding
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.unit.dp
@@ -109,7 +112,12 @@ fun NuvioNavHost(
         val navViewModelStoreOwner = LocalNavViewModelStoreOwner.current
             ?: checkNotNull(LocalViewModelStoreOwner.current)
         CompositionLocalProvider(LocalViewModelStoreOwner provides navViewModelStoreOwner) {
-            PlaybackNavHost(navController, startDestination, hideBuiltInHeaders, discoverIsRoot)
+            Box(modifier = Modifier.fillMaxSize()) {
+                LocalBackgroundTrailerController.current?.let { controller ->
+                    BackgroundTrailerLayer(controller = controller)
+                }
+                PlaybackNavHost(navController, startDestination, hideBuiltInHeaders, discoverIsRoot)
+            }
         }
     }
     // Live TV fork: "Remind me" messages, shown on top of whatever screen you're on.
@@ -149,7 +157,12 @@ private fun NavGraphBuilder.forkPageComposable(
     content: @Composable (NavBackStackEntry) -> Unit
 ) {
     composable(route) { backStackEntry ->
-        val inset = com.nuvio.tv.LocalForkPageInset.current
+        val liveTvFullscreen = if (route == Screen.LiveTv.route) {
+            val active by com.nuvio.tv.livetv.ui.LiveTvFullscreen.active.collectAsState()
+            active || com.nuvio.tv.livetv.ui.LiveTvFullscreen.pending
+        } else false
+        // Full screen must fill its first frame, without waiting for the sidebar inset animation.
+        val inset = if (liveTvFullscreen) 0.dp else com.nuvio.tv.LocalForkPageInset.current
         Box(modifier = Modifier.padding(start = inset)) {
             content(backStackEntry)
         }
@@ -401,6 +414,60 @@ private fun PlaybackNavHost(
                 }
             }
 
+            // YouTube fork: a YouTube card resumes in Nuvio's player, resolving the stream first.
+            val youtubeExtractor = androidx.compose.runtime.remember(context) {
+                runCatching {
+                    dagger.hilt.android.EntryPointAccessors.fromApplication(
+                        context.applicationContext,
+                        com.nuvio.tv.youtube.YouTubePlaybackEntryPoint::class.java
+                    ).youTubeExtractor()
+                }.getOrNull()
+            }
+            val youtubePlayScope = androidx.compose.runtime.rememberCoroutineScope()
+            fun playYouTubeContinueWatching(
+                item: ContinueWatchingItem,
+                startFromBeginning: Boolean
+            ): Boolean {
+                val progress = (item as? ContinueWatchingItem.InProgress)?.progress ?: return false
+                if (!com.nuvio.tv.youtube.YouTubeProgress.isYouTubeId(progress.contentId)) return false
+                val videoId = progress.contentId.removePrefix(
+                    com.nuvio.tv.youtube.YouTubeProgress.ID_PREFIX
+                )
+                val extractor = youtubeExtractor
+                if (extractor == null) {
+                    Toast.makeText(context, R.string.youtube_continue_unavailable, Toast.LENGTH_SHORT).show()
+                    return true
+                }
+                youtubePlayScope.launch {
+                    val url = runCatching {
+                        extractor.extractSingleUrl("https://www.youtube.com/watch?v=$videoId")
+                    }.getOrNull()?.takeIf { it.isNotBlank() }
+                    if (url == null) {
+                        Toast.makeText(
+                            context,
+                            R.string.youtube_continue_unavailable,
+                            Toast.LENGTH_SHORT
+                        ).show()
+                        return@launch
+                    }
+                    navController.navigate(
+                        Screen.Player.createRoute(
+                            streamUrl = url,
+                            title = progress.name,
+                            contentId = progress.contentId,
+                            contentType = "youtube",
+                            contentName = progress.name,
+                            poster = progress.poster,
+                            videoId = videoId,
+                            addonName = "OneTube",
+                            returnToHomeOnBack = true,
+                            startFromBeginning = startFromBeginning
+                        )
+                    )
+                }
+                return true
+            }
+
             // Live TV fork: get Live TV ready in the background, so the guide is there when opened.
             androidx.compose.runtime.LaunchedEffect(Unit) {
                 runCatching { com.nuvio.tv.livetv.startup.LiveTvPreload.start(context) }
@@ -437,6 +504,9 @@ private fun PlaybackNavHost(
                     )
                 },
                 onContinueWatchingClick = onContinueWatchingClick@{ item ->
+                    if (playYouTubeContinueWatching(item, startFromBeginning = false)) {
+                        return@onContinueWatchingClick
+                    }
                     if (com.nuvio.tv.livetv.ondemand.VodHomeIds.isOnDemandContentId(
                             (item as? ContinueWatchingItem.InProgress)?.progress?.contentId
                         )
@@ -453,6 +523,9 @@ private fun PlaybackNavHost(
                     navController.navigate(createContinueWatchingRoute(item))
                 },
                 onContinueWatchingStartFromBeginning = onContinueWatchingStartFromBeginning@{ item ->
+                    if (playYouTubeContinueWatching(item, startFromBeginning = true)) {
+                        return@onContinueWatchingStartFromBeginning
+                    }
                     if (com.nuvio.tv.livetv.ondemand.VodHomeIds.isOnDemandContentId(
                             (item as? ContinueWatchingItem.InProgress)?.progress?.contentId
                         )
@@ -1974,6 +2047,20 @@ private fun PlaybackNavHost(
             // Live TV fork: the Sports page (scores, schedules, which of your channels show each game).
             if (sportsShown) com.nuvio.tv.livetv.sports.SportsScreen(
                 onOpenLive = { com.nuvio.tv.livetv.sports.openLiveTvFullscreen(navController) },
+                onPlayHighlight = { playback ->
+                    navController.navigate(
+                        Screen.Player.createRoute(
+                            streamUrl = playback.streamUrl,
+                            title = playback.title,
+                            contentId = playback.contentId,
+                            contentType = playback.contentType,
+                            addonName = playback.addonName,
+                            poster = playback.poster,
+                            videoId = playback.videoId,
+                            startFromBeginning = playback.startFromBeginning
+                        )
+                    )
+                },
                 onOpenMultiview = { channelKey ->
                     com.nuvio.tv.livetv.sports.SportsWatchLaunch.request(2, channelKey)
                     navController.navigate(Screen.SportsMultiview.route) { launchSingleTop = true }

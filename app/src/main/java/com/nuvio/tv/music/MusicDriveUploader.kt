@@ -5,7 +5,9 @@ import android.net.Uri
 import android.util.Base64
 import android.util.Log
 import com.nuvio.tv.BuildConfig
+import com.nuvio.tv.R
 import com.nuvio.tv.core.network.IPv4FirstDns
+import com.nuvio.tv.core.util.withAppLocale
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.Job
@@ -132,7 +134,7 @@ object MusicDriveUploader {
             }.getOrElse {
                 _state.value = _state.value.copy(
                     busy = false,
-                    message = "Couldn't reach Google. Try again."
+                    message = context.withAppLocale().getString(R.string.music_drive_cant_reach_google)
                 )
                 return@launch
             }
@@ -142,7 +144,7 @@ object MusicDriveUploader {
                 _state.value = _state.value.copy(
                     busy = false,
                     message = codes.optString("error_description")
-                        .ifBlank { "Google didn't start the sign-in." }
+                        .ifBlank { context.withAppLocale().getString(R.string.music_drive_signin_not_started) }
                 )
                 return@launch
             }
@@ -182,7 +184,7 @@ object MusicDriveUploader {
                         _state.value = _state.value.copy(
                             busy = false,
                             signIn = null,
-                            message = "Google Drive access was declined."
+                            message = context.withAppLocale().getString(R.string.music_drive_declined)
                         )
                         return@launch
                     }
@@ -190,7 +192,7 @@ object MusicDriveUploader {
                         _state.value = _state.value.copy(
                             busy = false,
                             signIn = null,
-                            message = "The sign-in code expired. Try again."
+                            message = context.withAppLocale().getString(R.string.music_drive_code_expired)
                         )
                         return@launch
                     }
@@ -199,7 +201,7 @@ object MusicDriveUploader {
                             busy = false,
                             signIn = null,
                             message = token.optString("error_description")
-                                .ifBlank { "Google sign-in failed ($error)." }
+                                .ifBlank { context.withAppLocale().getString(R.string.music_drive_signin_failed, error) }
                         )
                         return@launch
                     }
@@ -208,7 +210,7 @@ object MusicDriveUploader {
             _state.value = _state.value.copy(
                 busy = false,
                 signIn = null,
-                message = "The sign-in code expired. Try again."
+                message = context.withAppLocale().getString(R.string.music_drive_code_expired)
             )
         }
     }
@@ -242,12 +244,12 @@ object MusicDriveUploader {
         init(context)
         if (_state.value.busy) return
         if (!_state.value.connected) {
-            _state.value = _state.value.copy(message = "Connect Google Drive first.")
+            _state.value = _state.value.copy(message = context.withAppLocale().getString(R.string.music_drive_connect_first))
             return
         }
         val tracks = LocalMusicRepository.tracks.value
         if (tracks.isEmpty()) {
-            _state.value = _state.value.copy(message = "No local music to upload.")
+            _state.value = _state.value.copy(message = context.withAppLocale().getString(R.string.music_drive_no_local))
             return
         }
         scope.launch {
@@ -261,14 +263,14 @@ object MusicDriveUploader {
             if (token == null) {
                 _state.value = _state.value.copy(
                     busy = false,
-                    message = "Google Drive access expired. Connect again."
+                    message = context.withAppLocale().getString(R.string.music_drive_expired)
                 )
                 return@launch
             }
             val folderId = runCatching { ensureFolder(token) }.getOrElse {
                 _state.value = _state.value.copy(
                     busy = false,
-                    message = "Couldn't create the Nuvio Music folder in Drive."
+                    message = context.withAppLocale().getString(R.string.music_drive_folder_failed)
                 )
                 return@launch
             }
@@ -301,9 +303,9 @@ object MusicDriveUploader {
                 uploaded = done,
                 total = tracks.size,
                 message = when {
-                    failed > 0 -> "Uploaded ${done - skipped} tracks; $failed failed."
-                    skipped > 0 -> "Everything is already in Drive ($skipped already there)."
-                    else -> "Uploaded ${done} tracks to Google Drive."
+                    failed > 0 -> context.withAppLocale().getString(R.string.music_drive_upload_failed, done - skipped, failed)
+                    skipped > 0 -> context.withAppLocale().getString(R.string.music_drive_already_there, skipped)
+                    else -> context.withAppLocale().getString(R.string.music_drive_uploaded, done)
                 }
             )
         }
@@ -316,7 +318,7 @@ object MusicDriveUploader {
             _state.value = _state.value.copy(
                 busy = false,
                 signIn = null,
-                message = "Google didn't return a refresh token. Try connecting again."
+                message = app.withAppLocale().getString(R.string.music_drive_no_refresh)
             )
             return
         }
@@ -333,7 +335,7 @@ object MusicDriveUploader {
             email = email,
             busy = false,
             signIn = null,
-            message = "Google Drive connected."
+            message = app.withAppLocale().getString(R.string.music_p2_google_drive_connected)
         )
     }
 
@@ -354,7 +356,7 @@ object MusicDriveUploader {
                 )
             )
         }.getOrElse {
-            _state.value = _state.value.copy(message = "Couldn't reach Google Drive.")
+            _state.value = _state.value.copy(message = app.withAppLocale().getString(R.string.music_drive_cant_reach))
             return null
         }
         if (result.optString("error") == "invalid_grant") {
@@ -362,7 +364,7 @@ object MusicDriveUploader {
             _state.value = _state.value.copy(
                 connected = false,
                 email = null,
-                message = "Google Drive access was removed. Connect again."
+                message = app.withAppLocale().getString(R.string.music_drive_removed)
             )
             return null
         }
