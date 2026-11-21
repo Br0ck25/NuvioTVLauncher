@@ -5,7 +5,7 @@
 - Recordings on the SMB share now appear on every device that uses the same share, including the TV, Android mobile and Windows.
 - The TV and phone read both recording layouts, so existing folders stay visible after the update.
 - **Combine** joins a finished recording's HLS pieces into one MPEG-TS file without re-encoding, so the result is the same size and quality as the recording.
-- **Export** remuxes a recording to MP4. Windows exports the file with ffmpeg; the original HLS pieces are kept.
+- **Export** remuxes a recording to MP4. Windows exports the file with ffmpeg (point to it in Recordings settings if it isn't on PATH); the original HLS pieces are kept.
 - Exports go to an `Exports` folder on the share by default, with an option to save on the device instead.
 - A recording that is still being made on another device is marked as such and cannot be stopped or deleted from the wrong device.
 
@@ -19,4 +19,4 @@
 
 ## Localization
 
-- Live TV, recording, Combine and Export are localized into German, Spanish, French, Italian, Dutch, Polish, Portuguese, Russian and Turkish.
+- Live TV, recording and Combine are localized into German, Spanish, French, Italian, Dutch, Polish, Portuguese, Russian and Turkish.
