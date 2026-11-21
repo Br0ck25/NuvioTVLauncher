@@ -136,6 +136,12 @@ internal object SmbClient {    private val contexts = ConcurrentHashMap<String, 
                 // adds a timeout on servers that don't speak SMB1.
                 setProperty("jcifs.smb.client.useSMB2Negotiation", "true")
                 setProperty("jcifs.smb.client.dfs.disabled", "true")
+                // Most NAS shares leave signing optional; servers that require it still get it.
+                // Raw NTLM is what these servers expect (SPNEGO signing can fail on some of them).
+                setProperty("jcifs.smb.client.signingPreferred", "false")
+                setProperty("jcifs.smb.client.signingEnforced", "false")
+                setProperty("jcifs.smb.client.ipcSigningEnforced", "false")
+                setProperty("jcifs.smb.useRawNTLM", "true")
                 setProperty("jcifs.smb.client.responseTimeout", "30000")
                 setProperty("jcifs.smb.client.soTimeout", "35000")
             }
@@ -234,8 +240,46 @@ internal object SmbClient {    private val contexts = ConcurrentHashMap<String, 
         runCatching { file(config, relative).length() }.getOrDefault(-1L)
 
     fun readText(config: SmbConfig, relative: String): String? = runCatching {
-        file(config, relative).openInputStream().bufferedReader().use { it.readText() }
+        // Random access reads work on servers whose streamed reads are unreliable.
+        val target = file(config, relative)
+        val length = target.length()
+        if (length > 8L * 1024 * 1024) return@runCatching null
+        target.openRandomAccess("r").use { raf ->
+            val bytes = ByteArray(length.toInt())
+            raf.readFully(bytes)
+            // Some editors write a BOM; it would stop the JSON/playlist parser at the first byte.
+            String(bytes, Charsets.UTF_8).removePrefix("\uFEFF")
+        }
     }.getOrNull()
+
+    /**
+     * Copies a file from the share to [output], reporting progress. [cancelled] is checked
+     * between chunks so a long combine can be stopped.
+     */
+    fun copyTo(
+        config: SmbConfig,
+        relative: String,
+        output: java.io.OutputStream,
+        cancelled: () -> Boolean = { false },
+        onBytes: (Long) -> Unit = {},
+    ): Long {
+        val target = file(config, relative)
+        val length = target.length()
+        val raf = target.openRandomAccess("r") ?: error("Couldn't open $relative on the share")
+        raf.use {
+            val buffer = ByteArray(256 * 1024)
+            var done = 0L
+            while (done < length) {
+                if (cancelled()) throw kotlinx.coroutines.CancellationException()
+                val read = it.read(buffer, 0, minOf(buffer.size.toLong(), length - done).toInt())
+                if (read < 0) break
+                output.write(buffer, 0, read)
+                done += read
+                onBytes(done)
+            }
+            return done
+        }
+    }
 
     fun randomAccess(config: SmbConfig, relative: String): SmbRandomAccessFile? =
         runCatching { file(config, relative).openRandomAccess("r") }.getOrNull()

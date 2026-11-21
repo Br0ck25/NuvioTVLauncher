@@ -8,6 +8,7 @@
 - **Export** remuxes a recording to MP4. Windows exports the file with ffmpeg (point to it in Recordings settings if it isn't on PATH); the original HLS pieces are kept.
 - Exports go to an `Exports` folder on the share by default, with an option to save on the device instead.
 - A recording that is still being made on another device is marked as such and cannot be stopped or deleted from the wrong device.
+- Better compatibility with SMB shares that leave signing optional, and with `info.json` files saved with a byte-order mark.
 
 ## Playlists
 
