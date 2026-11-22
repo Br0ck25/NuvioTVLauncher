@@ -175,8 +175,11 @@ internal fun MusicNowPlayingScreen(
     val albumId = song?.albumId?.takeIf { it.isNotBlank() } ?: albumInfo?.first
     val albumName = song?.albumName?.takeIf { it.isNotBlank() } ?: albumInfo?.second
     val canOpenAlbum = albumId != null && song?.localUri == null
+    // Call stringResource unconditionally: albumInfo arrives asynchronously, and skipping this
+    // composable call when it does shifts every later slot (which crashed BackHandler).
+    val albumFallback = stringResource(R.string.music_p2_album)
     val albumLabel = albumName?.takeIf { it.isNotBlank() }
-        ?: if (canOpenAlbum) stringResource(R.string.music_p2_album) else null
+        ?: albumFallback.takeIf { canOpenAlbum }
     val albumFocus = remember { FocusRequester() }
     var albumFocused by remember { mutableStateOf(false) }
     val windowInfo = LocalWindowInfo.current
@@ -206,16 +209,14 @@ internal fun MusicNowPlayingScreen(
         }
     }
 
-    BackHandler(enabled = !showPlaylistPicker && !lyricsExpanded) {
-        onClose()
-    }
-
-    BackHandler(enabled = showPlaylistPicker) {
-        showPlaylistPicker = false
-    }
-
-    BackHandler(enabled = lyricsExpanded && !showPlaylistPicker) {
-        lyricsExpanded = false
+    // One handler instead of three enabled/disabled ones: fewer composition slots to keep in
+    // step, and Back always does the same thing in this order.
+    BackHandler {
+        when {
+            showPlaylistPicker -> showPlaylistPicker = false
+            lyricsExpanded -> lyricsExpanded = false
+            else -> onClose()
+        }
     }
 
     LaunchedEffect(windowInfo) {

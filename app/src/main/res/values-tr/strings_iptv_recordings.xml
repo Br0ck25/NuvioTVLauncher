@@ -111,4 +111,18 @@
     <string name="iptv_rec_stop_repeating">"Tekrarlamayı Durdur"</string>
     <string name="iptv_rec_repeat_detail">"%1$s ? %2$s, %3$s'de. Durdurmak aynı zamanda ayarladığı başlamamış yayınları da iptal eder; kaydedilenler saklanır."</string>
     <string name="iptv_rec_done">"Tamamlamak"</string>
+    <string name="iptv_rec_combine">"Tek dosyada birleştir"</string>
+    <string name="iptv_rec_combine_title">"Kaydı birleştir"</string>
+    <string name="iptv_rec_combine_share">"SMB paylaşımına kaydet (Exports)"</string>
+    <string name="iptv_rec_combine_device">"Kaydın yanına kaydet"</string>
+    <string name="iptv_rec_combine_progress">"Kayıt birleştiriliyor"</string>
+    <string name="iptv_rec_combine_done">"%1$s konumuna birleştirildi"</string>
+    <string name="iptv_rec_combine_failed">"Birleştirilemedi: %1$s"</string>
+    <string name="iptv_rec_combine_stop_first">"Önce kaydı durdurun."</string>
+    <string name="iptv_rec_combine_no_config">"Önce SMB paylaşımını ayarlayın."</string>
+    <string name="iptv_rec_combine_no_pieces">"Bu kayıtta birleştirilecek segment yok."</string>
+    <string name="iptv_rec_combine_separate">"Bu kayıtta görüntü ve ses ayrı. Masaüstü uygulamasında dışa aktarın."</string>
+    <string name="iptv_rec_combine_not_ts">"Bu kayıt MPEG-TS değil."</string>
+    <string name="iptv_rec_combine_busy">"Başka bir kayıt zaten birleştiriliyor."</string>
+    <string name="iptv_rec_combine_smb_only">"SMB kayıtları şimdilik yalnızca paylaşıma geri birleştirilebilir."</string>
 </resources>

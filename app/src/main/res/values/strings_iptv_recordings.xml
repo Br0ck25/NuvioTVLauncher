@@ -128,4 +128,19 @@
     <string name="iptv_rec_smb_connected">"Connected: %1$s"</string>
     <string name="iptv_rec_smb_failed">"Couldn\'t connect: %1$s"</string>
     <string name="iptv_rec_smb_removed">"SMB share removed. New recordings go to this device."</string>
+
+    <string name="iptv_rec_combine">"Combine to one file"</string>
+    <string name="iptv_rec_combine_title">"Combine recording"</string>
+    <string name="iptv_rec_combine_share">"Save to SMB share (Exports)"</string>
+    <string name="iptv_rec_combine_device">"Save next to the recording"</string>
+    <string name="iptv_rec_combine_progress">"Combining recording"</string>
+    <string name="iptv_rec_combine_done">"Combined to %1$s"</string>
+    <string name="iptv_rec_combine_failed">"Couldn\'t combine: %1$s"</string>
+    <string name="iptv_rec_combine_stop_first">"Stop the recording first."</string>
+    <string name="iptv_rec_combine_no_config">"Set up the SMB share first."</string>
+    <string name="iptv_rec_combine_no_pieces">"This recording has no segments to combine."</string>
+    <string name="iptv_rec_combine_separate">"This recording has separate picture and sound. Export it on the desktop app."</string>
+    <string name="iptv_rec_combine_not_ts">"This recording isn\'t MPEG-TS."</string>
+    <string name="iptv_rec_combine_busy">"Already combining another recording."</string>
+    <string name="iptv_rec_combine_smb_only">"SMB recordings can be combined back to the share for now."</string>
 </resources>

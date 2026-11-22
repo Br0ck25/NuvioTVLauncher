@@ -111,4 +111,18 @@
     <string name="iptv_rec_stop_repeating">"Pare de repetir"</string>
     <string name="iptv_rec_repeat_detail">"%1$s? %2$s em %3$s. Interrompê-lo também cancela as exibições definidas que ainda não foram iniciadas; o que está gravado é mantido."</string>
     <string name="iptv_rec_done">"Feito"</string>
+    <string name="iptv_rec_combine">"Combinar num único ficheiro"</string>
+    <string name="iptv_rec_combine_title">"Combinar gravação"</string>
+    <string name="iptv_rec_combine_share">"Guardar na partilha SMB (Exports)"</string>
+    <string name="iptv_rec_combine_device">"Guardar junto à gravação"</string>
+    <string name="iptv_rec_combine_progress">"A combinar gravação"</string>
+    <string name="iptv_rec_combine_done">"Combinado em %1$s"</string>
+    <string name="iptv_rec_combine_failed">"Não foi possível combinar: %1$s"</string>
+    <string name="iptv_rec_combine_stop_first">"Pare a gravação primeiro."</string>
+    <string name="iptv_rec_combine_no_config">"Configure primeiro a partilha SMB."</string>
+    <string name="iptv_rec_combine_no_pieces">"Esta gravação não tem segmentos para combinar."</string>
+    <string name="iptv_rec_combine_separate">"Esta gravação tem imagem e som separados. Exporte-a na aplicação de ambiente de trabalho."</string>
+    <string name="iptv_rec_combine_not_ts">"Esta gravação não é MPEG-TS."</string>
+    <string name="iptv_rec_combine_busy">"Já está a ser combinada outra gravação."</string>
+    <string name="iptv_rec_combine_smb_only">"Por agora, as gravações SMB só podem ser combinadas de volta para a partilha."</string>
 </resources>

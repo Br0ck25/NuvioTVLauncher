@@ -113,4 +113,18 @@
     <string name="iptv_rec_stop_repeating">"Хватит повторять"</string>
     <string name="iptv_rec_repeat_detail">"%1$s ? %2$s в %3$s. Остановка также отменяет установленные трансляции, которые еще не начались; то, что записано, сохраняется."</string>
     <string name="iptv_rec_done">"Сделанный"</string>
+    <string name="iptv_rec_combine">"Объединить в один файл"</string>
+    <string name="iptv_rec_combine_title">"Объединить запись"</string>
+    <string name="iptv_rec_combine_share">"Сохранить на SMB-ресурс (Exports)"</string>
+    <string name="iptv_rec_combine_device">"Сохранить рядом с записью"</string>
+    <string name="iptv_rec_combine_progress">"Объединение записи"</string>
+    <string name="iptv_rec_combine_done">"Объединено в %1$s"</string>
+    <string name="iptv_rec_combine_failed">"Не удалось объединить: %1$s"</string>
+    <string name="iptv_rec_combine_stop_first">"Сначала остановите запись."</string>
+    <string name="iptv_rec_combine_no_config">"Сначала настройте SMB-ресурс."</string>
+    <string name="iptv_rec_combine_no_pieces">"В этой записи нет сегментов для объединения."</string>
+    <string name="iptv_rec_combine_separate">"В этой записи раздельные видео и звук. Экспортируйте её в приложении для компьютера."</string>
+    <string name="iptv_rec_combine_not_ts">"Эта запись не в формате MPEG-TS."</string>
+    <string name="iptv_rec_combine_busy">"Уже выполняется объединение другой записи."</string>
+    <string name="iptv_rec_combine_smb_only">"Пока записи SMB можно объединять только обратно на ресурс."</string>
 </resources>

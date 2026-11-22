@@ -111,4 +111,18 @@
     <string name="iptv_rec_stop_repeating">"Hör auf zu wiederholen"</string>
     <string name="iptv_rec_repeat_detail">"%1$s ? %2$s bei %3$s. Durch das Stoppen werden auch die eingestellten Ausstrahlungen abgebrochen, die noch nicht begonnen haben; Was aufgezeichnet wird, bleibt erhalten."</string>
     <string name="iptv_rec_done">"Erledigt"</string>
+    <string name="iptv_rec_combine">"Zu einer Datei zusammenführen"</string>
+    <string name="iptv_rec_combine_title">"Aufnahme zusammenführen"</string>
+    <string name="iptv_rec_combine_share">"Auf SMB-Freigabe speichern (Exports)"</string>
+    <string name="iptv_rec_combine_device">"Neben der Aufnahme speichern"</string>
+    <string name="iptv_rec_combine_progress">"Aufnahme wird zusammengeführt"</string>
+    <string name="iptv_rec_combine_done">"Zusammengeführt in %1$s"</string>
+    <string name="iptv_rec_combine_failed">"Zusammenführen fehlgeschlagen: %1$s"</string>
+    <string name="iptv_rec_combine_stop_first">"Stoppen Sie zuerst die Aufnahme."</string>
+    <string name="iptv_rec_combine_no_config">"Richten Sie zuerst die SMB-Freigabe ein."</string>
+    <string name="iptv_rec_combine_no_pieces">"Diese Aufnahme hat keine Segmente zum Zusammenführen."</string>
+    <string name="iptv_rec_combine_separate">"Diese Aufnahme hat getrenntes Bild und Ton. Exportieren Sie sie in der Desktop-App."</string>
+    <string name="iptv_rec_combine_not_ts">"Diese Aufnahme ist kein MPEG-TS."</string>
+    <string name="iptv_rec_combine_busy">"Es wird bereits eine andere Aufnahme zusammengeführt."</string>
+    <string name="iptv_rec_combine_smb_only">"SMB-Aufnahmen können vorerst nur zurück auf die Freigabe zusammengeführt werden."</string>
 </resources>

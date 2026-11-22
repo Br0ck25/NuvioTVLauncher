@@ -91,6 +91,13 @@ class RecordingsViewModel @Inject constructor(
     val recordings = recorder.recordings
     /** How far a move between drives has got (null when nothing is moving). */
     val move = recorder.move
+    /** How far a combine-to-one-file job has got (null when nothing is combining). */
+    val combineProgress = recorder.combineProgress
+
+    /** Re-read local folders and the SMB share (recordings from other devices). */
+    fun refresh() = recorder.refresh()
+
+    fun combine(rec: LiveTvRecording, toShare: Boolean) = recorder.combine(rec.id, toShare)
 
     /** New Recording's channel list: favorites, then channels watched recently. */
     val pickerChannels: kotlinx.coroutines.flow.StateFlow<List<com.nuvio.tv.livetv.model.LiveChannel>> =
@@ -247,6 +254,7 @@ fun RecordingsScreen(
     // The clock, for "recording until" bars (moves on every few seconds).
     var nowMs by remember { mutableStateOf(System.currentTimeMillis()) }
     LaunchedEffect(Unit) {
+        viewModel.refresh()
         while (true) { kotlinx.coroutines.delay(5_000); nowMs = System.currentTimeMillis() }
     }
     var seriesMenu by remember { mutableStateOf<SeriesRule?>(null) }
@@ -290,8 +298,10 @@ fun RecordingsScreen(
         }
     }
     var movePick by remember { mutableStateOf<List<LiveTvRecording>?>(null) }
+    var combineFor by remember { mutableStateOf<LiveTvRecording?>(null) }
     var confirmDeleteShow by remember { mutableStateOf<RecordedShow?>(null) }
     val moving by viewModel.move.collectAsStateWithLifecycle()
+    val combining by viewModel.combineProgress.collectAsStateWithLifecycle()
     val playNow: (LiveTvRecording) -> Unit = { rec ->
         // Nothing saved yet (it's still connecting): say so instead of an error.
         if (rec.durationSec <= 0) LiveTvNotice.show(
@@ -521,6 +531,24 @@ fun RecordingsScreen(
                 LiveText(stringResource(R.string.iptv_rec_progress, sizeLabel(m.doneBytes), sizeLabel(m.totalBytes)), size = 12.sp, color = colors.TextTertiary)
             }
         }
+        combining?.let { c ->
+            Column(
+                modifier = Modifier
+                    .align(Alignment.BottomEnd)
+                    .padding(end = 48.dp, bottom = 28.dp)
+                    .width(340.dp)
+                    .clip(RoundedCornerShape(liveCorner()))
+                    .background(com.nuvio.tv.livetv.ui.guideSurface())
+                    .border(1.dp, com.nuvio.tv.livetv.ui.GuideGlassEdge, RoundedCornerShape(liveCorner()))
+                    .padding(horizontal = 16.dp, vertical = 12.dp),
+                verticalArrangement = Arrangement.spacedBy(6.dp)
+            ) {
+                LiveText(stringResource(R.string.iptv_rec_combine_progress), size = 14.sp, weight = FontWeight.Bold)
+                LiveText(c.title, size = 13.sp, color = colors.TextSecondary)
+                ProgressLine(if (c.totalBytes > 0) c.doneBytes.toFloat() / c.totalBytes else 0f, colors.Secondary, Modifier.fillMaxWidth())
+                LiveText(stringResource(R.string.iptv_rec_progress, sizeLabel(c.doneBytes), sizeLabel(c.totalBytes)), size = 12.sp, color = colors.TextTertiary)
+            }
+        }
     }
     }
     val anything = recordings.isNotEmpty() || schedules.isNotEmpty() || seriesRules.isNotEmpty() || repeatRules.isNotEmpty()
@@ -602,6 +630,7 @@ fun RecordingsScreen(
             if (!rec.isRecording && rec.status != RecordingStatus.FAILED) {
                 if (viewModel.isWatched(rec)) add(stringResource(R.string.iptv_rec_mark_unwatched) to { menuFor = null; viewModel.markUnwatched(listOf(rec)); resumeTick++ })
                 else add(stringResource(R.string.iptv_rec_mark_watched) to { menuFor = null; viewModel.markWatched(listOf(rec)); resumeTick++ })
+                add(stringResource(R.string.iptv_rec_combine) to { menuFor = null; combineFor = rec })
                 if (RecordingStorage.choices(recContext).size > 1) add(stringResource(R.string.iptv_rec_move_to) to { menuFor = null; movePick = listOf(rec) })
             }
             add(stringResource(R.string.iptv_rec_information) to { menuFor = null; infoFor = rec })
@@ -621,6 +650,26 @@ fun RecordingsScreen(
                 label to { movePick = null; viewModel.moveTo(recs, c) }
             } + listOf(stringResource(R.string.action_cancel) to { movePick = null }),
             onDismiss = { movePick = null }
+        )
+    }
+    combineFor?.let { rec ->
+        val smb = RecordingStorage.isSmbConfigured(recContext)
+        val actions = buildList {
+            if (smb) add(stringResource(R.string.iptv_rec_combine_share) to {
+                combineFor = null
+                viewModel.combine(rec, true)
+            })
+            if (!rec.smb) add(stringResource(R.string.iptv_rec_combine_device) to {
+                combineFor = null
+                viewModel.combine(rec, false)
+            })
+            add(stringResource(R.string.action_cancel) to { combineFor = null })
+        }
+        RecordingActionDialog(
+            title = stringResource(R.string.iptv_rec_combine_title),
+            detail = rec.title,
+            actions = actions,
+            onDismiss = { combineFor = null }
         )
     }
     confirmDeleteShow?.let { show ->

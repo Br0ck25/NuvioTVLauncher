@@ -111,4 +111,18 @@
     <string name="iptv_rec_stop_repeating">"Stop met herhalen"</string>
     <string name="iptv_rec_repeat_detail">"%1$s ? %2$s op %3$s. Als u het stopt, worden ook de uitzendingen geannuleerd die nog niet zijn gestart; wat wordt opgenomen, wordt bewaard."</string>
     <string name="iptv_rec_done">"Klaar"</string>
+    <string name="iptv_rec_combine">"Combineer tot één bestand"</string>
+    <string name="iptv_rec_combine_title">"Opname combineren"</string>
+    <string name="iptv_rec_combine_share">"Opslaan op SMB-share (Exports)"</string>
+    <string name="iptv_rec_combine_device">"Naast de opname opslaan"</string>
+    <string name="iptv_rec_combine_progress">"Opname wordt gecombineerd"</string>
+    <string name="iptv_rec_combine_done">"Gecombineerd naar %1$s"</string>
+    <string name="iptv_rec_combine_failed">"Combineren mislukt: %1$s"</string>
+    <string name="iptv_rec_combine_stop_first">"Stop eerst de opname."</string>
+    <string name="iptv_rec_combine_no_config">"Stel eerst de SMB-share in."</string>
+    <string name="iptv_rec_combine_no_pieces">"Deze opname heeft geen segmenten om te combineren."</string>
+    <string name="iptv_rec_combine_separate">"Deze opname heeft gescheiden beeld en geluid. Exporteer hem in de desktopapp."</string>
+    <string name="iptv_rec_combine_not_ts">"Deze opname is geen MPEG-TS."</string>
+    <string name="iptv_rec_combine_busy">"Er wordt al een andere opname gecombineerd."</string>
+    <string name="iptv_rec_combine_smb_only">"SMB-opnamen kunnen voorlopig alleen terug naar de share worden gecombineerd."</string>
 </resources>

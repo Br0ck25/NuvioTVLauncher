@@ -111,4 +111,18 @@
     <string name="iptv_rec_stop_repeating">"Arrêtez de répéter"</string>
     <string name="iptv_rec_repeat_detail">"%1$s ? %2$s à %3$s. L'arrêter annule également les diffusions qu'il a programmées et qui n'ont pas commencé ; ce qui est enregistré est conservé."</string>
     <string name="iptv_rec_done">"Fait"</string>
+    <string name="iptv_rec_combine">"Combiner en un seul fichier"</string>
+    <string name="iptv_rec_combine_title">"Combiner l'enregistrement"</string>
+    <string name="iptv_rec_combine_share">"Enregistrer sur le partage SMB (Exports)"</string>
+    <string name="iptv_rec_combine_device">"Enregistrer à côté de l'enregistrement"</string>
+    <string name="iptv_rec_combine_progress">"Combinaison de l'enregistrement"</string>
+    <string name="iptv_rec_combine_done">"Combiné dans %1$s"</string>
+    <string name="iptv_rec_combine_failed">"Impossible de combiner : %1$s"</string>
+    <string name="iptv_rec_combine_stop_first">"Arrêtez d'abord l'enregistrement."</string>
+    <string name="iptv_rec_combine_no_config">"Configurez d'abord le partage SMB."</string>
+    <string name="iptv_rec_combine_no_pieces">"Cet enregistrement n'a aucun segment à combiner."</string>
+    <string name="iptv_rec_combine_separate">"Cet enregistrement a une image et un son séparés. Exportez-le dans l'application de bureau."</string>
+    <string name="iptv_rec_combine_not_ts">"Cet enregistrement n'est pas en MPEG-TS."</string>
+    <string name="iptv_rec_combine_busy">"Un autre enregistrement est déjà en cours de combinaison."</string>
+    <string name="iptv_rec_combine_smb_only">"Les enregistrements SMB ne peuvent pour l'instant être combinés que vers le partage."</string>
 </resources>

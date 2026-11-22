@@ -578,6 +578,15 @@
     <string name="iptv_settings_changes_also_sync_by_themselves_a_few_seconds">"Changes also sync by themselves a few seconds after you make them"</string>
     <string name="iptv_settings_restore_earlier_copy">"Restore Earlier Copy"</string>
     <string name="iptv_settings_go_back_to_the_copy_saved_before_the">"Go back to the copy saved before the last one"</string>
+    <string name="iptv_settings_recover_playlists">"Recover Playlists"</string>
+    <string name="iptv_settings_recover_playlists_subtitle">"Add back playlists that are in your saved setup but missing on this TV"</string>
+    <string name="iptv_settings_recover_playlists_checking">"Checking your saved setup…"</string>
+    <string name="iptv_settings_recover_playlists_found">"Missing from this TV (%1$d): %2$s"</string>
+    <string name="iptv_settings_recover_playlists_restore_all">"Restore all missing"</string>
+    <string name="iptv_settings_recover_playlists_none">"No missing playlists were found in your saved setup."</string>
+    <string name="iptv_settings_recover_playlists_restored">"Recovered %1$d playlist(s)."</string>
+    <string name="iptv_settings_recover_playlists_failed">"Couldn\'t reach your saved setup. Try again."</string>
+    <string name="iptv_settings_recover_playlists_close">"Close"</string>
     <string name="iptv_settings_turn_off_setup_sync">"Turn Off Setup Sync"</string>
     <string name="iptv_settings_stop_syncing_on_this_tv_the_saved_copy">"Stop syncing on this TV (the saved copy stays saved)"</string>
     <string name="iptv_settings_delete_saved_setup">"Delete Saved Setup"</string>
