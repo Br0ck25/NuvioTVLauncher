@@ -4,20 +4,26 @@
 
 # Nuvio Launcher
 
-**A real Android TV home screen built on Nuvio: your apps, your Live TV guide, Sports, Calendar, recordings and a built-in VPN, all in one launcher for Google TV, Android TV and Fire TV. Sign in with your Nuvio account and your setup follows you.**
+**A real Android TV home screen built on [Nuvio One](https://github.com/zoga2o3-ops/Nuvio-One): your apps, your Live TV guide, Sports, Calendar, recordings, YouTube (OneTube) and Music, all in one launcher for Google TV, Android TV and Fire TV. Sign in with your Nuvio account and your setup follows you.**
 
 [![Latest release](https://img.shields.io/github/v/release/Br0ck25/NuvioTVLauncher?label=latest%20release&style=for-the-badge)](https://github.com/Br0ck25/NuvioTVLauncher/releases/latest)
 [![Latest beta](https://img.shields.io/github/v/release/Br0ck25/NuvioTVLauncher?include_prereleases&label=latest%20beta&style=for-the-badge&color=orange)](https://github.com/Br0ck25/NuvioTVLauncher/releases)
 [![Downloads](https://img.shields.io/github/downloads/Br0ck25/NuvioTVLauncher/total?style=for-the-badge)](https://github.com/Br0ck25/NuvioTVLauncher/releases)
 [![License](https://img.shields.io/badge/license-GPL--3.0-blue?style=for-the-badge)](LICENSE)
 [![Support on Ko-fi](https://img.shields.io/badge/support-Ko--fi-FF5E5B?style=for-the-badge&logo=ko-fi&logoColor=white)](https://ko-fi.com/nuviotvlauncher)
-[![Based on Nuvio](https://img.shields.io/badge/based%20on-NuvioMedia%2FNuvioTV-8A2BE2?style=for-the-badge)](https://github.com/NuvioMedia/NuvioTV)
+[![Based on Nuvio One](https://img.shields.io/badge/based%20on-Nuvio%20One-8A2BE2?style=for-the-badge)](https://github.com/zoga2o3-ops/Nuvio-One)
 
-[Download](#installation) · [Setup](#getting-started) · [Home screen](#use-it-as-your-home-screen) · [Live TV](#live-tv-features) · [Sports](#sports-hub) · [Calendar](#calendar) · [VPN](#built-in-vpn) · [Sync](#your-setup-everywhere) · [Remote controls](CONTROLS.md) · [FAQ](#faq) · [Report a bug](#reporting-bugs-and-requesting-features) · [Support](#support-the-project)
+[Download](#installation) · [Setup](#getting-started) · [Home screen](#use-it-as-your-home-screen) · [Live TV](#live-tv-features) · [Sports](#sports-hub) · [Calendar](#calendar) · [OneTube](#onetube-youtube-built-in) · [Music](#music) · [Sync](#your-setup-everywhere) · [Remote controls](CONTROLS.md) · [FAQ](#faq) · [Report a bug](#reporting-bugs-and-requesting-features) · [Support](#support-the-project)
 
 </div>
 
 **Nuvio Launcher uses Trakt but is not endorsed or certified by Trakt.** See the [privacy page](PRIVACY.md).
+
+---
+
+## Built on Nuvio One
+
+Nuvio Launcher is a fork of **[Nuvio One](https://github.com/zoga2o3-ops/Nuvio-One)** by zoga2o3, which is itself built on [Nuvio](https://github.com/NuvioMedia/NuvioTV) and [NuvioPlusIPTV](https://github.com/homelessbrian/NuvioPlusIPTV). From Nuvio One this app gets **OneTube** (YouTube built in), **Music**, the Live TV guide, Sports hub, recordings and On Demand, and Nuvio One's sync and sports data services. On top of that it adds the launcher: it can be your TV's Home screen, with a phone-driven setup, an Apps row and page, remote button mapping and more.
 
 ---
 
@@ -62,7 +68,6 @@ Requires **Android 7.0 or newer** (Fire OS 6 or later). It has its own app ID (`
    - choose where recordings are saved under **Recordings**
    - set a parental **PIN**
    - turn on **Setup Sync** (signed in to Nuvio)
-   - import a WireGuard or OpenVPN profile under **Settings → VPN** if you want your playback protected
 7. In **Sports**, press **Follow Teams & Leagues** to pick your teams. Set your region and reminders under **Settings → Sports**.
 8. Open **Calendar** and ring the bell on the shows you watch.
 
@@ -180,10 +185,74 @@ Some Fire TV and vendor firmware blocks replacement Home apps. A successful inst
 
 ---
 
-## Live TV features
+## OneTube: YouTube, built in
 
-### List channels (Home rows as TV channels)
-Turn any Home row, collection folder or library list into a scheduled Live TV channel. Open **Settings → Live TV → List Channels**, pick the rows you want, and each becomes a channel in the Live TV guide with its own schedule. Press OK on one to play it through your debrid service or addons, and the next title starts when one ends. These channels count as a source, so the guide shows them even with no playlist added. They play like live TV (no seek bar), and torrent-only streams aren't played.
+YouTube has its own page in the side menu. **Nothing from YouTube shows up on Nuvio's Home or in Continue Watching.** Your YouTube watching stays on the YouTube page.
+
+### Browsing
+- **Tabs:** Home, Subscriptions, History, Playlists, Live, Music, Gaming, News, Sports, Shorts and Channels. Turn any tab on or off and put them in any order under **Settings → YouTube**.
+- **Remember the last tab:** open on the tab you were on, or always start on Home.
+- **Search** with suggestions as you type, plus your search history.
+- **Channel pages and playlists,** with endless scrolling in the feeds.
+- **Clear messages** when something can't load or a video can't play, instead of a blank screen.
+
+### Accounts
+- **Sign in with a QR code:** scan it with your phone and approve. No typing on the TV.
+- **Several accounts and channel profiles:** the account button at the top of the page switches between them.
+- **Separate from Music:** OneTube and Music each keep their own YouTube sign-in and profile, so changing one never changes the other.
+- **Watch progress goes back to YouTube,** so History and the "resume" bar match what you see on other devices.
+
+### Playing
+- **Nuvio's own player,** so the controls, subtitles and remote behave the way they do for everything else in the app. The Watch Party and Sources buttons are hidden for YouTube, where they make no sense.
+- **Quality picker** (up to 4K) and a **video format choice** (for example AV1, VP9 or H.264), with a remembered default for each.
+- **Fast start:** the next video is looked up ahead of time, and stream links are refreshed if they have gone stale.
+- **Chapters,** shown on the seek bar and skippable from the player.
+- **Loop** a video.
+- **Autoplay** with an **up-next card** in the corner showing the next video's thumbnail and title.
+- **Playback speed is remembered** between videos.
+- **Captions** through the player's usual subtitle menu.
+- **Live streams** play too, with **live chat** as an overlay.
+
+### The player panel
+Open the YouTube button in the player for:
+- **Like and dislike,** as buttons of their own.
+- **Subscribe,** and a **Channel** button that shows the channel's profile picture and opens the channel.
+- **Save to a playlist.**
+- **Comments:** sort by **Top** or **Newest**, open replies, and scroll with the remote without losing your place.
+- **Hide this channel.**
+
+### Skipping and cleaning up
+- **SponsorBlock:** skip sponsors, intros, outros, self-promotion and more automatically, or have the app **ask first** with a skip card. Choose what to skip under **Settings → YouTube**.
+- **DeArrow:** community-written titles and real thumbnails in place of clickbait. Each part can be turned on or off.
+- **No ads** in playback.
+- **Feed filters:** hide Shorts, watched videos and upcoming premieres.
+- **Hidden words and channels:** anything matching a word or phrase, or coming from a channel you hide, is removed from the feeds.
+
+### How it works
+YouTube is handled by **MediaServiceCore**, the engine behind SmartTube, vendored in `mediaservicecore/`. The app plays through a small loopback server so Nuvio's ExoPlayer gets a proper DASH manifest. The OneTube code lives in `app/src/main/java/com/nuvio/tv/youtube/`.
+
+---
+
+## Music
+
+Music has its own page in the side menu, with top tabs, an Up Next list and plain Back navigation for the remote.
+
+- **Ad-free** listening.
+- **YouTube Music:** sign in for your playlists, liked songs and a personalised home. Likes sync across your devices.
+- **Spotify playlists:** paste a public playlist's link to import it.
+- **Navidrome and WebDAV:** connect your own music server and stream your collection.
+- **Local music:** play from the TV, a USB drive or a network share.
+- **Downloads and offline playback.**
+- **Synced lyrics and music videos:** follow the lyrics, then jump between the song and its video.
+- **Playlists, queue, radio and shuffle,** plus **Explore** for moods and genres and a search for any track.
+- **Last.fm scrobbling** and **Party mode** for listening together.
+- **Its own YouTube sign-in,** separate from OneTube.
+
+---
+
+---
+
+## Live TV features
 
 ### A proper TV guide
 - **TiviMate-style guide:** channels down the side, a timeline across, and a line marking "now" (which you can hide). It fits **8 or more channels** on screen.
@@ -271,7 +340,7 @@ Turn any Home row, collection folder or library list into a scheduled Live TV ch
   - **Preview behind search:** live channels play in the background while you search.
 - **Find & stream in Nuvio:** see a movie in the guide, and stream it through your own addons and debrid.
 - **Setup Sync** (or Google Drive sync): your setup on every TV and phone, combined correctly when you use more than one.
-- **Settings in order:** Live TV, On Demand, Sports, Calendar and VPN sit together under Playback.
+- **Settings in order:** Live TV, On Demand, Sports and Calendar sit together under Playback.
 
 ---
 
@@ -386,26 +455,9 @@ Have a sports addon installed in Nuvio, like **HighFly** or **StremVerse**? Spor
 
 ---
 
-## Built-in VPN
-
-Protect what you watch without installing a separate VPN app. **Settings → VPN** imports a **WireGuard** or **OpenVPN** profile from your VPN provider and uses it for your playback.
-
-> **Thank you to [ghbarker](https://github.com/ghbarker),** who built the VPN and contributed it to Nuvio + IPTV. This feature exists because of him.
-
-- **Choose how much it protects:**
-  - **Off:** playback uses your normal connection.
-  - **HTTP streams only:** protects plain HTTP streams and leaves HTTPS alone.
-  - **HTTP + HTTPS streams:** protects both.
-  - **Full app:** protects everything the app does (Android asks you to allow it).
-- **Import your provider's file:** WireGuard configs and self-contained OpenVPN profiles (UDP or TCP). If the profile needs a username and password, the app asks for them.
-- **One choice for every profile,** or a separate one for just the Nuvio profile you're using.
-- **Comes with your setup:** your VPN profiles are carried to your other devices by Setup Sync and encrypted on each one.
-
----
-
 ## Your setup, everywhere
 
-- **Setup Sync (Nuvio Account Sync):** sign in to Nuvio and your Live TV setup (playlists, guides, favorites, hidden and renamed channels, reminders, Sports and Calendar follows, VPN profiles and settings) is restored and kept in sync on every TV and phone with that account. You can **choose what to sync**.
+- **Setup Sync (Nuvio Account Sync):** sign in to Nuvio and your Live TV setup (playlists, guides, favorites, hidden and renamed channels, reminders, Sports and Calendar follows and settings) is restored and kept in sync on every TV and phone with that account. You can **choose what to sync**.
 - **A new TV in minutes:** sign in with the QR code and everything comes back by itself.
 - **Encrypted:** your saved setup, including your IPTV logins, is encrypted before it's stored. Nothing is written to Nuvio's own servers.
 - **In your control:** **Settings → Live TV → Setup Sync** has Sync Now, Restore Earlier Copy, Turn Off and Delete Saved Setup.
@@ -439,13 +491,13 @@ Problems with Nuvio's movies, shows, addons or accounts that also happen in the 
 
 ---
 
-## Support the project
-
-Nuvio Launcher is free and developed in spare time. If it is useful to you, you can support its development on [Ko-fi](https://ko-fi.com/nuviotvlauncher). Thank you!
-
----
-
 ## FAQ
+
+<details>
+<summary><b>Where do sports scores come from?</b></summary>
+
+ESPN's public feed, FotMob's league data through Nuvio One's sports data service, TheSportsDB, WWE/AEW/TNA and boxing schedules, and sporting-events.org. Sports they don't cover are found in your own TV guide.
+</details>
 
 <details>
 <summary><b>Does this include any channels or movies?</b></summary>
@@ -544,18 +596,6 @@ Turn off **Audio passthrough** under **Settings → Live TV → Watching**.
 </details>
 
 <details>
-<summary><b>How do I use the VPN?</b></summary>
-
-Open **Settings → VPN**, import the WireGuard config or OpenVPN profile your provider gives you, and pick how much to protect: HTTP streams only, HTTP + HTTPS, or the full app. If the profile asks for a username and password, enter them when prompted.
-</details>
-
-<details>
-<summary><b>Which VPN files work?</b></summary>
-
-WireGuard configs and OpenVPN profiles that contain everything in one file (the certificates inside it, not separate files). Profiles that need extra files, scripts or interactive login aren't supported yet.
-</details>
-
-<details>
 <summary><b>What does Nuvio Account Sync store, and where?</b></summary>
 
 Your Live TV setup (playlists, guides, logins, favorites and settings), encrypted, linked to your Nuvio account and kept only to copy it between your devices. It is stored on the sync service of Nuvio + IPTV (run by homelessbrian), not on Nuvio's servers, so that service has to stay online for Setup Sync to work. **Delete Saved Setup** removes it at any time. It works only with the official Nuvio server. See the [privacy policy](https://homelessbrian.github.io/privacy.html).
@@ -577,19 +617,35 @@ Your Live TV setup, in a private app folder in your own Google Drive that only t
 
 ## Credits
 
-- ** [ghbarker](https://github.com/ghbarker): a huge thank you.** He built the **built-in VPN** (WireGuard and OpenVPN playback protection) and contributed it to this project. He also made the original [phone port](https://github.com/ghbarker/NuvioMobile-IPTV) that the phone app is built on.
-- **[Nuvio](https://github.com/NuvioMedia/NuvioTV)** by the NuvioMedia team: Nuvio Launcher is built on their work.
-- **[Nuvio + IPTV](https://github.com/homelessbrian/NuvioPlusIPTV)** by [homelessbrian](https://github.com/homelessbrian): the Live TV guide, Sports hub, Calendar, recordings, On Demand and sync that this launcher is built on.
+- **[Nuvio One](https://github.com/zoga2o3-ops/Nuvio-One)** by zoga2o3: the app this launcher is a fork of. OneTube, Music, the Live TV guide, Sports hub, recordings and On Demand integration, and the sync and sports data services this app uses all come from Nuvio One. A big thank you: without it there is no launcher.
+- **[Nuvio](https://github.com/NuvioMedia/NuvioTV)** by the NuvioMedia team, which Nuvio One and this app are built on.
+- **[Nuvio + IPTV](https://github.com/homelessbrian/NuvioPlusIPTV)** by [homelessbrian](https://github.com/homelessbrian): the Live TV guide, Sports hub, Calendar, recordings, On Demand and sync that Nuvio One is built on.
+- **[ghbarker](https://github.com/ghbarker)**: made the original [phone port](https://github.com/ghbarker/NuvioMobile-IPTV) that the phone app is built on, and the built-in VPN in Nuvio + IPTV.
+- **[SmartTube](https://github.com/yuliskov/SmartTube) / [MediaServiceCore](https://github.com/yuliskov/MediaServiceCore)** by Yurii Liskov (MIT licence): the YouTube engine. **[BitChord](https://github.com/kushagrasinghx/BitChord)** by Kushagra Singh (GPL-3.0): the YouTube Music catalogue client and the Music section's design. **[SponsorBlock](https://sponsor.ajay.app)** and **[DeArrow](https://dearrow.ajay.app)** by Ajay Ramachandran and their communities (CC BY-NC-SA 4.0).
 - The launcher itself (Home screen, Apps, the phone-driven setup) takes its approach from [FLauncher](https://gitlab.com/flauncher/flauncher) and [ArcLauncher](https://github.com/meddouribadis/arclauncher).
 - Guide and overlay design inspired by **TiviMate**.
 - Channel logo libraries from **[iptv-org](https://github.com/iptv-org)** and **[tv-logos](https://github.com/tv-logo/tv-logos)**.
-- Sports data (collected by [homelessbrian's nuvio-data](https://github.com/homelessbrian/nuvio-data)) from **ESPN**'s public feed, **[TheSportsDB](https://www.thesportsdb.com)**, **HockeyTech**, **MLB**'s stats service and **sporting-events.org**. Show schedules from **[TVmaze](https://www.tvmaze.com)**, and pictures and logos from **[TMDB](https://www.themoviedb.org)**. Nuvio Launcher isn't affiliated with any of them, and team and league names and logos belong to their owners.
+- Sports data through Nuvio One's sports data service, from ESPN's public feed, [TheSportsDB](https://www.thesportsdb.com), [FotMob](https://www.fotmob.com) (unofficial), [WWE.com](https://www.wwe.com), [All Elite Wrestling](https://www.allelitewrestling.com), [TNA Wrestling](https://tnawrestling.com), boxing schedules and sporting-events.org. Show schedules from [TVmaze](https://www.tvmaze.com).
 - Built with Kotlin, Jetpack Compose, TV Material 3 and Media3 / ExoPlayer.
 
-Nuvio Launcher is an unofficial fork and is **not affiliated with or endorsed by NuvioMedia, homelessbrian or TiviMate**. Please report issues here, not to the Nuvio team.
+Nuvio Launcher is an unofficial fork and is **not affiliated with or endorsed by Nuvio One, NuvioMedia, homelessbrian, SmartTube, SponsorBlock, DeArrow, TiviMate, Google or YouTube**. YouTube is a trademark of Google LLC. Please report issues here, not to those projects.
+
+## Support the project
+
+Nuvio Launcher: [Ko-fi](https://ko-fi.com/nuviotvlauncher). The app it is a fork of is made by zoga2o3: [Nuvio One on Ko-fi](https://ko-fi.com/zoga2o3).
+
+## Releasing
+
+Releases are built by the **Release** workflow (Actions tab → Release → Run workflow): pick the branch, type the version (higher than the last release, `1.2.4-beta.6` for a beta) and tick **Pre-release** for the Beta update channel. It signs the APKs and publishes them as a GitHub release; the in-app updater reads this repo's releases.
+
+It needs these repository secrets: `NUVIO_RELEASE_KEYSTORE_BASE64`, `NUVIO_RELEASE_KEY_ALIAS`, `NUVIO_RELEASE_KEY_PASSWORD`, `NUVIO_RELEASE_STORE_PASSWORD` (or the `LAUNCHER_*` equivalents), and `TMDB_API_KEY` for artwork and logos, plus `NUVIO_BACKEND_URL` / `NUVIO_BACKEND_KEY` for the Nuvio account. Without `TMDB_API_KEY` the app shows titles as plain text instead of logos.
+
+**Branches.** `dev` is where work happens and where betas are built (tick **Pre-release**, version like `1.2.4-beta.7`). `main` holds stable releases only: when a beta has been tested, merge `dev` into `main`, then run the Release workflow on `main` with **Pre-release** off and a plain version like `1.2.4`. The workflow refuses a stable build from any other branch, a beta from `main`, and a version whose suffix doesn't match. Hotfixes go on `main` first and are merged back into `dev`.
+
+The **Sync upstream** workflow tries merging [Nuvio One](https://github.com/zoga2o3-ops/Nuvio-One)'s release branch (`hotfix/17.2.1` at the moment; set the repository variable `NUVIOONE_SYNC_BRANCH` when they release from another branch) into this repo every 6 hours and pushes a clean merge to `sync/nuvioone` for review.
 
 ## Legal
 
 This app is a client-side player. It does not host, store or distribute any media, and it ships with no channels, playlists or content sources. Only use sources you own or are authorized to access. See Nuvio's [legal and DMCA information](https://github.com/NuvioMedia/NuvioTV#legal--dmca), which applies here as well.
 
-Licensed under the **GNU General Public License v3.0**, like upstream Nuvio. See [LICENSE](LICENSE).
+Licensed under the **GNU General Public License v3.0**, like Nuvio One and Nuvio. See [LICENSE](LICENSE).

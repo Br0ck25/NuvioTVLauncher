@@ -181,7 +181,8 @@ fun HomeSettingsDrawer(
                                         onLongClick = { actionsFor = app },
                                         modifier = if (app == apps.first()) Modifier.focusRequester(first) else Modifier,
                                         moving = move.carrying == app.packageName,
-                                        width = 158.dp
+                                        width = 158.dp,
+                                        showHiddenBadges = true
                                     )
                                 }
                             }
@@ -204,6 +205,7 @@ fun HomeSettingsDrawer(
             onRename = { appsViewModel.rename(app, it) },
                 iconChooser = appsViewModel.iconChooser(app),
                 onSetHidden = { appsViewModel.setHidden(app, it) },
+                onSetHiddenOnPage = { appsViewModel.setHiddenOnPage(app, it) },
                 onDismiss = { actionsFor = null },
                 onHome = onDismiss
             )
@@ -217,8 +219,8 @@ private fun DrawerRow(icon: ImageVector, label: String, modifier: Modifier = Mod
         onClick = onClick,
         modifier = modifier.fillMaxWidth(),
         shape = CardDefaults.shape(RoundedCornerShape(14.dp)),
-        colors = CardDefaults.colors(containerColor = Color.White.copy(alpha = 0.06f), focusedContainerColor = Color.White.copy(alpha = 0.2f)),
-        border = CardDefaults.border(focusedBorder = Border(BorderStroke(2.dp, Color.White), shape = RoundedCornerShape(14.dp))),
+        colors = CardDefaults.colors(containerColor = Color.White.copy(alpha = 0.06f), focusedContainerColor = NuvioTheme.colors.FocusBackground),
+        border = CardDefaults.border(focusedBorder = Border(BorderStroke(2.dp, NuvioTheme.colors.FocusRing), shape = RoundedCornerShape(14.dp))),
         scale = CardDefaults.scale(focusedScale = 1f)
     ) {
         Row(

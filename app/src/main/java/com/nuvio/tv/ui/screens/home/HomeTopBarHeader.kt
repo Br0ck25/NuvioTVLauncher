@@ -114,13 +114,14 @@ fun HomeTopBarHeader(
                 modifier = Modifier.size(36.dp),
                 shape = ClickableSurfaceDefaults.shape(RoundedCornerShape(10.dp)),
                 colors = ClickableSurfaceDefaults.colors(
-                    containerColor = Color.White.copy(alpha = 0.08f),
-                    focusedContainerColor = Color.White.copy(alpha = 0.22f)
+                    containerColor = Color.Black.copy(alpha = 0.35f),
+                    focusedContainerColor = NuvioTheme.colors.FocusBackground,
+                    pressedContainerColor = NuvioTheme.colors.FocusBackground
                 ),
                 scale = ClickableSurfaceDefaults.scale(focusedScale = 1f),
                 border = ClickableSurfaceDefaults.border(
                     border = Border(BorderStroke(1.dp, Color.White.copy(alpha = 0.12f))),
-                    focusedBorder = Border(BorderStroke(2.dp, Color.White))
+                    focusedBorder = Border(BorderStroke(2.dp, NuvioTheme.colors.FocusRing))
                 )
             ) {
                 Box(
@@ -145,13 +146,14 @@ fun HomeTopBarHeader(
                 .wrapContentWidth(),
             shape = ClickableSurfaceDefaults.shape(RoundedCornerShape(10.dp)),
             colors = ClickableSurfaceDefaults.colors(
-                containerColor = Color.White.copy(alpha = 0.08f),
-                focusedContainerColor = Color.White.copy(alpha = 0.22f)
+                containerColor = Color.Black.copy(alpha = 0.35f),
+                focusedContainerColor = NuvioTheme.colors.FocusBackground,
+                    pressedContainerColor = NuvioTheme.colors.FocusBackground
             ),
             scale = ClickableSurfaceDefaults.scale(focusedScale = 1f),
             border = ClickableSurfaceDefaults.border(
                 border = Border(BorderStroke(1.dp, Color.White.copy(alpha = 0.12f))),
-                focusedBorder = Border(BorderStroke(2.dp, Color.White))
+                focusedBorder = Border(BorderStroke(2.dp, NuvioTheme.colors.FocusRing))
             )
         ) {
             Row(
@@ -197,13 +199,14 @@ fun HomeTopBarHeader(
             modifier = Modifier.size(36.dp),
             shape = ClickableSurfaceDefaults.shape(RoundedCornerShape(10.dp)),
             colors = ClickableSurfaceDefaults.colors(
-                containerColor = Color.White.copy(alpha = 0.08f),
-                focusedContainerColor = Color.White.copy(alpha = 0.22f)
+                containerColor = Color.Black.copy(alpha = 0.35f),
+                focusedContainerColor = NuvioTheme.colors.FocusBackground,
+                    pressedContainerColor = NuvioTheme.colors.FocusBackground
             ),
             scale = ClickableSurfaceDefaults.scale(focusedScale = 1f),
             border = ClickableSurfaceDefaults.border(
                 border = Border(BorderStroke(1.dp, Color.White.copy(alpha = 0.12f))),
-                focusedBorder = Border(BorderStroke(2.dp, Color.White))
+                focusedBorder = Border(BorderStroke(2.dp, NuvioTheme.colors.FocusRing))
             )
         ) {
             Box(

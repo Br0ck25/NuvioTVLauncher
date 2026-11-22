@@ -4,6 +4,7 @@ import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
 import com.nuvio.tv.livetv.data.LiveTvPreferences
 import com.nuvio.tv.livetv.data.LiveTvRepository
+import com.nuvio.tv.livetv.model.ChannelGroup
 import com.nuvio.tv.livetv.model.EpgProgram
 import com.nuvio.tv.livetv.model.LiveChannel
 import com.nuvio.tv.livetv.model.LiveTvSettings
@@ -62,6 +63,9 @@ class LiveTvHomeRowViewModel @Inject constructor(
         channelStore.displayChannels, userState, settings, viewModelScope
     )
 
+    /** The row's channel keys, kept so the periodic refresh loads only these channels. */
+    private val rowChannelKeys = MutableStateFlow<List<String>>(emptyList())
+
     val homeRow: StateFlow<List<LiveTvViewModel.HomeRowEntry>> = combine(
         rowChannels,
         repository.programs,
@@ -78,12 +82,10 @@ class LiveTvHomeRowViewModel @Inject constructor(
             val nxt = l.firstOrNull { it.startMs >= (cur?.stopMs ?: at) }
             LiveTvViewModel.HomeRowEntry(ch, moved(cur), moved(nxt))
         }
-        if (s.homeRowHidePlaceholders) {
-            val withListings = entries.filter { e -> e.now != null && !LiveTvRepository.isPlaceholderTitle(e.now.title) }
-            // With no guide at all (or none for these channels) nothing has a listing, and hiding the
-            // channels with none would empty the row: Favorites and Recently watched would never show.
-            // Then the channels are shown as they are.
-            if (withListings.isNotEmpty()) entries = withListings
+        // Favorites are the viewer's own picks: a favorite whose guide has nothing listed right now must not drop out
+        // of the row (3 favorites showed as 2), so only the other sources hide channels with nothing on.
+        if (s.homeRowHidePlaceholders && homeRowGroup(s) != ChannelGroup.FAVORITES) {
+            entries = entries.filter { e -> e.now != null && !LiveTvRepository.isPlaceholderTitle(e.now.title) }
         }
         entries = when (s.homeRowSort) {
             "number" -> entries.sortedBy { it.channel.number }
@@ -103,8 +105,10 @@ class LiveTvHomeRowViewModel @Inject constructor(
                 // Nothing to keep up to date while a movie or episode plays in Nuvio's player.
                 com.nuvio.tv.livetv.data.BackgroundWork.awaitIdle()
                 _now.value = System.currentTimeMillis()
-                // Keep the hours around now loaded from the guide database as time passes.
-                repository.ensureRange(_now.value - 3 * 3_600_000L, _now.value + 12 * 3_600_000L)
+                // Only this row's channels: reading every channel here made Home wait behind
+                // the whole guide on a large playlist. The full guide is read when Live TV opens.
+                val keys = rowChannelKeys.value
+                if (keys.isNotEmpty()) repository.loadChannelsNow(keys)
                 delay(30_000)
             }
         }
@@ -112,7 +116,10 @@ class LiveTvHomeRowViewModel @Inject constructor(
         viewModelScope.launch {
             rowChannels.map { (list, s) -> list.take(if (s.homeRowLimit > 0) s.homeRowLimit * 3 else 200).map { it.key } }
                 .distinctUntilChanged()
-                .collectLatest { keys -> if (keys.isNotEmpty()) { delay(1_500); repository.loadChannelsNow(keys) } }
+                .collectLatest { keys ->
+                    rowChannelKeys.value = keys
+                    if (keys.isNotEmpty()) { delay(1_500); repository.loadChannelsNow(keys) }
+                }
         }
     }
 

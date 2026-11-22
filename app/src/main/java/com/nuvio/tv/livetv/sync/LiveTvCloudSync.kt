@@ -1,15 +1,16 @@
 package com.nuvio.tv.livetv.sync
 
-import com.nuvio.tv.livetv.data.ForkService
 import android.content.Context
 import androidx.annotation.StringRes
 import com.nuvio.tv.R
 import com.nuvio.tv.core.util.withAppLocale
 import android.os.Build
+import com.nuvio.tv.BuildConfig
 import com.nuvio.tv.core.auth.AuthManager
 import com.nuvio.tv.domain.model.AuthState
 import com.nuvio.tv.domain.model.ServerConfiguration
 import com.nuvio.tv.livetv.data.LiveTvPreferences
+import com.nuvio.tv.livetv.model.PlaylistSource
 import dagger.hilt.android.qualifiers.ApplicationContext
 import io.github.jan.supabase.auth.Auth
 import kotlinx.coroutines.CoroutineScope
@@ -62,6 +63,13 @@ enum class CloudPrompt {
 
 enum class CloudChoice { UseSaved, Combine, Later }
 
+/** A playlist that is in the saved setup but not on this TV. */
+data class RecoverablePlaylist(
+    val name: String,
+    val detail: String,
+    val source: PlaylistSource
+)
+
 /**
  * Keeps the Live TV setup the same on every TV signed in to the same Nuvio account.
  *
@@ -78,7 +86,7 @@ enum class CloudChoice { UseSaved, Combine, Later }
  *  - signed in on a TV with no setup, and a saved copy exists: restored, no question;
  *  - an account with no saved copy and a TV with a setup: asks once whether to back it up;
  *  - an account with a saved copy and a TV with a different setup: asks once what to do;
- *  - after that: syncs by itself (when Live TV settings change, every 15 minutes, and at start).
+ *  - after that: syncs by itself (when Live TV settings change, every hour, and at start).
  */
 @Singleton
 class LiveTvCloudSync @Inject constructor(
@@ -96,7 +104,7 @@ class LiveTvCloudSync @Inject constructor(
     private val parts = SyncParts(store)
     private val mutex = Mutex()
     private val http = ForkHttp.builder()
-        .dns(com.nuvio.tv.core.network.IPv4FirstDns())
+        .dns(com.nuvio.tv.core.network.IPv4FirstDns(com.nuvio.tv.livetv.data.ForkDns.app))
         .connectTimeout(15, TimeUnit.SECONDS)
         .readTimeout(30, TimeUnit.SECONDS)
         .followRedirects(false)
@@ -144,7 +152,7 @@ class LiveTvCloudSync @Inject constructor(
         }
         scope.launch {
             while (isActive) {
-                delay(15 * 60_000L)
+                delay(60 * 60_000L)
                 com.nuvio.tv.livetv.data.BackgroundWork.awaitLiveHold()
                 if (isOn()) syncNow()
             }
@@ -250,6 +258,81 @@ class LiveTvCloudSync @Inject constructor(
         }
     }
 
+    /**
+     * Playlists in the saved setup (current and previous copy) that are not on this TV.
+     * Read-only: nothing is changed here.
+     */
+    suspend fun recoverablePlaylists(): Result<List<RecoverablePlaylist>> =
+        withContext(Dispatchers.IO) {
+            mutex.withLock {
+                if (userId == null) {
+                    return@withLock Result.failure(
+                        IllegalStateException(text(R.string.iptv_status_sync_sign_in_again))
+                    )
+                }
+                _state.value = _state.value.copy(busy = true, message = null)
+                val result = runCatching {
+                    val current = fetch()
+                    if (current is Remote.Failed) error(failText(current.code))
+                    val currentData = (current as? Remote.Found)?.data
+                    val previousData = fetchPrevious()
+                    val cloud = listOfNotNull(currentData, previousData).flatMap { data ->
+                        prefs.decodePlaylists(data.optJSONObject("playlists")?.optString("v"))
+                    }
+                    PlaylistRecovery.missing(cloud, prefs.currentPlaylists()).map { source ->
+                        RecoverablePlaylist(
+                            name = source.name.ifBlank { PlaylistRecovery.detail(source) },
+                            detail = PlaylistRecovery.detail(source),
+                            source = source
+                        )
+                    }
+                }
+                _state.value = _state.value.copy(busy = false)
+                result
+            }
+        }
+
+    /**
+     * Adds [playlists] to this TV and saves the combined setup. Existing playlists stay;
+     * nothing is replaced or removed.
+     */
+    suspend fun restorePlaylists(playlists: List<PlaylistSource>): Result<Int> =
+        withContext(Dispatchers.IO) {
+            mutex.withLock {
+                val uid = userId ?: return@withLock Result.failure(
+                    IllegalStateException(text(R.string.iptv_status_sync_sign_in_again))
+                )
+                if (playlists.isEmpty()) return@withLock Result.success(0)
+                _state.value = _state.value.copy(busy = true, message = null)
+                val result = runCatching {
+                    val current = fetch()
+                    val revision = (current as? Remote.Found)?.revision ?: 0
+                    val local = prefs.exportForSync()
+                    val localPlaylists =
+                        prefs.decodePlaylists(local.optJSONObject("playlists")?.optString("v"))
+                    val add = PlaylistRecovery.missing(playlists, localPlaylists)
+                    if (add.isEmpty()) return@runCatching 0
+                    val merged = localPlaylists + add
+                    local.put(
+                        "playlists",
+                        JSONObject().put("t", "str").put("v", prefs.encodePlaylists(merged))
+                    )
+                    applyShared(local)
+                    val savedData = localView()
+                    when (val putResult = put(revision, savedData)) {
+                        is Put.Saved -> saved(uid, savedData, emptySet())
+                        else -> Unit
+                    }
+                    add.size
+                }
+                _state.value = _state.value.copy(
+                    busy = false,
+                    lastSyncMs = store.getLong(KEY_LAST_SYNC, 0L)
+                )
+                result
+            }
+        }
+
     // ------------------------------------------------------------------ bringing a Google Drive backup over
 
     /** Whether Google Drive was already connected on this TV when the import began (then it stays connected). */
@@ -346,7 +429,9 @@ class LiveTvCloudSync @Inject constructor(
                     } else {
                         val local = localView()
                         val remoteView = parts.strip(remote.data)
-                        val merged = drive.merge(null, local, remoteView, false, removedHere)
+                        // Like Google Drive: this TV's favorites, hidden channels and order
+                        // win the first combine; playlists and guides from both are kept.
+                        val merged = drive.merge(null, local, remoteView, true, removedHere)
                         if (merged.toString() != local.toString()) applyShared(merged)
                         if (merged.toString() == remoteView.toString()) {
                             saved(uid, remote.data, emptySet())
@@ -478,7 +563,9 @@ class LiveTvCloudSync @Inject constructor(
                 remote is Remote.Failed -> return failText(remote.code)
                 remote is Remote.Found && usable(remote.data) -> {
                     val remoteView = parts.strip(remote.data)
-                    val merged = drive.merge(readBase(uid), parts.freshen(local, remoteView), remoteView, false, removedHere)
+                    // First sync with no base: keep this TV's personal choices (favorites,
+                    // hidden channels, group order) exactly like the Google Drive sync does.
+                    val merged = drive.merge(readBase(uid), parts.freshen(local, remoteView), remoteView, true, removedHere)
                     val changedHere = merged.toString() != local.toString()
                     if (changedHere) apply(parts.keep(merged, localFull))
                     val news = if (changedHere) updatedText else null
@@ -590,6 +677,12 @@ class LiveTvCloudSync @Inject constructor(
         }
     }
 
+    /** The copy before the latest save, or null when there is none. */
+    private suspend fun fetchPrevious(): JSONObject? {
+        val reply = call("GET", "/v1/setup/previous")
+        return if (reply.code == 200) reply.json?.optJSONObject("data") else null
+    }
+
     private suspend fun put(baseRevision: Int, data: JSONObject): Put {
         val body = JSONObject()
             .put("baseRevision", baseRevision)
@@ -619,10 +712,9 @@ class LiveTvCloudSync @Inject constructor(
         val token = auth.currentAccessTokenOrNull()?.takeIf { it.isNotBlank() }
             ?: return@withContext Reply(401, null)
         val request = Request.Builder()
-            .url(CLOUD_URL + ForkService.syncPath(path))
+            .url(CLOUD_URL + path)
             .header("Authorization", "Bearer $token")
             .header("apikey", serverConfiguration.publishableKey)
-            .apply { if (ForkService.hasKey) header(ForkService.HEADER, ForkService.appKey) }
             .method(method, body?.toString()?.toRequestBody(json))
             .build()
         http.newCall(request).execute().use { response ->
@@ -647,8 +739,10 @@ class LiveTvCloudSync @Inject constructor(
         MessageDigest.getInstance("SHA-256").digest(text.toByteArray()).joinToString("") { "%02x".format(it) }
 
     companion object {
-        /** Our own small service (the livetv-cloud Worker). */
-        const val CLOUD_URL = "https://livetv-cloud.nuvioplusiptv.workers.dev"
+        /** Nuvio One's own sync service (see the livetv-cloud Worker). */
+        val CLOUD_URL: String = BuildConfig.LIVETV_SYNC_URL
+        private const val UPDATED_TEXT = "Updated from your other TV."
+        private const val NETWORK_TEXT = "Couldn't reach sync. Will try again."
         private const val KEY_ENABLED = "enabled_"
         private const val KEY_DECLINED = "declined_"
         private const val KEY_BASE_USER = "base_user"

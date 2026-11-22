@@ -39,7 +39,9 @@ internal fun HomeViewModel.onCatalogRowItemsChanged(rowKey: String) {
 
 private suspend fun HomeViewModel.batchFetchRatingsForRowAndNext(focusedRowKey: String) {
     if (focusedRowKey == MODERN_CONTINUE_WATCHING_ROW_KEY ||
-        focusedRowKey == MODERN_UPCOMING_ROW_KEY
+        focusedRowKey == MODERN_UPCOMING_ROW_KEY ||
+        focusedRowKey == MODERN_ON_DEMAND_ROW_KEY ||
+        focusedRowKey == MODERN_YOUTUBE_ROW_KEY
     ) return
 
     val allRows = _modernHomePresentation.value.rows.list
@@ -50,7 +52,9 @@ private suspend fun HomeViewModel.batchFetchRatingsForRowAndNext(focusedRowKey: 
     for (i in (focusedIdx + 1) until allRows.size) {
         val nextRow = allRows[i]
         if (nextRow.key != MODERN_CONTINUE_WATCHING_ROW_KEY &&
-            nextRow.key != MODERN_UPCOMING_ROW_KEY
+            nextRow.key != MODERN_UPCOMING_ROW_KEY &&
+            nextRow.key != MODERN_ON_DEMAND_ROW_KEY &&
+            nextRow.key != MODERN_YOUTUBE_ROW_KEY
         ) {
             targetRowKeys.add(nextRow.key)
             break

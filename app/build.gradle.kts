@@ -1,4 +1,4 @@
-plugins {
+﻿plugins {
     alias(libs.plugins.android.application)
     alias(libs.plugins.kotlin.android)
     alias(libs.plugins.kotlin.compose)
@@ -13,6 +13,10 @@ import com.android.build.gradle.internal.tasks.CompileArtProfileTask
 import com.android.build.gradle.internal.tasks.L8DexDesugarLibTask
 import java.io.File
 import java.util.Properties
+import java.net.URI
+import java.security.MessageDigest
+import java.nio.file.Files
+import java.nio.file.StandardCopyOption
 
 // Copies the per-API dex metadata (.dm) files AGP builds next to the binary ART profile into the APK's assets, so the
 // in-app updater can install the next version together with its profile and have it compiled at install time.
@@ -47,17 +51,17 @@ fun parseBooleanProperty(value: String?): Boolean {
     return normalized == "1" || normalized == "true" || normalized == "yes" || normalized == "on"
 }
 
+// The official Nuvio account server and its publishable (public by design) client key, used when a build
+// doesn't set its own NUVIO_SUPABASE_URL / NUVIO_SUPABASE_ANON_KEY, so signing in with a real Nuvio account
+// works without any extra setup.
+val defaultSupabaseUrl = "https://api.nuvio.tv"
+val defaultSupabaseAnonKey = "sb_publishable_1Clq8rlTVACkdcZuqr6_AD__xUUC_EN"
+
 fun resolveProperty(dev: Properties, local: Properties, key: String, fallback: String = ""): String {
     return dev.getProperty(key)?.trim()?.takeIf { it.isNotBlank() }
         ?: local.getProperty(key)?.trim()?.takeIf { it.isNotBlank() }
         ?: fallback
 }
-
-// The official Nuvio account server and its publishable (public by design) client key, used when a build
-// doesn't set its own NUVIO_SUPABASE_URL / NUVIO_SUPABASE_ANON_KEY. This is what the earlier Nuvio Launcher
-// release used, so signing in with a real Nuvio account works without any extra setup.
-val defaultSupabaseUrl = "https://api.nuvio.tv"
-val defaultSupabaseAnonKey = "sb_publishable_1Clq8rlTVACkdcZuqr6_AD__xUUC_EN"
 
 fun buildConfigString(value: String): String {
     return "\"" + value.replace("\\", "\\\\").replace("\"", "\\\"") + "\""
@@ -106,6 +110,20 @@ val sentryOrg = providers.environmentVariable("SENTRY_ORG").orNull?.trim()?.take
 val sentryProject = providers.environmentVariable("SENTRY_PROJECT").orNull?.trim()?.takeIf { it.isNotBlank() }
     ?: resolveProperty(devProperties, localProperties, "SENTRY_PROJECT").takeIf { it.isNotBlank() }
 val sentryMappingUploadEnabled = sentryAuthToken != null && sentryOrg != null && sentryProject != null
+val debugReportDiscordWebhook = providers.environmentVariable("DEBUG_REPORT_DISCORD_WEBHOOK")
+    .orNull?.trim()?.takeIf { it.isNotBlank() }
+    ?: resolveProperty(devProperties, localProperties, "DEBUG_REPORT_DISCORD_WEBHOOK")
+val lastfmApiKey = providers.environmentVariable("LASTFM_API_KEY").orNull?.trim()?.takeIf { it.isNotBlank() }
+    ?: resolveProperty(devProperties, localProperties, "LASTFM_API_KEY")
+val lastfmSecret = providers.environmentVariable("LASTFM_SECRET").orNull?.trim()?.takeIf { it.isNotBlank() }
+    ?: resolveProperty(devProperties, localProperties, "LASTFM_SECRET")
+
+if (debugReportDiscordWebhook.isNullOrBlank()) {
+    logger.warn(
+        "DEBUG_REPORT_DISCORD_WEBHOOK is not set; the About 'Send debug report' row will be hidden in this build. " +
+            "Add it to the active checkout's local.properties before building a release."
+    )
+}
 
 fun env(name: String): String? = providers.environmentVariable(name).orNull
 
@@ -141,8 +159,8 @@ android {
         testInstrumentationRunner = "androidx.test.runner.AndroidJUnitRunner"
         minSdk = 24
         targetSdk = 36
-        versionCode = 1076
-        versionName = "1.1.0-beta.13"
+        versionCode = 1080
+        versionName = "1.2.0-beta.3"
 
         buildConfigField("String", "PARENTAL_GUIDE_API_URL", "\"${localProperties.getProperty("PARENTAL_GUIDE_API_URL", "")}\"")
         buildConfigField("String", "INTRODB_API_URL", "\"${localProperties.getProperty("INTRODB_API_URL", "")}\"")
@@ -156,6 +174,10 @@ android {
         buildConfigField("String", "SIMKL_CLIENT_ID", buildConfigString(resolveProperty(devProperties, localProperties, "SIMKL_CLIENT_ID")))
         buildConfigField("String", "SIMKL_APP_NAME", buildConfigString(resolveProperty(devProperties, localProperties, "SIMKL_APP_NAME", "nuvio")))
         buildConfigField("String", "MDBLIST_CLIENT_ID", buildConfigString(resolveProperty(devProperties, localProperties, "MDBLIST_CLIENT_ID")))
+        // Music: Spotify Authorization Code + PKCE. The client ID is public; no secret on the TV.
+        buildConfigField("String", "SPOTIFY_CLIENT_ID", buildConfigString(resolveProperty(devProperties, localProperties, "SPOTIFY_CLIENT_ID")))
+        // Static HTTPS page used as the Spotify redirect (e.g. https://user.github.io/repo/spotify-link).
+        buildConfigField("String", "SPOTIFY_LINK_BASE_URL", buildConfigString(resolveProperty(devProperties, localProperties, "SPOTIFY_LINK_BASE_URL")))
         buildConfigField("String", "TMDB_API_KEY", "\"${localProperties.getProperty("TMDB_API_KEY", "")}\"")
         buildConfigField("String", "TV_LOGIN_WEB_BASE_URL", "\"${localProperties.getProperty("TV_LOGIN_WEB_BASE_URL", "https://nuvio.tv/tv-login")}\"")
         buildConfigField("String", "DEVICE_LOGIN_WEB_BASE_URL", "\"${localProperties.getProperty("DEVICE_LOGIN_WEB_BASE_URL", "https://nuvio.tv/link")}\"")
@@ -178,13 +200,22 @@ android {
         buildConfigField("String", "AVATAR_PUBLIC_BASE_URL", "\"${localProperties.getProperty("AVATAR_PUBLIC_BASE_URL", "")}\"")
         buildConfigField("String", "UNIQUE_CONTRIBUTIONS_BASE_URL", "\"${localProperties.getProperty("UNIQUE_CONTRIBUTIONS_BASE_URL", "")}\"")
         buildConfigField("String", "PLAYBACK_REPORTS_BASE_URL", buildConfigString(localProperties.getProperty("PLAYBACK_REPORTS_BASE_URL", "")))
+        buildConfigField("String", "DEBUG_REPORT_DISCORD_WEBHOOK", buildConfigString(debugReportDiscordWebhook))
         buildConfigField("String", "PREMIUMIZE_CLIENT_ID", "\"${localProperties.getProperty("PREMIUMIZE_CLIENT_ID", "")}\"")
         buildConfigField("String", "SPONSOR_NAMES", buildConfigString(sponsorNames))
         buildConfigField("String", "SENTRY_DSN", buildConfigString(sentryDsn))
+        buildConfigField("String", "LASTFM_API_KEY", buildConfigString(lastfmApiKey))
+        buildConfigField("String", "LASTFM_SECRET", buildConfigString(lastfmSecret))
 
         // In-app updater (GitHub Releases)
-        buildConfigField("String", "GITHUB_OWNER", "\"Br0ck25\"")
-        buildConfigField("String", "GITHUB_REPO", "\"NuvioTVLauncher\"")
+        // The fork's own releases are the default; -PlivetvUpdateRepo=owner/repo can override it.
+        // Leaving this empty made every "Check for updates" fail silently in release builds.
+        val updateRepo = (findProperty("livetvUpdateRepo") as String?)
+            ?.trim()
+            ?.takeIf { it.isNotBlank() }
+            ?: "Br0ck25/NuvioTVLauncher"
+        buildConfigField("String", "GITHUB_OWNER", "\"${updateRepo.substringBefore('/', "")}\"")
+        buildConfigField("String", "GITHUB_REPO", "\"${updateRepo.substringAfter('/', "")}\"")
     }
 
     flavorDimensions += "distribution"
@@ -287,6 +318,7 @@ android {
             buildConfigField("String", "AVATAR_PUBLIC_BASE_URL", "\"${localProperties.getProperty("AVATAR_PUBLIC_BASE_URL", "")}\"")
             buildConfigField("String", "UNIQUE_CONTRIBUTIONS_BASE_URL", "\"${localProperties.getProperty("UNIQUE_CONTRIBUTIONS_BASE_URL", "")}\"")
             buildConfigField("String", "PLAYBACK_REPORTS_BASE_URL", buildConfigString(localProperties.getProperty("PLAYBACK_REPORTS_BASE_URL", "")))
+        buildConfigField("String", "DEBUG_REPORT_DISCORD_WEBHOOK", buildConfigString(debugReportDiscordWebhook))
             buildConfigField("String", "PREMIUMIZE_CLIENT_ID", "\"${localProperties.getProperty("PREMIUMIZE_CLIENT_ID", "")}\"")
             buildConfigField("String", "SPONSOR_NAMES", buildConfigString(sponsorNames))
         }
@@ -354,6 +386,8 @@ android {
     packaging {
         jniLibs {
             useLegacyPackaging = true
+            // Audio Sync uses the JNI API; these unused native APIs duplicate runtime code.
+            excludes += listOf("lib/*/libsherpa-onnx-c-api.so", "lib/*/libsherpa-onnx-cxx-api.so")
             // Keep one consistent native set across dependencies.
             pickFirsts += listOf(
                 "lib/*/libc++_shared.so",
@@ -370,6 +404,7 @@ android {
 
     testOptions {
         unitTests.isReturnDefaultValues = true
+        unitTests.isIncludeAndroidResources = true
     }
 }
 
@@ -390,6 +425,13 @@ android.defaultConfig.buildConfigField(
     "String", "NUVIO_BASE_VERSION", "\"${android.defaultConfig.versionName ?: ""}\""
 )
 
+// Live TV setup sync service. Lets a test build point at a staging Worker without
+// changing the default used by everyone else.
+val livetvSyncUrl = (findProperty("livetvSyncUrl") as String?)
+    ?.takeIf { it.isNotBlank() }
+    ?: "https://nuvioone-sync.nuviotv-sync.workers.dev"
+android.defaultConfig.buildConfigField("String", "LIVETV_SYNC_URL", "\"$livetvSyncUrl\"")
+
 val livetvBuildNumber = (findProperty("livetvBuildNumber") as String?)?.toIntOrNull() ?: 0
 android.defaultConfig.versionCode = (android.defaultConfig.versionCode ?: 1) * 100 + livetvBuildNumber
 (findProperty("livetvVersionName") as String?)?.takeIf { it.isNotBlank() }?.let {
@@ -406,13 +448,10 @@ val livetvIsTestBuild = (findProperty("livetvTestBuild") as String?)?.toBoolean(
 val livetvTesterKey = if (livetvIsTestBuild) {
     (System.getenv("LIVETV_TESTER_KEY") ?: localProperties.getProperty("LIVETV_TESTER_KEY", "")).trim()
 } else ""
-// Our own builds carry the app key (GitHub secret LIVETV_APP_KEY, never in the code), which our
-// livetv-cloud service asks for before it hands out cloud sync and the sports files. Builds
-// without it fall back to the old public addresses.
-val livetvAppKey = (System.getenv("LIVETV_APP_KEY") ?: localProperties.getProperty("LIVETV_APP_KEY", "")).trim()
-android.defaultConfig.buildConfigField("String", "LIVETV_APP_KEY", buildConfigString(livetvAppKey))
 android.defaultConfig.buildConfigField("String", "NUVIO_CHANNEL", "\"${if (livetvIsTestBuild) "test" else "stable"}\"")
-android.defaultConfig.buildConfigField("String", "TEST_UPDATES_URL", "\"https://livetv-cloud.nuvioplusiptv.workers.dev\"")
+// Empty until our own tester update service exists. Test builds then report no update
+// instead of calling another project's Worker.
+android.defaultConfig.buildConfigField("String", "TEST_UPDATES_URL", "\"\"")
 android.defaultConfig.buildConfigField("String", "TESTER_KEY", buildConfigString(livetvTesterKey))
 if (livetvIsTestBuild) {
     // 1767225600 = 2026-01-01 00:00 UTC, in seconds.
@@ -430,7 +469,9 @@ if (livetvIsTestBuild) {
 androidComponents {
     onVariants(selector().withBuildType("debug")) { variant ->
         val isPlaystore = variant.productFlavors.any { it.second == "playstore" }
-        variant.applicationId.set(if (isPlaystore) "com.nuvio.appdebug" else "com.nuvio.tv.launcher")
+        // -PlivetvDebugAppId=<id> installs a debug build next to another copy (own data, own icon).
+        val debugAppId = (findProperty("livetvDebugAppId") as String?)?.takeIf { it.isNotBlank() } ?: "com.nuvio.tv.launcher"
+        variant.applicationId.set(if (isPlaystore) "com.nuvio.appdebug" else debugAppId)
     }
     // Live TV fork: release builds get their own app ID too, so they install next to official
     // Nuvio and update the fork's earlier builds in place.
@@ -472,7 +513,7 @@ composeCompiler {
     stabilityConfigurationFiles.add(rootProject.layout.projectDirectory.file("compose_stability_config.conf"))
 }
 
-// Globally exclude stock media3 modules — replaced by local :nuvio-exoplayer-engine module
+// Globally exclude stock media3 modules â€” replaced by local :nuvio-exoplayer-engine module
 configurations.all {
     exclude(group = "androidx.media3", module = "media3-exoplayer")
     exclude(group = "androidx.media3", module = "media3-common")
@@ -514,9 +555,44 @@ sentry {
     }
 }
 
+// Same pinned speech runtime as Reshaped tester. Download only during a build, never at
+// configuration time, and verify the upstream release before adding it to the classpath.
+val sherpaOnnxVersion = "1.13.8"
+val sherpaOnnxSha256 = "633c24321e06b1fe79feafa03ea16cbc0f8a286641e2da3559bac91bdb13bd96"
+val sherpaOnnxAar = layout.buildDirectory.file("audio-sync/sherpa-onnx-$sherpaOnnxVersion.aar")
+val downloadAudioSyncRuntime by tasks.registering {
+    inputs.property("version", sherpaOnnxVersion)
+    inputs.property("sha256", sherpaOnnxSha256)
+    outputs.file(sherpaOnnxAar)
+    doLast {
+        val aar = sherpaOnnxAar.get().asFile
+        aar.parentFile.mkdirs()
+        val partial = File(aar.path + ".part")
+        val url = URI("https://github.com/k2-fsa/sherpa-onnx/releases/download/v$sherpaOnnxVersion/sherpa-onnx-$sherpaOnnxVersion.aar")
+        try {
+            url.toURL().openConnection().apply {
+                connectTimeout = 30_000
+                readTimeout = 60_000
+            }.getInputStream().use { input -> partial.outputStream().use { input.copyTo(it) } }
+            val digest = MessageDigest.getInstance("SHA-256")
+                .digest(partial.readBytes()).joinToString("") { "%02x".format(it) }
+            check(digest == sherpaOnnxSha256) { "Checksum mismatch for $url" }
+            Files.move(partial.toPath(), aar.toPath(), StandardCopyOption.REPLACE_EXISTING)
+        } finally {
+            partial.delete()
+        }
+    }
+}
+
 dependencies {
-    implementation(project(":vpn-android"))
+    implementation(files(sherpaOnnxAar).builtBy(downloadAudioSyncRuntime))
+    implementation("eu.agno3.jcifs:jcifs-ng:2.1.10")
+    implementation("org.slf4j:slf4j-android:1.7.30")
     implementation(project(":vpn-core"))
+    implementation(project(":vpn-android"))
+    // YouTube hub engine (SmartTube MediaServiceCore, MIT)
+    implementation(project(":mediaservicecore:youtubeapi"))
+    implementation(project(":mediaservicecore:sharedutils"))
     coreLibraryDesugaring("com.android.tools:desugar_jdk_libs:2.1.4")
     val composeBom = platform("androidx.compose:compose-bom:2026.05.01")
 
@@ -529,6 +605,7 @@ dependencies {
     baselineProfile(project(":baselineprofile"))
     implementation(libs.androidx.core.ktx)
     implementation("androidx.core:core-splashscreen:1.0.1")
+    implementation("androidx.security:security-crypto:1.1.0-alpha06")
     implementation(libs.androidx.appcompat)
     implementation(libs.androidx.profileinstaller)
     implementation("androidx.recyclerview:recyclerview:1.4.0")
@@ -577,7 +654,7 @@ dependencies {
     // ViewModel
     implementation(libs.lifecycle.viewmodel.compose)
 
-    // Media3 — remaining stock modules from Maven (not forked)
+    // Media3 â€” remaining stock modules from Maven (not forked)
     implementation(libs.media3.exoplayer.hls)
     implementation(libs.media3.exoplayer.dash)
     implementation(libs.media3.exoplayer.smoothstreaming)
@@ -623,7 +700,8 @@ dependencies {
     implementation(files("libs/nuvio-libass-release.aar"))
     // Local nextlib-mediainfo fork (static FFmpeg; no libav*.so in final AAR)
     implementation(files("libs/nextlib-mediainfo-local.aar"))
-    implementation("io.github.abdallahmehiz:mpv-android-lib:0.1.12")
+    implementation("io.github.abdallahmehiz:mpv-android-lib:0.2.1")
+    implementation("org.videolan.android:libvlc-all:3.7.7")
     implementation("dev.chrisbanes.haze:haze-android:1.7.2") {
         exclude(group = "org.jetbrains.compose.ui")
         exclude(group = "org.jetbrains.compose.foundation")
@@ -641,6 +719,15 @@ dependencies {
     add("fullImplementation", "com.github.MuntashirAkon:libadb-android:3.0.0")
     // libadb-android only exposes BouncyCastle at runtime; used to create the ADB identity cert.
     add("fullImplementation", "org.bouncycastle:bcprov-jdk15to18:1.78")
+    // Nuvio One's SMB library (jcifs-ng) pulls org.bouncycastle:bcprov-jdk18on:1.76, the same classes as the
+    // bcprov-jdk15to18:1.78 above. Two copies fail the duplicate-class check, so the full flavor keeps the newer one.
+    // (The playstore flavor has no launcher libraries and keeps jcifs-ng's own copy.)
+    configurations.matching { it.name.startsWith("full") }.configureEach {
+        exclude(group = "org.bouncycastle", module = "bcprov-jdk18on")
+    }
+    testImplementation("org.robolectric:robolectric:4.17")
+    // Icon pack tests parse appfilter.xml; Android's XmlPullParser is not on the JVM test classpath.
+    testImplementation("net.sf.kxml:kxml2:2.3.0")
     add("fullImplementation", "com.github.recloudstream.cloudstream:library:${libs.versions.cloudstream.get()}") {
         exclude(group = "org.mozilla", module = "rhino")
         exclude(group = "com.github.AmarullisVFX", module = "newpipeextractor")
@@ -665,6 +752,8 @@ dependencies {
     implementation(libs.supabase.storage)
     implementation(libs.supabase.realtime)
     implementation(libs.ktor.client.okhttp)
+    implementation(libs.ktor.client.content.negotiation)
+    implementation(libs.ktor.serialization.kotlinx.json)
     implementation(libs.sentry.android)
 
     // Kotlinx Serialization
@@ -681,10 +770,10 @@ dependencies {
     androidTestImplementation(libs.androidx.test.ext.junit)
     androidTestImplementation(libs.androidx.test.runner)
     testImplementation("junit:junit:4.13.2")
-    testImplementation(kotlin("test-junit"))
+    testImplementation(kotlin("test"))
     testImplementation("org.json:json:20240303")
-    // Icon pack tests parse appfilter.xml; Android's XmlPullParser is not on the JVM test classpath.
-    testImplementation("net.sf.kxml:kxml2:2.3.0")
+    testImplementation("org.robolectric:robolectric:4.14.1")
+    testImplementation("org.conscrypt:conscrypt-openjdk-uber:2.5.2")
     testImplementation("org.jetbrains.kotlinx:kotlinx-coroutines-test:1.8.1")
     testImplementation("io.mockk:mockk:1.13.12")
     testImplementation("com.squareup.okhttp3:mockwebserver:5.3.2")

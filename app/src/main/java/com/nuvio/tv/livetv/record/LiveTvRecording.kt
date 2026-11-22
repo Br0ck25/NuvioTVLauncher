@@ -38,8 +38,14 @@ data class LiveTvRecording(
     val fromCatchup: Boolean = false,
     /** Catch-up: how long the whole download should be (show plus extra time), in seconds; 0 = not known. */
     val expectedSec: Double = 0.0,
-    /** The Nuvio profile this belongs to (recordings are per profile; older ones belong to the first). */
-    val ownerProfile: Int = 1
+    /** The media was mirrored to an SMB share; [dir] only holds metadata and playlists. */
+    val smb: Boolean = false,
+    /**
+     * Folder on the share holding the media, relative to the configured recording folder
+     * (for example `recordings/abc` or `abc`). Null means the recording's [id]; older
+     * recordings predate this field.
+     */
+    val smbDir: String? = null
 ) {
     val isRecording: Boolean get() = status == RecordingStatus.RECORDING
 
@@ -55,7 +61,8 @@ data class LiveTvRecording(
         put("seriesId", seriesId ?: "")
         put("fromCatchup", fromCatchup)
         put("expectedSec", expectedSec)
-        put("ownerProfile", ownerProfile)
+        put("smb", smb)
+        put("smbDir", smbDir ?: "")
     }
 
     companion object {
@@ -81,8 +88,12 @@ data class LiveTvRecording(
                 seriesId = o.optString("seriesId").ifBlank { null },
                 fromCatchup = o.optBoolean("fromCatchup", false),
                 expectedSec = o.optDouble("expectedSec", 0.0).takeIf { !it.isNaN() } ?: 0.0,
-                ownerProfile = o.optInt("ownerProfile", 1).coerceAtLeast(1)
+                smb = o.optBoolean("smb", false),
+                smbDir = o.optString("smbDir").ifBlank { null }
             )
         }.getOrNull()
     }
 }
+
+/** Folder on the share holding this recording's media (TV root layout or mobile `recordings/`). */
+internal val LiveTvRecording.shareDir: String get() = (smbDir ?: id).trim('/')

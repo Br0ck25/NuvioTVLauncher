@@ -51,7 +51,14 @@ class CatalogRepositoryImpl @Inject constructor(
 
         if (ServerCatalog.isServerAddon(addonBaseUrl)) {
             val row = try {
-                serverCatalog.catalog(addonBaseUrl, addonId, addonName, catalogId, catalogName, type, skip, extraArgs)
+                // A media server that is offline must not hold one of Home's catalog slots
+                // forever; the row then stays a gray placeholder.
+                kotlinx.coroutines.withTimeout(75_000L) {
+                    serverCatalog.catalog(addonBaseUrl, addonId, addonName, catalogId, catalogName, type, skip, extraArgs)
+                }
+            } catch (error: kotlinx.coroutines.TimeoutCancellationException) {
+                emit(NetworkResult.Error("Timed out loading this catalog"))
+                return@flow
             } catch (error: CancellationException) {
                 throw error
             } catch (error: Exception) {

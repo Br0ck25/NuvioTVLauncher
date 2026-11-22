@@ -1,5 +1,7 @@
 package com.nuvio.tv
 
+import androidx.compose.material.icons.filled.Apps
+import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import android.content.Context
 import android.content.Intent
 import android.content.res.Configuration
@@ -39,7 +41,6 @@ import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.fillMaxHeight
 import androidx.compose.foundation.verticalScroll
-import com.nuvio.tv.livetv.ui.followMenuScale
 import com.nuvio.tv.livetv.ui.shrinkToFit
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
@@ -53,8 +54,9 @@ import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.LiveTv
-import androidx.compose.material.icons.filled.Apps
 import androidx.compose.material.icons.filled.EmojiEvents
+import androidx.compose.material.icons.filled.PlayCircle
+import androidx.compose.material.icons.filled.LibraryMusic
 import androidx.compose.material.icons.filled.VideoLibrary
 import androidx.compose.material.icons.filled.FiberManualRecord
 import androidx.compose.material.icons.filled.GridView
@@ -80,9 +82,7 @@ import androidx.compose.runtime.remember
 import androidx.compose.runtime.saveable.rememberSaveable
 import androidx.compose.runtime.setValue
 import androidx.compose.runtime.withFrameNanos
-import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import androidx.compose.ui.Alignment
-import androidx.compose.ui.zIndex
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.draw.drawWithCache
@@ -122,6 +122,7 @@ import androidx.compose.ui.text.style.TextOverflow
 import com.nuvio.tv.ui.screens.ambient.AmbientIdleController
 import com.nuvio.tv.ui.screens.ambient.AmbientModeHost
 import com.nuvio.tv.ui.screens.ambient.LocalAmbientIdleController
+import com.nuvio.tv.ui.components.GlobalStatsOverlay
 import com.nuvio.tv.ui.components.LocalStartupLoadingState
 import com.nuvio.tv.ui.components.LocalStartupSplashEnabled
 import com.nuvio.tv.ui.components.StartupLoadingState
@@ -157,6 +158,9 @@ import com.nuvio.tv.R
 import com.nuvio.tv.core.auth.AuthManager
 import com.nuvio.tv.core.auth.DeviceSessionRegistration
 import com.nuvio.tv.core.deeplink.DeepLinkHandler
+import com.nuvio.tv.core.deeplink.DeepLinkInstallResult
+import com.nuvio.tv.data.repository.TrackingAddonConsentController
+import com.nuvio.tv.ui.components.TrackingAddonConsentDialog
 import com.nuvio.tv.core.deeplink.DeepLinkParser
 import com.nuvio.tv.core.player.PlayerWindowBackdrop
 import com.nuvio.tv.core.party.PartyRepository
@@ -232,6 +236,7 @@ import com.nuvio.tv.ui.util.rememberDrawerItemFocusRequesters
 import com.nuvio.tv.ui.util.rememberRawSvgPainter
 import com.nuvio.tv.updater.UpdateViewModel
 import com.nuvio.tv.updater.ui.UpdateBannerHost
+import com.nuvio.tv.updater.ui.WhatsNewPopupHost
 import dagger.hilt.android.AndroidEntryPoint
 import dev.chrisbanes.haze.HazeState
 import dev.chrisbanes.haze.HazeInputScale
@@ -247,12 +252,15 @@ import kotlinx.coroutines.launch
 
 val LocalSidebarExpanded = compositionLocalOf { false }
 
-/** Opens Nuvio's side menu from a screen (used by Live TV's back button). */
-val LocalOpenSidebar = compositionLocalOf<() -> Unit> { {} }
 val LocalRootContentInset = compositionLocalOf { 0.dp }
 
-/** Live TV fork pages' room for the older side menu (the launcher uses LocalRootContentInset instead). */
+/** Live TV fork pages' room for the older side menu (only while the menu is showing). */
 val LocalForkPageInset = compositionLocalOf { 0.dp }
+
+/** Opens Nuvio's side menu from a screen (used by Live TV's back button). */
+val LocalOpenSidebar = compositionLocalOf<() -> Unit> { {} }
+/** Shows the shared "press back again to exit" prompt at the app root. */
+val LocalRequestAppExit = compositionLocalOf<() -> Unit> { {} }
 val LocalContentFocusRequester = compositionLocalOf { FocusRequester.Default }
 
 data class SplashBackground(
@@ -265,6 +273,7 @@ data class SplashBackground(
 val LocalSplashBackground = compositionLocalOf { SplashBackground() }
 
 private const val SIDEBAR_AUTO_COLLAPSE_DELAY_MS = 3_000L
+private const val SIDEBAR_FOCUS_RECOVERY_ATTEMPTS = 15
 
 private const val MAX_SUPPORTED_FONT_SCALE = 1.15f
 
@@ -395,10 +404,16 @@ open class MainActivity : ComponentActivity() {
     lateinit var trailerPlayerPool: com.nuvio.tv.core.player.TrailerPlayerPool
 
     @Inject
+    lateinit var backgroundTrailerController: com.nuvio.tv.core.player.BackgroundTrailerController
+
+    @Inject
     lateinit var externalPlaybackTracker: com.nuvio.tv.core.player.ExternalPlaybackTracker
 
     @Inject
     lateinit var deepLinkHandler: DeepLinkHandler
+
+    @Inject
+    lateinit var trackingAddonConsentController: TrackingAddonConsentController
 
     @Inject
     lateinit var partyRepository: PartyRepository
@@ -546,6 +561,8 @@ open class MainActivity : ComponentActivity() {
         val launchEpisodeTitle = intent?.getStringExtra("episodeTitle")
         captureDeepLinkIntent(intent)
 
+        // Launcher: a first launch from the Home button counts as the first press (a restore after rotation or
+        // process death does not), and the Home role is re-read.
         if (savedInstanceState == null) {
             captureHomeRequestIntent(intent, fromNewIntent = false)
             captureAppsRequest(intent)
@@ -872,6 +889,7 @@ open class MainActivity : ComponentActivity() {
                     LocalMemberAccess provides mainUiPrefs.memberAccess,
                     LocalAmbientIdleController provides ambientIdleController,
                     com.nuvio.tv.core.player.LocalTrailerPlayerPool provides trailerPlayerPool,
+                    com.nuvio.tv.core.player.LocalBackgroundTrailerController provides backgroundTrailerController,
                     LocalSplashBackground provides splashBackground,
                     LocalStartupLoadingState provides startupLoadingState,
                     LocalStartupSplashEnabled provides startupSplashEnabled
@@ -1014,8 +1032,31 @@ open class MainActivity : ComponentActivity() {
                             if (pendingDeepLinkUrl.value == url) {
                                 pendingDeepLinkUrl.value = null
                             }
-                            Toast.makeText(context, installResult.message, Toast.LENGTH_LONG).show()
+                            if (installResult !is DeepLinkInstallResult.ConsentRequired) {
+                                Toast.makeText(context, installResult.message, Toast.LENGTH_LONG).show()
+                            }
                         }
+                    }
+
+                    val pendingTrackingInstall by trackingAddonConsentController.pending.collectAsState()
+                    pendingTrackingInstall?.let { pending ->
+                        TrackingAddonConsentDialog(
+                            addonName = pending.addon.displayName.ifBlank { pending.addon.baseUrl },
+                            onInstall = {
+                                lifecycleScope.launch {
+                                    val installed = trackingAddonConsentController.install() ?: return@launch
+                                    Toast.makeText(
+                                        context,
+                                        context.getString(
+                                            R.string.addon_install_success,
+                                            installed.displayName.ifBlank { installed.baseUrl }
+                                        ),
+                                        Toast.LENGTH_LONG
+                                    ).show()
+                                }
+                            },
+                            onDismiss = trackingAddonConsentController::dismiss
+                        )
                     }
 
                     if (needsEssentialAddonSetup) {
@@ -1108,6 +1149,23 @@ open class MainActivity : ComponentActivity() {
                         repeat(2) { withFrameNanos { } }
                         requestHomeScrollToTop(navController)
                         pendingHomeScrollReset = false
+                    }
+
+                    // The player and home are routes inside this activity, so leaving the
+                    // player or returning home never reaches onResume. Ask for the same
+                    // throttled watch state pull a foreground return gets.
+                    LaunchedEffect(navController) {
+                        var previousRoute: String? = null
+                        navController.currentBackStackEntryFlow.collect { entry ->
+                            val route = entry.destination.route
+                            if (route == previousRoute) return@collect
+                            val leftPlayer = previousRoute == Screen.Player.route
+                            val returnedHome = previousRoute != null && route == Screen.Home.route
+                            if (leftPlayer || returnedHome) {
+                                startupSyncService.requestNavigationSync()
+                            }
+                            previousRoute = route
+                        }
                     }
 
                     // Auto-play next episode for EXTERNAL players: the tracker resolves the
@@ -1255,7 +1313,9 @@ open class MainActivity : ComponentActivity() {
                                 if (pendingDeepLinkUrl.value == url) {
                                     pendingDeepLinkUrl.value = null
                                 }
-                                Toast.makeText(context, installResult.message, Toast.LENGTH_LONG).show()
+                                if (installResult !is DeepLinkInstallResult.ConsentRequired) {
+                                    Toast.makeText(context, installResult.message, Toast.LENGTH_LONG).show()
+                                }
                             }
                             null -> {
                                 pendingDeepLinkUrl.value = null
@@ -1300,9 +1360,12 @@ open class MainActivity : ComponentActivity() {
                     val recordingNow = allRecordings.any {
                         it.status == com.nuvio.tv.livetv.record.RecordingStatus.RECORDING
                     }
-                    val recordingsInSidebar = liveTvSettingsNow.recordingsInSidebar && liveTvInSidebar && (allRecordings.isNotEmpty() ||
-                        liveTvRecordingScheduler.schedules.collectAsState().value.isNotEmpty() ||
-                        liveTvRecordingScheduler.series.collectAsState().value.isNotEmpty())
+                    // Always read both lists: reading them only when the switches above are on made
+                    // the screen under the menu rebuild (Settings lost its place) when one changed.
+                    val hasSchedules = liveTvRecordingScheduler.schedules.collectAsState().value.isNotEmpty()
+                    val hasSeries = liveTvRecordingScheduler.series.collectAsState().value.isNotEmpty()
+                    val recordingsInSidebar = liveTvSettingsNow.recordingsInSidebar && liveTvInSidebar &&
+                        (allRecordings.isNotEmpty() || hasSchedules || hasSeries)
                     // Opened from the guide's ● button, Back goes back to the guide; from the menu it's a menu page.
                     val recordingsFromGuide = currentRoute == Screen.Recordings.route &&
                         navController.previousBackStackEntry?.destination?.route == Screen.LiveTv.route
@@ -1321,24 +1384,9 @@ open class MainActivity : ComponentActivity() {
                     val startRouteNow = com.nuvio.tv.livetv.startup.StartPage.routeFor(liveTvSettingsNow, sportsInSidebar)
                     val homeHidden = startRouteNow != null && com.nuvio.tv.livetv.calendar.SideMenuPages.HOME in
                         com.nuvio.tv.livetv.calendar.SideMenuPages.hidden(liveTvSettingsNow.sideMenuHidden)
-                    androidx.compose.runtime.DisposableEffect(navController, homeHidden, startRouteNow) {
-                        val main = android.os.Handler(android.os.Looper.getMainLooper())
-                        val listener = androidx.navigation.NavController.OnDestinationChangedListener { controller, destination, _ ->
-                            val target = startRouteNow
-                            if (homeHidden && target != null && destination.route == Screen.Home.route) {
-                                main.post {
-                                    runCatching {
-                                        controller.navigate(target) {
-                                            popUpTo(Screen.Home.route) { inclusive = true }
-                                            launchSingleTop = true
-                                        }
-                                    }
-                                }
-                            }
-                        }
-                        navController.addOnDestinationChangedListener(listener)
-                        onDispose { navController.removeOnDestinationChangedListener(listener) }
-                    }
+                    // The start page is applied once, by startDestination. Do not redirect every
+                    // later visit to Home back to it: Back from a menu page must be able to reach
+                    // the menu/Home instead of snapping to the startup page again.
                     // Live TV fork: the menu's order and the pages taken off it (Settings → Menu & Features).
                     val sideMenuOrder = liveTvSettingsNow.sideMenuOrder
                     val sideMenuHidden = liveTvSettingsNow.sideMenuHidden
@@ -1357,6 +1405,8 @@ open class MainActivity : ComponentActivity() {
                             // checked or updated; only its menu entry depends on having content.
                             add(Screen.OnDemand.route)
                             add(Screen.Sports.route)
+                            add(Screen.YouTube.route)
+                            add(Screen.Music.route)
                             add(Screen.Calendar.route)
                             add(Screen.Search.route)
                             add(Screen.Library.route)
@@ -1372,6 +1422,7 @@ open class MainActivity : ComponentActivity() {
                     val strNavDiscover = stringResource(R.string.nav_discover)
                     val strNavSearch = stringResource(R.string.nav_search)
                     val strNavLibrary = stringResource(R.string.nav_library)
+                    val strNavMusic = stringResource(R.string.music_nav_label)
                     val strNavSettings = stringResource(R.string.nav_settings)
                     val strNavApps = stringResource(R.string.apps_title)
                     // Live TV fork: Home first and Settings at the bottom; the pages between in the
@@ -1381,6 +1432,7 @@ open class MainActivity : ComponentActivity() {
                         strNavDiscover,
                         strNavSearch,
                         strNavLibrary,
+                        strNavMusic,
                         strNavSettings,
                         strNavApps,
                         discoverLocation,
@@ -1411,6 +1463,10 @@ open class MainActivity : ComponentActivity() {
                             pages.RECORDINGS -> if (recordingsInSidebar) DrawerItem(route = Screen.Recordings.route, label = "Recordings", icon = Icons.Default.RadioButtonChecked, badge = recordingNow) else null
                             pages.SPORTS -> if (sportsInSidebar) DrawerItem(route = Screen.Sports.route, label = "Sports", icon = Icons.Default.EmojiEvents) else null
                             pages.ON_DEMAND -> if (onDemandInSidebar) DrawerItem(route = Screen.OnDemand.route, label = "On Demand", icon = Icons.Default.VideoLibrary) else null
+                            // YouTube fork: OneTube and Music are ordinary menu pages now, so
+                            // Menu & Features can switch them off and move them like the rest.
+                            pages.YOUTUBE -> if (id !in hiddenPages) DrawerItem(route = Screen.YouTube.route, label = "OneTube", icon = Icons.Default.PlayCircle, sectionStart = true) else null
+                            pages.MUSIC -> if (id !in hiddenPages) DrawerItem(route = Screen.Music.route, label = strNavMusic, icon = Icons.Default.LibraryMusic) else null
                             else -> null
                         }
                         buildList {
@@ -1441,28 +1497,9 @@ open class MainActivity : ComponentActivity() {
                     }?.route
                     val selectedDrawerItem = drawerItems.firstOrNull { it.route == selectedDrawerRoute } ?: drawerItems.first()
 
-                    val confirmExitEnabled by profileManager.confirmExitEnabled.collectAsState()
-                    var backPressedOnce by remember { mutableStateOf(false) }
-                    LaunchedEffect(backPressedOnce) {
-                        if (backPressedOnce) {
-                            delay(2000L)
-                            backPressedOnce = false
-                        }
-                    }
                     val handleExitApp: () -> Unit = {
-                        if (nuvioHandlesHomeKey) {
-                            // The launcher is the device's Home screen: Back never leaves it.
-                        } else if (!confirmExitEnabled || backPressedOnce) {
-                            finishAffinity()
-                            finishAndRemoveTask()
-                            if (confirmExitEnabled) {
-                                // Kill the process to free RAM on low-memory devices.
-                                android.os.Process.killProcess(android.os.Process.myPid())
-                            }
-                        } else {
-                            backPressedOnce = true
-                            Toast.makeText(this@MainActivity, getString(R.string.confirm_exit_toast), Toast.LENGTH_SHORT).show()
-                        }
+                        // handleAppExit does nothing while the launcher is the device's Home screen.
+                        this@MainActivity.handleAppExit()
                     }
 
                     val updateViewModel: UpdateViewModel = hiltViewModel(this@MainActivity)
@@ -1478,6 +1515,8 @@ open class MainActivity : ComponentActivity() {
                         com.nuvio.tv.livetv.home.LiveTvHomeReveal.updateBannerShown.value =
                             updateBannerState.showBanner && updateBannerState.update != null
                     }
+
+                    WhatsNewPopupHost(suppress = currentRoute?.startsWith("player/") == true)
 
                     UpdateBannerHost(
                         state = updateBannerState,
@@ -1499,7 +1538,7 @@ open class MainActivity : ComponentActivity() {
                             hasSelectedProfileThisSession = false
                         }
 
-                        // Double-tapping Home asks for the profile switcher. Consumed on read so a later
+                        // Launcher: double-tapping Home asks for the profile switcher. Consumed on read so a later
                         // recomposition (or returning from the switcher) cannot repeat it.
                         val profileSwitchRequested by pendingProfileSwitchRequest.collectAsStateWithLifecycle()
                         LaunchedEffect(profileSwitchRequested) {
@@ -1542,6 +1581,7 @@ open class MainActivity : ComponentActivity() {
                                         onToggleLiveTvGroup = { liveTvGroupOpen = !liveTvGroupOpen },
                                         onSidebarExpandedChange = { expanded ->
                                             sidebarOpenNow = expanded
+                                            sidebarOpenForBack = expanded
                                             // Closed: ready for next time (unchanged when opening).
                                             if (!expanded) liveTvGroupOpen = false
                                         }
@@ -1568,6 +1608,7 @@ open class MainActivity : ComponentActivity() {
                                         onToggleLiveTvGroup = { liveTvGroupOpen = !liveTvGroupOpen },
                                         onSidebarExpandedChange = { expanded ->
                                             sidebarOpenNow = expanded
+                                            sidebarOpenForBack = expanded
                                             // Closed: ready for next time (unchanged when opening).
                                             if (!expanded) liveTvGroupOpen = false
                                         }
@@ -1845,6 +1886,22 @@ open class MainActivity : ComponentActivity() {
     // and then immediately exiting the app).
     val longPressBackHeld = mutableStateOf(false)
 
+    /** Sidebar state for the Activity-level Back handler, kept in step by the scaffolds. */
+    @Volatile private var sidebarOpenForBack = false
+    private var confirmExitPressedOnce = false
+    private val confirmExitHandler = android.os.Handler(android.os.Looper.getMainLooper())
+    private val confirmExitReset = Runnable { confirmExitPressedOnce = false }
+
+    /**
+     * One place for the exit prompt. The Compose drawer's own Back handling was closing the
+     * sidebar before this could run, so Back is intercepted in [dispatchKeyEvent] while the
+     * sidebar is open.
+     */
+    private fun handleAppExit() {
+        // This is the launcher: Back never leaves it, and there is no "press back again to exit" prompt.
+        // (The menu and the pages still use Back to go back, open and close; only leaving the app is gone.)
+    }
+
     private val ambientIdleController = AmbientIdleController()
 
     override fun onUserInteraction() {
@@ -1900,6 +1957,22 @@ open class MainActivity : ComponentActivity() {
                 if (event.action == KeyEvent.ACTION_UP) longPressBackHeld.value = false
                 return true
             }
+            // Once the prompt is showing, the next Back exits even if the menu was closed
+            // by the prompt itself.
+            if (confirmExitPressedOnce) {
+                if (event.action == KeyEvent.ACTION_DOWN && event.repeatCount == 0) {
+                    handleAppExit()
+                }
+                return true
+            }
+            // While the menu is open, Back is the exit prompt. Handling it here keeps the
+            // drawer's own Back handler from closing the sidebar first.
+            if (sidebarOpenForBack && !nuvioHandlesHomeKey) {
+                if (event.action == KeyEvent.ACTION_DOWN && event.repeatCount == 0) {
+                    handleAppExit()
+                }
+                return true
+            }
         }
         if (event.keyCode == KeyEvent.KEYCODE_BACK &&
             externalPlaybackTracker.autoNextOverlay.value != null
@@ -1937,6 +2010,12 @@ open class MainActivity : ComponentActivity() {
     }
 
     override fun onStop() {
+        val music = com.nuvio.tv.music.MusicPlayer.state.value
+        if (!com.nuvio.tv.music.MusicSettings.keepPlayingWhileBrowsing.value &&
+            (music.isPlaying || music.isBuffering)
+        ) {
+            com.nuvio.tv.music.MusicPlayer.pause()
+        }
         externalPlaybackTracker.onExternalPlayerCoveredApp()
         super.onStop()
         startupSyncService.stopPeriodicSurfacePulls()
@@ -1962,19 +2041,23 @@ private fun SidebarFocusRecoveryEffect(
     drawerItems: List<DrawerItem>,
     selectedDrawerRoute: String?,
     drawerItemFocusRequesters: Map<String, FocusRequester>,
-    sidebarOwnsFocus: Boolean
+    sidebarOwnsFocus: Boolean,
+    sidebarHasFocus: Boolean
 ) {
-    LaunchedEffect(drawerItems, sidebarOwnsFocus, selectedDrawerRoute) {
+    LaunchedEffect(drawerItems, sidebarOwnsFocus, selectedDrawerRoute, sidebarHasFocus) {
         if (!sidebarOwnsFocus) {
             return@LaunchedEffect
         }
-        if (selectedDrawerRoute != null && drawerItems.any { it.route == selectedDrawerRoute }) {
+        val selectedVisible = selectedDrawerRoute != null && drawerItems.any { it.route == selectedDrawerRoute }
+        if (selectedVisible && sidebarHasFocus) {
             return@LaunchedEffect
         }
-        val fallbackRoute = drawerItems.firstOrNull()?.route ?: return@LaunchedEffect
-        val requester = drawerItemFocusRequesters[fallbackRoute] ?: return@LaunchedEffect
-        repeat(2) { withFrameNanos { } }
-        runCatching { requester.requestFocus() }
+        val targetRoute = if (selectedVisible) selectedDrawerRoute else drawerItems.firstOrNull()?.route
+        val requester = targetRoute?.let { drawerItemFocusRequesters[it] } ?: return@LaunchedEffect
+        repeat(SIDEBAR_FOCUS_RECOVERY_ATTEMPTS) {
+            repeat(2) { withFrameNanos { } }
+            if (runCatching { requester.requestFocus() }.getOrDefault(false)) return@LaunchedEffect
+        }
     }
 }
 
@@ -2007,12 +2090,8 @@ private fun LegacySidebarScaffold(
     // Live TV fork: full screen now happens inside the Live TV screen (one video view that just
     // grows), which is one of the menu's pages, so the menu has to step aside for it.
     val liveTvFullscreen by com.nuvio.tv.livetv.ui.LiveTvFullscreen.active.collectAsState()
-    val showSidebar = currentRoute in rootRoutes && !liveTvFullscreen
-
-    LaunchedEffect(currentRoute) {
-        longPressBackHeld.value = false
-        drawerState.setValue(DrawerValue.Closed)
-    }
+    val showSidebar = currentRoute in rootRoutes && !liveTvFullscreen &&
+        !com.nuvio.tv.livetv.ui.LiveTvFullscreen.pending
 
     val sidebarTokens = NuvioComponents.tokens.sidebar
     val closedDrawerWidth = if (sidebarCollapsed) NuvioTheme.spacing.none else sidebarTokens.legacyCollapsedWidth
@@ -2024,14 +2103,34 @@ private fun LegacySidebarScaffold(
     val contentFocusRequester = remember { FocusRequester() }
     var pendingContentFocusTransfer by remember { mutableStateOf(false) }
     var pendingSidebarFocusRequest by remember { mutableStateOf(false) }
+    var drawerHasFocus by remember { mutableStateOf(false) }
     // Bumped on every key event the drawer sees so the auto-collapse timer
     // resets while the user navigates between drawer items.
     var legacyDrawerInteractionVersion by remember { mutableStateOf(0) }
 
+    LaunchedEffect(currentRoute) {
+        longPressBackHeld.value = false
+        drawerState.setValue(DrawerValue.Closed)
+    }
 
-    BackHandler(enabled = currentRoute in rootRoutes && drawerState.currentValue == DrawerValue.Closed) {
-        pendingSidebarFocusRequest = true
-        drawerState.setValue(DrawerValue.Open)
+    BackHandler(
+        enabled = currentRoute in rootRoutes &&
+            currentRoute != Screen.Music.route &&
+            drawerState.currentValue == DrawerValue.Closed &&
+            !com.nuvio.tv.livetv.ui.LiveTvGuideBack.reorderActive
+    ) {
+        if (System.currentTimeMillis() < com.nuvio.tv.livetv.ui.LiveTvGuideBack.suppressMenuUntilMs) {
+            com.nuvio.tv.livetv.ui.LiveTvGuideBack.suppressMenuUntilMs = 0L
+            return@BackHandler
+        }
+        // Home: Back is the app-exit prompt. Every other section: Back opens the side menu
+        // first; with the menu open, the next Back is the exit prompt.
+        if (currentRoute == Screen.Home.route && !launcherMode()) {
+            onExitApp()
+        } else {
+            pendingSidebarFocusRequest = true
+            drawerState.setValue(DrawerValue.Open)
+        }
     }
 
     BackHandler(enabled = currentRoute in rootRoutes && drawerState.currentValue == DrawerValue.Open) {
@@ -2102,7 +2201,8 @@ private fun LegacySidebarScaffold(
         drawerItems = drawerItems,
         selectedDrawerRoute = selectedDrawerRoute,
         drawerItemFocusRequesters = drawerItemFocusRequesters,
-        sidebarOwnsFocus = showSidebar && drawerState.currentValue == DrawerValue.Open
+        sidebarOwnsFocus = showSidebar && drawerState.currentValue == DrawerValue.Open,
+        sidebarHasFocus = drawerHasFocus
     )
 
     ModalNavigationDrawer(
@@ -2117,9 +2217,27 @@ private fun LegacySidebarScaffold(
                         .background(NuvioTheme.colors.Background)
                         .padding(NuvioTheme.spacing.card.outer)
                         .selectableGroup()
+                        .onFocusChanged { drawerHasFocus = it.hasFocus }
                         .onPreviewKeyEvent { keyEvent ->
                             if (keyEvent.type == KeyEventType.KeyDown) {
                                 legacyDrawerInteractionVersion++
+                            }
+                            if (keyEvent.key == Key.Back) {
+                                if (keyEvent.type == KeyEventType.KeyUp) {
+                                    if (longPressBackHeld.value) longPressBackHeld.value = false
+                                    // Consume the release too: otherwise the drawer's own
+                                    // handler still sees it and closes the menu.
+                                    if (drawerValue == DrawerValue.Open) return@onPreviewKeyEvent true
+                                }
+                                if (keyEvent.type == KeyEventType.KeyDown && drawerValue == DrawerValue.Open) {
+                                    // The menu is open: Back belongs to the exit confirmation, not
+                                    // to closing the drawer. Closing here made the second Back land
+                                    // on the startup page again.
+                                    if (!longPressBackHeld.value) {
+                                        if (liveTvListShowing) onToggleLiveTvGroup() else onExitApp()
+                                    }
+                                    return@onPreviewKeyEvent true
+                                }
                             }
                             val closeKey = if (isRtl) Key.DirectionLeft else Key.DirectionRight
                             if (keyEvent.key == closeKey && keyEvent.type == KeyEventType.KeyDown) {
@@ -2285,7 +2403,6 @@ private fun LegacySidebarScaffold(
                     ) {
                         // Shrinks a little to fit when the pages don't (Settings → Menu & Features).
                         val fitMenu = com.nuvio.tv.livetv.ui.LocalSideMenuFit.current
-                        val menuScale = androidx.compose.runtime.remember { androidx.compose.runtime.mutableFloatStateOf(1f) }
                         androidx.compose.foundation.layout.BoxWithConstraints(
                             Modifier
                                 .weight(1f)
@@ -2302,7 +2419,7 @@ private fun LegacySidebarScaffold(
                                 Column(
                                     modifier = Modifier
                                         .fillMaxWidth()
-                                        .shrinkToFit(fitMenu, room, 0f, menuScale),
+                                        .shrinkToFit(fitMenu, room, 0f),
                                     verticalArrangement = Arrangement.spacedBy(4.dp),
                                     horizontalAlignment = Alignment.Start
                                 ) {
@@ -2311,7 +2428,6 @@ private fun LegacySidebarScaffold(
                             }
                         }
                         Column(
-                            modifier = Modifier.followMenuScale(menuScale, 0f),
                             verticalArrangement = Arrangement.spacedBy(4.dp),
                             horizontalAlignment = Alignment.Start
                         ) {
@@ -2324,7 +2440,7 @@ private fun LegacySidebarScaffold(
     ) {
         // Applied per root destination (not on the NavHost container) so it only changes
         // with the collapse setting, never during a navigation transition.
-        val animatedRootContentInset by animateDpAsState(
+        val rootContentInset by animateDpAsState(
             targetValue = if (sidebarCollapsed) {
                 NuvioTheme.spacing.none
             } else {
@@ -2333,9 +2449,16 @@ private fun LegacySidebarScaffold(
             animationSpec = tween(NuvioMotion.tokens.durations.medium),
             label = "rootContentInset"
         )
-        // Live TV full screen hides the sidebar, so the page must not keep its inset either
-        // (it left a black strip down the left edge of the video).
-        val rootContentInset = if (liveTvFullscreen) NuvioTheme.spacing.none else animatedRootContentInset
+        // Live TV fork pages keep the old rule: room for the menu only while it's showing.
+        val forkPageInset by animateDpAsState(
+            targetValue = if (showSidebar && !sidebarCollapsed) {
+                NuvioLayout.tokens.sidebarContentOffset
+            } else {
+                NuvioTheme.spacing.none
+            },
+            animationSpec = tween(NuvioMotion.tokens.durations.medium),
+            label = "forkPageInset"
+        )
         Box(
             modifier = Modifier
                 .fillMaxSize()
@@ -2391,20 +2514,23 @@ private fun LegacySidebarScaffold(
             CompositionLocalProvider(
                 LocalSidebarExpanded provides (drawerState.currentValue == DrawerValue.Open),
                 LocalRootContentInset provides rootContentInset,
+                LocalForkPageInset provides forkPageInset,
                 LocalContentFocusRequester provides contentFocusRequester,
+                LocalRequestAppExit provides onExitApp,
                 LocalOpenSidebar provides {
                     pendingSidebarFocusRequest = true
                     drawerState.setValue(DrawerValue.Open)
                 }
             ) {
-                NuvioNavHost(
-                    navController = navController,
-                    startDestination = startDestination,
-                    hideBuiltInHeaders = hideBuiltInHeaders,
-                    discoverIsRoot = Screen.Discover.route in rootRoutes,
-                    liveTvIsRoot = Screen.LiveTv.route in rootRoutes,
-                    recordingsIsRoot = Screen.Recordings.route in rootRoutes
-                )
+                Box(Modifier.fillMaxSize()) {
+                    NuvioNavHost(
+                        navController = navController,
+                        startDestination = startDestination,
+                        hideBuiltInHeaders = hideBuiltInHeaders,
+                        discoverIsRoot = Screen.Discover.route in rootRoutes
+                    )
+                    GlobalStatsOverlay()
+                }
             }
         }
     }
@@ -2574,7 +2700,8 @@ private fun ModernSidebarScaffold(
     // Live TV fork: full screen now happens inside the Live TV screen (one video view that just
     // grows), which is one of the menu's pages, so the menu has to step aside for it.
     val liveTvFullscreen by com.nuvio.tv.livetv.ui.LiveTvFullscreen.active.collectAsState()
-    val showSidebar = currentRoute in rootRoutes && !liveTvFullscreen
+    val showSidebar = currentRoute in rootRoutes && !liveTvFullscreen &&
+        !com.nuvio.tv.livetv.ui.LiveTvFullscreen.pending
     val sidebarTokens = NuvioComponents.tokens.sidebar
     val collapsedSidebarWidth = if (sidebarCollapsed) NuvioTheme.spacing.none else sidebarTokens.collapsedWidth
     val openSidebarWidth = sidebarTokens.expandedWidth
@@ -2589,6 +2716,7 @@ private fun ModernSidebarScaffold(
     var sidebarCollapsePending by remember { mutableStateOf(false) }
     var pendingContentFocusTransfer by remember { mutableStateOf(false) }
     var pendingSidebarFocusRequest by remember { mutableStateOf(false) }
+    var sidebarHasFocus by remember { mutableStateOf(false) }
     var focusedDrawerIndex by remember { mutableStateOf(-1) }
     var isFloatingPillIconOnly by remember { mutableStateOf(false) }
     var pillExpandRequestCount by remember { mutableIntStateOf(0) }
@@ -2629,10 +2757,26 @@ private fun ModernSidebarScaffold(
         }
     }
 
-    BackHandler(enabled = currentRoute in rootRoutes && !isSidebarExpanded && !sidebarCollapsePending) {
-        isSidebarExpanded = true
-        sidebarCollapsePending = false
-        pendingSidebarFocusRequest = true
+    BackHandler(
+        enabled = currentRoute in rootRoutes &&
+            currentRoute != Screen.Music.route &&
+            !isSidebarExpanded &&
+            !sidebarCollapsePending &&
+            !com.nuvio.tv.livetv.ui.LiveTvGuideBack.reorderActive
+    ) {
+        if (System.currentTimeMillis() < com.nuvio.tv.livetv.ui.LiveTvGuideBack.suppressMenuUntilMs) {
+            com.nuvio.tv.livetv.ui.LiveTvGuideBack.suppressMenuUntilMs = 0L
+            return@BackHandler
+        }
+        // Home: Back is the app-exit prompt. Every other section: Back opens the side menu
+        // first; with the menu open, the next Back is the exit prompt.
+        if (currentRoute == Screen.Home.route) {
+            onExitApp()
+        } else {
+            isSidebarExpanded = true
+            sidebarCollapsePending = false
+            pendingSidebarFocusRequest = true
+        }
     }
 
     BackHandler(enabled = currentRoute in rootRoutes && isSidebarExpanded && !sidebarCollapsePending) {
@@ -2776,7 +2920,8 @@ private fun ModernSidebarScaffold(
         drawerItems = drawerItems,
         selectedDrawerRoute = selectedDrawerRoute,
         drawerItemFocusRequesters = drawerItemFocusRequesters,
-        sidebarOwnsFocus = showSidebar && isSidebarExpanded
+        sidebarOwnsFocus = showSidebar && isSidebarExpanded && !sidebarCollapsePending,
+        sidebarHasFocus = sidebarHasFocus
     )
 
     Box(
@@ -2788,6 +2933,18 @@ private fun ModernSidebarScaffold(
                 if (longPressBackHeld.value && keyEvent.key == Key.Back) {
                     if (keyEvent.type == KeyEventType.KeyUp) longPressBackHeld.value = false
                     return@onPreviewKeyEvent true
+                }
+                // The menu is open: Back belongs to the exit confirmation, not to closing
+                // the sidebar. Letting the drawer close here made the second Back return
+                // to the startup page instead of offering to exit.
+                if (keyEvent.key == Key.Back && isSidebarExpanded) {
+                    // Consume the release as well; otherwise the sidebar's own handler
+                    // still sees it and closes the menu after the prompt is shown.
+                    if (keyEvent.type == KeyEventType.KeyUp) return@onPreviewKeyEvent true
+                    if (keyEvent.type == KeyEventType.KeyDown) {
+                        if (liveTvListShowing) onToggleLiveTvGroup() else onExitApp()
+                        return@onPreviewKeyEvent true
+                    }
                 }
                 false
             }
@@ -2873,17 +3030,21 @@ private fun ModernSidebarScaffold(
             CompositionLocalProvider(
                 LocalSidebarExpanded provides isSidebarExpanded,
                 LocalContentFocusRequester provides contentFocusRequester,
+                LocalRequestAppExit provides onExitApp,
                 LocalOpenSidebar provides {
                     isSidebarExpanded = true
                     sidebarCollapsePending = false
                     pendingSidebarFocusRequest = true
                 }
             ) {
-                NuvioNavHost(
-                    navController = navController,
-                    startDestination = startDestination,
-                    hideBuiltInHeaders = hideBuiltInHeaders
-                )
+                Box(Modifier.fillMaxSize()) {
+                    NuvioNavHost(
+                        navController = navController,
+                        startDestination = startDestination,
+                        hideBuiltInHeaders = hideBuiltInHeaders
+                    )
+                    GlobalStatsOverlay()
+                }
             }
         }
 
@@ -2905,6 +3066,7 @@ private fun ModernSidebarScaffold(
                         transformOrigin = TransformOrigin(0f, 0f)
                     }
                     .selectableGroup()
+                    .onFocusChanged { sidebarHasFocus = it.hasFocus }
                     .onPreviewKeyEvent { keyEvent ->
                         if (!isSidebarExpanded || keyEvent.type != KeyEventType.KeyDown) {
                             return@onPreviewKeyEvent false
@@ -3017,13 +3179,15 @@ private fun ModernSidebarScaffold(
                 }
             }
 
+            // Profile mode needs more than one profile; otherwise the page pill stays.
+            val pillShowsProfile = floatingPillShowsProfile && showProfileSelector && activeProfileName.isNotEmpty()
             if (
                 !sidebarCollapsed &&
                 sidebarShowCollapsedPill &&
-                selectedDrawerRoute != Screen.Search.route
+                selectedDrawerRoute != Screen.Search.route &&
+                // The profile picture only floats over Home: on other pages it sat on top of the page's title.
+                (!pillShowsProfile || selectedDrawerRoute == Screen.Home.route)
             ) {
-                // Profile mode needs more than one profile; otherwise the page pill stays.
-                val pillShowsProfile = floatingPillShowsProfile && showProfileSelector && activeProfileName.isNotEmpty()
                 CollapsedSidebarPill(
                     profileName = if (pillShowsProfile) activeProfileName else null,
                     profileColorHex = activeProfileColorHex,
@@ -3180,38 +3344,6 @@ private fun CollapsedSidebarPill(
     }
 }
 
-/**
- * Asks Home to drop its saved scroll/focus state and scroll back to the first row. Safe to call when Home
- * is not the current destination: the reset is stored on the Home ViewModel and applied the next time its
- * content is composed.
- */
-private fun requestHomeScrollToTop(navController: NavHostController) {
-    val homeEntry = try {
-        navController.getBackStackEntry(Screen.Home.route)
-    } catch (_: IllegalArgumentException) {
-        // "home" not yet on the back stack (e.g. nav graph not fully initialized).
-        return
-    }
-    // HomeViewModel is @HiltViewModel, so it must come from Hilt's factory: a plain
-    // ViewModelProvider(entry) only works if the Home screen already created the instance.
-    var context = navController.context
-    while (context is android.content.ContextWrapper && context !is androidx.activity.ComponentActivity) {
-        context = context.baseContext
-    }
-    val activity = context as? androidx.activity.ComponentActivity ?: return
-    val factory = dagger.hilt.android.internal.lifecycle.HiltViewModelFactory.createInternal(
-        activity,
-        homeEntry,
-        homeEntry.arguments,
-        homeEntry.defaultViewModelProviderFactory,
-    )
-    androidx.lifecycle.ViewModelProvider(
-        homeEntry.viewModelStore,
-        factory,
-        homeEntry.defaultViewModelCreationExtras,
-    )[com.nuvio.tv.ui.screens.home.HomeViewModel::class.java].requestScrollToTop()
-}
-
 private fun navigateToDrawerRoute(
     navController: NavHostController,
     currentRoute: String?,
@@ -3301,4 +3433,36 @@ object LocaleCache {
 
     @Volatile
     var localeTag: String = UNSET
+}
+
+/**
+ * Asks Home to drop its saved scroll/focus state and scroll back to the first row. Safe to call when Home
+ * is not the current destination: the reset is stored on the Home ViewModel and applied the next time its
+ * content is composed.
+ */
+private fun requestHomeScrollToTop(navController: NavHostController) {
+    val homeEntry = try {
+        navController.getBackStackEntry(Screen.Home.route)
+    } catch (_: IllegalArgumentException) {
+        // "home" not yet on the back stack (e.g. nav graph not fully initialized).
+        return
+    }
+    // HomeViewModel is @HiltViewModel, so it must come from Hilt's factory: a plain
+    // ViewModelProvider(entry) only works if the Home screen already created the instance.
+    var context = navController.context
+    while (context is android.content.ContextWrapper && context !is androidx.activity.ComponentActivity) {
+        context = context.baseContext
+    }
+    val activity = context as? androidx.activity.ComponentActivity ?: return
+    val factory = dagger.hilt.android.internal.lifecycle.HiltViewModelFactory.createInternal(
+        activity,
+        homeEntry,
+        homeEntry.arguments,
+        homeEntry.defaultViewModelProviderFactory,
+    )
+    androidx.lifecycle.ViewModelProvider(
+        homeEntry.viewModelStore,
+        factory,
+        homeEntry.defaultViewModelCreationExtras,
+    )[com.nuvio.tv.ui.screens.home.HomeViewModel::class.java].requestScrollToTop()
 }

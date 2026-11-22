@@ -89,7 +89,12 @@ class HomeViewModel @Inject constructor(
     internal val profileManager: com.nuvio.tv.core.profile.ProfileManager,
     internal val tvRecommendationManager: TvRecommendationManager,
     internal val serverCatalog: ServerCatalog,
+    // Live TV fork: On Demand's own Continue Watching row on Home.
+    internal val onDemandRepository: com.nuvio.tv.livetv.ondemand.OnDemandRepository,
+    internal val liveTvPreferences: com.nuvio.tv.livetv.data.LiveTvPreferences,
     internal val installedAppsRepository: com.nuvio.tv.core.apps.InstalledAppsRepository? = null,
+    internal val trailerPlayerPool: com.nuvio.tv.core.player.TrailerPlayerPool,
+    internal val backgroundTrailerController: com.nuvio.tv.core.player.BackgroundTrailerController,
     internal val metaPreviewEnricher: MetaPreviewEnricher = MetaPreviewEnricher(
         tmdbService,
         tmdbMetadataService,
@@ -255,6 +260,8 @@ class HomeViewModel @Inject constructor(
     internal val trailerPreviewNegativeCache = mutableSetOf<String>()
     internal val trailerPreviewUrlsState = mutableStateMapOf<String, String>()
     internal val trailerPreviewAudioUrlsState = mutableStateMapOf<String, String>()
+    internal val trailerPreviewYoutubeKeys = mutableMapOf<String, String>()
+    internal var continueTrailerInDetails = false
     internal var activeTrailerPreviewItemId: String? = null
     internal var trailerPreviewRequestVersion: Long = 0L
     internal var trailerPreviewJob: Job? = null
@@ -287,6 +294,9 @@ class HomeViewModel @Inject constructor(
     /** Snapshot of watchedShowEpisodes keys from the last badge evaluation cycle. */
     @Volatile
     internal var cwLastBadgeEpisodeKeys: Set<String> = emptySet()
+    /** Watched-episode counts used by the cards' "episodes left" badge. */
+    @Volatile
+    internal var cwLastWatchedEpisodeCounts: Map<String, Int> = emptyMap()
     /** Cached show ID siblings from the last badge evaluation cycle (for anime ID expansion). */
     @Volatile
     internal var cwLastShowIdSiblings: Map<String, Set<String>> = emptyMap()
@@ -356,6 +366,14 @@ class HomeViewModel @Inject constructor(
         get() = trailerPreviewAudioUrlsState
 
     init {
+        // Live TV fork: On Demand's progress lives in the same watch-progress store; make sure
+        // its database is open so the Home row can map those entries back to provider items.
+        runCatching { onDemandRepository.start() }
+        viewModelScope.launch {
+            layoutPreferenceDataStore.focusedPosterTrailerContinueInDetails.collect { enabled ->
+                continueTrailerInDetails = enabled
+            }
+        }
         // Accumulates individual watched status changes and flushes them as a single
         // update after 150ms of inactivity, preventing N separate recompositions.
         viewModelScope.launch {
@@ -390,6 +408,8 @@ class HomeViewModel @Inject constructor(
             observeModernHomePresentation()
             loadContinueWatching()
             observeContinueWatchingReleases()
+            observeOnDemandContinueWatching()
+            observeYouTubeContinueWatching()
             watchedSeriesStateHolder.loadFromDisk()
             observeExternalMetaPrefetchPreference()
             observeContinueWatchingSortMode()
@@ -434,6 +454,7 @@ class HomeViewModel @Inject constructor(
                     cwEnrichedInProgressOverlay.clear()
                     cwLastBadgeEpisodeKeys = emptySet()
                     cwLastShowIdSiblings = emptyMap()
+                    cwLastWatchedEpisodeCounts = emptyMap()
                     _uiState.update {
                         it.copy(layoutPreferencesReady = false, continueWatchingItems = emptyList())
                     }
@@ -491,8 +512,9 @@ class HomeViewModel @Inject constructor(
         cwEnrichedInProgressOverlay.clear()
         cwLastBadgeEpisodeKeys = emptySet()
         cwLastShowIdSiblings = emptyMap()
+        cwLastWatchedEpisodeCounts = emptyMap()
         watchedSeriesStateHolder.clearValidationState()
-        _uiState.update { it.copy(continueWatchingItems = emptyList(), upcomingItems = emptyList()) }
+        _uiState.update { it.copy(continueWatchingItems = emptyList(), onDemandContinueWatchingItems = emptyList(), youtubeContinueWatchingItems = emptyList(), upcomingItems = emptyList()) }
         // Bump trigger so the pipeline's collectLatest restarts with fresh state.
         cwPipelineRefreshTrigger.value++
     }
@@ -545,6 +567,13 @@ class HomeViewModel @Inject constructor(
                 .distinctUntilChanged()
                 .collect { enabled ->
                     _uiState.update { it.copy(useEpisodeThumbnailsInCw = enabled) }
+                }
+        }
+        viewModelScope.launch {
+            layoutPreferenceDataStore.showContinueWatchingEpisodeCount
+                .distinctUntilChanged()
+                .collect { enabled ->
+                    _uiState.update { it.copy(showContinueWatchingEpisodeCount = enabled) }
                 }
         }
         viewModelScope.launch {
@@ -622,6 +651,20 @@ class HomeViewModel @Inject constructor(
     }
 
     fun requestTrailerPreview(item: MetaPreview) = requestTrailerPreviewPipeline(item)
+
+    fun beginTrailerHandoff(itemId: String) {
+        if (!continueTrailerInDetails) return
+        val videoUrl = trailerPreviewUrlsState[itemId] ?: return
+        val audioUrl = trailerPreviewAudioUrlsState[itemId]
+        val youtubeKey = trailerPreviewYoutubeKeys[itemId]
+        if (backgroundTrailerController.beginTransfer(itemId, videoUrl, audioUrl, youtubeKey)) return
+        trailerPlayerPool.beginHandoff(
+            itemId = itemId,
+            videoUrl = videoUrl,
+            audioUrl = audioUrl,
+            youtubeKey = youtubeKey
+        )
+    }
 
     fun requestTrailerPreview(
         itemId: String,
@@ -780,7 +823,8 @@ class HomeViewModel @Inject constructor(
                         episodeDescription = cached.episodeDescription,
                         episodeImdbRating = if (cached.ratingVisible) cached.episodeImdbRating else null,
                         genres = cached.genres,
-                        releaseInfo = cached.releaseInfo
+                        releaseInfo = cached.releaseInfo,
+                        remainingEpisodes = cached.remainingEpisodes
                     )
                 }
             val nextUpItems = cachedNextUp
@@ -814,7 +858,8 @@ class HomeViewModel @Inject constructor(
                         isNewSeasonRelease = cached.isNewSeasonRelease,
                         seedSeason = cached.seedSeason,
                         seedEpisode = cached.seedEpisode,
-                        contentLanguage = cached.contentLanguage
+                        contentLanguage = cached.contentLanguage,
+                        remainingEpisodes = cached.remainingEpisodes
                     )
                 )
             }
@@ -948,12 +993,16 @@ class HomeViewModel @Inject constructor(
         if (catalogKey in lazyLoadRequestedKeys) {
             return
         }
+        // A lazy catalog is waiting in pendingLazyCatalogs. A row whose eager load was
+        // cancelled by a reload is in neither queue, so find its catalog again; otherwise
+        // that row stayed as gray loading cards forever.
         val pair = synchronized(catalogStateLock) {
             pendingLazyCatalogs.remove(catalogKey)
-        }
-        if (pair == null) {
-            return
-        }
+        } ?: addonsCache.firstNotNullOfOrNull { addon ->
+            addon.catalogs.firstOrNull { catalog ->
+                catalogKey(addon.id, catalog.apiType, catalog.id) == catalogKey
+            }?.let { catalog -> addon to catalog }
+        } ?: return
         if (!lazyLoadRequestedKeys.add(catalogKey)) {
             return
         }

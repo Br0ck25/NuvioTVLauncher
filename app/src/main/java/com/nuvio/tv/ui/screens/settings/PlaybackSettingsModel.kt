@@ -7,6 +7,7 @@ import androidx.compose.material.icons.filled.FastForward
 import androidx.compose.material.icons.filled.Hub
 import androidx.compose.material.icons.filled.Image
 import androidx.compose.material.icons.filled.Layers
+import androidx.compose.material.icons.filled.Memory
 import androidx.compose.material.icons.filled.NetworkCheck
 import androidx.compose.material.icons.automirrored.filled.PlaylistPlay
 import androidx.compose.material.icons.filled.QueuePlayNext
@@ -34,6 +35,7 @@ internal enum class PlaybackSection(
     AUDIO(R.string.audio_section, R.string.playback_section_audio_only_desc, Icons.AutoMirrored.Filled.VolumeUp),
     SUBTITLES(R.string.playback_section_subtitles, R.string.playback_section_subtitles_desc, Icons.Default.Subtitles),
     VIDEO(R.string.video_section, R.string.playback_section_video_desc, Icons.Default.VideoSettings),
+    CAPABILITIES(R.string.playback_section_capabilities, R.string.playback_section_capabilities_desc, Icons.Default.Memory),
     BUFFER_NETWORK(R.string.playback_section_buffer_network, R.string.playback_section_buffer_network_desc, Icons.Default.NetworkCheck),
     P2P(R.string.settings_p2p_title, R.string.settings_p2p_subtitle, Icons.Default.Hub)
 }
@@ -79,5 +81,6 @@ internal enum class PlaybackDialog {
     MPV_HARDWARE_DECODE_MODE,
     P2P_CONSENT,
     TORRENT_PROFILE,
-    TORRENT_CACHE_SIZE
+    TORRENT_CACHE_SIZE,
+    PLAYER_BUTTONS
 }

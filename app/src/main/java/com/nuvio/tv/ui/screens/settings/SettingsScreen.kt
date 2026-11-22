@@ -39,10 +39,12 @@ import androidx.compose.foundation.lazy.rememberLazyListState
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.rounded.Groups
 import androidx.compose.material.icons.rounded.PlayArrow
+import androidx.compose.material.icons.filled.PlayCircle
 import androidx.compose.material.icons.filled.BugReport
 import androidx.compose.material.icons.filled.Build
 import androidx.compose.material.icons.filled.SettingsRemote
 import androidx.compose.material.icons.filled.Home
+import androidx.compose.material.icons.filled.Shield
 import androidx.compose.material.icons.filled.CloudDownload
 import androidx.compose.material.icons.filled.Explore
 import androidx.compose.material.icons.filled.FastForward
@@ -57,8 +59,8 @@ import androidx.compose.material.icons.filled.DateRange
 import androidx.compose.material.icons.filled.Palette
 import androidx.compose.material.icons.filled.People
 import androidx.compose.material.icons.filled.Person
+import androidx.compose.material.icons.filled.Search
 import androidx.compose.material.icons.filled.Settings
-import androidx.compose.material.icons.filled.Shield
 import androidx.compose.material.icons.filled.Sync
 import androidx.compose.material.icons.filled.Tune
 import androidx.compose.runtime.Composable
@@ -171,9 +173,9 @@ private fun settingsSectionSpec(category: SettingsCategory): SettingsSectionSpec
     SettingsCategory.PLAYBACK -> SettingsSectionSpec(category, stringResource(R.string.settings_playback), Icons.Rounded.PlayArrow, destination = SettingsSectionDestination.Inline)
     SettingsCategory.INTEGRATION -> SettingsSectionSpec(category, stringResource(R.string.settings_integration), Icons.Default.Link, destination = SettingsSectionDestination.Inline)
     SettingsCategory.TRACKING -> SettingsSectionSpec(category, stringResource(R.string.settings_tracking_title), Icons.Default.Sync, destination = SettingsSectionDestination.Inline)
-    SettingsCategory.VPN -> SettingsSectionSpec(category, stringResource(com.nuvio.vpn.android.R.string.vpn_profiles_title), Icons.Default.Shield, destination = SettingsSectionDestination.Inline)
     SettingsCategory.DEFAULT_LAUNCHER -> SettingsSectionSpec(category, stringResource(R.string.settings_default_launcher), Icons.Default.Home, destination = SettingsSectionDestination.Inline)
     SettingsCategory.REMOTE_BUTTONS -> SettingsSectionSpec(category, stringResource(R.string.settings_remote_buttons), Icons.Default.SettingsRemote, destination = SettingsSectionDestination.Inline)
+    SettingsCategory.VPN -> SettingsSectionSpec(category, stringResource(R.string.settings_vpn), Icons.Default.Shield, destination = SettingsSectionDestination.Inline)
     SettingsCategory.ADVANCED -> SettingsSectionSpec(category, stringResource(R.string.settings_advanced), Icons.Default.Build, destination = SettingsSectionDestination.Inline)
     SettingsCategory.ABOUT -> SettingsSectionSpec(category, stringResource(R.string.about_title), Icons.Default.Info, destination = SettingsSectionDestination.Inline)
     SettingsCategory.DEBUG -> SettingsSectionSpec(category, stringResource(R.string.settings_debug), Icons.Default.BugReport, destination = SettingsSectionDestination.Inline)
@@ -181,9 +183,18 @@ private fun settingsSectionSpec(category: SettingsCategory): SettingsSectionSpec
     SettingsCategory.LIVE_TV -> SettingsSectionSpec(category, stringResource(R.string.iptv_settings_live_tv), Icons.Default.LiveTv, destination = SettingsSectionDestination.Inline)
     SettingsCategory.ON_DEMAND -> SettingsSectionSpec(category, stringResource(R.string.iptv_settings_on_demand), Icons.Default.Movie, destination = SettingsSectionDestination.Inline)
     SettingsCategory.SPORTS -> SettingsSectionSpec(category, "Sports", Icons.Default.EmojiEvents, destination = SettingsSectionDestination.Inline)
+    SettingsCategory.YOUTUBE -> SettingsSectionSpec(category, "OneTube", Icons.Default.PlayCircle, destination = SettingsSectionDestination.Inline)
     SettingsCategory.SIDE_MENU -> SettingsSectionSpec(category, "Menu & Features", Icons.Default.Menu, destination = SettingsSectionDestination.Inline)
     SettingsCategory.CALENDAR -> SettingsSectionSpec(category, "Calendar", Icons.Default.DateRange, destination = SettingsSectionDestination.Inline)
     SettingsCategory.EXPERIENCE -> SettingsSectionSpec(category, stringResource(R.string.settings_experience), Icons.Default.Tune, destination = SettingsSectionDestination.Inline)
+}
+
+/**
+ * A category to open Settings on, for shortcuts such as the YouTube page's gear. Set it right
+ * before navigating; the next Settings screen uses it once and clears it.
+ */
+internal object SettingsLaunch {
+    var pendingCategory: SettingsCategory? = null
 }
 
 @Composable
@@ -221,7 +232,9 @@ fun SettingsScreen(
         return
     }
 
-    val isEssentialMode = loadedExperienceMode == ExperienceMode.ESSENTIAL
+    // Every profile gets the full Settings (layout, playback, advanced, plugins), so
+    // Essential mode no longer hides any of it. The mode still shapes first-run setup.
+    val isEssentialMode = false
 
     val visibleCategories = remember(isPrimaryProfileActive, isEssentialMode, isWatchPartyAvailable) {
         visibleSettingsCategories(
@@ -237,9 +250,13 @@ fun SettingsScreen(
     val isHorizonStyle = NuvioTheme.settingsUiStyle == SettingsUiStyle.HORIZON
     var selectedCategory by rememberSaveable {
         mutableStateOf(
-            visibleSections.firstOrNull()?.category ?: SettingsCategory.APPEARANCE
+            SettingsLaunch.pendingCategory
+                ?: visibleSections.firstOrNull()?.category
+                ?: SettingsCategory.APPEARANCE
         )
     }
+    // A shortcut only chooses the first screen; the next visit starts normally.
+    LaunchedEffect(Unit) { SettingsLaunch.pendingCategory = null }
     val railFocusRequesters = remember(visibleSections) {
         visibleSections.associate { it.category to FocusRequester() }
     }
@@ -253,15 +270,15 @@ fun SettingsScreen(
             SettingsCategory.CONTENT_DISCOVERY to FocusRequester(),
             SettingsCategory.INTEGRATION to FocusRequester(),
             SettingsCategory.TRACKING to FocusRequester(),
+            SettingsCategory.VPN to FocusRequester(),
             SettingsCategory.LIVE_TV to FocusRequester(),
             SettingsCategory.ON_DEMAND to FocusRequester(),
             SettingsCategory.SPORTS to FocusRequester(),
-            SettingsCategory.VPN to FocusRequester(),
+            SettingsCategory.YOUTUBE to FocusRequester(),
             SettingsCategory.SIDE_MENU to FocusRequester(),
             SettingsCategory.CALENDAR to FocusRequester(),
             SettingsCategory.PLAYBACK to FocusRequester(),
             SettingsCategory.DEFAULT_LAUNCHER to FocusRequester(),
-            SettingsCategory.REMOTE_BUTTONS to FocusRequester(),
             SettingsCategory.ADVANCED to FocusRequester(),
             SettingsCategory.ABOUT to FocusRequester(),
             SettingsCategory.ACCOUNT to FocusRequester()
@@ -277,6 +294,10 @@ fun SettingsScreen(
     var integrationHubReturnSection by remember { mutableStateOf(IntegrationSettingsSection.Hub) }
     var pendingContentFocusCategory by remember { mutableStateOf<SettingsCategory?>(null) }
     var pendingContentFocusRequestId by remember { mutableLongStateOf(0L) }
+    var pendingPlaybackSection by remember { mutableStateOf<PlaybackSection?>(null) }
+    var showSettingsSearch by rememberSaveable { mutableStateOf(false) }
+    var restoreSearchFocus by remember { mutableStateOf(false) }
+    val searchButtonFocus = remember { FocusRequester() }
     // Saveable so it survives a trip out to one of the screens a category opens. The pane bounces
     // focus back to the rail whenever it gains focus while this is false, so a plain remember made
     // every return from those screens land on the rail rather than where the user had been.
@@ -393,6 +414,36 @@ fun SettingsScreen(
 
     val focusManager = LocalFocusManager.current
 
+    fun dismissSettingsSearch() {
+        showSettingsSearch = false
+        restoreSearchFocus = true
+    }
+
+    fun openSearchResult(result: SettingsSearchResult) {
+        showSettingsSearch = false
+        restoreSearchFocus = false
+        pendingPlaybackSection = result.playbackSection
+        when (result.route) {
+            SettingsSearchRoute.CloudStream -> onNavigateToPlugins()
+            SettingsSearchRoute.Addons -> onNavigateToAddons()
+            SettingsSearchRoute.LiveTv -> onNavigateToLiveTv()
+            SettingsSearchRoute.None -> {
+                allowDetailAutofocus = true
+                selectedCategory = result.category
+                pendingContentFocusCategory = result.category
+                pendingContentFocusRequestId += 1L
+            }
+        }
+    }
+
+    LaunchedEffect(restoreSearchFocus, showSettingsSearch) {
+        if (restoreSearchFocus && !showSettingsSearch) {
+            withFrameNanos { }
+            runCatching { searchButtonFocus.requestFocus() }
+            restoreSearchFocus = false
+        }
+    }
+
     LaunchedEffect(visibleSections) {
         if (visibleSections.none { it.category == selectedCategory }) {
             selectedCategory = visibleSections.firstOrNull()?.category ?: SettingsCategory.APPEARANCE
@@ -466,6 +517,7 @@ fun SettingsScreen(
                         integrationSection = IntegrationSettingsSection.Hub
                         integrationHubReturnSection = IntegrationSettingsSection.Hub
                     }
+                    pendingPlaybackSection = null
                     allowDetailAutofocus = true
                     selectedCategory = section.category
                     pendingContentFocusCategory = section.category
@@ -583,6 +635,16 @@ fun SettingsScreen(
                             horizontalArrangement = Arrangement.spacedBy(NuvioTheme.spacing.sm, Alignment.CenterHorizontally),
                             contentPadding = PaddingValues(horizontal = NuvioTheme.spacing.md, vertical = NuvioTheme.spacing.xs)
                         ) {
+                            item(key = "settings_search_tab") {
+                                SettingsTopBarTab(
+                                    title = "Search",
+                                    icon = Icons.Default.Search,
+                                    isSelected = false,
+                                    focusRequester = searchButtonFocus,
+                                    onFocused = { focusedTabCategory = null },
+                                    onClick = { showSettingsSearch = true }
+                                )
+                            }
                             itemsIndexed(
                                 items = visibleSections,
                                 key = { _, section -> section.category }
@@ -668,6 +730,7 @@ fun SettingsScreen(
                                 selectedCategory = animatedCategory,
                                 isEssentialMode = isEssentialMode,
                                 allowDetailAutofocus = allowDetailAutofocus,
+                                initialPlaybackSection = pendingPlaybackSection,
                                 contentFocusRequesters = contentFocusRequesters,
                                 experienceModeViewModel = experienceModeViewModel,
                                 integrationSection = integrationSection,
@@ -702,7 +765,7 @@ fun SettingsScreen(
             ) {
                 Box(
                     modifier = Modifier
-                        .width(220.dp)
+                        .width(250.dp)
                         .fillMaxHeight()
                 ) {
                     LazyColumn(
@@ -760,6 +823,19 @@ fun SettingsScreen(
                             },
                         verticalArrangement = Arrangement.spacedBy(10.dp, Alignment.CenterVertically)
                     ) {
+                        item(key = "settings_search_row") {
+                            Column {
+                                SettingsRailButton(
+                                    title = "Search settings",
+                                    icon = Icons.Default.Search,
+                                    isSelected = false,
+                                    focusRequester = searchButtonFocus,
+                                    onFocused = { focusedTabCategory = null },
+                                    onClick = { showSettingsSearch = true }
+                                )
+                                SettingsRailDivider()
+                            }
+                        }
                         itemsIndexed(
                             items = visibleSections,
                             key = { _, section -> section.category }
@@ -829,6 +905,7 @@ fun SettingsScreen(
                         selectedCategory = selectedCategory,
                         isEssentialMode = isEssentialMode,
                         allowDetailAutofocus = allowDetailAutofocus,
+                        initialPlaybackSection = pendingPlaybackSection,
                         contentFocusRequesters = contentFocusRequesters,
                         experienceModeViewModel = experienceModeViewModel,
                         integrationSection = integrationSection,
@@ -857,6 +934,14 @@ fun SettingsScreen(
             }
             }
         }
+        if (showSettingsSearch) {
+            SettingsSearchOverlay(
+                sections = visibleSections,
+                isEssentialMode = isEssentialMode,
+                onDismiss = { dismissSettingsSearch() },
+                onOpen = { result -> openSearchResult(result) }
+            )
+        }
     }
 }
 
@@ -865,6 +950,7 @@ private fun SettingsDetailPane(
     selectedCategory: SettingsCategory,
     isEssentialMode: Boolean,
     allowDetailAutofocus: Boolean,
+    initialPlaybackSection: PlaybackSection? = null,
     contentFocusRequesters: Map<SettingsCategory, FocusRequester>,
     experienceModeViewModel: ExperienceModeSettingsViewModel,
     integrationSection: IntegrationSettingsSection,
@@ -885,13 +971,6 @@ private fun SettingsDetailPane(
     onNavigateToSportsTeams: () -> Unit = {}
 ) {
     when (selectedCategory) {
-        SettingsCategory.VPN -> VpnSettingsContent(
-            initialFocusRequester = if (allowDetailAutofocus) {
-                contentFocusRequesters[SettingsCategory.VPN]
-            } else {
-                null
-            }
-        )
         SettingsCategory.EXPERIENCE -> EssentialAdvancedSettingsContent(
             experienceModeViewModel = experienceModeViewModel,
             initialFocusRequester = if (allowDetailAutofocus) {
@@ -945,7 +1024,8 @@ private fun SettingsDetailPane(
                     contentFocusRequesters[SettingsCategory.PLAYBACK]
                 } else {
                     null
-                }
+                },
+                initialSection = initialPlaybackSection
             )
         }
         SettingsCategory.REMOTE_BUTTONS -> ButtonMapperSettingsContent(
@@ -1040,6 +1120,13 @@ private fun SettingsDetailPane(
                 null
             }
         )
+        SettingsCategory.YOUTUBE -> YouTubeSettingsContent(
+            initialFocusRequester = if (allowDetailAutofocus) {
+                contentFocusRequesters[SettingsCategory.YOUTUBE]
+            } else {
+                null
+            }
+        )
         SettingsCategory.ON_DEMAND -> LiveTvSettingsContent(
             page = LiveTvPage.ON_DEMAND,
             initialFocusRequester = if (allowDetailAutofocus) {
@@ -1066,6 +1153,13 @@ private fun SettingsDetailPane(
             onOpenTeams = onNavigateToSportsTeams,
             initialFocusRequester = if (allowDetailAutofocus) {
                 contentFocusRequesters[SettingsCategory.SPORTS]
+            } else {
+                null
+            }
+        )
+        SettingsCategory.VPN -> VpnSettingsContent(
+            initialFocusRequester = if (allowDetailAutofocus) {
+                contentFocusRequesters[SettingsCategory.VPN]
             } else {
                 null
             }

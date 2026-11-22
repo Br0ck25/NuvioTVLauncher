@@ -25,6 +25,51 @@ import java.util.Locale
 import com.nuvio.tv.ui.util.languageCodeToName
 
 @UnstableApi
+/** YouTube fork: tells the player which video format to prefer when a size comes in several. */
+internal fun PlayerRuntimeController.applyYouTubeCodecPreference() {
+    val player = _exoPlayer ?: return
+    val order = com.nuvio.tv.youtube.YouTubeSettings.codecMimeOrder(context)
+    player.trackSelectionParameters = player.trackSelectionParameters.buildUpon()
+        .setPreferredVideoMimeTypes(*order.toTypedArray())
+        .build()
+}
+
+/** Pins playback to [height] (the best supported track of that size), or back to automatic when 0. */
+internal fun PlayerRuntimeController.selectVideoQuality(height: Int) {
+    val player = _exoPlayer ?: return
+    val params = player.trackSelectionParameters.buildUpon()
+        .clearOverridesOfType(C.TRACK_TYPE_VIDEO)
+    if (height > 0) {
+        var bestGroup: androidx.media3.common.TrackGroup? = null
+        var bestIndex = -1
+        var bestBitrate = -1
+        // YouTube fork: the chosen codec comes first; the rest only if that size isn't offered in it.
+        val order = if (com.nuvio.tv.youtube.YouTubeProgress.isYouTubeId(contentId)) {
+            com.nuvio.tv.youtube.YouTubeSettings.codecMimeOrder(context)
+        } else emptyList()
+        var bestRank = Int.MAX_VALUE
+        for (g in player.currentTracks.groups) {
+            if (g.type != C.TRACK_TYPE_VIDEO) continue
+            for (i in 0 until g.length) {
+                if (!g.isTrackSupported(i)) continue
+                val f = g.getTrackFormat(i)
+                if (f.height != height) continue
+                val rank = order.indexOf(f.sampleMimeType).let { if (it < 0) order.size else it }
+                if (rank < bestRank || (rank == bestRank && f.bitrate > bestBitrate)) {
+                    bestGroup = g.mediaTrackGroup
+                    bestIndex = i
+                    bestRank = rank
+                    bestBitrate = f.bitrate
+                }
+            }
+        }
+        if (bestGroup != null) {
+            params.setOverrideForType(androidx.media3.common.TrackSelectionOverride(bestGroup, bestIndex))
+        }
+    }
+    player.trackSelectionParameters = params.build()
+}
+
 internal fun PlayerRuntimeController.updateAvailableTracks(tracks: Tracks) {
     logSwitchTrace(
         stage = "exo-tracks-update-start",
@@ -33,6 +78,9 @@ internal fun PlayerRuntimeController.updateAvailableTracks(tracks: Tracks) {
     )
     val audioTracks = mutableListOf<TrackInfo>()
     val subtitleTracks = mutableListOf<TrackInfo>()
+    // Keyed lookup for the written/automatic duplicate check below. The old linear scan
+    // became quadratic when YouTube handed us 150+ caption tracks.
+    val subtitleTrackIndexes = HashMap<String, Int>()
     var selectedAudioIndex = -1
     var selectedSubtitleIndex = -1
 
@@ -137,7 +185,6 @@ internal fun PlayerRuntimeController.updateAvailableTracks(tracks: Tracks) {
                     // Skip addon subtitle tracks — they are managed separately
                     if (format.id?.contains(PlayerRuntimeController.ADDON_SUBTITLE_TRACK_ID_PREFIX) == true) continue
                     val isSelected = trackGroup.isTrackSelected(i)
-                    if (isSelected) selectedSubtitleIndex = subtitleTracks.size
 
                     val hasForcedFlag = (format.selectionFlags and C.SELECTION_FLAG_FORCED) != 0
                     val trackTexts = listOfNotNull(format.label, format.language, format.id)
@@ -145,15 +192,37 @@ internal fun PlayerRuntimeController.updateAvailableTracks(tracks: Tracks) {
                     val isSongsAndSigns = trackTexts.any {
                         it.contains("songs", ignoreCase = true) && it.contains("sign", ignoreCase = true)
                     }
+                    val name = format.label ?: format.language
+                        ?: context.getString(com.nuvio.tv.R.string.player_track_subtitle_fallback, subtitleTracks.size + 1)
+                    val forced = hasForcedFlag || nameHintForced || isSongsAndSigns
+                    // YouTube can expose the same language twice (written and automatic captions).
+                    // Keep the first, and let it carry the selection if the later one was selected.
+                    val duplicateKey = buildString {
+                        append(name.lowercase(Locale.US))
+                        append('\u0000')
+                        append((format.language ?: "").lowercase(Locale.US))
+                        append('\u0000')
+                        append(forced)
+                    }
+                    val duplicate = subtitleTrackIndexes[duplicateKey] ?: -1
+                    if (duplicate >= 0) {
+                        if (isSelected) {
+                            subtitleTracks[duplicate] = subtitleTracks[duplicate].copy(isSelected = true)
+                            selectedSubtitleIndex = duplicate
+                        }
+                        continue
+                    }
 
+                    subtitleTrackIndexes[duplicateKey] = subtitleTracks.size
+                    if (isSelected) selectedSubtitleIndex = subtitleTracks.size
                     subtitleTracks.add(
                         TrackInfo(
                             index = subtitleTracks.size,
-                            name = format.label ?: format.language ?: context.getString(com.nuvio.tv.R.string.player_track_subtitle_fallback, subtitleTracks.size + 1),
+                            name = name,
                             language = format.language,
                             trackId = format.id,
                             codec = CustomDefaultTrackNameProvider.formatNameFromMime(format.sampleMimeType),
-                            isForced = hasForcedFlag || nameHintForced || isSongsAndSigns,
+                            isForced = forced,
                             isSelected = isSelected
                         )
                     )
@@ -289,6 +358,14 @@ internal fun PlayerRuntimeController.updateAvailableTracks(tracks: Tracks) {
         selectedAudioIndex = restoredIndex
     }
 
+    val videoQualities = tracks.groups
+        .filter { it.type == C.TRACK_TYPE_VIDEO }
+        .flatMap { g -> (0 until g.length).filter { g.isTrackSupported(it) }.map { g.getTrackFormat(it).height } }
+        .filter { it > 0 }
+        .distinct()
+        .sortedDescending()
+        .let { heights -> if (heights.size > 1) heights.map { VideoQualityOption(it, "${it}p") } else emptyList() }
+
     _uiState.update { state ->
         val finalSubtitleIndex = when {
             state.selectedAddonSubtitle != null -> -1
@@ -297,13 +374,37 @@ internal fun PlayerRuntimeController.updateAvailableTracks(tracks: Tracks) {
         }
         state.copy(
             audioTracks = audioTracks,
+            videoQualities = videoQualities,
             subtitleTracks = subtitleTracks,
             selectedAudioTrackIndex = selectedAudioIndex,
             selectedSubtitleTrackIndex = finalSubtitleIndex,
-            isHdrVideo = isHdrVideo
+            isHdrVideo = isHdrVideo,
+            // A vertical picture (a Short, for instance) keeps its own aspect; the toggle is hidden.
+            isPortraitVideo = if (effectiveVideoFormat != null && effectiveVideoFormat.width > 0) {
+                effectiveVideoFormat.height > effectiveVideoFormat.width
+            } else {
+                state.isPortraitVideo
+            }
         )
     }
     updateAudioControlAvailability(audioTracks, selectedAudioIndex)
+    // YouTube fork: start at your default quality, once, when the sizes are known.
+    if (!youtubeQualityApplied && videoQualities.isNotEmpty() &&
+        com.nuvio.tv.youtube.YouTubeProgress.isYouTubeId(contentId)
+    ) {
+        youtubeQualityApplied = true
+        applyYouTubeCodecPreference()
+        com.nuvio.tv.youtube.YouTubeSettings.playbackSpeed(context).takeIf { it > 0f && it != 1f }?.let { speed ->
+            onEvent(PlayerEvent.OnSetPlaybackSpeed(speed))
+        }
+        val preferred = com.nuvio.tv.youtube.YouTubeSettings.effectivePreferredHeight(context)
+        if (preferred > 0) {
+            val height = videoQualities.map { it.height }.firstOrNull { it <= preferred }
+                ?: videoQualities.last().height
+            selectVideoQuality(height)
+            _uiState.update { it.copy(selectedVideoQualityHeight = height) }
+        }
+    }
     logSwitchTrace(
         stage = "exo-tracks-update-end",
         message = "audioCount=${audioTracks.size} subtitleCount=${subtitleTracks.size} " +
@@ -997,7 +1098,15 @@ internal fun PlayerRuntimeController.applyPersistedTrackPreference(
         pendingEngineSwitchTrackPreference = null
     }
     val usingSwitchPending = switchPending != null
-    val pendingCandidate = switchPending?.preference ?: persistedTrackPreference
+    val subtitlesOffInSettings =
+        _uiState.value.subtitleStyle.preferredLanguage.trim().equals("none", ignoreCase = true)
+    val dropRememberedSubtitle = switchPending == null && !isUserExplicitSubtitleSelection &&
+        (subtitlesOffInSettings ||
+            (com.nuvio.tv.youtube.YouTubeProgress.isYouTubeId(contentId) &&
+                !com.nuvio.tv.youtube.YouTubeSettings.autoSubtitles(context)))
+    val pendingCandidate = (switchPending?.preference ?: persistedTrackPreference)?.let { preference ->
+        if (dropRememberedSubtitle) preference.copy(subtitle = null) else preference
+    }
     logSwitchTrace(
         stage = "restore-enter",
         message = "usingSwitchPending=$usingSwitchPending switchPending=${switchPending != null} persisted=${persistedTrackPreference != null} " +
@@ -1434,7 +1543,7 @@ private fun subtitleTrackMatchesLanguage(track: TrackInfo, target: String): Bool
     )
 }
 
-private fun audioTrackMatchesLanguage(track: TrackInfo, target: String): Boolean {
+internal fun audioTrackMatchesLanguage(track: TrackInfo, target: String): Boolean {
     return trackMatchesLanguage(
         name = track.name,
         language = track.language,
@@ -1691,6 +1800,20 @@ private fun audioMatchesSubtitleTargetForForced(audioTrack: TrackInfo, target: S
 }
 
 internal fun PlayerRuntimeController.tryAutoSelectPreferredSubtitleFromAvailableTracks() {
+    val subtitlesOffInSettings =
+        _uiState.value.subtitleStyle.preferredLanguage.trim().equals("none", ignoreCase = true)
+    if (com.nuvio.tv.youtube.YouTubeProgress.isYouTubeId(contentId) &&
+        (!com.nuvio.tv.youtube.YouTubeSettings.autoSubtitles(context) || subtitlesOffInSettings)) {
+        if (!isUserExplicitSubtitleSelection) {
+            if (!youtubeSubtitleStartApplied && (if (isUsingMpvEngine()) mpvView != null else _exoPlayer != null)) {
+                youtubeSubtitleStartApplied = true
+                disableSubtitles()
+                autoSubtitleSelected = true
+            }
+            return
+        }
+        youtubeSubtitleStartApplied = true
+    }
     if (isUserExplicitSubtitleSelection) {
         Log.d(PlayerRuntimeController.TAG, "AUTO_SUB stop: user explicitly selected current subtitle")
         return
@@ -1702,6 +1825,18 @@ internal fun PlayerRuntimeController.tryAutoSelectPreferredSubtitleFromAvailable
     val state = _uiState.value
     val preferredTargets = subtitleLanguageTargets()
     val primaryTarget = preferredTargets.firstOrNull()
+
+    // "None" wins over any earlier auto-selection or a remembered track: if a subtitle is
+    // active, turn it off. Checked before the autoSubtitleSelected guard below so a stale
+    // auto-selection cannot keep the settings' off choice from being applied.
+    if (preferredTargets.isEmpty()) {
+        autoSubtitleSelected = true
+        if (state.selectedSubtitleTrackIndex >= 0 || state.selectedAddonSubtitle != null) {
+            Log.d(PlayerRuntimeController.TAG, "AUTO_SUB stop: preferred=none")
+            disableSubtitles()
+        }
+        return
+    }
 
     if (autoSubtitleSelected) {
         val currentSelectedLang = when {
@@ -1742,14 +1877,6 @@ internal fun PlayerRuntimeController.tryAutoSelectPreferredSubtitleFromAvailable
     )
     if (useForcedSubtitles && selectedAudioTrack == null) {
         Log.d(PlayerRuntimeController.TAG, "AUTO_SUB defer: selected audio track unknown")
-        return
-    }
-    if (targets.isEmpty()) {
-        autoSubtitleSelected = true
-        Log.d(PlayerRuntimeController.TAG, "AUTO_SUB stop: preferred=none")
-        if (isUsingMpvEngine()) {
-            mpvView?.disableSubtitles()
-        }
         return
     }
 

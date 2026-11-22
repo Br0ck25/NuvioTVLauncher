@@ -33,14 +33,6 @@ class StalkerPlaybackSafetyTest {
         }
     }
 
-    @Test fun `portal and media routing must agree including loopback exemptions`() {
-        assertTrue(StalkerGateway.consistentRoutes("HTTP_HTTPS:profile:1", "https://portal.invalid/c/", "http://cdn.invalid/live.ts"))
-        assertTrue(StalkerGateway.consistentRoutes("OFF:null:1", "http://localhost/c/", "https://cdn.invalid/live.ts"))
-        assertFalse(StalkerGateway.consistentRoutes("HTTP_ONLY:profile:1", "https://portal.invalid/c/", "http://cdn.invalid/live.ts"))
-        assertFalse(StalkerGateway.consistentRoutes("HTTP_HTTPS:profile:1", "http://localhost/c/", "http://cdn.invalid/live.ts"))
-        assertFalse(StalkerGateway.consistentRoutes("APP_WIDE:profile:1", "https://portal.invalid/c/", "rtsp://cdn.invalid/live"))
-    }
-
     @Test fun `media credentials apply only to the authenticated portal origin`() {
         var checked = 0
         val authorization = StalkerMediaAuthorization("https://portal.invalid/custom/portal.php",

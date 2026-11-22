@@ -1,6 +1,8 @@
 package com.nuvio.tv.livetv.player
 
 import android.content.Context
+import com.nuvio.tv.R
+import com.nuvio.tv.core.util.withAppLocale
 import androidx.annotation.OptIn
 import androidx.media3.common.C
 import androidx.media3.common.MediaItem
@@ -30,6 +32,7 @@ import kotlinx.coroutines.delay
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.asStateFlow
+import kotlinx.coroutines.isActive
 import kotlinx.coroutines.launch
 import javax.inject.Inject
 import javax.inject.Singleton
@@ -74,6 +77,7 @@ data class LiveTrackOption(
 @Singleton
 class LiveTvPlaybackController @Inject constructor(
     @ApplicationContext private val context: Context,
+    private val addonStreamResolver: AddonChannelStreamResolver,
     private val stalker: StalkerGateway,
 ) {
     private val scope = CoroutineScope(SupervisorJob() + Dispatchers.Main.immediate)
@@ -85,6 +89,7 @@ class LiveTvPlaybackController @Inject constructor(
     val state: StateFlow<LivePlaybackState> = _state.asStateFlow()
 
     private var currentChannel: LiveChannel? = null
+    private var addonResolveJob: Job? = null
     private var stalkerResolveJob: Job? = null
     private var stalkerGeneration = 0L
     private var activeStalkerRef: StalkerStreamRef? = null
@@ -330,10 +335,33 @@ class LiveTvPlaybackController @Inject constructor(
         return OwnTimeline(p.currentPosition.coerceIn(0L, d), d, p.isCurrentMediaItemDynamic)
     }
 
+    /** The stream playing now has shown itself as live at some point (a live game, not a replay). */
+    @Volatile private var sawLive = false
+
+    private val _videoFinished = kotlinx.coroutines.flow.MutableSharedFlow<Unit>(extraBufferCapacity = 1)
+    /** A replay or highlight from Sports played to its end (full screen goes back where it was opened). */
+    val videoFinished: kotlinx.coroutines.flow.SharedFlow<Unit> = _videoFinished
+
+    /**
+     * True when what just ended is a sports addon replay or an official highlight that played
+     * through: a fixed length, and never live. A live game that drops (even one whose provider
+     * closes its list) keeps retrying as before.
+     */
+    private fun clipFinished(): Boolean {
+        val p = _player ?: return false
+        val ch = currentChannel ?: return false
+        if (ch.sourceId != com.nuvio.tv.livetv.sports.SportsAddonSource.SOURCE_ID) return false
+        if (sawLive || p.isCurrentMediaItemDynamic) return false
+        val d = p.duration
+        return d != C.TIME_UNSET && d > 0
+    }
+
     private fun updateOwnTimeline() {
         val p = _player
         val ch = currentChannel
-        _ownTimeline.value = p != null && ch?.sourceId == com.nuvio.tv.livetv.sports.SportsAddonSource.SOURCE_ID &&
+        if (p != null && p.isCurrentMediaItemDynamic) sawLive = true
+        _ownTimeline.value = p != null &&
+            ch?.sourceId == com.nuvio.tv.livetv.sports.SportsAddonSource.SOURCE_ID &&
             _state.value.catchupTitle == null && _shiftStartedAt.value == null && _recordingPlayback.value == null &&
             p.isCurrentMediaItemSeekable && p.duration != C.TIME_UNSET &&
             // Live: only with a real rewind window (a short one would run out while paused, so
@@ -377,8 +405,10 @@ class LiveTvPlaybackController @Inject constructor(
      * Plays a recording from Recordings like a replay that's all on this box: the catch-up seek
      * bar (Up to seek, 30 s skips), starting [startAtMs] in. Nothing is asked of the provider.
      */
-    fun playSavedRecording(channel: LiveChannel, playlist: java.io.File, title: String, recordingId: String, startAtMs: Long) {
-        play(channel, overrideUrl = android.net.Uri.fromFile(playlist).toString(), catchupTitle = title)
+    fun playSavedRecording(channel: LiveChannel, playlist: java.io.File, title: String, recordingId: String, startAtMs: Long, url: String? = null) {
+        // An SMB recording's pieces are on the share: its HTTP link reads them from there.
+        val uri = url?.let(android.net.Uri::parse) ?: android.net.Uri.fromFile(playlist)
+        play(channel, overrideUrl = uri.toString(), catchupTitle = title)
         val p = _player ?: return
         savedRecordingId = recordingId
         savedRecordingPlaylist = playlist
@@ -386,7 +416,7 @@ class LiveTvPlaybackController @Inject constructor(
         archiveStartPending = false
         leadSeekMs = 0L
         fallbackUrls.clear()
-        p.setMediaSource(localRecordingSource(android.net.Uri.fromFile(playlist), 0L))
+        p.setMediaSource(localRecordingSource(uri, 0L))
         p.prepare()
         p.playWhenReady = true
         com.nuvio.tv.livetv.model.LiveTvLoadReport.add("Recording \"$title\": playing in the Live TV player" + if (startAtMs > 0) " from ${startAtMs / 1000} s" else "")
@@ -401,8 +431,9 @@ class LiveTvPlaybackController @Inject constructor(
     }
 
     /** Plays [playlist] (a recording that's still being made), a few seconds behind live. */
-    fun playFromRecording(playlist: java.io.File, fromStart: Boolean = false) {
+    fun playFromRecording(playlist: java.io.File, fromStart: Boolean = false, url: String? = null) {
         val p = _player ?: return
+        val uri = url?.let(android.net.Uri::parse) ?: android.net.Uri.fromFile(playlist)
         _recordingPlayback.value = playlist
         _recordingStarting.value = true
         shiftJob?.cancel()
@@ -421,7 +452,7 @@ class LiveTvPlaybackController @Inject constructor(
                 currentChannel?.let { ch -> currentUrl = null; play(ch) }
                 return@launch
             }
-            p.setMediaSource(localRecordingSource(android.net.Uri.fromFile(playlist), 15_000))
+            p.setMediaSource(localRecordingSource(uri, 15_000))
             p.prepare()
             p.playWhenReady = true
             if (fromStart) {
@@ -660,7 +691,6 @@ class LiveTvPlaybackController @Inject constructor(
         }
 
     @Volatile private var watchingFullscreen = false
-
     fun attach(): ExoPlayer {
         releaseJob?.cancel()
         attachCount++
@@ -684,6 +714,53 @@ class LiveTvPlaybackController @Inject constructor(
     private val fallbackUrls = ArrayDeque<String>()
     /** The catch-up now playing has actually started (pictures moving), at least once. */
     @Volatile private var archiveStarted = false
+
+    private fun resolveAddonAndPlay(
+        channel: LiveChannel,
+        catchupTitle: String?,
+        fallback: String?,
+        fallbacks: List<String>,
+        catchupStartMs: Long?,
+        catchupLeadMs: Long,
+        catchupPrimaryUrl: String?
+    ) {
+        addonResolveJob?.cancel()
+        currentChannel = channel
+        currentUrl = null
+        _state.value = LivePlaybackState(channelKey = channel.key, isBuffering = true)
+        addonResolveJob = scope.launch {
+            val result = addonStreamResolver.resolve(channel)
+            if (!isActive || _state.value.channelKey != channel.key) return@launch
+            result.onSuccess { sources ->
+                val first = sources.firstOrNull() ?: return@onSuccess
+                val resolved = channel.copy(
+                    url = first.url,
+                    headers = channel.headers + first.headers,
+                    addon = null
+                )
+                // Try the addon's other links if this one is refused. Only links with the
+                // same headers are safe to hand to the player (headers are per media).
+                val sameHeaders = sources.drop(1)
+                    .filter { it.headers == first.headers }
+                    .map { it.url }
+                addonResolveJob = null
+                play(
+                    resolved,
+                    overrideUrl = null,
+                    catchupTitle = catchupTitle,
+                    fallback = fallback,
+                    fallbacks = fallbacks + sameHeaders,
+                    catchupStartMs = catchupStartMs,
+                    catchupLeadMs = catchupLeadMs,
+                    catchupPrimaryUrl = catchupPrimaryUrl
+                )
+            }.onFailure { error ->
+                val message = error.message ?: "Couldn't find a stream for ${channel.name}."
+                _state.value = LivePlaybackState(channelKey = channel.key, error = message)
+                com.nuvio.tv.livetv.record.LiveTvNotice.show(message)
+            }
+        }
+    }
 
     // ---------------------------------------------------------------- list channels
 
@@ -731,6 +808,23 @@ class LiveTvPlaybackController @Inject constructor(
         }
     }
 
+    /**
+     * Switches the list channel being watched to another source for the same programme, keeping
+     * the position: [playable] is from [com.nuvio.tv.livetv.lists.ListChannels.resolveSource].
+     */
+    fun playListSource(channel: LiveChannel, playable: LiveChannel) {
+        val resume = _player?.currentPosition ?: 0L
+        listJob?.cancel()
+        listChannelUrl = channel.url
+        listJob = scope.launch {
+            play(channel.copy(headers = playable.headers), overrideUrl = playable.url)
+            val p = _player ?: return@launch
+            var waited = 0
+            while (waited < 20_000 && p.playbackState != Player.STATE_READY && listChannelUrl == channel.url) { delay(150); waited += 150 }
+            if (listChannelUrl == channel.url && resume > 0) p.seekTo(resume)
+        }
+    }
+
     /** The list channel's programme ended: on to the next one. */
     private fun listChannelEnded() {
         val url = listChannelUrl ?: return
@@ -758,6 +852,10 @@ class LiveTvPlaybackController @Inject constructor(
         stalkerStream: StalkerStreamRef? = null,
         reconnectAttempt: Int = 0,
     ) {
+        // A list channel's link is not a stream: find what is on now, then play that (see playListChannel).
+        val isListChannel = channel.url.startsWith(com.nuvio.tv.livetv.lists.LIST_CHANNEL_SCHEME)
+        if (isListChannel && overrideUrl == null) { playListChannel(channel); return }
+        if (!isListChannel) stopListChannel()
         if (stalkerStream == null && overrideUrl == null && catchupTitle == null && channel.stalkerRef != null &&
             currentChannel?.key == channel.key && activeStalkerRef == channel.stalkerRef && _state.value.error == null &&
             (stalkerResolveJob?.isActive == true || _player?.playbackState?.let { it != Player.STATE_IDLE } == true)
@@ -828,10 +926,26 @@ class LiveTvPlaybackController @Inject constructor(
         previousChannelKey: String? = currentChannel?.key,
         reconnectAttempt: Int = 0,
     ) {
-        // A list channel's link is not a stream: find what is on now, then play that (see playListChannel).
-        val isListChannel = channel.url.startsWith(com.nuvio.tv.livetv.lists.LIST_CHANNEL_SCHEME)
-        if (isListChannel && overrideUrl == null) { playListChannel(channel); return }
-        if (!isListChannel) stopListChannel()
+        // Add-on channels have no URL until their stream is looked up. Keep the guide and
+        // player on the channel while that happens, then play the resolved link.
+        if (overrideUrl == null && channel.addon != null) {
+            resolveAddonAndPlay(
+                channel, catchupTitle, fallback, fallbacks, catchupStartMs, catchupLeadMs, catchupPrimaryUrl
+            )
+            return
+        }
+        // A rewind/pause buffer has already turned an add-on channel into a real URL.
+        if (overrideUrl != null && channel.addon != null) {
+            play(
+                channel.copy(url = overrideUrl, addon = null),
+                overrideUrl = overrideUrl, catchupTitle = catchupTitle, fallback = fallback,
+                fallbacks = fallbacks, catchupStartMs = catchupStartMs,
+                catchupLeadMs = catchupLeadMs, catchupPrimaryUrl = catchupPrimaryUrl
+            )
+            return
+        }
+        addonResolveJob?.cancel()
+        addonResolveJob = null
         // Something chosen to play (back from the background through a launcher row, say):
         // that wins over picking up what was on before.
         resumeAfterBackground = null
@@ -851,6 +965,7 @@ class LiveTvPlaybackController @Inject constructor(
         wallCheckedFor = null
         if (previousChannelKey != channel.key) {
             neverStartedCount = 0
+            sawLive = false
             audioHandled = false
             audioPrefPending = true
             captionsHandled = false
@@ -928,6 +1043,12 @@ class LiveTvPlaybackController @Inject constructor(
             !url.substringBefore('?').endsWith(".m3u8", ignoreCase = true) && startReplayCache(channel, url)
         ) return
         archiveStartPending = catchupTitle != null
+        // A different channel: clear the old frame and decoder before the new source is
+        // attached. Some Amlogic boxes otherwise keep the previous channel's frame and show
+        // it with a green tint while the new channel starts.
+        if (previousChannelKey != channel.key) {
+            p.stop()
+        }
         p.setMediaSource(buildMediaSource(url, channel.headers, isLive = catchupTitle == null))
         p.prepare()
         p.playWhenReady = true
@@ -1073,6 +1194,7 @@ class LiveTvPlaybackController @Inject constructor(
             PlaybackException.ERROR_CODE_DECODING_FAILED,
             PlaybackException.ERROR_CODE_DECODING_FORMAT_EXCEEDS_CAPABILITIES,
             PlaybackException.ERROR_CODE_DECODING_FORMAT_UNSUPPORTED,
+            PlaybackException.ERROR_CODE_DECODING_RESOURCES_RECLAIMED,
             PlaybackException.ERROR_CODE_AUDIO_TRACK_INIT_FAILED,
             PlaybackException.ERROR_CODE_AUDIO_TRACK_WRITE_FAILED ->
                 "This TV couldn't play this channel's picture or sound"
@@ -1125,6 +1247,7 @@ class LiveTvPlaybackController @Inject constructor(
         LiveWatching.sourceId = null
         currentUrl = null
         _ownTimeline.value = false
+        sawLive = false
         _state.value = LivePlaybackState()
     }
 
@@ -1210,7 +1333,7 @@ class LiveTvPlaybackController @Inject constructor(
                 com.nuvio.tv.livetv.model.LiveTvLoadReport.add("Catch-up on ${ch.name} kept freezing; stopped after 3 tries")
                 catchupRestarts = 0
                 p.stop()
-                _state.value = _state.value.copy(error = "The provider stopped sending this show. Try again, or skip to another point", isBuffering = false)
+                _state.value = _state.value.copy(error = context.withAppLocale().getString(R.string.iptv_player_provider_stopped), isBuffering = false)
                 return
             }
             catchupRestarts++
@@ -1238,7 +1361,7 @@ class LiveTvPlaybackController @Inject constructor(
                 "; reloading · ${redact(currentUrl ?: ch.url)}"
         )
         val url = currentUrl ?: ch.url
-        val resumeAt = if (archive) pos else C_TIME_UNSET
+        val resumeAt = if (archive) pos else ownReplayResumeAt(p)
         if (activeStalkerRef != null) {
             restartStalker(resumeAt)
             return
@@ -1944,6 +2067,13 @@ class LiveTvPlaybackController @Inject constructor(
                 return
             }
             if (playbackState == Player.STATE_ENDED && _state.value.catchupTitle == null) {
+                // A replay or highlight from Sports that played to its end: done, not a dropout.
+                if (clipFinished()) {
+                    com.nuvio.tv.livetv.model.LiveTvLoadReport.add("Video ${currentChannel?.name} finished")
+                    _videoFinished.tryEmit(Unit)
+                    stop()
+                    return
+                }
                 // A live stream should never end; treat it as a dropped connection.
                 scheduleReconnect("Stream ended")
             }
@@ -1982,7 +2112,7 @@ class LiveTvPlaybackController @Inject constructor(
             // A recording from Recordings: there's nothing else to try, so say so.
             if (savedRecordingId != null) {
                 com.nuvio.tv.livetv.model.LiveTvLoadReport.add("Recording: couldn't be played (${error.errorCodeName})")
-                _state.value = _state.value.copy(error = "This recording couldn't be played", isBuffering = false)
+                _state.value = _state.value.copy(error = context.withAppLocale().getString(R.string.iptv_player_recording_failed), isBuffering = false)
                 return
             }
             // The saved catch-up couldn't be played: play the replay straight from the provider.
@@ -2273,19 +2403,29 @@ class LiveTvPlaybackController @Inject constructor(
             }
             val url = currentUrl ?: return@launch
             val p = _player ?: return@launch
+            val resumeAt = ownReplayResumeAt(p)
             p.setMediaSource(buildMediaSource(url, ch.headers, isLive = _state.value.catchupTitle == null))
             p.prepare()
+            if (resumeAt > 0) p.seekTo(resumeAt)
             p.playWhenReady = true
         }
     }
 
-    private fun buildMediaSource(url: String, headers: Map<String, String>, isLive: Boolean): androidx.media3.exoplayer.source.MediaSource =
-        com.nuvio.tv.livetv.multiview.LiveTvMediaSourceBuilder(
+    private fun buildMediaSource(url: String, headers: Map<String, String>, isLive: Boolean): androidx.media3.exoplayer.source.MediaSource {
+        return com.nuvio.tv.livetv.multiview.LiveTvMediaSourceBuilder(
             drm = currentChannel?.drm,
             forcedMime = forcedMime,
             bufferSize = bufferSize,
             stalkerPolicy = stalkerMediaPolicy,
         ).build(url, headers, isLive)
+    }
+
+    /**
+     * Where a replay with its own timeline (an addon replay, a highlight) had got to, so reloading
+     * it after a freeze or an error carries on there instead of starting over. Unset otherwise.
+     */
+    private fun ownReplayResumeAt(p: ExoPlayer): Long =
+        if (_ownTimeline.value && !p.isCurrentMediaItemDynamic) p.currentPosition.coerceAtLeast(0L) else C_TIME_UNSET
 
     /**
      * Lets go of the player (and its hold on the audio output) right away. Called when Nuvio's

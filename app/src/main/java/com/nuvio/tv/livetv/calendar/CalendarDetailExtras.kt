@@ -195,7 +195,7 @@ fun CalendarNextLine(meta: Meta, onFocused: () -> Unit = {}) {
     ) {
         // The Live TV button first: Down from the page's buttons lands on it, right under Play.
         // OK: the Live TV options. Hold OK: the channel list (change or forget the channel).
-        if (e != null && hasLiveTv && series) {
+        if (settings.pageLiveTvOptions && e != null && hasLiveTv && series) {
             GuideChip(
                 text = when {
                     st.recording && g != null -> "Recording on ${repo.channelLabel(g)}"

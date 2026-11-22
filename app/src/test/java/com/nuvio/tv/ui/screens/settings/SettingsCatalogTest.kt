@@ -27,6 +27,7 @@ class SettingsCatalogTest {
                 SettingsCategory.LIVE_TV,
                 SettingsCategory.ON_DEMAND,
                 SettingsCategory.SPORTS,
+                SettingsCategory.YOUTUBE,
                 SettingsCategory.CALENDAR,
                 SettingsCategory.VPN,
                 SettingsCategory.INTEGRATION,
@@ -99,7 +100,6 @@ class SettingsCatalogTest {
             listOf(
                 SettingsCategory.APPEARANCE,
                 SettingsCategory.CONTENT_DISCOVERY,
-                SettingsCategory.LIVE_TV,
                 SettingsCategory.INTEGRATION,
                 SettingsCategory.DEFAULT_LAUNCHER
             ),

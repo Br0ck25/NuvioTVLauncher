@@ -43,7 +43,7 @@ class AddonManagementAccessTest {
     }
 
     @Test
-    fun `primary essential profile uses addons only web management`() {
+    fun `primary essential profile gets the full web management (every profile has full settings)`() {
         val profile = UserProfile(
             id = 1,
             name = "Primary",
@@ -53,7 +53,7 @@ class AddonManagementAccessTest {
 
         assertFalse(AddonManagementAccess.isReadOnly(profile))
         assertEquals(
-            AddonWebConfigMode.ADDONS_ONLY,
+            AddonWebConfigMode.FULL,
             AddonManagementAccess.webConfigMode(profile, ExperienceMode.ESSENTIAL)
         )
     }

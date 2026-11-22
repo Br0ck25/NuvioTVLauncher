@@ -9,38 +9,55 @@ import android.content.ContextWrapper
 import android.view.WindowManager
 import androidx.activity.compose.rememberLauncherForActivityResult
 import androidx.activity.result.contract.ActivityResultContracts
+import androidx.compose.foundation.Image
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.PaddingValues
+import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
+import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.Add
 import androidx.compose.material.icons.filled.Check
 import androidx.compose.material.icons.filled.Shield
 import androidx.compose.material.icons.filled.Tune
+import androidx.compose.material3.MaterialTheme
+import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.DisposableEffect
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
+import androidx.compose.runtime.rememberCoroutineScope
 import androidx.compose.runtime.setValue
+import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.focus.FocusRequester
 import androidx.compose.ui.focus.focusRequester
+import androidx.compose.ui.graphics.asImageBitmap
+import androidx.compose.ui.graphics.toArgb
+import androidx.compose.ui.layout.ContentScale
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.text.input.ImeAction
 import androidx.compose.ui.text.input.KeyboardType
 import androidx.compose.ui.unit.dp
+import androidx.core.content.FileProvider
 import com.nuvio.tv.R
+import com.nuvio.tv.core.vpn.VpnProfilePhoneServer
 import com.nuvio.tv.ui.components.NuvioDialog
 import com.nuvio.tv.ui.screens.account.InputField
 import com.nuvio.tv.ui.theme.NuvioTheme
 import com.nuvio.vpn.android.VpnSettingsController
+import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.delay
+import kotlinx.coroutines.flow.MutableStateFlow
+import kotlinx.coroutines.launch
+import kotlinx.coroutines.withContext
+import java.io.File
 import com.nuvio.vpn.android.R as VpnR
 
 private sealed interface VpnDialog {
@@ -79,6 +96,27 @@ fun VpnSettingsContent(initialFocusRequester: FocusRequester? = null) {
     var returnFocus by remember { mutableStateOf<FocusRequester?>(null) }
     val picker = rememberLauncherForActivityResult(ActivityResultContracts.OpenDocument()) { uri ->
         if (uri != null) controller.importProfile(uri, pickingOpenVpn)
+    }
+    var phoneOpen by remember { mutableStateOf(false) }
+    val scope = rememberCoroutineScope()
+    fun importProfileText(text: String) {
+        scope.launch {
+            withContext(Dispatchers.IO) {
+                // Remove leftovers from an import whose screen left before cleanup ran.
+                context.cacheDir.listFiles { file -> file.name.startsWith("vpn-import-") }
+                    ?.forEach { it.delete() }
+            }
+            val file = File(context.cacheDir, "vpn-import-${System.currentTimeMillis()}.conf")
+            withContext(Dispatchers.IO) { file.writeText(text) }
+            val uri = runCatching {
+                FileProvider.getUriForFile(context, "${context.packageName}.fileprovider", file)
+            }.getOrNull() ?: return@launch
+            controller.importProfile(uri, false)
+            // The controller reads the document on its own worker. Remove the plaintext copy
+            // once it has had time to import; the stored profile itself is encrypted.
+            delay(30_000)
+            withContext(Dispatchers.IO) { file.delete() }
+        }
     }
 
     DisposableEffect(controller) {
@@ -164,10 +202,10 @@ fun VpnSettingsContent(initialFocusRequester: FocusRequester? = null) {
                         onClick = { choose(openVpn = false) }
                     )
                     SettingsActionRow(
-                        title = stringResource(VpnR.string.vpn_openvpn_title),
-                        subtitle = stringResource(VpnR.string.vpn_openvpn_detail),
+                        title = stringResource(R.string.vpn_phone_add),
+                        subtitle = stringResource(R.string.vpn_phone_add_detail),
                         leadingIcon = Icons.Default.Add,
-                        onClick = { choose(openVpn = true) }
+                        onClick = { phoneOpen = true }
                     )
                     // Import results and errors show right under the buttons that caused them.
                     val notice = current?.notice
@@ -399,6 +437,12 @@ fun VpnSettingsContent(initialFocusRequester: FocusRequester? = null) {
             }
         }
     }
+    if (phoneOpen) {
+        VpnPhoneImportDialog(
+            onDismiss = { phoneOpen = false },
+            onProfile = { text -> importProfileText(text) }
+        )
+    }
 }
 
 private fun modeTitle(mode: Int): Int = when (mode) {
@@ -413,4 +457,109 @@ private fun modeDetail(mode: Int): Int = when (mode) {
     VpnSettingsController.MODE_HTTP_HTTPS -> VpnR.string.vpn_scope_http_https_detail
     VpnSettingsController.MODE_APP -> VpnR.string.vpn_scope_app_detail
     else -> VpnR.string.vpn_scope_off_detail
+}
+
+@Composable
+private fun VpnPhoneImportDialog(onDismiss: () -> Unit, onProfile: (String) -> Unit) {
+    val context = LocalContext.current
+    val closeFocus = remember { FocusRequester() }
+    var handle by remember { mutableStateOf<VpnProfilePhoneServer.Handle?>(null) }
+    var noNetwork by remember { mutableStateOf(false) }
+    var received by remember { mutableStateOf(false) }
+    val pending = remember { MutableStateFlow<String?>(null) }
+    val accentArgb = NuvioTheme.colors.Secondary.toArgb()
+    val tvName = remember(context) {
+        runCatching { android.provider.Settings.Global.getString(context.contentResolver, "device_name") }
+            .getOrNull()?.takeIf { it.isNotBlank() } ?: android.os.Build.MODEL
+            ?: context.getString(R.string.iptv_settings_your_tv)
+    }
+    val phoneTexts = remember(context, tvName) {
+        VpnProfilePhoneServer.Texts.from(context.resources, tvName)
+    }
+    DisposableEffect(phoneTexts, accentArgb) {
+        val h = VpnProfilePhoneServer.start(
+            texts = phoneTexts,
+            accent = String.format(java.util.Locale.US, "#%06X", accentArgb and 0xFFFFFF)
+        ) { body ->
+            pending.value = body
+            phoneTexts.received
+        }
+        handle = h
+        noNetwork = h == null
+        onDispose { h?.stop() }
+    }
+    LaunchedEffect(Unit) {
+        pending.collect { body ->
+            if (body != null) {
+                received = true
+                onProfile(body)
+                delay(900)
+                onDismiss()
+            }
+        }
+    }
+    LaunchedEffect(Unit) {
+        delay(80)
+        runCatching { closeFocus.requestFocus() }
+    }
+    val qrBitmap = remember(handle?.url) {
+        handle?.url?.let { runCatching { com.nuvio.tv.core.qr.QrCodeGenerator.generate(it, 420, margin = 1) }.getOrNull() }
+    }
+    NuvioDialog(
+        onDismiss = onDismiss,
+        title = stringResource(R.string.vpn_phone_dialog_title),
+        width = 620.dp
+    ) {
+        if (noNetwork) {
+            Text(
+                text = stringResource(R.string.vpn_phone_no_network),
+                style = MaterialTheme.typography.bodyMedium,
+                color = NuvioTheme.colors.TextSecondary,
+                modifier = Modifier.fillMaxWidth()
+            )
+        } else {
+            Row(
+                horizontalArrangement = Arrangement.spacedBy(NuvioTheme.spacing.lg),
+                verticalAlignment = Alignment.CenterVertically
+            ) {
+                qrBitmap?.let {
+                    Image(
+                        bitmap = it.asImageBitmap(),
+                        contentDescription = stringResource(R.string.vpn_phone_qr),
+                        modifier = Modifier.size(196.dp),
+                        contentScale = ContentScale.Fit
+                    )
+                }
+                Column(
+                    modifier = Modifier.weight(1f),
+                    verticalArrangement = Arrangement.spacedBy(NuvioTheme.spacing.sm)
+                ) {
+                    Text(
+                        text = stringResource(R.string.vpn_phone_steps),
+                        style = MaterialTheme.typography.bodyMedium,
+                        color = NuvioTheme.colors.TextSecondary
+                    )
+                    handle?.url?.let {
+                        Text(
+                            text = stringResource(R.string.vpn_phone_address, it.removePrefix("http://")),
+                            style = MaterialTheme.typography.bodySmall,
+                            color = NuvioTheme.colors.TextPrimary
+                        )
+                    }
+                }
+            }
+            Text(
+                text = if (received) stringResource(R.string.vpn_phone_received_tv)
+                else stringResource(R.string.vpn_phone_waiting),
+                style = MaterialTheme.typography.bodySmall,
+                color = if (received) NuvioTheme.colors.Secondary else NuvioTheme.colors.TextSecondary,
+                modifier = Modifier.fillMaxWidth()
+            )
+        }
+        SettingsDialogActionRow(horizontalAlignment = Alignment.CenterHorizontally) {
+            androidx.compose.foundation.layout.Box(Modifier.focusRequester(closeFocus)) {
+                SettingsDialogActionButton(text = stringResource(R.string.action_close), onClick = onDismiss)
+            }
+        }
+    }
 }

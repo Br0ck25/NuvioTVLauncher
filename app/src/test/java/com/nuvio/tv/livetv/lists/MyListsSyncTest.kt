@@ -59,6 +59,14 @@ class MyListsSyncTest {
     }
 
     @Test
+    fun `preset channels are not synced`() {
+        val json = """{"ok":true,"channels":[
+            {"id":"ch_preset_2","name":"ABC","catalogId":"c1"},
+            {"id":"chz1n56occkhwu","name":"Mine","catalogId":"c2"}]}"""
+        assertEquals(listOf("chz1n56occkhwu"), MyListsSync.parseChannels(json).map { it.id })
+    }
+
+    @Test
     fun `an answer that is not ok or not json gives no channels`() {
         assertTrue(MyListsSync.parseChannels("""{"ok":false,"channels":[{"id":"a","name":"A","catalogId":"c"}]}""").isEmpty())
         assertTrue(MyListsSync.parseChannels("<html>").isEmpty())

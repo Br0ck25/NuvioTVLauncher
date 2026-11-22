@@ -78,7 +78,10 @@ class UpdateRepository @Inject constructor(
     private suspend fun latestTestBuild(channel: UpdateChannel): AppUpdate = withContext(Dispatchers.IO) {
         val key = BuildConfig.TESTER_KEY
         if (key.isBlank()) throw NoEligibleUpdateException(channel)
+        // No tester update service is configured yet; test builds are installed from the
+        // Actions artifact. A blank address means "no update" instead of calling anyone else's.
         val base = BuildConfig.TEST_UPDATES_URL.trimEnd('/')
+        if (base.isBlank()) throw NoEligibleUpdateException(channel)
         val request = Request.Builder()
             .url("$base/v1/updates/test/latest")
             .header("X-Tester-Key", key)

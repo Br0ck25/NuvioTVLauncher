@@ -86,7 +86,7 @@ internal class PhonePairingSession(
             val result = guarded { setup.setUp(pairingPort, pairingCode, connectPort) }
             mutableState.value = result.fold(
                 onSuccess = { State.Done(completionMessage()) },
-                onFailure = { State.Failed(it.message ?: it.javaClass.simpleName) }
+                onFailure = { State.Failed(friendlyError(it)) }
             )
         }
         return true
@@ -99,7 +99,7 @@ internal class PhonePairingSession(
             val result = guarded { setup.run(action, connectPort) }
             mutableState.value = result.fold(
                 onSuccess = { State.Done(it) },
-                onFailure = { State.Failed(it.message ?: it.javaClass.simpleName) }
+                onFailure = { State.Failed(friendlyError(it)) }
             )
         }
         return true
@@ -206,5 +206,20 @@ internal class PhonePairingSession(
         const val RUN_TIMEOUT_MS = 45_000L
         const val STALE_MS = 60_000L
         val CODE = Regex("\\d{6}")
+    }
+}
+
+/** Turns a raw network or ADB error into something a person on a phone can act on. */
+private fun friendlyError(t: Throwable): String {
+    val raw = t.message ?: t.javaClass.simpleName
+    val low = raw.lowercase()
+    return when {
+        "econnrefused" in low || "connection refused" in low || "failed to connect" in low ->
+            "Could not connect to the TV. Check the port, and that the Wireless debugging pairing popup is still open on the TV, then try again."
+        "timeout" in low || "timed out" in low ->
+            "The TV did not answer in time. Make sure Wireless debugging is on and the TV is on the same Wi-Fi, then try again."
+        "unreachable" in low || "no route" in low ->
+            "The TV could not be reached on the network. Check that it is on the same Wi-Fi."
+        else -> raw
     }
 }

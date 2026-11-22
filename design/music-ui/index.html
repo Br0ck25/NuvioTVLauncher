@@ -1,0 +1,1847 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Nuvio One — Music concept</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Manrope:wght@400;500;600;700;800&display=swap" rel="stylesheet">
+<link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&display=swap" rel="stylesheet">
+<link href="https://fonts.googleapis.com/css2?family=Instrument+Sans:ital,wght@0,400..700;1,400..700&display=swap" rel="stylesheet">
+<link href="https://fonts.googleapis.com/css2?family=Archivo:wght@400;500;600;700;800&display=swap" rel="stylesheet">
+<link href="https://fonts.googleapis.com/css2?family=Geist:wght@400;500;600;700;800&display=swap" rel="stylesheet">
+<link href="https://fonts.googleapis.com/css2?family=Bricolage+Grotesque:opsz,wdth,wght@12..96,75..100,400..800&display=swap" rel="stylesheet">
+<link href="https://fonts.googleapis.com/css2?family=Space+Grotesk:wght@400;500;600;700&display=swap" rel="stylesheet">
+<link href="https://fonts.googleapis.com/css2?family=Schibsted+Grotesk:wght@400;500;600;700;800&display=swap" rel="stylesheet">
+<style>
+  /* ============================================================
+     NUVIO ONE — MUSIC CONCEPT
+     Four setups: Aurora (chosen), Ember, Pulse, Daylight
+     One app: TV / Tablet / Phone
+     ============================================================ */
+  * { box-sizing: border-box; }
+  :root {
+    --page: #070609;
+    --page-2: #0d0b12;
+    --page-line: rgba(255,255,255,.07);
+    --focus: #ffffff;
+    --sans: 'Manrope', 'Segoe UI', system-ui, -apple-system, sans-serif;
+    --display: 'Inter', 'SF Pro Display', 'Segoe UI', system-ui, sans-serif;
+    --display-weight: 700;
+    --radius: 18px;
+    --ease: cubic-bezier(.2,.8,.2,1);
+  }
+  /* ---------- display type studies: streaming systems ---------- */
+  .device[data-font="inter"] {
+    --display: 'Inter', 'SF Pro Display', 'Segoe UI', system-ui, sans-serif;
+    --display-weight: 700;
+    --display-tracking: -.045em;
+  }
+  .device[data-font="instrument"] {
+    --display: 'Instrument Sans', 'Inter', system-ui, sans-serif;
+    --display-weight: 650;
+    --display-tracking: -.05em;
+  }
+  .device[data-font="manrope"] {
+    --display: 'Manrope', 'Segoe UI', system-ui, sans-serif;
+    --display-weight: 800;
+    --display-tracking: -.055em;
+  }
+  .device[data-font="archivo"] {
+    --display: 'Archivo', 'Inter', system-ui, sans-serif;
+    --display-weight: 700;
+    --display-tracking: -.05em;
+  }
+  .device[data-font="geist"] {
+    --display: 'Geist', 'Inter', 'SF Pro Display', system-ui, sans-serif;
+    --display-weight: 700;
+    --display-tracking: -.045em;
+  }
+  .device[data-font="bricolage"] {
+    --display: 'Bricolage Grotesque', 'Manrope', system-ui, sans-serif;
+    --display-weight: 600;
+    --display-tracking: -.055em;
+  }
+  .device[data-font="space"] {
+    --display: 'Space Grotesk', 'Inter', system-ui, sans-serif;
+    --display-weight: 700;
+    --display-tracking: -.045em;
+  }
+  .device[data-font="schibsted"] {
+    --display: 'Schibsted Grotesk', 'Inter', system-ui, sans-serif;
+    --display-weight: 700;
+    --display-tracking: -.045em;
+    --sans: 'Schibsted Grotesk', 'Manrope', system-ui, sans-serif;
+  }
+  html, body { height: 100%; }
+  body {
+    margin: 0;
+    min-height: 100%;
+    color: #f7f5ff;
+    font-family: var(--sans);
+    background:
+      radial-gradient(900px 500px at 10% -10%, rgba(124,58,237,.16), transparent 60%),
+      radial-gradient(800px 600px at 100% 110%, rgba(34,211,238,.1), transparent 60%),
+      linear-gradient(180deg, #09080d, #050507 60%);
+    overflow-x: hidden;
+  }
+  button { font: inherit; color: inherit; }
+  button:focus { outline: none; }
+  svg.icon {
+    width: 20px; height: 20px; fill: none; stroke: currentColor;
+    stroke-width: 1.8; stroke-linecap: round; stroke-linejoin: round;
+    flex: 0 0 auto;
+  }
+  svg.icon use { pointer-events: none; }
+  ::selection { background: #a78bfa; color: #08070b; }
+
+  /* ---------- prototype chrome ---------- */
+  .proto-bar {
+    position: sticky; top: 0; z-index: 90;
+    display: flex; align-items: center; justify-content: space-between;
+    gap: 20px; padding: 14px 28px;
+    background: rgba(7,6,9,.72);
+    border-bottom: 1px solid var(--page-line);
+    backdrop-filter: blur(18px);
+  }
+  .proto-brand { display: flex; align-items: center; gap: 12px; min-width: 220px; }
+  .proto-logo {
+    width: 34px; height: 34px; border-radius: 11px; display: grid; place-items: center;
+    background: linear-gradient(135deg, #a78bfa, #5eead4);
+    color: #09080d; font-weight: 800; font-size: 17px;
+    box-shadow: 0 8px 24px rgba(167,139,250,.3);
+  }
+  .proto-brand b { display: block; font-size: 12px; letter-spacing: .18em; }
+  .proto-brand small { display: block; color: #8f8a9f; font-size: 10px; margin-top: 2px; letter-spacing: .04em; }
+  .proto-controls { display: flex; align-items: center; gap: 14px; flex-wrap: wrap; justify-content: flex-end; }
+  .type-picker {
+    display: flex; align-items: center; gap: 8px; border-radius: 999px;
+    background: rgba(255,255,255,.06); border: 1px solid rgba(255,255,255,.07);
+    padding: 5px 8px 5px 12px; color: #8f8a9f; font-size: 10px;
+    font-weight: 800; letter-spacing: .1em; text-transform: uppercase;
+  }
+  .type-picker select {
+    appearance: none; border: 0; border-radius: 999px; cursor: pointer;
+    background: #f4f1ff; color: #0b0910; font: 700 11px var(--sans);
+    padding: 7px 24px 7px 10px;
+    background-image: linear-gradient(45deg, transparent 50%, #0b0910 50%), linear-gradient(135deg, #0b0910 50%, transparent 50%);
+    background-position: calc(100% - 13px) 50%, calc(100% - 9px) 50%;
+    background-size: 4px 4px, 4px 4px;
+    background-repeat: no-repeat;
+  }
+  .seg {
+    display: flex; gap: 3px; padding: 3px; border-radius: 999px;
+    background: rgba(255,255,255,.06); border: 1px solid rgba(255,255,255,.07);
+  }
+  .seg button {
+    border: 0; background: transparent; color: #a9a4b8; font-size: 11px; font-weight: 700;
+    padding: 7px 12px; border-radius: 999px; cursor: pointer; letter-spacing: .04em;
+  }
+  .seg button.on { background: #f4f1ff; color: #0b0910; }
+  .theme-switch { display: flex; align-items: center; gap: 7px; }
+  .theme-switch button {
+    width: 22px; height: 22px; border-radius: 50%; border: 2px solid transparent;
+    cursor: pointer; padding: 0; position: relative;
+  }
+  .theme-switch button.on { border-color: #fff; box-shadow: 0 0 0 3px rgba(255,255,255,.14); }
+  .theme-switch .sw-aurora { background: linear-gradient(135deg,#a78bfa,#5eead4); }
+  .theme-switch .sw-ember { background: linear-gradient(135deg,#fbbf24,#fb923c); }
+  .theme-switch .sw-pulse { background: linear-gradient(135deg,#a3e635,#f472b6); }
+  .theme-switch .sw-daylight { background: linear-gradient(135deg,#f4efe5,#2f6b4f); }
+  .proto-btn {
+    border: 1px solid rgba(255,255,255,.1); background: rgba(255,255,255,.05);
+    color: #e9e5f4; font-size: 11px; font-weight: 700; letter-spacing: .04em;
+    padding: 9px 14px; border-radius: 999px; cursor: pointer;
+  }
+  .proto-btn:hover { background: rgba(255,255,255,.1); }
+  .proto-btn.primary { background: #f4f1ff; color: #0b0910; border-color: #f4f1ff; }
+
+  /* ---------- stage ---------- */
+  .stage {
+    display: flex; align-items: center; justify-content: center;
+    gap: 34px; padding: 30px 28px 40px; min-height: calc(100vh - 64px);
+  }
+  .device {
+    position: relative; flex: 0 0 auto;
+    width: min(1280px, calc(100vw - 380px)); aspect-ratio: 16/9;
+    border-radius: 26px; overflow: hidden;
+    background: var(--bg);
+    border: 1px solid rgba(255,255,255,.1);
+    box-shadow: 0 40px 120px rgba(0,0,0,.65), 0 0 0 1px rgba(255,255,255,.03) inset;
+    color: var(--text);
+    font-size: 15px;
+  }
+  .device::after {
+    content: ""; position: absolute; inset: 0; pointer-events: none; z-index: 70;
+    background: linear-gradient(180deg, rgba(255,255,255,.045), transparent 12%, transparent 88%, rgba(0,0,0,.2));
+  }
+  .device[data-device="tablet"] { width: min(1024px, calc(100vw - 340px)); aspect-ratio: 4/3; border-radius: 32px; }
+  .device[data-device="phone"] {
+    width: 390px; height: min(844px, calc(100vh - 130px)); aspect-ratio: auto; border-radius: 46px;
+    border: 8px solid #17151d; box-shadow: 0 40px 120px rgba(0,0,0,.75), 0 0 0 1px rgba(255,255,255,.12);
+  }
+  .device[data-device="phone"]::before {
+    content: ""; position: absolute; z-index: 80; top: 10px; left: 50%; transform: translateX(-50%);
+    width: 108px; height: 26px; border-radius: 999px; background: #08070b; border: 1px solid rgba(255,255,255,.08);
+  }
+
+  /* ---------- themes ---------- */
+  .device[data-theme="aurora"] {
+    --bg:#08070b; --bg2:#0e0c14; --panel:#14111c; --panel2:#1c1826;
+    --text:#f8f6ff; --muted:#a9a4b8; --dim:#6d677e;
+    --line:rgba(255,255,255,.08); --soft:rgba(255,255,255,.045);
+    --accent:#a78bfa; --accent2:#5eead4; --accent3:#fb7185;
+    --focus:#ffffff; --glow:rgba(167,139,250,.24);
+  }
+  .device[data-theme="ember"] {
+    --bg:#100d0a; --bg2:#18120d; --panel:#1d1610; --panel2:#271d14;
+    --text:#fbf1e3; --muted:#c4b09a; --dim:#8a7460;
+    --line:rgba(255,228,196,.1); --soft:rgba(255,228,196,.05);
+    --accent:#fbbf24; --accent2:#fb923c; --accent3:#a3e635;
+    --focus:#fff7e8; --glow:rgba(251,191,36,.2);
+  }
+  .device[data-theme="pulse"] {
+    --bg:#050507; --bg2:#0a0a10; --panel:#101016; --panel2:#181820;
+    --text:#f7fff2; --muted:#a9b8a0; --dim:#6d7c68;
+    --line:rgba(200,255,170,.09); --soft:rgba(200,255,170,.045);
+    --accent:#a3e635; --accent2:#22d3ee; --accent3:#f472b6;
+    --focus:#f7fff2; --glow:rgba(163,230,53,.18);
+  }
+  .device[data-theme="daylight"] {
+    --bg:#f4efe5; --bg2:#ece5d8; --panel:#fffaf1; --panel2:#f6efe2;
+    --text:#1c1915; --muted:#6f665a; --dim:#a09688;
+    --line:rgba(28,25,21,.13); --soft:rgba(28,25,21,.05);
+    --accent:#2f6b4f; --accent2:#b45309; --accent3:#9f1239;
+    --focus:#1c1915; --glow:rgba(47,107,79,.12);
+  }
+
+  /* ---------- app shell ---------- */
+  .app { position: relative; display: flex; height: 100%; background: var(--bg); overflow: hidden; }
+  .app.playing .vinyl { animation-play-state: running; }
+  .device[data-device="phone"] .app { flex-direction: column; }
+
+  .sidebar {
+    width: 218px; flex: 0 0 218px; display: flex; flex-direction: column; gap: 28px;
+    padding: 24px 16px 18px; border-right: 1px solid var(--line);
+    background: linear-gradient(180deg, var(--soft), transparent 40%);
+  }
+  .brand { display: flex; align-items: center; gap: 11px; padding: 0 8px; }
+  .brand-mark {
+    width: 38px; height: 38px; border-radius: 12px; display: grid; place-items: center;
+    background: linear-gradient(135deg, var(--accent), var(--accent2)); color: #08070b;
+    font-weight: 800; font-size: 18px; box-shadow: 0 10px 26px var(--glow);
+  }
+  .brand-text b { display: block; font-size: 13px; letter-spacing: .14em; }
+  .brand-text span { display: block; color: var(--dim); font-size: 9px; letter-spacing: .22em; margin-top: 3px; }
+  .nav { display: flex; flex-direction: column; gap: 5px; }
+  .nav-item {
+    display: flex; align-items: center; gap: 13px; width: 100%;
+    border: 0; background: transparent; color: var(--muted);
+    padding: 11px 13px; border-radius: 12px; cursor: pointer; text-align: left;
+    font-size: 13px; font-weight: 700; letter-spacing: .02em;
+    transition: background .18s var(--ease), color .18s var(--ease), transform .18s var(--ease);
+  }
+  .nav-item svg { width: 19px; height: 19px; flex: 0 0 auto; }
+  .nav-item:hover { color: var(--text); background: var(--soft); }
+  .nav-item.active { color: var(--text); background: var(--panel2); box-shadow: inset 3px 0 0 var(--accent); }
+  .nav-item.active svg { color: var(--accent); }
+  .sidebar-foot { margin-top: auto; display: flex; flex-direction: column; gap: 12px; }
+  .listening-card {
+    border: 1px solid var(--line); background: var(--panel); border-radius: 14px;
+    padding: 11px; display: flex; align-items: center; gap: 10px; cursor: pointer;
+  }
+  .listening-card .mini-art { width: 38px; height: 38px; border-radius: 9px; flex: 0 0 auto; }
+  .listening-card .meta { min-width: 0; }
+  .listening-card b { display: block; font-size: 11px; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+  .listening-card span { display: block; color: var(--dim); font-size: 9px; margin-top: 2px; }
+  .device-chip {
+    display: flex; align-items: center; gap: 7px; color: var(--dim); font-size: 9px;
+    letter-spacing: .12em; padding: 0 4px;
+  }
+  .device-chip i { width: 6px; height: 6px; border-radius: 50%; background: #4ade80; box-shadow: 0 0 0 3px rgba(74,222,128,.12); }
+
+  .main { flex: 1; min-width: 0; display: flex; flex-direction: column; position: relative; }
+  .topbar {
+    height: 70px; flex: 0 0 70px; display: flex; align-items: center; gap: 18px;
+    padding: 0 30px; border-bottom: 1px solid var(--line);
+    background: color-mix(in srgb, var(--bg) 76%, transparent); backdrop-filter: blur(16px);
+    position: relative; z-index: 5;
+  }
+  .topbar-title { min-width: 0; }
+  .topbar-title b { display: block; font-size: 16px; letter-spacing: -.01em; }
+  .topbar-title span { display: block; color: var(--dim); font-size: 10px; margin-top: 2px; letter-spacing: .08em; text-transform: uppercase; }
+  .topbar-spacer { flex: 1; }
+  .topbar .icon-btn, .now-top .icon-btn {
+    width: 38px; height: 38px; border-radius: 50%; border: 1px solid var(--line);
+    background: var(--soft); color: var(--muted); display: grid; place-items: center; cursor: pointer;
+    transition: background .18s, color .18s, transform .18s;
+  }
+  .topbar .icon-btn:hover, .now-top .icon-btn:hover { background: var(--panel2); color: var(--text); }
+  .icon-btn {
+    width: 38px; height: 38px; border-radius: 50%; border: 1px solid var(--line);
+    background: var(--soft); color: var(--muted); display: grid; place-items: center; cursor: pointer;
+    transition: background .18s, color .18s, transform .18s;
+  }
+  .icon-btn:hover { background: var(--panel2); color: var(--text); }
+  .icon-btn svg { width: 18px; height: 18px; }
+  .avatar {
+    width: 36px; height: 36px; border-radius: 50%; border: 1px solid var(--line);
+    background: linear-gradient(135deg, var(--accent), var(--accent2)); color: #08070b;
+    display: grid; place-items: center; font-weight: 800; font-size: 12px; cursor: pointer;
+  }
+  .now-chip {
+    display: flex; align-items: center; gap: 9px; border: 1px solid var(--line);
+    background: var(--soft); border-radius: 999px; padding: 5px 12px 5px 6px; cursor: pointer;
+    max-width: 240px;
+  }
+  .now-chip .mini-art { width: 28px; height: 28px; border-radius: 50%; }
+  .now-chip .meta { min-width: 0; }
+  .now-chip b { display: block; font-size: 10px; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+  .now-chip span { display: block; color: var(--dim); font-size: 8px; margin-top: 1px; }
+  .eq { display: flex; align-items: flex-end; gap: 2px; height: 13px; }
+  .eq i { width: 2px; background: var(--accent); border-radius: 2px; animation: eq 1s ease-in-out infinite alternate; }
+  .eq i:nth-child(1){height:5px;animation-delay:.1s}.eq i:nth-child(2){height:11px;animation-delay:.3s}.eq i:nth-child(3){height:7px;animation-delay:.5s}.eq i:nth-child(4){height:13px;animation-delay:.2s}
+  @keyframes eq { to { transform: scaleY(.35); } }
+
+  .screen-wrap { flex: 1; min-height: 0; overflow: auto; padding: 26px 30px 120px; scrollbar-width: none; }
+  .screen-wrap::-webkit-scrollbar { display: none; }
+  .screen { display: none; animation: screenin .32s var(--ease); }
+  .screen.active { display: block; }
+  @keyframes screenin { from { opacity: 0; transform: translateY(10px); } to { opacity: 1; transform: none; } }
+
+  /* ---------- type ---------- */
+  .eyebrow { font-size: 10px; font-weight: 800; letter-spacing: .22em; text-transform: uppercase; color: var(--accent); }
+  h1, h2, h3, p { margin: 0; }
+  .display { font-family: var(--display); font-weight: var(--display-weight, 400); letter-spacing: var(--display-tracking, -.02em); }
+  .screen-head { display: flex; align-items: flex-end; justify-content: space-between; gap: 20px; margin: 6px 0 22px; }
+  .screen-head h1 { font-family: var(--display); font-size: 46px; line-height: 1; font-weight: var(--display-weight, 400); letter-spacing: var(--display-tracking, -.02em); }
+  .screen-head p { color: var(--muted); font-size: 12px; margin-top: 7px; }
+  .head-actions { display: flex; gap: 8px; }
+
+  /* ---------- hero ---------- */
+  .hero {
+    position: relative; display: grid; grid-template-columns: 1.02fr .98fr; gap: 24px;
+    align-items: center; min-height: 256px; padding: 20px; border-radius: 22px;
+    border: 1px solid var(--line); overflow: hidden;
+    background: linear-gradient(120deg, color-mix(in srgb, var(--hero-a) 22%, var(--panel)), var(--panel) 68%);
+    box-shadow: 0 26px 70px rgba(0,0,0,.28);
+  }
+  .hero::after {
+    content: ""; position: absolute; inset: 0; pointer-events: none;
+    background: radial-gradient(90% 120% at 12% 0%, color-mix(in srgb, var(--hero-a) 26%, transparent), transparent 55%);
+  }
+  .hero-art-wrap { position: relative; width: 100%; max-width: 248px; margin: auto; z-index: 1; }
+  .hero-art { width: 100%; aspect-ratio: 1; border-radius: 17px; }
+  .hero .vinyl { width: 88%; right: -20%; top: 5%; opacity: .95; }
+  .hero-copy { position: relative; z-index: 1; min-width: 0; }
+  .hero-copy .eyebrow { margin-bottom: 10px; }
+  .hero-copy h1 { font-family: var(--display); font-size: clamp(38px, 4.4vw, 54px); line-height: .96; letter-spacing: var(--display-tracking, -.035em); font-weight: var(--display-weight, 400); }
+  .hero-copy .sub { color: var(--muted); font-size: 14px; margin-top: 8px; }
+  .hero-meta { display: flex; align-items: center; gap: 8px; flex-wrap: wrap; margin-top: 16px; color: var(--dim); font-size: 11px; }
+  .dot { width: 3px; height: 3px; border-radius: 50%; background: var(--dim); }
+  .tag {
+    display: inline-flex; align-items: center; gap: 6px; border: 1px solid var(--line);
+    background: var(--soft); color: var(--muted); border-radius: 999px; padding: 5px 9px;
+    font-size: 9px; font-weight: 700; letter-spacing: .08em; text-transform: uppercase;
+  }
+  .tag.hot { color: var(--accent2); border-color: color-mix(in srgb, var(--accent2) 35%, transparent); }
+  .hero-actions { display: flex; align-items: center; gap: 10px; margin-top: 22px; flex-wrap: wrap; }
+  .btn {
+    display: inline-flex; align-items: center; justify-content: center; gap: 8px;
+    border: 1px solid var(--line); background: var(--soft); color: var(--text);
+    padding: 11px 18px; border-radius: 999px; font-size: 12px; font-weight: 800;
+    cursor: pointer; transition: transform .18s var(--ease), background .18s, color .18s;
+  }
+  .btn svg { width: 16px; height: 16px; }
+  .btn.primary { background: var(--text); color: var(--bg); border-color: var(--text); }
+  .btn:hover { transform: translateY(-1px); }
+  .btn.primary:hover { background: #fff; }
+  .btn.ghost { background: transparent; }
+  .btn.small { padding: 8px 13px; font-size: 10px; }
+
+  /* ---------- shelves ---------- */
+  .shelf { margin-top: 20px; }
+  .shelf-head { display: flex; align-items: flex-end; justify-content: space-between; gap: 16px; margin-bottom: 10px; }
+  .shelf-head h2 { font-family: var(--display); font-size: 23px; letter-spacing: var(--display-tracking, -.01em); font-weight: var(--display-weight, 400); }
+  .shelf-head p { color: var(--dim); font-size: 10px; margin-top: 4px; }
+  .shelf-link { border: 0; background: transparent; color: var(--muted); font-size: 10px; font-weight: 800; letter-spacing: .1em; text-transform: uppercase; cursor: pointer; }
+  .shelf-link:hover { color: var(--text); }
+  .row { display: flex; gap: 16px; overflow-x: auto; padding: 4px 2px 10px; scrollbar-width: none; }
+  .row::-webkit-scrollbar { display: none; }
+  .card {
+    flex: 0 0 156px; width: 156px; border: 0; background: transparent; color: var(--text);
+    text-align: left; padding: 6px; border-radius: 15px; cursor: pointer;
+    transition: transform .2s var(--ease), background .2s;
+  }
+  .card .art { width: 100%; aspect-ratio: 1; border-radius: 13px; }
+  .card-title { display: block; margin-top: 9px; font-size: 12px; font-weight: 800; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+  .card-sub { display: block; color: var(--muted); font-size: 10px; margin-top: 3px; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+  .card:hover { background: var(--soft); transform: translateY(-3px); }
+  .card .badge { position: absolute; left: 10px; top: 10px; }
+  .card .play-dot {
+    position: absolute; right: 10px; bottom: 10px; width: 34px; height: 34px; border-radius: 50%;
+    display: grid; place-items: center; background: rgba(8,7,11,.72); color: #fff; backdrop-filter: blur(8px);
+    opacity: 0; transform: translateY(5px); transition: opacity .2s, transform .2s;
+  }
+  .card:hover .play-dot { opacity: 1; transform: none; }
+  .card .play-dot svg { width: 15px; height: 15px; }
+
+  /* ---------- artwork ---------- */
+  .art {
+    position: relative; overflow: hidden; background: #15131c; isolation: isolate;
+    box-shadow: 0 14px 36px rgba(0,0,0,.28);
+  }
+  .art::before {
+    content: ""; position: absolute; inset: 0;
+    background:
+      radial-gradient(120% 120% at 18% 4%, var(--a1) 0%, transparent 56%),
+      radial-gradient(120% 120% at 100% 100%, var(--a2) 0%, transparent 58%),
+      linear-gradient(135deg, #16141d, #09080d);
+  }
+  .art::after {
+    content: ""; position: absolute; inset: 0; opacity: .22; mix-blend-mode: overlay;
+    background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='120' height='120'%3E%3Cfilter id='n'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='.9' numOctaves='2' stitchTiles='stitch'/%3E%3C/filter%3E%3Crect width='100%25' height='100%25' filter='url(%23n)' opacity='.55'/%3E%3C/svg%3E");
+  }
+  .art .mark {
+    position: relative; z-index: 2; display: block; text-align: center;
+    font-family: var(--display); font-weight: var(--display-weight, 400); font-size: 44px; letter-spacing: var(--display-tracking, -.04em);
+    color: rgba(255,255,255,.94); text-shadow: 0 2px 18px rgba(0,0,0,.25);
+  }
+  .art .art-line {
+    position: absolute; z-index: 2; left: 12%; right: 12%; bottom: 17%; height: 1px;
+    background: rgba(255,255,255,.24);
+  }
+  .art .badge {
+    position: absolute; z-index: 3; top: 9px; left: 9px; padding: 4px 7px; border-radius: 999px;
+    background: rgba(8,7,11,.55); border: 1px solid rgba(255,255,255,.18); color: #fff;
+    font-size: 7px; font-weight: 800; letter-spacing: .12em; backdrop-filter: blur(8px);
+  }
+  .art .corner {
+    position: absolute; z-index: 2; right: 9%; bottom: 10%; width: 18%; aspect-ratio: 1;
+    border: 1px solid rgba(255,255,255,.22); border-radius: 50%;
+  }
+  .vinyl {
+    position: absolute; aspect-ratio: 1; border-radius: 50%;
+    background:
+      radial-gradient(circle at 50% 50%, transparent 0 17%, rgba(255,255,255,.05) 17.4% 18%, transparent 18.4%),
+      repeating-radial-gradient(circle at 50% 50%, #0a0a0c 0 2px, #16161a 3px 4px, #0b0b0d 5px 7px);
+    box-shadow: 0 22px 60px rgba(0,0,0,.55), 0 0 0 1px rgba(255,255,255,.05);
+    animation: spin 26s linear infinite; animation-play-state: paused;
+    pointer-events: none;
+  }
+  .vinyl::after {
+    content: ""; position: absolute; inset: 42%; border-radius: 50%;
+    background: linear-gradient(135deg, var(--a1), var(--a2));
+    box-shadow: 0 0 0 7px rgba(0,0,0,.35), 0 0 22px rgba(255,255,255,.12);
+  }
+  @keyframes spin { to { transform: rotate(360deg); } }
+
+  /* ---------- focus ---------- */
+  .device .focusable:focus {
+    outline: none;
+    box-shadow: 0 0 0 2px var(--focus), 0 0 0 6px color-mix(in srgb, var(--focus) 18%, transparent), 0 18px 45px rgba(0,0,0,.18);
+  }
+  .device .card:focus {
+    background: var(--soft); transform: translateY(-4px);
+    box-shadow: 0 0 0 2px var(--focus), 0 0 0 7px color-mix(in srgb, var(--focus) 13%, transparent);
+  }
+  .device .card:focus .art { box-shadow: 0 18px 40px rgba(0,0,0,.35); }
+  .device .card:focus .play-dot { opacity: 1; transform: none; }
+  .device .nav-item:focus { background: var(--panel2); color: var(--text); box-shadow: inset 3px 0 0 var(--accent), 0 0 0 2px var(--focus); }
+  .device .btn:focus { box-shadow: 0 0 0 2px var(--focus), 0 0 0 6px color-mix(in srgb, var(--focus) 16%, transparent); }
+  .device .pill:focus, .device .chip:focus, .device .icon-btn:focus, .device .avatar:focus, .device .now-chip:focus, .device .progress:focus {
+    box-shadow: 0 0 0 2px var(--focus), 0 0 0 6px color-mix(in srgb, var(--focus) 15%, transparent);
+  }
+
+  /* ---------- explore ---------- */
+  .mood-grid { display: grid; grid-template-columns: repeat(3, 1fr); gap: 14px; }
+  .mood {
+    position: relative; min-height: 128px; border-radius: 18px; border: 1px solid var(--line);
+    padding: 17px; text-align: left; cursor: pointer; overflow: hidden; color: #fff;
+    background: linear-gradient(135deg, var(--m1), var(--m2));
+    display: flex; flex-direction: column; justify-content: space-between;
+    transition: transform .2s var(--ease), box-shadow .2s;
+  }
+  .mood:hover { transform: translateY(-3px); }
+  .mood:focus { box-shadow: 0 0 0 2px #fff, 0 0 0 7px rgba(255,255,255,.14); }
+  .mood::after {
+    content: ""; position: absolute; right: -30px; bottom: -40px; width: 150px; height: 150px;
+    border-radius: 50%; border: 1px solid rgba(255,255,255,.24); opacity: .7;
+  }
+  .mood b { font-family: var(--display); font-size: 27px; font-weight: var(--display-weight, 400); position: relative; z-index: 1; }
+  .mood span { font-size: 9px; font-weight: 800; letter-spacing: .14em; text-transform: uppercase; opacity: .75; position: relative; z-index: 1; }
+
+  /* ---------- library / lists ---------- */
+  .seg.big { display: inline-flex; margin-bottom: 20px; }
+  .seg.big button { padding: 9px 16px; font-size: 11px; }
+  .section-label { display: flex; align-items: center; justify-content: space-between; margin: 24px 0 10px; }
+  .section-label h2 { font-family: var(--display); font-size: 24px; font-weight: var(--display-weight, 400); }
+  .section-label span { color: var(--dim); font-size: 10px; font-weight: 700; letter-spacing: .1em; text-transform: uppercase; }
+  .list-row {
+    display: flex; align-items: center; gap: 13px; width: 100%; border: 0; background: transparent;
+    color: var(--text); text-align: left; padding: 9px 10px; border-radius: 12px; cursor: pointer;
+    transition: background .18s, transform .18s;
+  }
+  .list-row:hover { background: var(--soft); }
+  .list-row .art { width: 46px; height: 46px; border-radius: 9px; flex: 0 0 auto; }
+  .list-row .art .mark { font-size: 13px; }
+  .list-row .l-meta { min-width: 0; flex: 1; }
+  .list-row b { display: block; font-size: 12px; font-weight: 800; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+  .list-row span { display: block; color: var(--muted); font-size: 10px; margin-top: 3px; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+  .list-row .dur { color: var(--dim); font-size: 10px; font-variant-numeric: tabular-nums; }
+  .list-row.now { background: color-mix(in srgb, var(--accent) 10%, transparent); }
+  .list-row.now b { color: var(--accent); }
+  .list-row .eq { margin-right: 2px; }
+  .library-grid { display: grid; grid-template-columns: repeat(4, 1fr); gap: 12px; }
+  .library-tile {
+    border: 1px solid var(--line); background: var(--panel); border-radius: 14px; padding: 12px;
+    text-align: left; cursor: pointer; color: var(--text); display: flex; align-items: center; gap: 10px;
+    transition: background .18s, transform .18s;
+  }
+  .library-tile:hover { background: var(--panel2); transform: translateY(-2px); }
+  .library-tile .art { width: 42px; height: 42px; border-radius: 9px; flex: 0 0 auto; }
+  .library-tile .art .mark { font-size: 12px; }
+  .library-tile b { display: block; font-size: 11px; }
+  .library-tile span { display: block; color: var(--dim); font-size: 9px; margin-top: 2px; }
+
+  /* ---------- search ---------- */
+  .search-box {
+    display: flex; align-items: center; gap: 12px; border: 1px solid var(--line);
+    background: var(--panel); border-radius: 16px; padding: 0 17px; height: 58px;
+    transition: border-color .18s, box-shadow .18s;
+  }
+  .search-box:focus-within { border-color: var(--accent); box-shadow: 0 0 0 4px var(--glow); }
+  .search-box svg { width: 20px; height: 20px; color: var(--muted); }
+  .search-box input { flex: 1; background: transparent; border: 0; color: var(--text); font: inherit; font-size: 15px; outline: none; }
+  .search-box input::placeholder { color: var(--dim); }
+  .chips { display: flex; gap: 8px; flex-wrap: wrap; margin: 16px 0 20px; }
+  .chip {
+    border: 1px solid var(--line); background: var(--soft); color: var(--muted);
+    padding: 8px 13px; border-radius: 999px; font-size: 10px; font-weight: 700; cursor: pointer;
+  }
+  .chip.on, .chip:hover { background: var(--text); color: var(--bg); border-color: var(--text); }
+
+  /* ---------- settings ---------- */
+  .settings-list { display: flex; flex-direction: column; gap: 8px; max-width: 900px; }
+  .setting-row {
+    display: flex; align-items: center; gap: 16px; min-height: 70px; padding: 12px 16px;
+    border: 1px solid transparent; border-radius: 14px; cursor: pointer; text-align: left;
+    background: transparent; color: var(--text); transition: background .18s, border-color .18s;
+  }
+  .setting-row:hover { background: var(--soft); border-color: var(--line); }
+  .setting-row .s-icon {
+    width: 34px; height: 34px; border-radius: 10px; display: grid; place-items: center;
+    background: var(--panel2); color: var(--accent); flex: 0 0 auto;
+  }
+  .setting-row .s-icon svg { width: 17px; height: 17px; }
+  .setting-row .s-text { flex: 1; min-width: 0; }
+  .setting-row b { display: block; font-size: 13px; }
+  .setting-row span { display: block; color: var(--dim); font-size: 10px; margin-top: 3px; }
+  .setting-row .s-value {
+    border: 1px solid var(--line); background: var(--panel); border-radius: 999px;
+    padding: 6px 12px; font-size: 10px; font-weight: 800; color: var(--accent2);
+  }
+  .setting-section { color: var(--accent); font-size: 9px; font-weight: 800; letter-spacing: .2em; text-transform: uppercase; padding: 18px 8px 4px; }
+
+  /* ---------- mini player ---------- */
+  .mini {
+    position: absolute; left: 24px; right: 24px; bottom: 18px; height: 74px; z-index: 20;
+    display: flex; align-items: center; gap: 13px; padding: 0 14px;
+    background: color-mix(in srgb, var(--panel) 94%, transparent); border: 1px solid var(--line);
+    border-radius: 17px; backdrop-filter: blur(20px); cursor: pointer;
+    box-shadow: 0 20px 50px rgba(0,0,0,.5);
+    transition: transform .22s var(--ease), opacity .2s;
+  }
+  .mini:hover { transform: translateY(-2px); }
+  .mini .art { width: 46px; height: 46px; border-radius: 11px; flex: 0 0 auto; }
+  .mini .art .mark { font-size: 13px; }
+  .mini-meta { min-width: 0; width: 210px; }
+  .mini-meta b { display: block; font-size: 12px; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+  .mini-meta span { display: block; color: var(--muted); font-size: 10px; margin-top: 3px; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+  .mini-progress { flex: 1; height: 3px; border-radius: 999px; background: rgba(255,255,255,.1); overflow: hidden; }
+  .mini-fill { height: 100%; width: 0; background: var(--accent); border-radius: inherit; }
+  .mini-controls { display: flex; align-items: center; gap: 4px; }
+  .mini-controls .icon-btn { width: 32px; height: 32px; }
+  .app.now-open .mini { opacity: 0; pointer-events: none; transform: translateY(8px); }
+
+  /* ---------- now playing ---------- */
+  .now {
+    position: absolute; inset: 0; z-index: 60; display: none; overflow: hidden;
+    color: #fff; background: #07060a;
+  }
+  .now.open { display: block; animation: nowin .34s var(--ease); }
+  @keyframes nowin { from { opacity: 0; transform: scale(.985); } to { opacity: 1; transform: none; } }
+  .now-bg {
+    position: absolute; inset: 0;
+    background:
+      radial-gradient(110% 110% at 12% 2%, var(--na) 0%, transparent 55%),
+      radial-gradient(100% 100% at 100% 100%, var(--nb) 0%, transparent 55%),
+      linear-gradient(135deg, #0b0910, #050408);
+    opacity: .95; filter: saturate(1.15);
+  }
+  .now-bg::after {
+    content: ""; position: absolute; inset: 0;
+    background: linear-gradient(180deg, rgba(3,3,6,.18), rgba(3,3,6,.8) 72%, #050407);
+  }
+  .now-top {
+    position: relative; z-index: 3; height: 66px; display: flex; align-items: center; gap: 14px;
+    padding: 0 30px;
+  }
+  .now-top .now-title { font-size: 11px; font-weight: 800; letter-spacing: .16em; text-transform: uppercase; color: rgba(255,255,255,.62); }
+  .now-top-spacer { flex: 1; }
+  .now-top-actions { display: flex; gap: 8px; }
+  .now .pill {
+    display: inline-flex; align-items: center; gap: 7px; border: 1px solid rgba(255,255,255,.16);
+    background: rgba(255,255,255,.07); color: #fff; border-radius: 999px; padding: 8px 12px;
+    font-size: 9px; font-weight: 800; letter-spacing: .08em; text-transform: uppercase; cursor: pointer;
+  }
+  .now .pill:hover { background: rgba(255,255,255,.12); }
+  .now .pill.primary { background: #fff; color: #09080d; border-color: #fff; }
+  .now-body {
+    position: relative; z-index: 2; display: grid; grid-template-columns: .92fr 1.08fr;
+    gap: 36px; align-items: stretch; height: calc(100% - 66px); padding: 0 44px 18px;
+    min-height: 0;
+  }
+  .now-art-wrap { position: relative; width: 100%; max-width: 370px; margin: auto; align-self: center; z-index: 1; }
+  .now-art { width: 100%; aspect-ratio: 1; border-radius: 22px; }
+  .now-art .mark { font-size: 78px; }
+  .now .vinyl { width: 82%; right: -8%; top: 4%; opacity: 1; }
+  .now-info { min-width: 0; max-height: 100%; display: flex; flex-direction: column; justify-content: center; position: relative; z-index: 2; }
+  .now-info .eyebrow { color: var(--ny-a, #a78bfa); }
+  .now-info h2 { font-family: var(--display); font-size: clamp(34px, 4vw, 52px); line-height: .98; letter-spacing: var(--display-tracking, -.03em); font-weight: var(--display-weight, 400); margin-top: 8px; }
+  .now-artist { color: rgba(255,255,255,.78); font-size: 16px; margin-top: 7px; }
+  .now-album { color: rgba(255,255,255,.44); font-size: 10px; margin-top: 4px; letter-spacing: .04em; }
+  .now-actions { display: flex; align-items: center; gap: 7px; flex-wrap: wrap; margin-top: 12px; }
+  .now-actions .pill { text-transform: none; letter-spacing: 0; font-size: 10px; }
+  .now-actions .pill.on { color: #09080d; background: var(--ny-a, #a78bfa); border-color: transparent; }
+  .progress-wrap { margin-top: 14px; }
+  .progress { position: relative; height: 18px; display: flex; align-items: center; cursor: pointer; border-radius: 999px; }
+  .progress::before { content: ""; position: absolute; left: 0; right: 0; height: 4px; border-radius: 999px; background: rgba(255,255,255,.14); }
+  .progress-fill { position: absolute; left: 0; height: 4px; width: 0; border-radius: 999px; background: #fff; }
+  .progress-knob { position: absolute; width: 10px; height: 10px; border-radius: 50%; background: #fff; left: 0; transform: translateX(-50%); box-shadow: 0 0 0 4px rgba(255,255,255,.12); }
+  .times { display: flex; justify-content: space-between; color: rgba(255,255,255,.42); font-size: 9px; margin-top: 4px; font-variant-numeric: tabular-nums; }
+  .transport { display: flex; align-items: center; gap: 16px; margin-top: 10px; }
+  .transport .icon-btn { width: 40px; height: 40px; border-color: rgba(255,255,255,.14); background: rgba(255,255,255,.06); color: #fff; }
+  .transport .play {
+    width: 54px; height: 54px; border-radius: 50%; border: 0; background: #fff; color: #08070b;
+    display: grid; place-items: center; cursor: pointer; box-shadow: 0 10px 30px rgba(255,255,255,.16);
+  }
+  .transport .play svg { width: 23px; height: 23px; }
+  .now-tabs { display: flex; gap: 4px; margin-top: 12px; border-bottom: 1px solid rgba(255,255,255,.1); }
+  .now-tab {
+    border: 0; background: transparent; color: rgba(255,255,255,.42); font-size: 10px; font-weight: 800;
+    letter-spacing: .12em; text-transform: uppercase; padding: 8px 10px 10px; cursor: pointer;
+    border-bottom: 2px solid transparent;
+  }
+  .now-tab.on { color: #fff; border-bottom-color: var(--ny-a, #a78bfa); }
+  .now-panels { flex: 1; min-height: 0; margin-top: 8px; }
+  .now-panel { display: none; height: 100%; }
+  .now-panel.on { display: block; }
+  .lyrics { height: 100%; max-height: 180px; overflow: hidden; position: relative; padding: 4px 0; mask-image: linear-gradient(180deg, transparent, #000 12%, #000 84%, transparent); }
+  .lyric { padding: 6px 0; color: rgba(255,255,255,.26); font-size: 18px; font-weight: 700; line-height: 1.28; cursor: pointer; transition: color .2s, transform .2s, opacity .2s; }
+  .lyric .word { transition: color .18s linear; }
+  .lyric.active { color: rgba(255,255,255,.72); font-size: 24px; transform: translateX(3px); }
+  .lyric.active .word.sung { color: #fff; }
+  .lyric.past { color: rgba(255,255,255,.16); }
+  .lyric:hover { color: rgba(255,255,255,.6); }
+  .queue { height: 100%; max-height: 180px; overflow: auto; padding-right: 4px; scrollbar-width: none; }
+  .queue::-webkit-scrollbar { display: none; }
+  .q-row { display: flex; align-items: center; gap: 11px; width: 100%; border: 0; background: transparent; color: rgba(255,255,255,.82); text-align: left; padding: 7px 8px; border-radius: 10px; cursor: pointer; font: inherit; }
+  .q-row:hover { background: rgba(255,255,255,.07); }
+  .q-row.on { background: rgba(255,255,255,.1); }
+  .q-row .q-num { width: 16px; color: rgba(255,255,255,.35); font-size: 9px; text-align: right; }
+  .q-row .art { width: 36px; height: 36px; border-radius: 7px; flex: 0 0 auto; }
+  .q-row .art .mark { font-size: 10px; }
+  .q-row .q-meta { min-width: 0; flex: 1; }
+  .q-row b { display: block; font-size: 10px; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+  .q-row span { display: block; color: rgba(255,255,255,.4); font-size: 8px; margin-top: 2px; }
+  .q-row .dur { color: rgba(255,255,255,.35); font-size: 8px; }
+  .info-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 8px 24px; max-height: 180px; overflow: auto; }
+  .info-grid div { border-top: 1px solid rgba(255,255,255,.08); padding: 9px 0; }
+  .info-grid b { display: block; color: rgba(255,255,255,.4); font-size: 8px; font-weight: 800; letter-spacing: .14em; text-transform: uppercase; }
+  .info-grid span { display: block; color: rgba(255,255,255,.82); font-size: 11px; margin-top: 4px; }
+  .now.immersive .now-body { display: flex; flex-direction: column; align-items: stretch; padding: 0 9% 22px; height: calc(100% - 66px); }
+  .now.immersive .now-art-wrap { display: none; }
+  .now.immersive .now-info { height: 100%; max-height: none; }
+  .now.immersive .now-info .eyebrow, .now.immersive .now-info h2, .now.immersive .now-artist, .now.immersive .now-album, .now.immersive .now-actions, .now.immersive .now-tabs { display: none; }
+  .now.immersive .lyrics { max-height: none; height: 100%; display: flex; flex-direction: column; justify-content: center; mask-image: linear-gradient(180deg, transparent, #000 8%, #000 92%, transparent); }
+  .now.immersive .lyric { font-size: 26px; padding: 8px 0; }
+  .now.immersive .lyric.active { font-size: 42px; }
+  .now.immersive .progress-wrap { margin-top: 8px; }
+  .now.immersive .transport { margin-top: 8px; justify-content: center; }
+  .now.immersive .transport .icon-btn { background: rgba(255,255,255,.08); }
+  .now.immersive .now-panels { flex: 0 0 auto; margin-top: 0; }
+  .now.immersive #panel-queue, .now.immersive #panel-info { display: none !important; }
+
+  /* The listening-room mockup keeps the top-right now-playing chip only. */
+  .device-chip, .listening-card, .mini { display: none !important; }
+  .device .screen-wrap { padding-bottom: 30px; }
+
+  /* ---------- remote ---------- */
+  .remote {
+    flex: 0 0 232px; width: 232px; padding: 18px; border-radius: 24px;
+    background: linear-gradient(160deg, #1b1922, #0f0e14);
+    border: 1px solid rgba(255,255,255,.08); box-shadow: 0 30px 80px rgba(0,0,0,.55);
+    color: #d8d4e2;
+  }
+  .remote-top { display: flex; align-items: center; gap: 8px; color: #8e899c; font-size: 8px; font-weight: 800; letter-spacing: .18em; padding: 2px 4px 16px; }
+  .remote-top i { width: 6px; height: 6px; border-radius: 50%; background: #4ade80; }
+  .dpad { position: relative; width: 168px; height: 168px; margin: 0 auto 18px; border-radius: 50%; background: radial-gradient(circle at 40% 30%, #2a2733, #15131b 65%); border: 1px solid rgba(255,255,255,.07); box-shadow: inset 0 2px 8px rgba(255,255,255,.04), 0 10px 30px rgba(0,0,0,.4); }
+  .dpad button {
+    position: absolute; border: 0; background: transparent; color: #c9c4d6; cursor: pointer;
+    display: grid; place-items: center; width: 48px; height: 48px; border-radius: 50%;
+  }
+  .dpad button:hover { background: rgba(255,255,255,.06); color: #fff; }
+  .dpad .up { left: 60px; top: 5px; } .dpad .down { left: 60px; bottom: 5px; }
+  .dpad .left { left: 5px; top: 60px; } .dpad .right { right: 5px; top: 60px; }
+  .dpad .ok { left: 52px; top: 52px; width: 64px; height: 64px; border-radius: 50%; background: #f1edfa; color: #0b0910; font-size: 10px; font-weight: 900; letter-spacing: .08em; box-shadow: 0 4px 14px rgba(0,0,0,.3); }
+  .dpad .ok:hover { background: #fff; }
+  .dpad svg { width: 18px; height: 18px; }
+  .dpad svg.rot-up { transform: rotate(-90deg); }
+  .dpad svg.rot-left { transform: rotate(180deg); }
+  .dpad svg.rot-down { transform: rotate(90deg); }
+  .remote-actions { display: flex; gap: 8px; }
+  .remote-actions button { flex: 1; border: 1px solid rgba(255,255,255,.08); background: rgba(255,255,255,.045); color: #c9c4d6; border-radius: 12px; padding: 10px 8px; font-size: 9px; font-weight: 800; cursor: pointer; }
+  .remote-actions button:hover { background: rgba(255,255,255,.09); color: #fff; }
+  .remote-hint { color: #6f697d; font-size: 8px; text-align: center; margin-top: 14px; letter-spacing: .06em; }
+
+  /* ---------- mobile nav ---------- */
+  .mobile-nav { display: none; }
+  .device[data-device="phone"] .mobile-nav {
+    display: flex; position: absolute; z-index: 25; left: 0; right: 0; bottom: 0; height: 68px;
+    align-items: center; justify-content: space-around; padding: 0 8px 6px;
+    background: color-mix(in srgb, var(--panel) 88%, transparent); border-top: 1px solid var(--line);
+    backdrop-filter: blur(20px);
+  }
+  .mobile-nav button { border: 0; background: transparent; color: var(--dim); display: flex; flex-direction: column; align-items: center; gap: 4px; font-size: 8px; font-weight: 700; cursor: pointer; padding: 7px 9px; border-radius: 10px; }
+  .mobile-nav button svg { width: 19px; height: 19px; }
+  .mobile-nav button.active { color: var(--text); }
+  .mobile-nav button.active svg { color: var(--accent); }
+
+  /* ---------- device adaptations ---------- */
+  .device[data-device="tablet"] .sidebar { width: 82px; flex-basis: 82px; padding: 20px 9px 16px; gap: 22px; }
+  .device[data-device="tablet"] .brand { justify-content: center; padding: 0; }
+  .device[data-device="tablet"] .brand-text, .device[data-device="tablet"] .nav-item span, .device[data-device="tablet"] .listening-card .meta, .device[data-device="tablet"] .device-chip span { display: none; }
+  .device[data-device="tablet"] .nav-item { justify-content: center; padding: 11px; }
+  .device[data-device="tablet"] .listening-card { justify-content: center; padding: 7px; }
+  .device[data-device="tablet"] .listening-card .mini-art { width: 42px; height: 42px; }
+  .device[data-device="tablet"] .device-chip { justify-content: center; }
+  .device[data-device="tablet"] .hero { grid-template-columns: .9fr 1.1fr; gap: 24px; padding: 22px; min-height: 290px; }
+  .device[data-device="tablet"] .hero-copy h1 { font-size: 46px; }
+  .device[data-device="tablet"] .card { flex-basis: 158px; width: 158px; }
+  .device[data-device="tablet"] .mood-grid { grid-template-columns: repeat(2, 1fr); }
+  .device[data-device="tablet"] .library-grid { grid-template-columns: repeat(3, 1fr); }
+  .device[data-device="tablet"] .now-body { gap: 28px; padding: 0 32px 20px; }
+  .device[data-device="tablet"] .now-art-wrap { max-width: 280px; }
+  .device[data-device="tablet"] .now-info h2 { font-size: 38px; }
+  .device[data-device="tablet"] .lyrics { max-height: 180px; }
+
+  .device[data-device="tv"] .cast-btn { display: none; }
+  .device[data-device="phone"] .sidebar { display: none; }
+  .device[data-device="phone"] .topbar { height: 58px; flex-basis: 58px; padding: 0 16px; gap: 10px; padding-top: 14px; }
+  .device[data-device="phone"] .topbar-title b { font-size: 14px; }
+  .device[data-device="phone"] .topbar-title span { display: none; }
+  .device[data-device="phone"] .topbar .now-chip { display: none; }
+  .device[data-device="phone"] .topbar .icon-btn { width: 34px; height: 34px; }
+  .device[data-device="phone"] .avatar { width: 32px; height: 32px; }
+  .device[data-device="phone"] .screen-wrap { padding: 16px 16px 168px; }
+  .device[data-device="phone"] .screen-head h1 { font-size: 34px; }
+  .device[data-device="phone"] .screen-head { margin-bottom: 16px; }
+  .device[data-device="phone"] .hero { grid-template-columns: 1fr; gap: 18px; padding: 16px; min-height: 0; border-radius: 22px; }
+  .device[data-device="phone"] .hero-art-wrap { max-width: 210px; }
+  .device[data-device="phone"] .hero .vinyl { display: none; }
+  .device[data-device="phone"] .hero-copy h1 { font-size: 38px; }
+  .device[data-device="phone"] .hero-copy .sub { font-size: 13px; }
+  .device[data-device="phone"] .hero-actions .btn { padding: 10px 14px; font-size: 11px; }
+  .device[data-device="phone"] .shelf { margin-top: 22px; }
+  .device[data-device="phone"] .shelf-head h2 { font-size: 22px; }
+  .device[data-device="phone"] .row { gap: 10px; }
+  .device[data-device="phone"] .card { flex-basis: 142px; width: 142px; padding: 5px; }
+  .device[data-device="phone"] .mood-grid { grid-template-columns: repeat(2, 1fr); gap: 10px; }
+  .device[data-device="phone"] .mood { min-height: 108px; padding: 13px; }
+  .device[data-device="phone"] .mood b { font-size: 22px; }
+  .device[data-device="phone"] .library-grid { grid-template-columns: repeat(2, 1fr); }
+  .device[data-device="phone"] .mini { left: 10px; right: 10px; bottom: 78px; height: 66px; padding: 0 10px; border-radius: 15px; }
+  .device[data-device="phone"] .mini .art { width: 40px; height: 40px; }
+  .device[data-device="phone"] .mini-meta { width: 130px; }
+  .device[data-device="phone"] .mini-meta b { font-size: 11px; }
+  .device[data-device="phone"] .mini-controls .icon-btn:first-child { display: none; }
+  .device[data-device="phone"] .now-top { padding: 0 16px; height: 58px; }
+  .device[data-device="phone"] .now-top .now-title { display: none; }
+  .device[data-device="phone"] .now-body { display: flex; flex-direction: column; gap: 16px; align-items: stretch; padding: 0 18px 18px; height: calc(100% - 58px); overflow: auto; }
+  .device[data-device="phone"] .now-art-wrap { max-width: 220px; width: 64%; margin: 4px auto 0; }
+  .device[data-device="phone"] .now .vinyl { display: none; }
+  .device[data-device="phone"] .now-info { max-height: none; }
+  .device[data-device="phone"] .now-info h2 { font-size: 31px; }
+  .device[data-device="phone"] .now-artist { font-size: 14px; }
+  .device[data-device="phone"] .now-actions { margin-top: 12px; }
+  .device[data-device="phone"] .progress-wrap { margin-top: 12px; }
+  .device[data-device="phone"] .transport { gap: 14px; }
+  .device[data-device="phone"] .transport .play { width: 46px; height: 46px; }
+  .device[data-device="phone"] .now-tabs { margin-top: 12px; }
+  .device[data-device="phone"] .lyrics { max-height: 160px; }
+  .device[data-device="phone"] .lyric { font-size: 16px; }
+  .device[data-device="phone"] .lyric.active { font-size: 21px; }
+  .device[data-device="phone"] .now.immersive .now-body { padding: 0 20px 16px; }
+  .device[data-device="phone"] .now.immersive .lyric { font-size: 22px; }
+  .device[data-device="phone"] .now.immersive .lyric.active { font-size: 32px; }
+
+  /* ---------- notes modal ---------- */
+  .notes-modal {
+    position: fixed; inset: 0; z-index: 120; display: none;
+    background: rgba(4,3,7,.72); backdrop-filter: blur(18px);
+    padding: 5vh 20px; overflow: auto;
+  }
+  .notes-modal.open { display: block; }
+  .notes-card {
+    width: min(820px, 100%); margin: 0 auto; border-radius: 24px;
+    background: #0e0c14; border: 1px solid rgba(255,255,255,.1);
+    box-shadow: 0 50px 140px rgba(0,0,0,.7); padding: 32px;
+    color: #e9e5f4;
+  }
+  .notes-top { display: flex; align-items: flex-start; justify-content: space-between; gap: 20px; margin-bottom: 22px; }
+  .notes-top h2 { font-family: var(--display); font-size: 38px; font-weight: 500; line-height: 1; color: #fff; }
+  .notes-top p { color: #8f8a9f; font-size: 12px; margin-top: 7px; max-width: 560px; line-height: 1.6; }
+  .notes-close { width: 38px; height: 38px; border-radius: 50%; border: 1px solid rgba(255,255,255,.12); background: rgba(255,255,255,.05); color: #fff; cursor: pointer; display: grid; place-items: center; }
+  .notes-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 14px; }
+  .note-block { border: 1px solid rgba(255,255,255,.08); background: rgba(255,255,255,.025); border-radius: 16px; padding: 17px; }
+  .note-block h3 { font-size: 10px; letter-spacing: .16em; text-transform: uppercase; color: #a78bfa; margin-bottom: 10px; }
+  .note-block p, .note-block li { color: #b5b0c2; font-size: 11px; line-height: 1.65; }
+  .note-block ul { margin: 0; padding-left: 15px; }
+  .note-block li { margin-bottom: 5px; }
+  .note-block b { color: #f2eff9; }
+  .note-wide { grid-column: 1 / -1; }
+  .swatches { display: flex; gap: 8px; flex-wrap: wrap; margin-top: 10px; }
+  .swatch { display: flex; align-items: center; gap: 7px; border: 1px solid rgba(255,255,255,.09); border-radius: 999px; padding: 5px 9px 5px 5px; font-size: 9px; color: #b5b0c2; }
+  .swatch i { width: 17px; height: 17px; border-radius: 50%; display: inline-block; }
+
+  @media (max-width: 1500px) {
+    .stage { gap: 20px; padding-left: 18px; padding-right: 18px; }
+    .device { width: min(1120px, calc(100vw - 320px)); }
+    .remote { width: 204px; flex-basis: 204px; padding: 15px; }
+    .dpad { width: 148px; height: 148px; }
+    .dpad .up, .dpad .down { left: 50px; } .dpad .left, .dpad .right { top: 50px; }
+    .dpad .ok { left: 42px; top: 42px; width: 64px; height: 64px; }
+  }
+  @media (max-width: 1180px) {
+    .stage { flex-direction: column; }
+    .device, .device[data-device="tablet"] { width: min(1100px, calc(100vw - 36px)); }
+    .device[data-device="phone"] { width: 390px; }
+    .remote { width: min(420px, 100%); flex-basis: auto; display: flex; flex-direction: column; }
+    .dpad { width: 160px; height: 160px; }
+    .dpad .up, .dpad .down { left: 56px; } .dpad .left, .dpad .right { top: 56px; }
+    .dpad .ok { left: 48px; top: 48px; }
+  }
+</style>
+</head>
+<body>
+
+<svg width="0" height="0" style="position:absolute" aria-hidden="true">
+  <symbol id="i-home" viewBox="0 0 24 24"><path d="M3 10.7 12 3l9 7.7"/><path d="M5 9.6V21h14V9.6"/><path d="M9.5 21v-6h5v6"/></symbol>
+  <symbol id="i-compass" viewBox="0 0 24 24"><circle cx="12" cy="12" r="9"/><path d="m15.5 8.5-2.2 5-5 2.2 2.2-5z"/></symbol>
+  <symbol id="i-library" viewBox="0 0 24 24"><path d="M4 4v16M8 4v16M12 5v14M16 7v10M20 9v6"/></symbol>
+  <symbol id="i-folder" viewBox="0 0 24 24"><path d="M3 7a2 2 0 0 1 2-2h5l2 2h7a2 2 0 0 1 2 2v8a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2z"/></symbol>
+  <symbol id="i-search" viewBox="0 0 24 24"><circle cx="11" cy="11" r="7"/><path d="m20 20-4-4"/></symbol>
+  <symbol id="i-settings" viewBox="0 0 24 24"><circle cx="12" cy="12" r="3.2"/><path d="M19.4 15a1.7 1.7 0 0 0 .3 1.9l.1.1-2.7 2.7-.1-.1a1.7 1.7 0 0 0-1.9-.3 1.7 1.7 0 0 0-1 1.5V21h-3.8v-.2a1.7 1.7 0 0 0-1-1.5 1.7 1.7 0 0 0-1.9.3l-.1.1L4.6 17l.1-.1a1.7 1.7 0 0 0 .3-1.9 1.7 1.7 0 0 0-1.5-1H3v-3.8h.2a1.7 1.7 0 0 0 1.5-1 1.7 1.7 0 0 0-.3-1.9L4.3 7l2.7-2.7.1.1a1.7 1.7 0 0 0 1.9.3 1.7 1.7 0 0 0 1-1.5V3h3.8v.2a1.7 1.7 0 0 0 1 1.5 1.7 1.7 0 0 0 1.9-.3l.1-.1L19.4 7l-.1.1a1.7 1.7 0 0 0-.3 1.9 1.7 1.7 0 0 0 1.5 1h.2v3.8h-.2a1.7 1.7 0 0 0-1.5 1z"/></symbol>
+  <symbol id="i-play" viewBox="0 0 24 24"><path d="M8 5.5v13l10-6.5z" fill="currentColor" stroke="none"/></symbol>
+  <symbol id="i-pause" viewBox="0 0 24 24"><path d="M8 5h3v14H8zM13 5h3v14h-3z" fill="currentColor" stroke="none"/></symbol>
+  <symbol id="i-prev" viewBox="0 0 24 24"><path d="M6 5v14M18 5 9 12l9 7z"/></symbol>
+  <symbol id="i-next" viewBox="0 0 24 24"><path d="M18 5v14M6 5l9 7-9 7z"/></symbol>
+  <symbol id="i-heart" viewBox="0 0 24 24"><path d="M20.8 8.6c0 5-8.8 10-8.8 10s-8.8-5-8.8-10A4.4 4.4 0 0 1 12 6a4.4 4.4 0 0 1 8.8 2.6z"/></symbol>
+  <symbol id="i-list" viewBox="0 0 24 24"><path d="M8 6h12M8 12h12M8 18h12M4 6h.01M4 12h.01M4 18h.01"/></symbol>
+  <symbol id="i-lyrics" viewBox="0 0 24 24"><path d="M4 6h10M4 11h16M4 16h7"/><path d="M15 18.5c1.8-.4 3.3-1.7 4-3.5"/></symbol>
+  <symbol id="i-shuffle" viewBox="0 0 24 24"><path d="M16 4h4v4M20 4l-6 6M4 20l6-6M16 20h4v-4M20 20l-6-6M4 4l5 5"/></symbol>
+  <symbol id="i-repeat" viewBox="0 0 24 24"><path d="M17 3l3 3-3 3"/><path d="M20 6H8a4 4 0 0 0-4 4v1"/><path d="M7 21l-3-3 3-3"/><path d="M4 18h12a4 4 0 0 0 4-4v-1"/></symbol>
+  <symbol id="i-more" viewBox="0 0 24 24"><circle cx="5" cy="12" r="1" fill="currentColor" stroke="none"/><circle cx="12" cy="12" r="1" fill="currentColor" stroke="none"/><circle cx="19" cy="12" r="1" fill="currentColor" stroke="none"/></symbol>
+  <symbol id="i-radio" viewBox="0 0 24 24"><circle cx="12" cy="12" r="2"/><path d="M7.8 7.8a6 6 0 0 0 0 8.4M16.2 16.2a6 6 0 0 0 0-8.4M5 5a10 10 0 0 0 0 14M19 19a10 10 0 0 0 0-14"/></symbol>
+  <symbol id="i-plus" viewBox="0 0 24 24"><path d="M12 5v14M5 12h14"/></symbol>
+  <symbol id="i-check" viewBox="0 0 24 24"><path d="m5 12 4 4L19 6"/></symbol>
+  <symbol id="i-close" viewBox="0 0 24 24"><path d="M6 6l12 12M18 6 6 18"/></symbol>
+  <symbol id="i-chevron" viewBox="0 0 24 24"><path d="m9 5 7 7-7 7"/></symbol>
+  <symbol id="i-expand" viewBox="0 0 24 24"><path d="M8 3H3v5M16 3h5v5M8 21H3v-5M16 21h5v-5"/></symbol>
+  <symbol id="i-device" viewBox="0 0 24 24"><rect x="3" y="5" width="18" height="12" rx="2"/><path d="M8 21h8M12 17v4"/></symbol>
+  <symbol id="i-clock" viewBox="0 0 24 24"><circle cx="12" cy="12" r="9"/><path d="M12 7v5l3 2"/></symbol>
+  <symbol id="i-spark" viewBox="0 0 24 24"><path d="M12 3l1.6 5.4L19 10l-5.4 1.6L12 17l-1.6-5.4L5 10l5.4-1.6z"/><path d="M19 16l.7 2.3L22 19l-2.3.7L19 22l-.7-2.3L16 19l2.3-.7z"/></symbol>
+  <symbol id="i-download" viewBox="0 0 24 24"><path d="M12 3v12M7 10l5 5 5-5M5 21h14"/></symbol>
+  <symbol id="i-volume" viewBox="0 0 24 24"><path d="M4 10v4h4l5 4V6L8 10z"/><path d="M16 9a4 4 0 0 1 0 6M18.5 6.5a8 8 0 0 1 0 11"/></symbol>
+  <symbol id="i-account" viewBox="0 0 24 24"><circle cx="12" cy="8" r="3.5"/><path d="M5 21a7 7 0 0 1 14 0"/></symbol>
+  <symbol id="i-cast" viewBox="0 0 24 24"><path d="M3 6a2 2 0 0 1 2-2h14a2 2 0 0 1 2 2v3M3 12a9 9 0 0 1 9 9M3 16a5 5 0 0 1 5 5M3 20h.01"/></symbol>
+</svg>
+
+<header class="proto-bar">
+  <div class="proto-brand">
+    <div class="proto-logo">N</div>
+    <div><b>NUVIO ONE</b><small>Music concept · interactive prototype</small></div>
+  </div>
+  <div class="proto-controls">
+    <div class="seg" id="device-switch">
+      <button class="on" data-device="tv" onclick="setDevice('tv')">TV</button>
+      <button data-device="tablet" onclick="setDevice('tablet')">Tablet</button>
+      <button data-device="phone" onclick="setDevice('phone')">Phone</button>
+    </div>
+    <div class="theme-switch" id="theme-switch" title="Try the four setups">
+      <button class="sw-aurora on" data-theme="aurora" onclick="setTheme('aurora')" title="Aurora — chosen"></button>
+      <button class="sw-ember" data-theme="ember" onclick="setTheme('ember')" title="Ember"></button>
+      <button class="sw-pulse" data-theme="pulse" onclick="setTheme('pulse')" title="Pulse"></button>
+      <button class="sw-daylight" data-theme="daylight" onclick="setTheme('daylight')" title="Daylight"></button>
+    </div>
+    <label class="type-picker" title="Compare faces close to the major music systems">
+      <span>Type</span>
+      <select id="font-select" onchange="setFont(this.value)">
+        <option value="schibsted">Schibsted Grotesk · chosen</option>
+        <option value="bricolage">Bricolage Grotesque · character</option>
+        <option value="instrument">Instrument Sans · Spotify-ish</option>
+        <option value="inter">Inter · neutral grotesk</option>
+        <option value="space">Space Grotesk · music-tech</option>
+        <option value="archivo">Archivo · YouTube-ish</option>
+        <option value="geist">Geist · SF-like</option>
+        <option value="manrope">Manrope · geometric</option>
+      </select>
+    </label>
+    <button class="proto-btn" onclick="openNotes()">Design notes</button>
+    <button class="proto-btn primary" onclick="openNow()">Now Playing</button>
+  </div>
+</header>
+
+<main class="stage">
+  <section class="device" id="device" data-device="tv" data-theme="aurora" data-font="schibsted">
+    <div class="app" id="app">
+      <aside class="sidebar">
+        <div class="brand">
+          <div class="brand-mark">N</div>
+          <div class="brand-text"><b>NUVIO ONE</b><span>MUSIC</span></div>
+        </div>
+        <nav class="nav" id="nav">
+          <button class="nav-item focusable active" data-screen="home" onclick="showScreen('home')"><svg class="icon"><use href="#i-home"/></svg><span>Home</span></button>
+          <button class="nav-item focusable" data-screen="explore" onclick="showScreen('explore')"><svg class="icon"><use href="#i-compass"/></svg><span>Explore</span></button>
+          <button class="nav-item focusable" data-screen="library" onclick="showScreen('library')"><svg class="icon"><use href="#i-library"/></svg><span>Library</span></button>
+          <button class="nav-item focusable" data-screen="local" onclick="showScreen('local')"><svg class="icon"><use href="#i-folder"/></svg><span>Local</span></button>
+          <button class="nav-item focusable" data-screen="search" onclick="showScreen('search')"><svg class="icon"><use href="#i-search"/></svg><span>Search</span></button>
+        </nav>
+        <div class="sidebar-foot">
+          <div class="device-chip"><i></i><span>Listening on Fire TV</span></div>
+          <div class="listening-card focusable" tabindex="0" onclick="openNow()">
+            <div class="mini-art art" id="side-art" style="--a1:#7c3aed;--a2:#22d3ee"><span class="mark" style="font-size:12px">MD</span></div>
+            <div class="meta"><b id="side-title">Midnight Drive</b><span id="side-artist">Nova Lane</span></div>
+            <div class="eq"><i></i><i></i><i></i><i></i></div>
+          </div>
+          <button class="nav-item focusable" data-screen="settings" onclick="showScreen('settings')"><svg class="icon"><use href="#i-settings"/></svg><span>Settings</span></button>
+        </div>
+      </aside>
+
+      <div class="main">
+        <header class="topbar">
+          <div class="topbar-title"><b id="page-title">Good evening</b><span id="page-sub">Your listening room</span></div>
+          <div class="topbar-spacer"></div>
+          <button class="now-chip focusable" onclick="openNow()">
+            <div class="mini-art art" id="top-art" style="--a1:#7c3aed;--a2:#22d3ee"><span class="mark" style="font-size:9px">MD</span></div>
+            <div class="meta"><b id="top-title">Midnight Drive</b><span id="top-artist">Nova Lane</span></div>
+            <div class="eq"><i></i><i></i><i></i><i></i></div>
+          </button>
+          <button class="icon-btn focusable" onclick="showScreen('search')" aria-label="Search"><svg class="icon"><use href="#i-search"/></svg></button>
+          <button class="avatar focusable" onclick="openNotes()" aria-label="Account">S</button>
+          <button class="icon-btn focusable" onclick="showScreen('settings')" aria-label="Settings"><svg class="icon"><use href="#i-settings"/></svg></button>
+        </header>
+
+        <div class="screen-wrap" id="screen-wrap">
+          <section class="screen active" id="screen-home">
+            <div id="hero"></div>
+            <div id="shelves"></div>
+          </section>
+
+          <section class="screen" id="screen-explore">
+            <div class="screen-head">
+              <div><h1>Explore</h1><p>Moods, moments and scenes — built for the room you're in.</p></div>
+              <div class="head-actions"><button class="btn small focusable" onclick="showScreen('search')"><svg class="icon"><use href="#i-search"/></svg> Search</button></div>
+            </div>
+            <div class="mood-grid" id="mood-grid"></div>
+            <div class="shelf" id="explore-shelf"></div>
+          </section>
+
+          <section class="screen" id="screen-library">
+            <div class="screen-head">
+              <div><h1>Your Library</h1><p>Account and device, side by side — no source confusion.</p></div>
+              <div class="head-actions"><button class="btn small focusable" onclick="openNow()"><svg class="icon"><use href="#i-plus"/></svg> New playlist</button></div>
+            </div>
+            <div class="seg big" id="library-seg">
+              <button class="on" onclick="setLibraryTab('account')">YouTube Music</button>
+              <button onclick="setLibraryTab('device')">This device</button>
+            </div>
+            <div id="library-content"></div>
+          </section>
+
+          <section class="screen" id="screen-local">
+            <div class="screen-head">
+              <div><h1>Local Music</h1><p>On this TV, external drives and your network share.</p></div>
+              <div class="head-actions"><button class="btn small focusable"><svg class="icon"><use href="#i-download"/></svg> Scan</button><button class="btn small focusable"><svg class="icon"><use href="#i-device"/></svg> Share</button></div>
+            </div>
+            <div class="list-row focusable" onclick="openNow()">
+              <div class="art" style="--a1:#2f6b4f;--a2:#b45309"><span class="mark">LT</span></div>
+              <div class="l-meta"><b>Late Night Sessions</b><span>24 tracks · FLAC · USB drive</span></div>
+              <span class="tag hot">Lossless</span>
+            </div>
+            <div class="section-label"><h2>On this device</h2><span>1,284 tracks</span></div>
+            <div id="local-list"></div>
+          </section>
+
+          <section class="screen" id="screen-search">
+            <div class="screen-head">
+              <div><h1>Search</h1><p>Songs, albums, artists, lyrics — one field.</p></div>
+            </div>
+            <div class="search-box focusable" onclick="focusSearch()">
+              <svg class="icon"><use href="#i-search"/></svg>
+              <input id="search-input" type="text" placeholder="Search songs, albums and artists" oninput="renderSearch()" onkeydown="searchKey(event)">
+            </div>
+            <div class="chips" id="search-chips">
+              <button class="chip on focusable" onclick="setSearchChip(this)">All</button>
+              <button class="chip focusable" onclick="setSearchChip(this)">Songs</button>
+              <button class="chip focusable" onclick="setSearchChip(this)">Albums</button>
+              <button class="chip focusable" onclick="setSearchChip(this)">Artists</button>
+              <button class="chip focusable" onclick="setSearchChip(this)">Playlists</button>
+            </div>
+            <div id="search-results"></div>
+          </section>
+
+          <section class="screen" id="screen-settings">
+            <div class="screen-head">
+              <div><h1>Settings</h1><p>Playback, sound and account — one focusable row per setting.</p></div>
+            </div>
+            <div class="settings-list" id="settings-list"></div>
+          </section>
+        </div>
+
+        <div class="mini focusable" id="mini" tabindex="0" onclick="openNow()">
+          <div class="art" id="mini-art" style="--a1:#7c3aed;--a2:#22d3ee"><span class="mark" style="font-size:13px">MD</span></div>
+          <div class="mini-meta"><b id="mini-title">Midnight Drive</b><span id="mini-artist">Nova Lane</span></div>
+          <div class="mini-progress"><div class="mini-fill" id="mini-fill"></div></div>
+          <div class="mini-controls" onclick="event.stopPropagation()">
+            <button class="icon-btn focusable" onclick="togglePlay()" aria-label="Play"><svg class="icon" id="mini-play-icon"><use href="#i-pause"/></svg></button>
+            <button class="icon-btn focusable" onclick="nextTrack()" aria-label="Next"><svg class="icon"><use href="#i-next"/></svg></button>
+          </div>
+        </div>
+
+        <nav class="mobile-nav" id="mobile-nav">
+          <button class="active" data-screen="home" onclick="showScreen('home')"><svg class="icon"><use href="#i-home"/></svg><span>Home</span></button>
+          <button data-screen="explore" onclick="showScreen('explore')"><svg class="icon"><use href="#i-compass"/></svg><span>Explore</span></button>
+          <button data-screen="library" onclick="showScreen('library')"><svg class="icon"><use href="#i-library"/></svg><span>Library</span></button>
+          <button data-screen="search" onclick="showScreen('search')"><svg class="icon"><use href="#i-search"/></svg><span>Search</span></button>
+          <button data-screen="settings" onclick="showScreen('settings')"><svg class="icon"><use href="#i-settings"/></svg><span>Settings</span></button>
+        </nav>
+      </div>
+
+      <div class="now" id="now">
+        <div class="now-bg" id="now-bg"></div>
+        <div class="now-top">
+          <button class="icon-btn focusable" onclick="closeNow()" aria-label="Close"><svg class="icon"><use href="#i-close"/></svg></button>
+          <div class="now-title">Now Playing</div>
+          <div class="now-top-spacer"></div>
+          <div class="now-top-actions">
+            <button class="pill focusable" id="immersive-btn" onclick="toggleImmersive()"><svg class="icon" style="width:13px;height:13px"><use href="#i-expand"/></svg> Canvas</button>
+            <button class="pill focusable" onclick="switchNowTab('queue')"><svg class="icon" style="width:13px;height:13px"><use href="#i-list"/></svg> Queue</button>
+          </div>
+        </div>
+        <div class="now-body">
+          <div class="now-art-wrap">
+            <div class="vinyl" id="now-vinyl"></div>
+            <div class="now-art art" id="now-art"><span class="mark" id="now-mark">MD</span><span class="art-line"></span><span class="corner"></span></div>
+          </div>
+          <div class="now-info">
+            <div class="eyebrow" id="now-eyebrow">Now playing</div>
+            <h2 id="now-title">Midnight Drive</h2>
+            <div class="now-artist" id="now-artist">Nova Lane</div>
+            <div class="now-album" id="now-album">After Hours · 2026</div>
+            <div class="now-actions">
+              <button class="pill focusable" id="now-like" onclick="toggleLike()"><svg class="icon" style="width:13px;height:13px"><use href="#i-heart"/></svg> Like</button>
+              <button class="pill focusable" onclick="switchNowTab('queue')"><svg class="icon" style="width:13px;height:13px"><use href="#i-plus"/></svg> Playlist</button>
+              <button class="pill focusable"><svg class="icon" style="width:13px;height:13px"><use href="#i-radio"/></svg> Radio</button>
+              <button class="pill focusable" onclick="toggleShuffle()"><svg class="icon" style="width:13px;height:13px"><use href="#i-shuffle"/></svg> Shuffle</button>
+              <button class="pill focusable"><svg class="icon" style="width:13px;height:13px"><use href="#i-more"/></svg></button>
+            </div>
+            <div class="progress-wrap">
+              <div class="progress focusable" id="progress" tabindex="0" onclick="seekFromEvent(event)" onkeydown="seekKey(event)">
+                <div class="progress-fill" id="progress-fill"></div>
+                <div class="progress-knob" id="progress-knob"></div>
+              </div>
+              <div class="times"><span id="time-now">0:00</span><span id="time-dur">3:58</span></div>
+            </div>
+            <div class="transport">
+              <button class="icon-btn focusable" onclick="prevTrack()" aria-label="Previous"><svg class="icon"><use href="#i-prev"/></svg></button>
+              <button class="play focusable" id="now-play" onclick="togglePlay()" aria-label="Play"><svg class="icon" id="now-play-icon"><use href="#i-pause"/></svg></button>
+              <button class="icon-btn focusable" onclick="nextTrack()" aria-label="Next"><svg class="icon"><use href="#i-next"/></svg></button>
+              <div style="flex:1"></div>
+              <button class="icon-btn focusable" onclick="toggleMute()" aria-label="Volume"><svg class="icon"><use href="#i-volume"/></svg></button>
+              <button class="icon-btn focusable cast-btn" aria-label="Cast"><svg class="icon"><use href="#i-cast"/></svg></button>
+            </div>
+            <div class="now-tabs">
+              <button class="now-tab on focusable" data-now-tab="lyrics" onclick="switchNowTab('lyrics')">Lyrics</button>
+              <button class="now-tab focusable" data-now-tab="queue" onclick="switchNowTab('queue')">Up next</button>
+              <button class="now-tab focusable" data-now-tab="info" onclick="switchNowTab('info')">Info</button>
+            </div>
+            <div class="now-panels">
+              <div class="now-panel on" id="panel-lyrics"><div class="lyrics" id="lyrics"></div></div>
+              <div class="now-panel" id="panel-queue"><div class="queue" id="queue"></div></div>
+              <div class="now-panel" id="panel-info">
+                <div class="info-grid">
+                  <div><b>Album</b><span id="info-album">After Hours</span></div>
+                  <div><b>Released</b><span id="info-year">2026</span></div>
+                  <div><b>Source</b><span>YouTube Music · account</span></div>
+                  <div><b>Quality</b><span>High · Opus 256 kbps</span></div>
+                  <div><b>Writers</b><span>N. Lane, J. Park, A. Vale</span></div>
+                  <div><b>Label</b><span>Night Bloom Records</span></div>
+                </div>
+              </div>
+            </div>
+          </div>
+        </div>
+      </div>
+    </div>
+  </section>
+
+  <aside class="remote" aria-label="TV remote simulation">
+    <div class="remote-top"><i></i><span>NUVIO REMOTE</span></div>
+    <div class="dpad">
+      <button class="up" onclick="remotePress('ArrowUp')" aria-label="Up"><svg class="icon rot-up"><use href="#i-chevron"/></svg></button>
+      <button class="left" onclick="remotePress('ArrowLeft')" aria-label="Left"><svg class="icon rot-left"><use href="#i-chevron"/></svg></button>
+      <button class="ok" onclick="remotePress('ok')">OK</button>
+      <button class="right" onclick="remotePress('ArrowRight')" aria-label="Right"><svg class="icon"><use href="#i-chevron"/></svg></button>
+      <button class="down" onclick="remotePress('ArrowDown')" aria-label="Down"><svg class="icon rot-down"><use href="#i-chevron"/></svg></button>
+    </div>
+    <div class="remote-actions">
+      <button onclick="remotePress('back')">Back</button>
+      <button onclick="remotePress('play')">Play / Pause</button>
+    </div>
+    <div class="remote-hint">Arrow keys work too · Click any card</div>
+  </aside>
+</main>
+
+<div class="notes-modal" id="notes-modal" onclick="if(event.target===this) closeNotes()">
+  <div class="notes-card">
+    <div class="notes-top">
+      <div>
+        <h2>Four setups. One listening room.</h2>
+        <p>The prototype ships with four colour directions. Aurora is the chosen one: a deep ink canvas, album-derived violet/cyan light, and a coral edge for energy. Ember is the warm vinyl room; Pulse is the late-night club; Daylight is the editorial daytime mode for tablet and phone.</p>
+      </div>
+      <button class="notes-close" onclick="closeNotes()" aria-label="Close"><svg class="icon" style="width:17px;height:17px"><use href="#i-close"/></svg></button>
+    </div>
+    <div class="notes-grid">
+      <div class="note-block">
+        <h3>What the best apps get right</h3>
+        <ul>
+          <li><b>Apple Music:</b> full-bleed art, colour-extracted backgrounds, lyrics as a primary surface, immersive now playing.</li>
+          <li><b>Spotify TV:</b> square album art, familiar shelves, a persistent queue and easy account switching.</li>
+          <li><b>YouTube Music:</b> split now playing with up-next visible; criticised when action chips get cramped and the library feels secondary.</li>
+          <li><b>Plexamp / Sonos / Tidal:</b> persistent player, content-first home, universal search, UltraBlur-style colour, immersive artwork.</li>
+        </ul>
+      </div>
+      <div class="note-block">
+        <h3>Nuvio One's point of view</h3>
+        <p><b>Library-first, lyric-first, living-room-first.</b> Not another phone layout stretched to 16:9. The remote is the cursor: every action is a large focus target, the queue/lyrics live in a visible <b>Sidecar</b>, and the <b>Canvas</b> gives lyrics the whole screen when the room wants to sing.</p>
+      </div>
+      <div class="note-block">
+        <h3>Focus &amp; motion</h3>
+        <ul>
+          <li>Focus = 2px light ring + soft halo + 2–4px lift. No tiny targets.</li>
+          <li>The vinyl turns only while playing; the aurora background breathes with the track, not a looping video.</li>
+          <li>Back always restores the previous focus. Panels never steal the remote.</li>
+          <li>Every list has a clear current row and a visible next action.</li>
+        </ul>
+      </div>
+      <div class="note-block">
+        <h3>TV / tablet / phone</h3>
+        <ul>
+          <li><b>TV:</b> left rail, hero, horizontal shelves, bottom mini player, full-screen now playing.</li>
+          <li><b>Tablet:</b> collapsed icon rail, two-column hero, same now playing; more content per row.</li>
+          <li><b>Phone:</b> bottom nav, stacked hero, 2-up cards, mini player above the nav, now playing as a sheet.</li>
+        </ul>
+      </div>
+      <div class="note-block note-wide">
+        <h3>The four setups</h3>
+        <div class="swatches">
+          <span class="swatch"><i style="background:linear-gradient(135deg,#a78bfa,#5eead4)"></i>Aurora · chosen</span>
+          <span class="swatch"><i style="background:linear-gradient(135deg,#fbbf24,#fb923c)"></i>Ember · warm vinyl</span>
+          <span class="swatch"><i style="background:linear-gradient(135deg,#a3e635,#f472b6)"></i>Pulse · club</span>
+          <span class="swatch"><i style="background:linear-gradient(135deg,#f4efe5,#2f6b4f)"></i>Daylight · editorial</span>
+        </div>
+        <p style="margin-top:12px">Why Aurora: it is distinctive without becoming a gimmick. The violet/cyan light reads as "music" without copying Spotify green or YouTube red, the coral edge adds warmth, and the ink base keeps album art and lyrics as the brightest things on screen. Ember is the alternate if the room is more vinyl than neon; Pulse is for party mode; Daylight is the daytime/tablet mode.</p>
+      </div>
+      <div class="note-block note-wide">
+        <h3>Try it</h3>
+        <p>Switch TV / Tablet / Phone above. Use the remote or arrow keys to move focus, OK/Enter to select, Back/Esc to close Now Playing. Click any lyric line to seek. Switch themes with the four dots. Open <b>Canvas</b> in Now Playing for the full-screen lyric mode.</p>
+      </div>
+    </div>
+  </div>
+</div>
+
+<script>
+/* ============================================================
+   DATA
+   ============================================================ */
+const tracks = [
+  {
+    id: 'midnight', title: 'Midnight Drive', artist: 'Nova Lane', album: 'After Hours', year: '2026',
+    colors: ['#7c3aed', '#22d3ee'], mark: 'MD', duration: 238, badge: 'New',
+    lyrics: [
+      [0, "City lights are bleeding through the rain"],
+      [7, "I keep the radio on, chasing your name"],
+      [14, "Every street remembers where we used to go"],
+      [21, "Neon on the windshield, moving slow"],
+      [28, "And the night keeps calling, calling me home"],
+      [35, "Midnight drive, I don't want to be alone"],
+      [42, "Turn the headlights down, let the skyline glow"],
+      [49, "Midnight drive, and I'm never letting go"]
+    ]
+  },
+  {
+    id: 'velvet', title: 'Velvet Static', artist: 'The Low Keys', album: 'Soft Focus', year: '2025',
+    colors: ['#fb7185', '#f59e0b'], mark: 'VS', duration: 201, badge: 'Mix',
+    lyrics: [
+      [0, "Your voice comes through the static"],
+      [6, "Soft as velvet, automatic"],
+      [12, "I can hear you in the wires"],
+      [18, "Low and warm, a slow-burning fire"],
+      [24, "Say it once, say it slow"],
+      [31, "Velvet static, don't let go"],
+      [38, "Every frequency is you"],
+      [45, "Coming through the blue"]
+    ]
+  },
+  {
+    id: 'glass', title: 'Glasshouse', artist: 'Iris Vale', album: 'Aurora', year: '2026',
+    colors: ['#5eead4', '#3b82f6'], mark: 'GH', duration: 226, badge: 'Hi-Res',
+    lyrics: [
+      [0, "I built a glasshouse by the sea"],
+      [8, "Every window lets you see"],
+      [16, "All the colours that I keep"],
+      [24, "Underneath the quiet deep"],
+      [32, "If you break it, let it shine"],
+      [40, "Every shard is yours and mine"],
+      [48, "Glasshouse, glasshouse, let the light in"],
+      [56, "Start again, begin"]
+    ]
+  },
+  {
+    id: 'gravity', title: 'Gravity Well', artist: 'Orion Park', album: 'Deep Field', year: '2024',
+    colors: ['#a78bfa', '#f472b6'], mark: 'GW', duration: 244, badge: 'Live',
+    lyrics: [
+      [0, "There's a pull I can't explain"],
+      [7, "Every time you say my name"],
+      [14, "Orbiting the things you do"],
+      [21, "I keep falling back to you"],
+      [28, "Gravity well, gravity well"],
+      [35, "Pull me closer, I can't tell"],
+      [42, "Where the sky ends and you start"],
+      [49, "Gravity well, take my heart"]
+    ]
+  },
+  {
+    id: 'slow', title: 'Slow Motion', artist: 'Sable', album: 'Night Bloom', year: '2026',
+    colors: ['#f59e0b', '#ef4444'], mark: 'SM', duration: 215, badge: 'New',
+    lyrics: [
+      [0, "We move in slow motion, honey"],
+      [7, "Nothing here is in a hurry"],
+      [14, "Let the whole world spin around"],
+      [21, "We don't make a sound"],
+      [28, "Slow motion, hold the frame"],
+      [35, "Say my name, say my name"],
+      [42, "If the morning comes too soon"],
+      [49, "We'll be dancing in the blue"]
+    ]
+  },
+  {
+    id: 'electric', title: 'Electric Bloom', artist: 'Neon Garden', album: 'Bloom', year: '2025',
+    colors: ['#a3e635', '#06b6d4'], mark: 'EB', duration: 198, badge: 'Mix',
+    lyrics: [
+      [0, "Something growing in the dark"],
+      [6, "Little embers, little sparks"],
+      [12, "Every colour starts to move"],
+      [18, "Electric bloom, electric blue"],
+      [24, "Watch it open, watch it rise"],
+      [31, "Like a city in your eyes"],
+      [38, "Electric bloom, don't fade too soon"],
+      [45, "Meet me in the afternoon"]
+    ]
+  }
+];
+
+const moods = [
+  { title: 'Chill', sub: 'Slow down', c: ['#7dd3fc', '#6366f1'] },
+  { title: 'Focus', sub: 'Deep work', c: ['#34d399', '#0f766e'] },
+  { title: 'Energy', sub: 'Move', c: ['#f97316', '#ef4444'] },
+  { title: 'Late Night', sub: 'After hours', c: ['#a78bfa', '#312e81'] },
+  { title: 'Throwbacks', sub: 'Old favourites', c: ['#fbbf24', '#b45309'] },
+  { title: 'Discover', sub: 'New voices', c: ['#f472b6', '#7c3aed'] }
+];
+
+const shelves = [
+  { title: 'Made for you', sub: 'A room that knows your taste', items: [tracks[0], tracks[1], tracks[3], tracks[5], tracks[2], tracks[4]] },
+  { title: 'Listen again', sub: 'Pick up where you left off', items: [tracks[3], tracks[4], tracks[1], tracks[5]] },
+  { title: 'New releases', sub: 'Fresh from the catalogue', items: [tracks[2], tracks[0], tracks[5], tracks[4]] }
+];
+
+const state = {
+  device: 'tv', theme: 'aurora', font: 'schibsted', screen: 'home', current: 0,
+  playing: true, position: 0, libraryTab: 'account', nowTab: 'lyrics',
+  immersive: false, shuffle: false, muted: false, lastLine: -1
+};
+
+/* ============================================================
+   HELPERS
+   ============================================================ */
+const $ = (sel, root = document) => root.querySelector(sel);
+const $$ = (sel, root = document) => [...root.querySelectorAll(sel)];
+const artStyle = (t) => `--a1:${t.colors[0]};--a2:${t.colors[1]}`;
+const fmt = (sec) => {
+  sec = Math.max(0, Math.round(sec));
+  const m = Math.floor(sec / 60), s = sec % 60;
+  return m + ':' + String(s).padStart(2, '0');
+};
+const art = (t, cls = '') => `<div class="art ${cls}" style="${artStyle(t)}"><span class="mark">${t.mark}</span><span class="art-line"></span><span class="corner"></span>${t.badge ? `<span class="badge">${t.badge}</span>` : ''}<span class="play-dot"><svg class="icon"><use href="#i-play"/></svg></span></div>`;
+const now = () => tracks[state.current];
+
+function switchIcons() {
+  const name = state.playing ? '#i-pause' : '#i-play';
+  const m = $('#mini-play-icon use');
+  if (m) m.setAttribute('href', name);
+  const n = $('#now-play-icon use');
+  if (n) n.setAttribute('href', name);
+  $('#app').classList.toggle('playing', state.playing);
+  $('#now').classList.toggle('playing', state.playing);
+}
+
+/* ============================================================
+   RENDER
+   ============================================================ */
+function renderHero() {
+  const t = tracks[0];
+  $('#hero').innerHTML = `
+    <div class="hero" style="--hero-a:${t.colors[0]};--hero-b:${t.colors[1]}">
+      <div class="hero-art-wrap">
+        <div class="vinyl" style="--a1:${t.colors[0]};--a2:${t.colors[1]}"></div>
+        <div class="hero-art art" style="${artStyle(t)}">
+          <span class="mark">${t.mark}</span><span class="art-line"></span><span class="corner"></span>
+          <span class="badge">FEATURED TODAY</span>
+        </div>
+      </div>
+      <div class="hero-copy">
+        <div class="eyebrow">The listening room · new this week</div>
+        <h1>${t.title}</h1>
+        <div class="sub">${t.artist} · ${t.album}</div>
+        <div class="hero-meta">
+          <span>${t.year}</span><span class="dot"></span><span>8 tracks</span><span class="dot"></span>
+          <span class="tag hot"><svg class="icon" style="width:11px;height:11px"><use href="#i-spark"/></svg> Hi-Res Audio</span>
+          <span class="tag">Late night</span>
+        </div>
+        <div class="hero-actions">
+          <button class="btn primary focusable" id="hero-play" onclick="playTrack('${t.id}', true)"><svg class="icon"><use href="#i-play"/></svg> Play album</button>
+          <button class="btn ghost focusable" onclick="showScreen('library')"><svg class="icon"><use href="#i-plus"/></svg> Save</button>
+          <button class="btn ghost focusable" onclick="openNow()"><svg class="icon"><use href="#i-chevron"/></svg> Open</button>
+        </div>
+      </div>
+    </div>`;
+}
+
+function renderShelves() {
+  $('#shelves').innerHTML = shelves.map((s, si) => `
+    <div class="shelf">
+      <div class="shelf-head"><div><h2>${s.title}</h2><p>${s.sub}</p></div><button class="shelf-link focusable">See all</button></div>
+      <div class="row">${s.items.map(t => `
+        <button class="card focusable" onclick="playTrack('${t.id}', true)">
+          ${art(t)}
+          <span class="card-title">${t.title}</span>
+          <span class="card-sub">${t.artist} · ${t.album}</span>
+        </button>`).join('')}
+      </div>
+    </div>`).join('');
+}
+
+function renderMoods() {
+  $('#mood-grid').innerHTML = moods.map(m => `
+    <button class="mood focusable" style="--m1:${m.c[0]};--m2:${m.c[1]}" onclick="showScreen('search')">
+      <b>${m.title}</b><span>${m.sub}</span>
+    </button>`).join('');
+  $('#explore-shelf').innerHTML = `
+    <div class="shelf-head"><div><h2>Because you listened to Nova Lane</h2><p>Slow-burning synths, close vocals, after-hours glow</p></div><button class="shelf-link focusable">See all</button></div>
+    <div class="row">${[tracks[1], tracks[3], tracks[5], tracks[2], tracks[4]].map(t => `
+      <button class="card focusable" onclick="playTrack('${t.id}', true)">${art(t)}<span class="card-title">${t.title}</span><span class="card-sub">${t.artist}</span></button>`).join('')}
+    </div>`;
+}
+
+function renderLibrary() {
+  const account = state.libraryTab === 'account';
+  const liked = account ? [tracks[0], tracks[2], tracks[4]] : [tracks[1], tracks[5]];
+  const playlists = account
+    ? [{ title: 'Midnight Drive', sub: '24 tracks · YouTube Music', colors: ['#7c3aed', '#22d3ee'], mark: 'MD' }, { title: 'Soft Focus', sub: '18 tracks · YouTube Music', colors: ['#fb7185', '#f59e0b'], mark: 'SF' }, { title: 'Deep Field', sub: '31 tracks · YouTube Music', colors: ['#a78bfa', '#f472b6'], mark: 'DF' }]
+    : [{ title: 'Late Night Sessions', sub: '24 tracks · FLAC · USB', colors: ['#2f6b4f', '#b45309'], mark: 'LT' }, { title: 'Sunday Morning', sub: '12 tracks · Local', colors: ['#f59e0b', '#ef4444'], mark: 'SM' }];
+  $('#library-content').innerHTML = `
+    <div class="section-label"><h2>${account ? 'Liked Songs' : 'Liked on this device'}</h2><span>${liked.length} tracks</span></div>
+    ${liked.map((t, i) => `
+      <button class="list-row focusable ${i === 0 ? 'now' : ''}" onclick="playTrack('${t.id}', true)">
+        ${art(t)}
+        <div class="l-meta"><b>${t.title}</b><span>${t.artist} · ${t.album}</span></div>
+        ${i === 0 ? '<div class="eq"><i></i><i></i><i></i><i></i></div>' : ''}
+        <span class="dur">${fmt(t.duration)}</span>
+      </button>`).join('')}
+    <div class="section-label"><h2>Playlists</h2><span>${account ? 'From your account' : 'On this device'}</span></div>
+    <div class="library-grid">${playlists.map(p => `
+      <button class="library-tile focusable" onclick="playTrack('${tracks[0].id}', true)">
+        <div class="art" style="--a1:${p.colors[0]};--a2:${p.colors[1]}"><span class="mark">${p.mark}</span></div>
+        <div><b>${p.title}</b><span>${p.sub}</span></div>
+      </button>`).join('')}</div>
+    <div class="section-label"><h2>Recently played</h2><span>${account ? 'Synced from account' : 'This device'}</span></div>
+    ${[tracks[4], tracks[1], tracks[3]].map(t => `
+      <button class="list-row focusable" onclick="playTrack('${t.id}', true)">
+        ${art(t)}<div class="l-meta"><b>${t.title}</b><span>${t.artist} · ${t.album}</span></div><span class="dur">${fmt(t.duration)}</span>
+      </button>`).join('')}`;
+  $$('#library-seg button').forEach((b, i) => b.classList.toggle('on', (i === 0) === account));
+}
+
+function renderSearch() {
+  const q = ($('#search-input')?.value || '').trim().toLowerCase();
+  const results = tracks.filter(t => !q || (t.title + ' ' + t.artist + ' ' + t.album).toLowerCase().includes(q));
+  $('#search-results').innerHTML = `
+    <div class="section-label"><h2>${q ? 'Results' : 'Browse all'}</h2><span>${q ? results.length + ' tracks' : 'Moods & moments'}</span></div>
+    ${q ? (results.length ? results.map(t => `
+      <button class="list-row focusable" onclick="playTrack('${t.id}', true)">
+        ${art(t)}<div class="l-meta"><b>${t.title}</b><span>${t.artist} · ${t.album}</span></div><span class="dur">${fmt(t.duration)}</span>
+      </button>`).join('') : '<div class="list-row"><div class="l-meta"><b>No results</b><span>Try another title, artist or album.</span></div></div>')
+    : `<div class="mood-grid">${moods.map(m => `<button class="mood focusable" style="--m1:${m.c[0]};--m2:${m.c[1]}" onclick="setSearchValue('${m.title}')"><b>${m.title}</b><span>${m.sub}</span></button>`).join('')}</div>`}`;
+}
+
+function renderSettings() {
+  const rows = [
+    ['Playback', 'Audio quality', 'High · Opus 256 kbps', 'i-volume', () => cycleSetting('quality')],
+    ['Playback', 'Autoplay', 'Radio continues at queue end', 'i-radio', () => cycleSetting('autoplay')],
+    ['Playback', 'Track transition', 'Gapless · prefetched next stream', 'i-shuffle', () => cycleSetting('transition')],
+    ['Playback', 'Sleep timer', 'Off', 'i-clock', () => cycleSetting('sleep')],
+    ['Sound', 'Equalizer', 'Aurora · Bass', 'i-spark', () => cycleSetting('eq')],
+    ['Sound', 'Playback speed', '1.0x · pitch preserved', 'i-play', () => cycleSetting('speed')],
+    ['Account', 'YouTube Music', 'Signed in · Samantha', 'i-account', () => openNotes()],
+    ['Look', 'Theme', state.theme[0].toUpperCase() + state.theme.slice(1), 'i-spark', () => cycleSetting('theme')]
+  ];
+  $('#settings-list').innerHTML = rows.map(([section, title, value, icon, fn], i) => {
+    const prev = rows[i - 1];
+    const head = !prev || prev[0] !== section ? `<div class="setting-section">${section}</div>` : '';
+    return `${head}<button class="setting-row focusable" onclick="(${fn.toString()})()">
+      <div class="s-icon"><svg class="icon"><use href="#${icon}"/></svg></div>
+      <div class="s-text"><b>${title}</b><span>${value}</span></div>
+      <div class="s-value">${value.split(' · ')[0]}</div>
+      <svg class="icon" style="width:15px;height:15px;color:var(--dim)"><use href="#i-chevron"/></svg>
+    </button>`;
+  }).join('');
+}
+
+function renderMini() {
+  const t = now();
+  $('#mini').innerHTML = `
+    ${art(t)}
+    <div class="mini-meta"><b>${t.title}</b><span>${t.artist}</span></div>
+    <div class="mini-progress"><div class="mini-fill" id="mini-fill"></div></div>
+    <div class="mini-controls" onclick="event.stopPropagation()">
+      <button class="icon-btn focusable" onclick="togglePlay()" aria-label="Play"><svg class="icon" id="mini-play-icon"><use href="${state.playing ? '#i-pause' : '#i-play'}"/></svg></button>
+      <button class="icon-btn focusable" onclick="nextTrack()" aria-label="Next"><svg class="icon"><use href="#i-next"/></svg></button>
+    </div>`;
+  $('#mini').classList.add('focusable');
+  $('#mini').setAttribute('onclick', 'openNow()');
+  $('#mini').setAttribute('tabindex', '0');
+  // side/top mini
+  const side = $('#side-art');
+  if (side) { side.style.cssText = artStyle(t); side.innerHTML = `<span class="mark" style="font-size:12px">${t.mark}</span>`; }
+  const top = $('#top-art');
+  if (top) { top.style.cssText = artStyle(t); top.innerHTML = `<span class="mark" style="font-size:9px">${t.mark}</span>`; }
+  $('#side-title').textContent = t.title; $('#side-artist').textContent = t.artist;
+  $('#top-title').textContent = t.title; $('#top-artist').textContent = t.artist;
+}
+
+function renderNow() {
+  const t = now();
+  $('#now').style.setProperty('--na', t.colors[0]);
+  $('#now').style.setProperty('--nb', t.colors[1]);
+  $('#now').style.setProperty('--ny-a', t.colors[1]);
+  $('#now-art').style.cssText = artStyle(t);
+  $('#now-vinyl').style.cssText = artStyle(t);
+  $('#now-art').innerHTML = `<span class="mark" id="now-mark">${t.mark}</span><span class="art-line"></span><span class="corner"></span><span class="badge">${t.badge || 'NOW'}</span>`;
+  $('#now-title').textContent = t.title;
+  $('#now-artist').textContent = t.artist;
+  $('#now-album').textContent = `${t.album} · ${t.year}`;
+  $('#info-album').textContent = t.album;
+  $('#info-year').textContent = t.year;
+  $('#time-dur').textContent = fmt(t.duration);
+  $('#now-like').classList.toggle('on', t.id === 'midnight');
+  $('#now-like').innerHTML = `<svg class="icon" style="width:13px;height:13px"><use href="#i-heart"/></svg> ${t.id === 'midnight' ? 'Liked' : 'Like'}`;
+  renderLyrics();
+  renderQueue();
+  updateProgressUI();
+}
+
+function renderLyrics() {
+  const t = now();
+  $('#lyrics').innerHTML = t.lyrics.map(([time, text], i) => {
+    const words = text.split(' ').map(w => `<span class="word">${w}</span>`).join(' ');
+    return `<div class="lyric" data-line="${i}" onclick="seekToLine(${i})">${words}</div>`;
+  }).join('');
+  state.lastLine = -1;
+}
+
+function renderQueue() {
+  const t = now();
+  const upcoming = tracks.filter(x => x.id !== t.id).slice(0, 5);
+  $('#queue').innerHTML = upcoming.map((x, i) => `
+    <button class="q-row focusable ${i === 0 ? 'on' : ''}" onclick="playTrack('${x.id}', false)">
+      <span class="q-num">${i + 1}</span>${art(x)}
+      <div class="q-meta"><b>${x.title}</b><span>${x.artist}</span></div>
+      <span class="dur">${fmt(x.duration)}</span>
+    </button>`).join('');
+}
+
+function renderAll() {
+  renderHero();
+  renderShelves();
+  renderMoods();
+  renderLibrary();
+  renderSearch();
+  renderSettings();
+  renderMini();
+  renderNow();
+  switchIcons();
+}
+
+/* ============================================================
+   PLAYBACK
+   ============================================================ */
+function playTrack(id, open) {
+  const i = tracks.findIndex(t => t.id === id);
+  if (i < 0) return;
+  state.current = i;
+  state.position = 0;
+  state.playing = true;
+  state.lastLine = -1;
+  renderMini();
+  renderNow();
+  if (open) openNow();
+  switchIcons();
+}
+
+function togglePlay() {
+  state.playing = !state.playing;
+  switchIcons();
+}
+
+function nextTrack() {
+  state.current = (state.current + 1) % tracks.length;
+  state.position = 0;
+  state.playing = true;
+  renderMini();
+  renderNow();
+  switchIcons();
+}
+
+function prevTrack() {
+  state.current = (state.current - 1 + tracks.length) % tracks.length;
+  state.position = 0;
+  state.playing = true;
+  renderMini();
+  renderNow();
+  switchIcons();
+}
+
+function toggleLike() {
+  const el = $('#now-like');
+  const on = el.classList.toggle('on');
+  el.innerHTML = `<svg class="icon" style="width:13px;height:13px"><use href="#i-heart"/></svg> ${on ? 'Liked' : 'Like'}`;
+}
+
+function toggleShuffle() {
+  state.shuffle = !state.shuffle;
+  const el = $$('#now .now-actions .pill')[3];
+  if (el) el.classList.toggle('on', state.shuffle);
+}
+
+function toggleMute() { state.muted = !state.muted; }
+
+function updateProgressUI() {
+  const t = now();
+  const pct = Math.min(1, state.position / t.duration);
+  $('#progress-fill').style.width = (pct * 100) + '%';
+  $('#progress-knob').style.left = (pct * 100) + '%';
+  $('#time-now').textContent = fmt(state.position);
+  $('#mini-fill').style.width = (pct * 100) + '%';
+  updateLyrics();
+}
+
+function updateLyrics() {
+  const t = now();
+  const lines = $$('#lyrics .lyric');
+  if (!lines.length) return;
+  let current = -1;
+  t.lyrics.forEach(([time], i) => { if (state.position >= time) current = i; });
+  lines.forEach((el, i) => {
+    el.classList.toggle('active', i === current);
+    el.classList.toggle('past', i < current);
+    if (i === current) {
+      const start = t.lyrics[i][0];
+      const end = t.lyrics[i + 1] ? t.lyrics[i + 1][0] : start + 8;
+      const p = Math.min(1, (state.position - start) / Math.max(1, end - start));
+      const words = $$('.word', el);
+      words.forEach((w, wi) => w.classList.toggle('sung', wi / Math.max(1, words.length) <= p));
+    } else {
+      $$('.word', el).forEach(w => w.classList.remove('sung'));
+    }
+  });
+  if (current !== state.lastLine) {
+    state.lastLine = current;
+    if (current >= 0) {
+      const el = lines[current];
+      const box = $('#lyrics');
+      if (el && box) {
+        const target = el.offsetTop - box.clientHeight / 2 + el.clientHeight / 2;
+        box.scrollTo({ top: Math.max(0, target), behavior: 'smooth' });
+      }
+    }
+  }
+}
+
+function seekFromEvent(e) {
+  const r = $('#progress').getBoundingClientRect();
+  const pct = Math.max(0, Math.min(1, (e.clientX - r.left) / r.width));
+  state.position = pct * now().duration;
+  updateProgressUI();
+}
+
+function seekKey(e) {
+  if (e.key === 'ArrowLeft' || e.key === 'ArrowRight') {
+    e.preventDefault(); e.stopPropagation();
+    state.position = Math.max(0, Math.min(now().duration, state.position + (e.key === 'ArrowRight' ? 5 : -5)));
+    updateProgressUI();
+  }
+}
+
+function seekToLine(i) {
+  const line = now().lyrics[i];
+  if (!line) return;
+  state.position = line[0];
+  state.playing = true;
+  switchIcons();
+  updateProgressUI();
+}
+
+setInterval(() => {
+  if (!state.playing) return;
+  state.position += 0.5;
+  if (state.position >= now().duration) {
+    state.position = 0;
+    state.current = (state.current + 1) % tracks.length;
+    renderMini();
+    renderNow();
+  }
+  updateProgressUI();
+}, 500);
+
+/* ============================================================
+   NAVIGATION
+   ============================================================ */
+function showScreen(name) {
+  state.screen = name;
+  $$('.screen').forEach(s => s.classList.toggle('active', s.id === 'screen-' + name));
+  $$('.nav-item[data-screen]').forEach(b => b.classList.toggle('active', b.dataset.screen === name));
+  $$('.mobile-nav button').forEach(b => b.classList.toggle('active', b.dataset.screen === name));
+  const titles = { home: ['Good evening', 'Your listening room'], explore: ['Explore', 'Moods, moments and scenes'], library: ['Your Library', 'Account and device'], local: ['Local Music', 'On this TV and connected drives'], search: ['Search', 'Songs, albums, artists'], settings: ['Settings', 'Playback, sound and account'] };
+  const title = titles[name] || ['Music', 'Nuvio One'];
+  $('#page-title').textContent = title[0];
+  $('#page-sub').textContent = title[1];
+  $('#screen-wrap').scrollTo({ top: 0, behavior: 'smooth' });
+  if (name === 'library') renderLibrary();
+}
+
+function setLibraryTab(tab) {
+  state.libraryTab = tab;
+  renderLibrary();
+}
+
+function setSearchChip(el) {
+  $$('#search-chips .chip').forEach(c => c.classList.remove('on'));
+  el.classList.add('on');
+  renderSearch();
+}
+
+function setSearchValue(v) {
+  const input = $('#search-input');
+  if (input) { input.value = v; renderSearch(); }
+}
+
+function focusSearch() { $('#search-input')?.focus(); }
+function searchKey(e) { if (e.key === 'Enter') e.preventDefault(); }
+
+function openNow() {
+  $('#app').classList.add('now-open');
+  $('#now').classList.add('open');
+  renderNow();
+  setTimeout(() => $('#now-play')?.focus(), 180);
+}
+function closeNow() {
+  $('#now').classList.remove('open');
+  $('#app').classList.remove('now-open');
+  setTimeout(() => $('#mini')?.focus(), 150);
+}
+function toggleImmersive() {
+  state.immersive = !state.immersive;
+  $('#now').classList.toggle('immersive', state.immersive);
+  $('#immersive-btn').innerHTML = `<svg class="icon" style="width:13px;height:13px"><use href="#i-expand"/></svg> ${state.immersive ? 'Exit canvas' : 'Canvas'}`;
+  if (state.immersive) switchNowTab('lyrics');
+}
+function switchNowTab(tab) {
+  state.nowTab = tab;
+  $$('.now-tab').forEach(b => b.classList.toggle('on', b.dataset.nowTab === tab));
+  $$('.now-panel').forEach(p => p.classList.toggle('on', p.id === 'panel-' + tab));
+}
+
+/* ============================================================
+   SETTINGS
+   ============================================================ */
+const settingState = { quality: 0, autoplay: 1, transition: 0, sleep: 0, eq: 0, speed: 1 };
+function cycleSetting(key) {
+  const values = {
+    quality: ['High · Opus 256 kbps', 'Medium · Opus 160 kbps', 'Low · Opus 96 kbps'],
+    autoplay: ['Radio continues at queue end', 'Autoplay off'],
+    transition: ['Gapless · prefetched next stream', 'Fade 2s', 'Fade 4s'],
+    sleep: ['Off', '15 minutes', '30 minutes', '60 minutes'],
+    eq: ['Aurora · Bass', 'Aurora · Flat', 'Aurora · Vocal', 'Aurora · Off'],
+    speed: ['0.75x', '1.0x', '1.25x', '1.5x', '2.0x']
+  };
+  if (key === 'theme') {
+    const order = ['aurora', 'ember', 'pulse', 'daylight'];
+    setTheme(order[(order.indexOf(state.theme) + 1) % order.length]);
+    return;
+  }
+  settingState[key] = (settingState[key] + 1) % values[key].length;
+  renderSettings();
+}
+
+/* ============================================================
+   THEME / DEVICE
+   ============================================================ */
+function setTheme(theme) {
+  state.theme = theme;
+  $('#device').dataset.theme = theme;
+  $$('#theme-switch button').forEach(b => b.classList.toggle('on', b.dataset.theme === theme));
+  renderSettings();
+}
+function setFont(font) {
+  state.font = font;
+  $('#device').dataset.font = font;
+  const select = $('#font-select');
+  if (select) select.value = font;
+}
+function setDevice(device) {
+  state.device = device;
+  $('#device').dataset.device = device;
+  $$('#device-switch button').forEach(b => b.classList.toggle('on', b.dataset.device === device));
+  showScreen(state.screen);
+  setTimeout(() => {
+    const target = $('#hero-play') || $('#mobile-nav button');
+    target?.focus();
+  }, 180);
+}
+
+/* ============================================================
+   NOTES
+   ============================================================ */
+function openNotes() { $('#notes-modal').classList.add('open'); }
+function closeNotes() { $('#notes-modal').classList.remove('open'); }
+
+/* ============================================================
+   FOCUS / REMOTE
+   ============================================================ */
+function focusables() {
+  const nowOpen = $('#now').classList.contains('open');
+  return $$('.device .focusable').filter(el => {
+    if (nowOpen && !el.closest('#now')) return false;
+    if (!nowOpen && el.closest('#now')) return false;
+    if (el.disabled) return false;
+    const r = el.getBoundingClientRect();
+    return r.width > 0 && r.height > 0 && getComputedStyle(el).visibility !== 'hidden';
+  });
+}
+
+function moveFocus(direction) {
+  const active = document.activeElement?.closest?.('.focusable') || null;
+  const items = focusables();
+  if (!items.length) return;
+  if (!active || !items.includes(active)) { items[0].focus(); return; }
+  const cr = active.getBoundingClientRect();
+  const cx = cr.left + cr.width / 2, cy = cr.top + cr.height / 2;
+  let best = null, score = Infinity;
+  for (const el of items) {
+    if (el === active) continue;
+    const r = el.getBoundingClientRect();
+    const x = r.left + r.width / 2, y = r.top + r.height / 2;
+    const dx = x - cx, dy = y - cy;
+    let primary = 0, secondary = 0;
+    if (direction === 'ArrowRight') { if (dx <= 8) continue; primary = dx; secondary = Math.abs(dy); }
+    if (direction === 'ArrowLeft') { if (dx >= -8) continue; primary = -dx; secondary = Math.abs(dy); }
+    if (direction === 'ArrowDown') { if (dy <= 8) continue; primary = dy; secondary = Math.abs(dx); }
+    if (direction === 'ArrowUp') { if (dy >= -8) continue; primary = -dy; secondary = Math.abs(dx); }
+    const s = primary + secondary * 1.8;
+    if (s < score) { score = s; best = el; }
+  }
+  if (best) best.focus({ preventScroll: false });
+}
+
+function remotePress(action) {
+  if (action === 'ok') { document.activeElement?.click?.(); return; }
+  if (action === 'back') { if ($('#now').classList.contains('open')) closeNow(); else if ($('#notes-modal').classList.contains('open')) closeNotes(); else showScreen('home'); return; }
+  if (action === 'play') { togglePlay(); return; }
+  moveFocus(action);
+}
+
+document.addEventListener('keydown', (e) => {
+  const tag = document.activeElement?.tagName;
+  const typing = tag === 'INPUT' || tag === 'TEXTAREA';
+  if (typing) return;
+  if (['ArrowUp', 'ArrowDown', 'ArrowLeft', 'ArrowRight'].includes(e.key)) {
+    if (e.target.closest?.('.progress') && (e.key === 'ArrowLeft' || e.key === 'ArrowRight')) return;
+    e.preventDefault();
+    moveFocus(e.key);
+    return;
+  }
+  if (e.key === 'Escape') {
+    if ($('#notes-modal').classList.contains('open')) { closeNotes(); return; }
+    if ($('#now').classList.contains('open')) { closeNow(); return; }
+    showScreen('home');
+    return;
+  }
+  if (e.key === ' ' && !document.activeElement?.matches('button, input, textarea')) {
+    e.preventDefault(); togglePlay();
+  }
+});
+
+/* ============================================================
+   INIT
+   ============================================================ */
+renderAll();
+showScreen('home');
+setTheme('aurora');
+setDevice('tv');
+const q = new URLSearchParams(location.search);
+const mode = q.get('mode') || '';
+setFont(q.get('font') || 'schibsted');
+if (q.get('theme')) setTheme(q.get('theme'));
+if (q.get('device')) setDevice(q.get('device'));
+if (mode.includes('ember')) setTheme('ember');
+if (mode.includes('pulse')) setTheme('pulse');
+if (mode.includes('daylight')) setTheme('daylight');
+if (mode.includes('bricolage')) setFont('bricolage');
+if (mode.includes('space')) setFont('space');
+if (mode.includes('schibsted')) setFont('schibsted');
+if (mode.includes('instrument')) setFont('instrument');
+if (mode.includes('manrope')) setFont('manrope');
+if (mode.includes('archivo')) setFont('archivo');
+if (mode.includes('geist')) setFont('geist');
+if (mode.includes('inter')) setFont('inter');
+if (mode.includes('phone')) setDevice('phone');
+if (mode.includes('tablet')) setDevice('tablet');
+if (q.get('now') === '1' || mode.includes('now')) setTimeout(openNow, 550);
+setTimeout(() => $('#hero-play')?.focus(), 220);
+</script>
+</body>
+</html>

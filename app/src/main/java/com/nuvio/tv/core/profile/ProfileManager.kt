@@ -35,8 +35,10 @@ class ProfileManager @Inject constructor(
 
     private val scope = CoroutineScope(SupervisorJob() + Dispatchers.IO)
 
+    // Launcher: code that has only a Context (the apps row) reads the profile in use from ActiveProfile.
     val activeProfileId: StateFlow<Int> = profileDataStore.activeProfileId
-        .onEach { VpnPlaybackProtection.setActiveUserProfile(it); ActiveProfile.id = it }
+        .onEach { ActiveProfile.id = it }
+        .onEach { VpnPlaybackProtection.setActiveUserProfile(it) }
         .stateIn(scope, SharingStarted.Eagerly, 1)
 
     val activeProfileReady: StateFlow<Boolean> = profileDataStore.activeProfileId

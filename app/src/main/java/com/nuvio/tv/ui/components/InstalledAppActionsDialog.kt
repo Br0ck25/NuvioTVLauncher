@@ -2,6 +2,8 @@
 
 package com.nuvio.tv.ui.components
 
+import androidx.compose.foundation.rememberScrollState
+import androidx.compose.foundation.verticalScroll
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.fillMaxWidth
@@ -49,6 +51,8 @@ fun InstalledAppActionsDialog(
     iconChooser: com.nuvio.tv.core.apps.AppIconChooser? = null,
     /** When given, a button hides this app from the Home row (or shows it there again, when it is hidden). */
     onSetHidden: ((Boolean) -> Unit)? = null,
+    /** When given, a button hides this app from the Apps page (or shows it there again). It stays in the gear panel's Apps. */
+    onSetHiddenOnPage: ((Boolean) -> Unit)? = null,
     onDismiss: () -> Unit,
     /** Home was pressed: close this and whatever opened it. */
     onHome: () -> Unit = onDismiss
@@ -64,8 +68,13 @@ fun InstalledAppActionsDialog(
     // The app's own menu look (NuvioDialog, like a poster's options). It also ignores the select key
     // that is still down from the long-press, so letting go doesn't pick the first option.
     NuvioDialog(onDismiss = onDismiss, title = app.label, width = 420.dp) {
+        // Up to eight buttons: more than fits under the title on a TV, so the list takes what room the dialog has
+        // and scrolls (focus carries it) instead of cutting the last buttons off.
         Column(
-            modifier = Modifier.onPreviewKeyEvent { event ->
+            modifier = Modifier
+                .weight(1f, fill = false)
+                .verticalScroll(rememberScrollState())
+                .onPreviewKeyEvent { event ->
                 val native = event.nativeKeyEvent
                 if (native.keyCode == AndroidKeyEvent.KEYCODE_HOME) {
                     if (native.action == AndroidKeyEvent.ACTION_UP) onHome()
@@ -73,7 +82,7 @@ fun InstalledAppActionsDialog(
                 }
                 false
             },
-            verticalArrangement = Arrangement.spacedBy(NuvioTheme.spacing.lg)
+            verticalArrangement = Arrangement.spacedBy(NuvioTheme.spacing.sm)
         ) {
             AppMenuButton(stringResource(R.string.app_action_open), onClick = { onDismiss(); onOpen() }, modifier = Modifier.focusRequester(first))
             AppMenuButton(stringResource(R.string.app_action_move), enabled = canMove, onClick = { onDismiss(); onMove() })
@@ -85,6 +94,12 @@ fun InstalledAppActionsDialog(
                 AppMenuButton(
                     stringResource(if (app.hidden) R.string.app_action_show_on_home else R.string.app_action_hide_from_home),
                     onClick = { onDismiss(); onSetHidden(!app.hidden) }
+                )
+            }
+            if (onSetHiddenOnPage != null) {
+                AppMenuButton(
+                    stringResource(if (app.hiddenOnPage) R.string.app_action_show_on_page else R.string.app_action_hide_from_page),
+                    onClick = { onDismiss(); onSetHiddenOnPage(!app.hiddenOnPage) }
                 )
             }
             AppMenuButton(stringResource(R.string.app_action_info), onClick = { onDismiss(); onAppInfo() })

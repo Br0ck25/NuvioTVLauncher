@@ -14,6 +14,7 @@ import android.os.PowerManager
 import android.util.Log
 import androidx.core.app.NotificationCompat
 import com.nuvio.tv.R
+import com.nuvio.tv.core.util.withAppLocale
 
 /**
  * Keeps recordings going while the app is in the background: a foreground service (Android
@@ -46,8 +47,8 @@ class LiveTvRecordingService : Service() {
     override fun onCreate() {
         super.onCreate()
         if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.O) {
-            val channel = NotificationChannel(CHANNEL_ID, "Recordings", NotificationManager.IMPORTANCE_LOW).apply {
-                description = "Shown while Live TV is recording"
+            val channel = NotificationChannel(CHANNEL_ID, withAppLocale().getString(R.string.iptv_guide_recordings), NotificationManager.IMPORTANCE_LOW).apply {
+                description = withAppLocale().getString(R.string.iptv_rec_notif_recording_description)
                 setShowBadge(false)
                 setSound(null, null)
             }
@@ -58,7 +59,7 @@ class LiveTvRecordingService : Service() {
     override fun onStartCommand(intent: Intent?, flags: Int, startId: Int): Int {
         val notification: Notification = NotificationCompat.Builder(this, CHANNEL_ID)
             .setContentTitle(getString(R.string.app_name))
-            .setContentText("Recording Live TV")
+            .setContentText(withAppLocale().getString(R.string.iptv_rec_notif_recording_title))
             .setSmallIcon(android.R.drawable.ic_media_play)
             .setOngoing(true)
             .setPriority(NotificationCompat.PRIORITY_LOW)

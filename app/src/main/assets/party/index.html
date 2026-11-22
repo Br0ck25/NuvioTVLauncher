@@ -1,0 +1,558 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+  <meta name="theme-color" content="#08070b">
+  <title>Nuvio One Party</title>
+  <style>
+    :root {
+      --bg: #08070b;
+      --surface: #14111c;
+      --raised: #1c1826;
+      --border: #2a2436;
+      --text: #f8f6ff;
+      --secondary: #a9a4b8;
+      --muted: #6d677e;
+      --accent: #a78bfa;
+      --accent-2: #7c3aed;
+      --teal: #5eead4;
+      --coral: #fb7185;
+      --error: #ff6b6b;
+    }
+    * { box-sizing: border-box; -webkit-tap-highlight-color: transparent; }
+    html, body { margin: 0; padding: 0; background: var(--bg); color: var(--text); }
+    body {
+      font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, "Helvetica Neue", Arial, sans-serif;
+      min-height: 100vh;
+      background:
+        radial-gradient(1100px 600px at 8% -8%, rgba(124, 58, 237, .35), transparent 60%),
+        radial-gradient(900px 500px at 100% 0%, rgba(94, 234, 212, .12), transparent 55%),
+        var(--bg);
+      padding: max(16px, env(safe-area-inset-top)) 16px max(28px, env(safe-area-inset-bottom));
+    }
+    .wrap { max-width: 620px; margin: 0 auto; }
+    header { display: flex; align-items: center; gap: 12px; margin: 6px 0 22px; }
+    .mark {
+      width: 40px; height: 40px; border-radius: 13px; flex: 0 0 auto;
+      background: linear-gradient(135deg, #a78bfa, #22d3ee);
+      display: grid; place-items: center; color: #0b0812; font-weight: 800; font-size: 19px;
+      box-shadow: 0 8px 30px rgba(124, 58, 237, .35);
+    }
+    .brand { font-size: 15px; font-weight: 800; letter-spacing: .14em; }
+    .brand small { display: block; color: var(--muted); font-size: 10px; letter-spacing: .18em; margin-top: 2px; }
+    .pill {
+      margin-left: auto; display: inline-flex; align-items: center; gap: 7px;
+      font-size: 11px; font-weight: 700; letter-spacing: .04em;
+      padding: 7px 11px; border-radius: 999px; border: 1px solid var(--border);
+      background: rgba(255,255,255,.04); color: var(--secondary); white-space: nowrap;
+    }
+    .dot { width: 7px; height: 7px; border-radius: 50%; background: var(--teal); box-shadow: 0 0 12px var(--teal); }
+    .pill.locked .dot { background: var(--coral); box-shadow: 0 0 12px var(--coral); }
+    .pill.offline .dot { background: var(--error); box-shadow: none; }
+    #banner {
+      display: none; margin-bottom: 14px; padding: 12px 14px; border-radius: 14px;
+      background: rgba(255, 107, 107, .12); border: 1px solid rgba(255, 107, 107, .35);
+      color: #ffc1c1; font-size: 13px; line-height: 1.4;
+    }
+    #banner.show { display: block; }
+    .card {
+      background: linear-gradient(180deg, rgba(28, 24, 38, .92), rgba(20, 17, 28, .92));
+      border: 1px solid var(--border); border-radius: 20px; padding: 16px;
+      margin-bottom: 14px; box-shadow: 0 16px 50px rgba(0,0,0,.22);
+    }
+    .now { display: flex; gap: 15px; align-items: center; }
+    .cover {
+      width: 86px; height: 86px; border-radius: 14px; flex: 0 0 auto; overflow: hidden;
+      background: linear-gradient(135deg, rgba(167,139,250,.5), rgba(34,211,238,.25), #101015);
+      border: 1px solid rgba(255,255,255,.08);
+    }
+    .cover img { width: 100%; height: 100%; object-fit: cover; display: block; }
+    .now-meta { min-width: 0; flex: 1; }
+    .eyebrow { color: var(--muted); font-size: 10px; font-weight: 800; letter-spacing: .14em; margin-bottom: 5px; }
+    .title { font-size: 17px; font-weight: 800; line-height: 1.25; margin: 0 0 4px; overflow: hidden; text-overflow: ellipsis; display: -webkit-box; -webkit-line-clamp: 2; -webkit-box-orient: vertical; }
+    .artist { color: var(--secondary); font-size: 12px; margin: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+    .added-by { color: var(--muted); font-size: 10px; margin-top: 6px; }
+    .now-actions { display: flex; align-items: center; gap: 10px; margin-top: 10px; }
+    .now-actions .hint { color: var(--muted); font-size: 11px; }
+    .notice {
+      display: none; margin-bottom: 12px; padding: 10px 12px; border-radius: 12px;
+      background: rgba(167, 139, 250, .12); border: 1px solid rgba(167, 139, 250, .35);
+      color: #d8ccff; font-size: 12px; line-height: 1.45;
+    }
+    .notice.show { display: block; }
+    .tiny {
+      min-height: 30px; padding: 0 10px; font-size: 11px; border-radius: 9px;
+      background: transparent; border: 1px solid var(--border); color: var(--secondary); font-weight: 700;
+    }
+    .tiny.danger { color: var(--coral); border-color: rgba(251, 113, 133, .4); }
+    .vote-row { display: flex; align-items: center; gap: 9px; margin-top: 10px; flex-wrap: wrap; }
+    .progress { height: 4px; border-radius: 99px; background: rgba(255,255,255,.09); margin-top: 12px; overflow: hidden; }
+    .progress > i { display: block; height: 100%; width: 0; border-radius: 99px; background: linear-gradient(90deg, var(--accent), var(--teal)); transition: width .5s linear; }
+    .section-head { display: flex; align-items: baseline; gap: 8px; margin: 0 0 12px; }
+    .section-head h2 { font-size: 15px; font-weight: 800; margin: 0; }
+    .section-head span { color: var(--muted); font-size: 11px; }
+    .name-row { display: flex; gap: 9px; align-items: center; margin-bottom: 10px; }
+    .name-row label { color: var(--muted); font-size: 11px; flex: 0 0 auto; }
+    input[type="text"], input[type="search"] {
+      width: 100%; min-width: 0; border: 1px solid var(--border); background: #0f0c16;
+      color: var(--text); border-radius: 12px; padding: 12px 13px; font-size: 16px; outline: none;
+    }
+    input:focus { border-color: var(--accent); box-shadow: 0 0 0 3px rgba(167,139,250,.14); }
+    .search-row { display: flex; gap: 9px; }
+    .search-row input { flex: 1; }
+    button {
+      appearance: none; border: 0; cursor: pointer; font-family: inherit;
+      background: linear-gradient(135deg, var(--accent), var(--accent-2));
+      color: #0b0812; font-weight: 800; font-size: 13px; border-radius: 12px;
+      padding: 0 16px; min-height: 46px; white-space: nowrap;
+    }
+    button:active { transform: scale(.98); }
+    button:disabled { opacity: .55; cursor: default; }
+    button.ghost { background: var(--raised); color: var(--text); border: 1px solid var(--border); font-weight: 700; }
+    #search-status { color: var(--muted); font-size: 11px; min-height: 15px; margin-top: 8px; }
+    .song {
+      display: flex; align-items: center; gap: 12px; padding: 10px 0;
+      border-top: 1px solid rgba(255,255,255,.055);
+    }
+    .song:first-child { border-top: 0; }
+    .song .art {
+      width: 48px; height: 48px; border-radius: 10px; overflow: hidden; flex: 0 0 auto;
+      background: linear-gradient(135deg, rgba(167,139,250,.35), rgba(94,234,212,.18), #101015);
+      border: 1px solid rgba(255,255,255,.06);
+    }
+    .song .art img { width: 100%; height: 100%; object-fit: cover; display: block; }
+    .song .meta { flex: 1; min-width: 0; }
+    .song .meta b { display: block; font-size: 13px; line-height: 1.3; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+    .song .meta small { display: block; color: var(--secondary); font-size: 11px; margin-top: 3px; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+    .song button { min-height: 38px; padding: 0 13px; font-size: 12px; border-radius: 10px; }
+    .song .num { width: 18px; text-align: center; color: var(--muted); font-size: 11px; flex: 0 0 auto; }
+    .empty { color: var(--muted); font-size: 12px; line-height: 1.5; padding: 6px 0 2px; }
+    .float-add { position: sticky; bottom: 12px; }
+    footer { color: var(--muted); font-size: 11px; line-height: 1.5; text-align: center; margin-top: 18px; }
+    footer b { color: var(--secondary); font-weight: 600; }
+    @media (min-width: 700px) {
+      body { padding-top: 32px; }
+      .card { padding: 18px; }
+    }
+  </style>
+</head>
+<body>
+<div class="wrap">
+  <header>
+    <div class="mark">♫</div>
+    <div class="brand">NUVIO ONE PARTY<small>LISTEN TOGETHER</small></div>
+    <div class="pill" id="status"><span class="dot"></span><span id="status-text">Connecting…</span></div>
+  </header>
+
+  <div id="banner">Can’t reach the TV. Make sure this phone is on the same Wi-Fi as the TV, then keep this page open.</div>
+
+  <div class="card">
+    <div class="now">
+      <div class="cover" id="now-cover"></div>
+      <div class="now-meta">
+        <div class="eyebrow">NOW PLAYING</div>
+        <h1 class="title" id="now-title">Waiting for the first song</h1>
+        <p class="artist" id="now-artist">Add something from the search below.</p>
+        <div class="added-by" id="now-added"></div>
+      </div>
+    </div>
+    <div class="progress"><i id="now-progress"></i></div>
+    <div class="vote-row">
+      <button id="vote-btn" class="tiny" type="button">Vote to skip</button>
+      <span class="hint" id="vote-status"></span>
+    </div>
+  </div>
+
+  <div id="approval-note" class="notice">Host approval is on. New songs wait for the TV to approve them.</div>
+
+  <div class="card">
+    <div class="section-head"><h2>Find a song</h2><span>Music</span></div>
+    <div class="name-row">
+      <label for="name">Your name</label>
+      <input id="name" type="text" maxlength="24" placeholder="Optional" autocomplete="nickname">
+    </div>
+    <form id="search-form" class="search-row" autocomplete="off">
+      <input id="q" type="search" placeholder="Song, artist or album" enterkeyhint="search">
+      <button id="search-btn" type="submit">Search</button>
+    </form>
+    <div id="search-status"></div>
+    <div id="results"></div>
+  </div>
+
+  <div class="card">
+    <div class="section-head"><h2>Up next</h2><span id="queue-count">0 songs</span></div>
+    <div id="queue"></div>
+  </div>
+
+  <footer>
+    <b id="device">Nuvio One</b> is hosting this party.<br>
+    Only the TV needs the Nuvio One app. Additions appear on the TV immediately.
+  </footer>
+</div>
+
+<script>
+(() => {
+  const $ = (id) => document.getElementById(id);
+  const banner = $('banner');
+  const status = $('status');
+  const statusText = $('status-text');
+  const nameInput = $('name');
+  const searchForm = $('search-form');
+  const searchInput = $('q');
+  const searchBtn = $('search-btn');
+  const searchStatus = $('search-status');
+  const results = $('results');
+  const queueEl = $('queue');
+  const queueCount = $('queue-count');
+  const nowCover = $('now-cover');
+  const nowTitle = $('now-title');
+  const nowArtist = $('now-artist');
+  const nowAdded = $('now-added');
+  const progress = $('now-progress');
+  const deviceEl = $('device');
+  const voteBtn = $('vote-btn');
+  const voteStatus = $('vote-status');
+  const approvalNote = $('approval-note');
+
+  let state = null;
+  let online = true;
+  let pollTimer = null;
+  const added = new Set();
+  const pending = new Set();
+  const guestId = (() => {
+    let id = localStorage.getItem('nuvioPartyGuestId');
+    if (!id) {
+      id = (window.crypto && crypto.randomUUID)
+        ? crypto.randomUUID()
+        : 'g-' + Math.random().toString(36).slice(2) + Date.now().toString(36);
+      localStorage.setItem('nuvioPartyGuestId', id);
+    }
+    return id;
+  })();
+
+  nameInput.value = localStorage.getItem('nuvioPartyName') || '';
+  nameInput.addEventListener('input', () => {
+    localStorage.setItem('nuvioPartyName', nameInput.value.trim());
+  });
+
+  function setOnline(value) {
+    online = value;
+    banner.classList.toggle('show', !value);
+    status.classList.toggle('offline', !value);
+    if (!value) statusText.textContent = 'Offline';
+  }
+
+  function art(url) {
+    const box = document.createElement('div');
+    box.className = 'art';
+    if (url) {
+      const img = document.createElement('img');
+      img.src = url;
+      img.alt = '';
+      img.loading = 'lazy';
+      img.onerror = () => img.remove();
+      box.appendChild(img);
+    }
+    return box;
+  }
+
+  function renderState() {
+    if (!state || !state.running) {
+      statusText.textContent = 'Party ended';
+      status.classList.add('offline');
+      results.innerHTML = '';
+      return;
+    }
+    deviceEl.textContent = state.device || 'The TV';
+    status.classList.toggle('locked', !!state.locked);
+    status.classList.remove('offline');
+    statusText.textContent = state.locked ? 'Additions locked' : 'Live';
+
+    const now = state.now;
+    if (now) {
+      nowTitle.textContent = now.title || 'Unknown track';
+      nowArtist.textContent = [now.artist, now.album].filter(Boolean).join(' · ') || 'Music';
+      nowAdded.textContent = now.addedBy ? 'Added by ' + now.addedBy : '';
+      replaceArt(nowCover, now.thumb);
+      const duration = Number(state.durationMs) || 0;
+      const position = Number(state.positionMs) || 0;
+      progress.style.width = duration > 0 ? Math.min(100, (position / duration) * 100) + '%' : '0%';
+    } else {
+      nowTitle.textContent = 'Waiting for the first song';
+      nowArtist.textContent = 'Add something from the search below.';
+      nowAdded.textContent = '';
+      progress.style.width = '0%';
+      nowCover.innerHTML = '';
+    }
+
+    const queue = Array.isArray(state.queue) ? state.queue : [];
+    queue.forEach((song) => {
+      if (pending.has(song.videoId)) pending.delete(song.videoId);
+      if (song.mine) added.add(song.videoId);
+      if (pending.has(song.videoId) || added.has(song.videoId)) {
+        if (!added.has(song.videoId)) added.add(song.videoId);
+      }
+    });
+    queueCount.textContent = queue.length + (queue.length === 1 ? ' song' : ' songs');
+    queueEl.innerHTML = '';
+    if (!queue.length) {
+      const empty = document.createElement('div');
+      empty.className = 'empty';
+      empty.textContent = now ? 'Nothing queued yet. Add the next one.' : 'Be the first to add a song.';
+      queueEl.appendChild(empty);
+    } else {
+      queue.forEach((song, index) => {
+        const row = document.createElement('div');
+        row.className = 'song';
+        const num = document.createElement('div');
+        num.className = 'num';
+        num.textContent = String(index + 1);
+        row.appendChild(num);
+        row.appendChild(art(song.thumb));
+        const meta = document.createElement('div');
+        meta.className = 'meta';
+        const title = document.createElement('b');
+        title.textContent = song.title || 'Unknown track';
+        const sub = document.createElement('small');
+        sub.textContent = [song.artist, song.addedBy ? 'via ' + song.addedBy : ''].filter(Boolean).join(' · ');
+        meta.append(title, sub);
+        row.appendChild(meta);
+        if (song.mine) {
+          const remove = document.createElement('button');
+          remove.type = 'button';
+          remove.className = 'tiny danger';
+          remove.textContent = 'Remove';
+          remove.addEventListener('click', () => removeSong(song.videoId, remove));
+          row.appendChild(remove);
+        }
+        queueEl.appendChild(row);
+      });
+    }
+
+    approvalNote.classList.toggle('show', !!state.requireApproval);
+    const needsVote = !!now && !state.voted;
+    voteBtn.disabled = !needsVote;
+    if (!now) {
+      voteBtn.textContent = 'Vote to skip';
+      voteStatus.textContent = '';
+    } else if (state.voted) {
+      voteBtn.textContent = 'Vote counted';
+      voteStatus.textContent = 'Waiting for the other listeners…';
+    } else {
+      const votes = Number(state.skipVotes) || 0;
+      const needed = Number(state.skipVotesNeeded) || 2;
+      voteBtn.textContent = votes > 0 ? `Vote to skip (${votes}/${needed})` : 'Vote to skip';
+      voteStatus.textContent = votes > 0 ? `${needed - votes} more to skip` : '';
+    }
+    updateAddButtons();
+  }
+
+  function replaceArt(container, url) {
+    container.innerHTML = '';
+    if (!url) return;
+    const img = document.createElement('img');
+    img.src = url;
+    img.alt = '';
+    img.onerror = () => img.remove();
+    container.appendChild(img);
+  }
+
+  function updateAddButtons() {
+    const locked = !state || state.locked || !state.running;
+    results.querySelectorAll('button[data-video]').forEach((btn) => {
+      if (pending.has(btn.dataset.video)) {
+        btn.disabled = true;
+        btn.textContent = 'Requested';
+      } else if (added.has(btn.dataset.video)) {
+        btn.disabled = true;
+        btn.textContent = 'Added';
+      } else if (locked) {
+        btn.disabled = true;
+        btn.textContent = 'Locked';
+      } else {
+        btn.disabled = false;
+        btn.textContent = 'Add';
+      }
+    });
+  }
+
+  function renderResults(songs) {
+    results.innerHTML = '';
+    songs.forEach((song) => {
+      const row = document.createElement('div');
+      row.className = 'song';
+      row.appendChild(art(song.thumb));
+      const meta = document.createElement('div');
+      meta.className = 'meta';
+      const title = document.createElement('b');
+      title.textContent = song.title || 'Unknown track';
+      const sub = document.createElement('small');
+      sub.textContent = [song.artist, song.album].filter(Boolean).join(' · ') || 'Music';
+      meta.append(title, sub);
+      row.appendChild(meta);
+      const btn = document.createElement('button');
+      btn.dataset.video = song.videoId;
+      btn.type = 'button';
+      btn.textContent = 'Add';
+      if (added.has(song.videoId)) {
+        btn.disabled = true;
+        btn.textContent = 'Added';
+      }
+      btn.addEventListener('click', () => addSong(song.videoId, btn));
+      row.appendChild(btn);
+      results.appendChild(row);
+    });
+    updateAddButtons();
+  }
+
+  async function refresh() {
+    try {
+      const response = await fetch('api/state?guestId=' + encodeURIComponent(guestId), { cache: 'no-store' });
+      if (!response.ok) throw new Error('bad response');
+      state = await response.json();
+      setOnline(true);
+      renderState();
+    } catch (error) {
+      setOnline(false);
+    }
+  }
+
+  async function post(path, body) {
+    const response = await fetch(path, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify(body)
+    });
+    if (!response.ok) throw new Error('bad response');
+    return response.json();
+  }
+
+  async function search(event) {
+    event.preventDefault();
+    const query = searchInput.value.trim();
+    if (!query) {
+      searchStatus.textContent = 'Type a song, artist or album first.';
+      return;
+    }
+    searchBtn.disabled = true;
+    searchStatus.textContent = 'Searching music…';
+    results.innerHTML = '';
+    try {
+      const response = await fetch('api/search?q=' + encodeURIComponent(query), { cache: 'no-store' });
+      if (!response.ok) throw new Error('bad response');
+      const data = await response.json();
+      const songs = Array.isArray(data.songs) ? data.songs : [];
+      if (!songs.length) {
+        searchStatus.textContent = 'No songs found. Try another search.';
+      } else {
+        searchStatus.textContent = '';
+        renderResults(songs);
+      }
+      setOnline(true);
+    } catch (error) {
+      searchStatus.textContent = 'Search failed. Check the TV connection.';
+      setOnline(false);
+    } finally {
+      searchBtn.disabled = false;
+    }
+  }
+
+  async function addSong(videoId, button) {
+    button.disabled = true;
+    button.textContent = 'Adding…';
+    try {
+      const data = await post('api/add', {
+        videoId,
+        guestId,
+        name: nameInput.value.trim()
+      });
+      if (data.ok) {
+        if (data.status === 'pending') {
+          pending.add(videoId);
+          button.textContent = 'Requested';
+          button.disabled = true;
+          searchStatus.textContent = 'Waiting for the host to approve it…';
+        } else {
+          added.add(videoId);
+          button.textContent = data.status === 'duplicate' ? 'Already queued' : 'Added';
+          button.disabled = true;
+          if (data.status === 'duplicate') added.add(videoId);
+        }
+        setTimeout(refresh, 250);
+      } else {
+        button.disabled = false;
+        button.textContent = data.status === 'locked' ? 'Locked' : 'Try again';
+        if (data.status === 'locked') {
+          status.classList.add('locked');
+          statusText.textContent = 'Additions locked';
+        }
+      }
+      setOnline(true);
+    } catch (error) {
+      button.disabled = false;
+      button.textContent = 'Try again';
+      setOnline(false);
+    }
+  }
+
+  async function voteSkip() {
+    voteBtn.disabled = true;
+    voteStatus.textContent = 'Sending vote…';
+    try {
+      const data = await post('api/vote', { guestId });
+      if (data.ok) {
+        if (data.status === 'skipped') {
+          voteStatus.textContent = 'Skipping…';
+        } else if (data.status === 'already') {
+          voteStatus.textContent = 'You already voted on this track.';
+        } else {
+          const needed = Number(data.needed) || 2;
+          const votes = Number(data.votes) || 0;
+          voteStatus.textContent = `${Math.max(0, needed - votes)} more vote${needed - votes === 1 ? '' : 's'} to skip`;
+        }
+        setTimeout(refresh, 300);
+      } else {
+        voteBtn.disabled = false;
+        voteStatus.textContent = 'Could not vote.';
+      }
+    } catch (error) {
+      voteBtn.disabled = false;
+      voteStatus.textContent = 'Could not reach the TV.';
+      setOnline(false);
+    }
+  }
+
+  async function removeSong(videoId, button) {
+    button.disabled = true;
+    button.textContent = '…';
+    try {
+      const data = await post('api/remove', { videoId, guestId });
+      if (data.ok) {
+        button.textContent = 'Removed';
+        setTimeout(refresh, 250);
+      } else {
+        button.disabled = false;
+        button.textContent = 'Remove';
+        searchStatus.textContent = 'That song can no longer be removed.';
+      }
+    } catch (error) {
+      button.disabled = false;
+      button.textContent = 'Remove';
+      setOnline(false);
+    }
+  }
+
+  searchForm.addEventListener('submit', search);
+  voteBtn.addEventListener('click', voteSkip);
+  pollTimer = setInterval(() => {
+    if (document.visibilityState === 'visible') refresh();
+  }, 2000);
+  document.addEventListener('visibilitychange', () => {
+    if (document.visibilityState === 'visible') refresh();
+  });
+  refresh();
+})();
+</script>
+</body>
+</html>

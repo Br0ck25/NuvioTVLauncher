@@ -72,6 +72,11 @@ fun LiveTvLoadingHost(navController: NavController) {
     }.collectAsState(false)
     val route = navController.currentBackStackEntryAsState().value?.destination?.route.orEmpty()
     val liveFullscreen by LiveTvFullscreen.active.collectAsState()
+    // Sports' channel matching may run while the Live TV guide (or its player) is on screen.
+    val guideOpen = route == Screen.LiveTv.route || route == Screen.LiveTvPlayer.route || liveFullscreen
+    androidx.compose.runtime.LaunchedEffect(guideOpen) {
+        com.nuvio.tv.livetv.data.BackgroundWork.guideVisible.value = guideOpen
+    }
     val multiview = route == Screen.LiveTvMultiview.route || route == Screen.SportsMultiview.route
     val playing = route == Screen.LiveTvPlayer.route || route.startsWith("player/") || liveFullscreen || multiview
     val lifecycleOwner = LocalLifecycleOwner.current
@@ -79,14 +84,20 @@ fun LiveTvLoadingHost(navController: NavController) {
         fun updateWorkHold() {
             // Multiview releases its streams on pause, so automatic imports may proceed then.
             val activeMultiview = multiview && lifecycleOwner.lifecycle.currentState.isAtLeast(Lifecycle.State.RESUMED)
-            com.nuvio.tv.livetv.data.BackgroundWork.nuvioPlaying.value = route.startsWith("player/") || activeMultiview
+            com.nuvio.tv.livetv.data.BackgroundWork.updatePlaybackRoute(route, activeMultiview)
+            com.nuvio.tv.core.image.PlaybackImageCache.setOnDemandPlaying(route.startsWith("player/"))
         }
         val observer = LifecycleEventObserver { _, _ -> updateWorkHold() }
         lifecycleOwner.lifecycle.addObserver(observer)
         updateWorkHold()
         onDispose {
             lifecycleOwner.lifecycle.removeObserver(observer)
-            if (multiview) com.nuvio.tv.livetv.data.BackgroundWork.nuvioPlaying.value = false
+        }
+    }
+    DisposableEffect(Unit) {
+        onDispose {
+            com.nuvio.tv.livetv.data.BackgroundWork.updatePlaybackRoute("")
+            com.nuvio.tv.core.image.PlaybackImageCache.setOnDemandPlaying(false)
         }
     }
     // Nuvio's own player is opening (a movie, an episode, Watch On Demand): make sure the

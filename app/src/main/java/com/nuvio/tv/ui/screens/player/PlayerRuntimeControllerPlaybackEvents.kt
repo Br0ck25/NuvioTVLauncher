@@ -1,5 +1,7 @@
 package com.nuvio.tv.ui.screens.player
 
+import com.nuvio.tv.data.repository.AddonPlayerAction
+import com.nuvio.tv.data.repository.AddonPlayerEventTarget
 import android.net.Uri
 import android.util.Log
 import androidx.media3.common.Player
@@ -29,6 +31,9 @@ import kotlinx.coroutines.launch
 
 internal const val AUDIO_AMPLIFICATION_MIN_DB = 0
 internal const val AUDIO_AMPLIFICATION_MAX_DB = 10
+/** The gain processor also accepts the OneTube offset, which can go below normal. */
+internal const val AUDIO_GAIN_MIN_DB = -12
+internal const val AUDIO_GAIN_MAX_DB = 16
 internal const val CENTER_MIX_LEVEL_MIN_DB = -10
 internal const val CENTER_MIX_LEVEL_MAX_DB = 30
 internal const val AUDIO_DELAY_MIN_MS = com.nuvio.tv.domain.model.AUDIO_DELAY_MIN_MS
@@ -144,6 +149,9 @@ internal fun PlayerRuntimeController.applyEffectiveAudioDelay() {
     if (isUsingMpvEngine()) {
         mpvView?.setAudioDelayMs(totalMs)
     }
+    if (isUsingVlcEngine()) {
+        vlcView?.setAudioDelayMs(totalMs)
+    }
     applyStreamSubtitleOffset()
 }
 
@@ -225,11 +233,25 @@ internal fun PlayerRuntimeController.skipInterval(interval: SkipInterval): Boole
     return true
 }
 
+internal fun PlayerRuntimeController.effectiveAudioGainDb(baseDb: Int): Int {
+    val isOneTube = contentType?.equals("youtube", ignoreCase = true) == true ||
+        (contentId?.let { com.nuvio.tv.youtube.YouTubeProgress.isYouTubeId(it) } == true)
+    val offset = if (isOneTube) com.nuvio.tv.youtube.YouTubeSettings.volumeOffsetDb(context) else 0
+    return (baseDb + offset).coerceIn(AUDIO_GAIN_MIN_DB, AUDIO_GAIN_MAX_DB)
+}
+
 internal fun PlayerRuntimeController.applyAudioAmplification(db: Int) {
     val clampedDb = db.coerceIn(AUDIO_AMPLIFICATION_MIN_DB, AUDIO_AMPLIFICATION_MAX_DB)
+    val effectiveDb = effectiveAudioGainDb(clampedDb)
+    if (effectiveDb != clampedDb) {
+        android.util.Log.d(
+            PlayerRuntimeController.TAG,
+            "AUDIO_GAIN base=$clampedDb effective=$effectiveDb offset=${effectiveDb - clampedDb}"
+        )
+    }
     val isAudioAmplificationAvailable = isUsingMpvEngine() || _exoPlayer != null
     val wasActive = gainAudioProcessor.isGainEnabled()
-    gainAudioProcessor.setGainDb(if (isAudioAmplificationAvailable) clampedDb else AUDIO_AMPLIFICATION_MIN_DB)
+    gainAudioProcessor.setGainDb(if (isAudioAmplificationAvailable) effectiveDb else AUDIO_AMPLIFICATION_MIN_DB)
     val isActiveNow = gainAudioProcessor.isGainEnabled()
 
     if (wasActive != isActiveNow && !isUsingMpvEngine()) {
@@ -240,7 +262,7 @@ internal fun PlayerRuntimeController.applyAudioAmplification(db: Int) {
     }
 
     if (isUsingMpvEngine()) {
-        mpvView?.applyAudioAmplificationDb(clampedDb)
+        mpvView?.applyAudioAmplificationDb(effectiveDb)
     }
     _uiState.update {
         it.copy(
@@ -283,7 +305,7 @@ internal fun PlayerRuntimeController.updateAudioControlAvailability(
     val clampedDb = _uiState.value.audioAmplificationDb
         .coerceIn(AUDIO_AMPLIFICATION_MIN_DB, AUDIO_AMPLIFICATION_MAX_DB)
     gainAudioProcessor.setGainDb(
-        if (isAudioAmplificationAvailable) clampedDb else AUDIO_AMPLIFICATION_MIN_DB
+        if (isAudioAmplificationAvailable) effectiveAudioGainDb(clampedDb) else AUDIO_AMPLIFICATION_MIN_DB
     )
     _uiState.update { state ->
         state.copy(
@@ -349,10 +371,70 @@ internal fun shouldTreatAsNaturalPlaybackCompletion(
 /** Streams shorter than ~2:01 are treated as error/placeholder clips, not real episodes. */
 internal fun isShortPlaceholderDuration(duration: Long): Boolean = duration in 1..120_999L
 
+/** YouTube fork: jumps past a SponsorBlock segment you've chosen to skip. */
+internal fun PlayerRuntimeController.skipYouTubeSponsorSegment(player: androidx.media3.exoplayer.ExoPlayer, positionMs: Long) {
+    val id = contentId
+    if (!com.nuvio.tv.youtube.YouTubeProgress.isYouTubeId(id) || player.isCurrentMediaItemLive) return
+    val session = sponsorSession ?: com.nuvio.tv.youtube.SponsorBlockSession(
+        context, id!!.removePrefix(com.nuvio.tv.youtube.YouTubeProgress.ID_PREFIX)
+    ).also { sponsorSession = it }
+    session.onPosition(positionMs) { player.seekTo(it) }
+}
+
 internal fun PlayerRuntimeController.startProgressUpdates() {
     progressJob?.cancel()
     progressJob = scope.launch {
         while (isActive) {
+            if (isUsingVlcEngine()) {
+                val view = vlcView
+                if (view != null) {
+                    val pos = view.currentPositionMs().coerceAtLeast(0L)
+                    val playerDuration = view.durationMs().coerceAtLeast(0L)
+                    val playingNow = view.isPlayingNow()
+                    val buffering = view.isBufferingNow()
+                    val live = view.isLiveStreamNow()
+                    if (view.hasRenderedFrame()) hasRenderedFirstFrame = true
+                    if (playerDuration > lastKnownDuration) {
+                        lastKnownDuration = playerDuration
+                    }
+                    val effectiveDuration = if (playerDuration > 0L) playerDuration else lastKnownDuration
+                    // A movie/series must never stay latched as live because VLC briefly
+                    // reported zero length/unseekable while opening the file.
+                    if (playerDuration > 0L && view.isSeekableNow() &&
+                        !LivePlaybackUiPolicy.isLiveContentType(contentType)) {
+                        livePlaybackLatched = false
+                    }
+                    publishPlaybackTimeline(
+                        currentPosition = pos,
+                        duration = effectiveDuration,
+                        bufferedPosition = pos,
+                        playerReportsLive = live,
+                        isPlaying = playingNow
+                    )
+                    val ended = view.isEndedNow() && !live
+                    if (!ended) vlcEndReachedHandled = false
+                    _uiState.update {
+                        it.copy(
+                            isPlaying = playingNow,
+                            isBuffering = buffering,
+                            // After the first frame this is a seek/rebuffer, not a new stream:
+                            // show the small spinner instead of the title + "Starting stream".
+                            showLoadingOverlay = it.loadingOverlayEnabled &&
+                                buffering && !hasRenderedFirstFrame,
+                            playbackEnded = ended
+                        )
+                    }
+                    // VLC reports the finish through its own state rather than a Media3
+                    // callback. Run the same completion handler as ExoPlayer/MPV once.
+                    if (ended && !vlcEndReachedHandled) {
+                        vlcEndReachedHandled = true
+                        handleNaturalPlaybackEnded()
+                    }
+                    updateActiveSkipInterval(pos)
+                }
+                delay(500L)
+                continue
+            }
             if (isUsingMpvEngine()) {
                 val view = mpvView
                 if (view != null) {
@@ -472,6 +554,7 @@ internal fun PlayerRuntimeController.startProgressUpdates() {
 
             _exoPlayer?.let { player ->
                 val pos = player.currentPosition.coerceAtLeast(0L)
+                skipYouTubeSponsorSegment(player, pos)
                 val playerDuration = player.duration
                 if (playerDuration > lastKnownDuration) {
                     lastKnownDuration = playerDuration
@@ -963,11 +1046,16 @@ internal fun PlayerRuntimeController.handleNaturalPlaybackEnded() {
         return
     }
 
+    emitAddonPlayerEvent(AddonPlayerAction.STOP)
     emitCompletionScrobbleStop(progressPercent = 99.5f)
     if (contentType.equals("cloud", ignoreCase = true)) {
         saveCloudLibraryProgress(position, duration, completed = true)
     } else {
         saveWatchProgress()
+    }
+    // A finished movie can ask for a rating once the user is back on its detail page.
+    if (contentType.equals("movie", ignoreCase = true)) {
+        contentId?.let(MovieRatingPromptBus::request)
     }
     resetPostPlayStateAfterPlaybackEnded()
 }
@@ -1010,6 +1098,17 @@ internal fun PlayerRuntimeController.saveWatchProgressInternal(position: Long, d
     // Live TV fork: a recording keeps its own place (kept out of Continue Watching and history).
     if (com.nuvio.tv.livetv.record.RecordingResume.isRecording(contentType)) {
         if (position >= 1000) com.nuvio.tv.livetv.record.RecordingResume.save(context, contentId, position, duration)
+        // YouTube fork: also keep the bar on the card, and tell YouTube when signed in.
+        if (com.nuvio.tv.youtube.YouTubeProgress.isYouTubeId(contentId)) {
+            com.nuvio.tv.youtube.YouTubeProgress.record(
+                context = context,
+                contentId = contentId,
+                positionMs = position,
+                durationMs = duration,
+                title = contentName ?: title,
+                poster = poster,
+            )
+        }
         return
     }
     if (contentType.equals("cloud", ignoreCase = true)) {
@@ -1122,7 +1221,38 @@ internal fun PlayerRuntimeController.buildScrobbleItem(): TrackingMediaReference
     }
 }
 
+internal fun PlayerRuntimeController.emitAddonPlayerEvent(
+    action: AddonPlayerAction,
+    resend: Boolean = false
+) {
+    if (isShortPlaceholderStream()) return
+    val positionMs = currentPlaybackPositionMs() ?: 0L
+    val durationMs = currentPlaybackDurationMs().takeIf { it > 0 } ?: lastKnownDuration
+    val active = activeAddonPlayerEventTarget
+    if (action == AddonPlayerAction.STOP) {
+        if (active == null) return
+        activeAddonPlayerEventTarget = null
+        lastAddonPlayerAction = null
+        addonEventDispatcher.player(active, AddonPlayerAction.STOP, positionMs, durationMs)
+        return
+    }
+    val type = contentType ?: return
+    val videoId = currentVideoId?.takeIf { it.isNotBlank() } ?: contentId ?: return
+    val target = AddonPlayerEventTarget(type = type, videoId = videoId)
+    if (active != null && active != target) {
+        addonEventDispatcher.player(active, AddonPlayerAction.STOP, positionMs, durationMs)
+        activeAddonPlayerEventTarget = null
+        lastAddonPlayerAction = null
+    }
+    if (action == AddonPlayerAction.PAUSE && activeAddonPlayerEventTarget == null) return
+    if (!resend && action == lastAddonPlayerAction && activeAddonPlayerEventTarget == target) return
+    activeAddonPlayerEventTarget = target
+    lastAddonPlayerAction = action
+    addonEventDispatcher.player(target, action, positionMs, durationMs)
+}
+
 internal fun PlayerRuntimeController.emitScrobbleStart() {
+    emitAddonPlayerEvent(AddonPlayerAction.START)
     logScrobbleDiagnostic("start_evaluated")
     if (isShortPlaceholderStream()) {
         logScrobbleDiagnostic("start_skipped", "reason=short_placeholder")
@@ -1255,6 +1385,7 @@ internal fun PlayerRuntimeController.emitCompletionScrobbleStop(progressPercent:
 }
 
 internal fun PlayerRuntimeController.emitStopScrobbleForCurrentProgress() {
+    emitAddonPlayerEvent(AddonPlayerAction.STOP)
     val progressPercent = currentPlaybackProgressPercent()
     if (!shouldSendStopScrobble(hasRequestedScrobbleStartForCurrentItem, progressPercent)) {
         logScrobbleDiagnostic(
@@ -1271,6 +1402,7 @@ internal fun PlayerRuntimeController.emitStopScrobbleForCurrentProgress() {
 }
 
 internal fun PlayerRuntimeController.emitPauseScrobbleForCurrentProgress() {
+    emitAddonPlayerEvent(AddonPlayerAction.PAUSE)
     emitScrobblePause(progressPercent = currentPlaybackProgressPercent())
 }
 
@@ -1317,6 +1449,7 @@ internal fun PlayerRuntimeController.scheduleProgressSyncAfterSeek() {
     seekProgressSyncJob = scope.launch {
         delay(seekProgressSyncDebounceMs)
         saveWatchProgress()
+        lastAddonPlayerAction?.let { action -> emitAddonPlayerEvent(action, resend = true) }
 
         val progressPercent = currentPlaybackProgressPercent()
         emitSeekScrobbleRestart(progressPercent = progressPercent)
@@ -1327,7 +1460,7 @@ fun PlayerRuntimeController.scheduleHideControls() {
     hideControlsJob?.cancel()
     hideControlsJob = scope.launch {
         delay(3000)
-        if (_uiState.value.isPlaying && !_uiState.value.showAudioOverlay &&
+        if (_uiState.value.isPlaying && !_uiState.value.showAudioOverlay && !_uiState.value.showQualityOverlay && !_uiState.value.showYouTubePanel &&
             !_uiState.value.showSubtitleOverlay && !_uiState.value.showSubtitleStylePanel &&
             !_uiState.value.showSpeedDialog && !_uiState.value.showMoreDialog &&
             !_uiState.value.showSubtitleDelayOverlay &&
@@ -1391,6 +1524,9 @@ internal fun PlayerRuntimeController.setSubtitleDelayMs(targetMs: Int, showOverl
     if (isUsingMpvEngine()) {
         mpvView?.setSubtitleDelayMs(mpvSubtitleDelayMs(newDelayMs))
     }
+    if (isUsingVlcEngine()) {
+        vlcView?.setSubtitleDelayMs(newDelayMs)
+    }
     if (showOverlay) {
         _uiState.update {
             it.copy(
@@ -1443,7 +1579,7 @@ internal fun PlayerRuntimeController.schedulePauseOverlay() {
         val s = _uiState.value
         val anyPanelOpen = s.showSubtitleOverlay || s.showSubtitleStylePanel ||
             s.showSpeedDialog || s.showMoreDialog || s.showEpisodesPanel ||
-            s.showSourcesPanel || s.showChaptersPanel || s.showAudioOverlay || s.showStreamInfoOverlay ||
+            s.showSourcesPanel || s.showChaptersPanel || s.showAudioOverlay || s.showQualityOverlay || s.showYouTubePanel || s.showStreamInfoOverlay ||
             s.showSubtitleTimingDialog || s.showSubtitleDelayOverlay || s.showPartyPanel
         if (!s.isPlaying && s.pauseOverlayEnabled && s.error == null && !anyPanelOpen) {
             _uiState.update { it.copy(showPauseOverlay = true, showControls = false) }
@@ -1554,8 +1690,14 @@ fun PlayerRuntimeController.onEvent(
             }
         }
         is PlayerEvent.OnPreviewSeekBy -> {
-            if (_playbackTimeline.value.isLive) return
-            val maxDuration = currentPlaybackDurationMs().takeIf { it >= 0 } ?: Long.MAX_VALUE
+            if (_playbackTimeline.value.isLive && !isYouTubeLive) return
+            // A live window can report no duration; leave the upper bound to the player, which
+            // clamps to the live edge, instead of clamping every step to zero.
+            val maxDuration = if (_playbackTimeline.value.isLive) {
+                currentPlaybackDurationMs().takeIf { it > 0 } ?: Long.MAX_VALUE
+            } else {
+                currentPlaybackDurationMs().takeIf { it >= 0 } ?: Long.MAX_VALUE
+            }
             val basePosition = pendingPreviewSeekPosition ?: currentPlaybackPositionMs()?.coerceAtLeast(0L) ?: 0L
             val target = (basePosition + event.deltaMs)
                 .coerceAtLeast(0L)
@@ -1569,7 +1711,7 @@ fun PlayerRuntimeController.onEvent(
             }
         }
         PlayerEvent.OnCommitPreviewSeek -> {
-            if (_playbackTimeline.value.isLive) return
+            if (_playbackTimeline.value.isLive && !isYouTubeLive) return
             val requested = pendingPreviewSeekPosition
             if (requested != null) {
                 val target = if (isPartyControlLocked) ownSeekTarget(requested) else requested
@@ -1591,7 +1733,7 @@ fun PlayerRuntimeController.onEvent(
             }
         }
         is PlayerEvent.OnSeekTo -> {
-            if (_playbackTimeline.value.isLive) return
+            if (_playbackTimeline.value.isLive && !isYouTubeLive) return
             pendingPreviewSeekPosition = null
             val target = if (isPartyControlLocked) ownSeekTarget(event.position) ?: return else event.position
             seekPlaybackTo(target, SeekParameters.CLOSEST_SYNC)
@@ -1780,6 +1922,10 @@ fun PlayerRuntimeController.onEvent(
             contentId?.takeIf { it.isNotBlank() }?.let { id ->
                 scope.launch { trackPreferenceDataStore.savePlaybackSpeed(id, event.speed) }
             }
+            // YouTube fork: the next YouTube video starts at the speed you last picked.
+            if (com.nuvio.tv.youtube.YouTubeProgress.isYouTubeId(contentId)) {
+                com.nuvio.tv.youtube.YouTubeSettings.setPlaybackSpeed(context, event.speed)
+            }
             publishPartyPlayback(rate = event.speed)
         }
         PlayerEvent.OnToggleControls -> {
@@ -1800,6 +1946,63 @@ fun PlayerRuntimeController.onEvent(
             if (shouldShowControls) {
                 scheduleHideControls()
             }
+        }
+        PlayerEvent.OnShowYouTubePanel,
+        PlayerEvent.OnShowYouTubeRecommendations,
+        PlayerEvent.OnShowYouTubeComments -> {
+            val recommendations = YouTubePageScrollUi.ENABLED &&
+                event is PlayerEvent.OnShowYouTubeRecommendations
+            val comments = event is PlayerEvent.OnShowYouTubeComments
+            _uiState.update {
+                it.copy(
+                    showYouTubePanel = true,
+                    youTubePanelStartWithRecommendations = recommendations,
+                    youTubePanelStartWithComments = comments,
+                    youTubeScrollFraction = if (recommendations) 1f else 0f,
+                    showQualityOverlay = false,
+                    showAudioOverlay = false,
+                    showSubtitleOverlay = false,
+                    showSubtitleStylePanel = false,
+                    showMoreDialog = false,
+                    showSubtitleTimingDialog = false,
+                    showSubtitleDelayOverlay = false,
+                    showControls = true
+                )
+            }
+        }
+        is PlayerEvent.OnSetYouTubeScrollFraction -> {
+            _uiState.update {
+                it.copy(
+                    youTubeScrollFraction = if (YouTubePageScrollUi.ENABLED) {
+                        event.fraction.coerceIn(0f, 1f)
+                    } else {
+                        0f
+                    }
+                )
+            }
+        }
+        PlayerEvent.OnShowQualityOverlay -> {
+            _uiState.update {
+                it.copy(
+                    showQualityOverlay = true,
+                    showAudioOverlay = false,
+                    showSubtitleOverlay = false,
+                    showSubtitleStylePanel = false,
+                    showMoreDialog = false,
+                    showSubtitleTimingDialog = false,
+                    showSubtitleDelayOverlay = false,
+                    showControls = true
+                )
+            }
+        }
+        is PlayerEvent.OnSelectVideoQuality -> {
+            if (com.nuvio.tv.youtube.YouTubeProgress.isYouTubeId(contentId)) {
+                com.nuvio.tv.youtube.YouTubeSettings.onUserSelectedQuality(context, event.height)
+                applyYouTubeCodecPreference()
+            }
+            selectVideoQuality(event.height)
+            _uiState.update { it.copy(showQualityOverlay = false, selectedVideoQualityHeight = event.height) }
+            scheduleHideControls()
         }
         PlayerEvent.OnShowAudioOverlay -> {
             _uiState.update {
@@ -1974,6 +2177,8 @@ fun PlayerRuntimeController.onEvent(
         PlayerEvent.OnDismissTransientOverlay -> {
             _uiState.update {
                 it.copy(
+                    showQualityOverlay = false,
+                    showYouTubePanel = false,
                     showAudioOverlay = false,
                     showSubtitleOverlay = false,
                     showSubtitleStylePanel = false,
@@ -2170,6 +2375,9 @@ fun PlayerRuntimeController.onEvent(
                     aspectRatioIndicatorText = label
                 )
             }
+            if (isUsingVlcEngine()) {
+                vlcView?.setAspectMode(newMode)
+            }
             scope.launch {
                 Log.d(PlayerRuntimeController.TAG, "Persisting aspect mode: $newMode")
                 deviceLocalPlayerPreferences.setAspectMode(newMode)
@@ -2274,6 +2482,7 @@ internal fun PlayerRuntimeController.buildStreamInfoData(): StreamInfoData {
         playerEngine = when (currentInternalPlayerEngine) {
             com.nuvio.tv.data.local.InternalPlayerEngine.EXOPLAYER -> context.getString(R.string.playback_engine_exoplayer)
             com.nuvio.tv.data.local.InternalPlayerEngine.MVP_PLAYER -> context.getString(R.string.playback_engine_mvplayer)
+            com.nuvio.tv.data.local.InternalPlayerEngine.VLC_PLAYER -> context.getString(R.string.playback_engine_vlc)
             com.nuvio.tv.data.local.InternalPlayerEngine.AUTO -> null
         },
         serverPlayback = serverPlaybackSummary()

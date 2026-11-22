@@ -37,6 +37,8 @@ import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.remember
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.res.stringResource
+import com.nuvio.tv.R
 import androidx.compose.ui.focus.FocusRequester
 import androidx.compose.ui.focus.focusRequester
 import androidx.compose.ui.graphics.Color
@@ -84,8 +86,8 @@ internal fun GuideGearPanel(
                 .padding(12.dp)
         ) {
             Row(verticalAlignment = Alignment.CenterVertically, modifier = Modifier.padding(horizontal = 6.dp, vertical = 2.dp)) {
-                LiveText("Guide display", size = 14.sp, weight = FontWeight.Bold, modifier = Modifier.weight(1f))
-                LiveText("The guide changes as you go", size = 11.sp, color = Color.White.copy(alpha = 0.55f))
+                LiveText(stringResource(R.string.iptv_gg_title), size = 14.sp, weight = FontWeight.Bold, modifier = Modifier.weight(1f))
+                LiveText(stringResource(R.string.iptv_gg_hint), size = 11.sp, color = Color.White.copy(alpha = 0.55f))
             }
             Spacer(Modifier.height(6.dp))
             val hidden = BarPart.parse(settings.guideInfoHidden)
@@ -102,60 +104,64 @@ internal fun GuideGearPanel(
                 modifier = Modifier.padding(start = 10.dp, top = 8.dp, bottom = 2.dp)
             )
             Column(Modifier.heightIn(max = 360.dp).verticalScroll(rememberScrollState())) {
-                heading("Info panel")
+                heading(stringResource(R.string.iptv_gg_info_panel))
                 Row(horizontalArrangement = Arrangement.spacedBy(6.dp)) {
-                    toggle(Modifier.weight(1f).focusRequester(first), "Show info panel", "Off hides all of it", settings.showProgramDetails) {
+                    toggle(Modifier.weight(1f).focusRequester(first), stringResource(R.string.iptv_gg_show_info), stringResource(R.string.iptv_gg_show_info_hint), settings.showProgramDetails) {
                         onChange { it.copy(showProgramDetails = !it.showProgramDetails) }
                     }
-                    toggle(Modifier.weight(1f), "Poster", "Off: channel logo", settings.showPosters) {
+                    toggle(Modifier.weight(1f), stringResource(R.string.iptv_gg_poster), stringResource(R.string.iptv_gg_poster_hint), settings.showPosters) {
                         onChange { it.copy(showPosters = !it.showPosters) }
                     }
                 }
                 Row(horizontalArrangement = Arrangement.spacedBy(6.dp)) {
-                    part(Modifier.weight(1f), GuideInfoPart.CHANNEL, "Channel name & logo")
-                    part(Modifier.weight(1f), GuideInfoPart.TAGS, "Tags", "Live, catch-up")
+                    part(Modifier.weight(1f), GuideInfoPart.CHANNEL, stringResource(R.string.iptv_gg_channel))
+                    part(Modifier.weight(1f), GuideInfoPart.TAGS, stringResource(R.string.iptv_gg_tags), stringResource(R.string.iptv_gg_tags_hint))
                 }
                 Row(horizontalArrangement = Arrangement.spacedBy(6.dp)) {
-                    part(Modifier.weight(1f), GuideInfoPart.TITLE, "Show title")
-                    part(Modifier.weight(1f), GuideInfoPart.TIME, "Start – end time")
+                    part(Modifier.weight(1f), GuideInfoPart.TITLE, stringResource(R.string.iptv_settings_show_title))
+                    part(Modifier.weight(1f), GuideInfoPart.TIME, stringResource(R.string.iptv_gg_start_end))
                 }
                 Row(horizontalArrangement = Arrangement.spacedBy(6.dp)) {
-                    part(Modifier.weight(1f), GuideInfoPart.LEFT, "Time left")
-                    toggle(Modifier.weight(1f), "Episode number", null, settings.showEpisodeNumbers) {
+                    part(Modifier.weight(1f), GuideInfoPart.LEFT, stringResource(R.string.iptv_gg_time_left))
+                    toggle(Modifier.weight(1f), stringResource(R.string.iptv_gg_episode), null, settings.showEpisodeNumbers) {
                         onChange { it.copy(showEpisodeNumbers = !it.showEpisodeNumbers) }
                     }
                 }
                 Row(horizontalArrangement = Arrangement.spacedBy(6.dp)) {
-                    part(Modifier.weight(1f), GuideInfoPart.CATEGORY, "Category")
-                    toggle(Modifier.weight(1f), "Playlist name", null, settings.showPlaylistInInfo) {
+                    part(Modifier.weight(1f), GuideInfoPart.CATEGORY, stringResource(R.string.iptv_gg_category))
+                    toggle(Modifier.weight(1f), stringResource(R.string.iptv_gg_playlist), null, settings.showPlaylistInInfo) {
                         onChange { it.copy(showPlaylistInInfo = !it.showPlaylistInInfo) }
                     }
                 }
                 Row(horizontalArrangement = Arrangement.spacedBy(6.dp)) {
-                    part(Modifier.weight(1f), GuideInfoPart.PROGRESS, "Progress bar")
-                    part(Modifier.weight(1f), GuideInfoPart.DESCRIPTION, "Description")
+                    part(Modifier.weight(1f), GuideInfoPart.PROGRESS, stringResource(R.string.iptv_gg_progress))
+                    part(Modifier.weight(1f), GuideInfoPart.DESCRIPTION, stringResource(R.string.iptv_guide_description))
                 }
-                heading("Layout")
+                heading(stringResource(R.string.iptv_gg_layout))
                 Row(horizontalArrangement = Arrangement.spacedBy(6.dp)) {
-                    toggle(Modifier.weight(1f), "Preview window", "Small live video", settings.showPreview) {
+                    toggle(Modifier.weight(1f), stringResource(R.string.iptv_gg_preview), stringResource(R.string.iptv_gg_preview_hint), settings.showPreview) {
                         onChange { it.copy(showPreview = !it.showPreview) }
                     }
-                    toggle(Modifier.weight(1f), "Smaller top", "More channels fit", settings.smallHeader) {
+                    toggle(Modifier.weight(1f), stringResource(R.string.iptv_gg_smaller_top), stringResource(R.string.iptv_gg_smaller_top_hint), settings.smallHeader) {
                         onChange { it.copy(smallHeader = !it.smallHeader) }
                     }
                 }
                 Row(horizontalArrangement = Arrangement.spacedBy(6.dp)) {
-                    toggle(Modifier.weight(1f), "24-hour clock", null, settings.use24HourClock) {
+                    toggle(Modifier.weight(1f), stringResource(R.string.iptv_settings_24_hour_clock), null, settings.use24HourClock) {
                         onChange { it.copy(use24HourClock = !it.use24HourClock) }
                     }
                     GearRow(Modifier.weight(1f), onClick = {
                         onChange { it.copy(guideInfoBackground = when (it.guideInfoBackground) { "standard" -> "darker"; "darker" -> "solid"; else -> "standard" }) }
                     }) { focused ->
                         Column(Modifier.weight(1f)) {
-                            LiveText("Guide darkness", size = 13.sp, weight = if (focused) FontWeight.Bold else FontWeight.Medium, color = gearText(focused))
+                            LiveText(stringResource(R.string.iptv_gg_darkness), size = 13.sp, weight = if (focused) FontWeight.Bold else FontWeight.Medium, color = gearText(focused))
                         }
                         LiveText(
-                            when (settings.guideInfoBackground) { "darker" -> "Standard"; "solid" -> "Darkest"; else -> "Lightest" },
+                            when (settings.guideInfoBackground) {
+                                "darker" -> stringResource(R.string.iptv_gear_theme_standard)
+                                "solid" -> stringResource(R.string.iptv_gear_theme_darkest)
+                                else -> stringResource(R.string.iptv_gear_theme_lightest)
+                            },
                             size = 12.sp, color = gearText(focused, dim = true)
                         )
                     }
@@ -164,8 +170,8 @@ internal fun GuideGearPanel(
                     onChange { it.copy(guideBackdrop = GuideBackdrops.next(it.guideBackdrop)) }
                 }) { focused ->
                     Column(Modifier.weight(1f)) {
-                        LiveText("Background color", size = 13.sp, weight = if (focused) FontWeight.Bold else FontWeight.Medium, color = gearText(focused))
-                        LiveText("Behind the guide and Sports", size = 10.sp, color = gearText(focused, dim = true))
+                        LiveText(stringResource(R.string.iptv_gg_background), size = 13.sp, weight = if (focused) FontWeight.Bold else FontWeight.Medium, color = gearText(focused))
+                        LiveText(stringResource(R.string.iptv_gg_background_hint), size = 10.sp, color = gearText(focused, dim = true))
                     }
                     LiveText(
                         GuideBackdrops.label(settings.guideBackdrop),
@@ -175,7 +181,7 @@ internal fun GuideGearPanel(
             }
             Box(Modifier.padding(vertical = 6.dp, horizontal = 4.dp).fillMaxWidth().height(1.dp).background(Color.White.copy(alpha = 0.10f)))
             GearRow(Modifier.fillMaxWidth(), onClick = onSettings) { focused ->
-                LiveText("All Live TV settings", size = 13.sp, weight = FontWeight.Medium, color = gearText(focused), modifier = Modifier.weight(1f))
+                LiveText(stringResource(R.string.iptv_gg_all_settings), size = 13.sp, weight = FontWeight.Medium, color = gearText(focused), modifier = Modifier.weight(1f))
                 LiveText("›", size = 15.sp, color = gearText(focused, dim = true))
             }
         }
@@ -211,7 +217,7 @@ internal fun GuideGearButton(modifier: Modifier = Modifier, onOpen: () -> Unit, 
     ) {
         androidx.tv.material3.Icon(
             androidx.compose.material.icons.Icons.Default.Settings,
-            contentDescription = "Guide display",
+            contentDescription = stringResource(R.string.iptv_gg_title),
             tint = focusedTextColor(focused),
             modifier = Modifier.size(18.dp)
         )
@@ -226,10 +232,11 @@ internal fun GuideMultiviewButton(modifier: Modifier = Modifier, onOpen: () -> U
     val cell = liveCellColors(focused, Color.White.copy(alpha = 0.10f))
     val shape = RoundedCornerShape(10.dp)
     val tint = focusedTextColor(focused)
+    val multiviewDescription = stringResource(R.string.iptv_gg_multiview)
     Box(
         modifier.size(34.dp).clip(shape).background(cell.background)
             .border(if (focused) 2.dp else 1.dp, if (focused) cell.border else GuideGlassEdge, shape)
-            .semantics { contentDescription = "Multiview" }
+            .semantics { contentDescription = multiviewDescription }
             .onFocusChanged { focused = it.isFocused }
             .onPreviewKeyEvent { event ->
                 if (event.key == Key.DirectionDown) {
@@ -295,7 +302,7 @@ internal fun GuideRecordingsButton(modifier: Modifier = Modifier, onOpen: () -> 
     ) {
         androidx.tv.material3.Icon(
             androidx.compose.material.icons.Icons.Default.RadioButtonChecked,
-            contentDescription = "Recordings",
+            contentDescription = stringResource(R.string.iptv_guide_recordings),
             tint = if (recordingNow) LIVE_RED else focusedTextColor(focused),
             modifier = Modifier.size(18.dp)
         )

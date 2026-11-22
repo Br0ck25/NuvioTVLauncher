@@ -182,6 +182,7 @@ object XmltvParser {
         var icon: String? = null
         var date: String? = null
         var people: ArrayList<String>? = null
+        var newTag = false
         val depth = parser.depth
         var event = parser.next()
         while (!(event == XmlPullParser.END_TAG && parser.depth == depth)) {
@@ -203,6 +204,8 @@ object XmltvParser {
                     "icon" -> { icon = parser.getAttributeValue(null, "src"); skip(parser) }
                     "date" -> { val t = readText(parser); if (date == null) date = t }
                     "credits" -> readCredits(parser, people ?: ArrayList<String>().also { people = it })
+                    // The guide's own "new episode" tag: shown as NEW and used by "new episodes only".
+                    "new" -> { newTag = true; skip(parser) }
                     else -> skip(parser)
                 }
             }
@@ -213,18 +216,20 @@ object XmltvParser {
         // air date here instead ("20260929"), which would make every poster look "wrong year".
         val year = date?.trim()?.takeIf { it.length == 4 }?.toIntOrNull()?.takeIf { it in 1900..2100 }
             ?: yearIn(title) ?: yearIn(desc)
-        val fullDesc = when {
-            subTitle.isNullOrBlank() -> desc?.takeIf { it.isNotBlank() }
-            desc.isNullOrBlank() -> subTitle
-            else -> "$subTitle\n$desc"
-        }
+        // The sub-title is kept on its own (the header shows it beside the title, TiviMate
+        // style: "College Football : Texas at LSU"). It only doubles as the description when
+        // the guide has no description at all.
+        val cleanSubTitle = subTitle?.trim()?.takeIf { it.isNotBlank() }
+        val fullDesc = desc?.takeIf { it.isNotBlank() } ?: cleanSubTitle
         return EpgProgram(
             startMs = start,
             stopMs = stop,
             // Repeated words (titles, categories, icon links) are stored once instead of once per
             // show, and very long descriptions are cut: a big guide held several hundred thousand
             // listings in memory, which is what made huge playlists freeze.
-            title = title?.trim().orEmpty().ifBlank { "No information" }.let { if (it.length <= 80) it.intern() else it },
+            title = title?.trim().orEmpty().ifBlank { "No information" }
+                .let { if (newTag && !NEW_IN_TITLE.containsMatchIn(it)) "$it (New)" else it }
+                .let { if (it.length <= 80) it.intern() else it },
             description = fullDesc?.let { if (it.length > 800) it.take(800).trimEnd() + "…" else it },
             category = category?.trim()?.intern(),
             episode = episode?.intern(),
@@ -232,9 +237,13 @@ object XmltvParser {
             year = year,
             people = people?.take(12) ?: emptyList(),
             providerProgramId = providerProgramId,
-            providerSourceIdentity = providerSourceIdentity
+            providerSourceIdentity = providerSourceIdentity,
+            subTitle = cleanSubTitle?.let { if (it.length > 120) it.take(120).trimEnd() else it }
         )
     }
+
+    /** A title that already says it's new (see titleMarks). */
+    private val NEW_IN_TITLE = Regex("""^\s*new\s*[:\-–|]|[(\[]\s*new\s*[)\]]|ᴺᴱᵂ""", RegexOption.IGNORE_CASE)
 
     private val yearInParens = Regex("""\((19\d{2}|20\d{2})\)""")
 

@@ -7,7 +7,6 @@ import android.util.TypedValue
 import android.view.SurfaceHolder
 import com.nuvio.tv.data.local.MpvHardwareDecodeMode
 import com.nuvio.tv.data.local.SubtitleStyleSettings
-import `is`.xyz.mpv.BaseMPVView
 import `is`.xyz.mpv.MPV
 import `is`.xyz.mpv.Utils
 import java.util.Locale
@@ -18,6 +17,7 @@ import kotlin.math.roundToLong
 internal const val MPV_TRACK_LIST_PROPERTY = "track-list"
 internal const val MPV_SID_PROPERTY = "sid"
 internal const val MPV_SUB_TEXT_PROPERTY = "sub-text"
+private const val MPV_TEXT_OUTLINE_SIZE_PER_WIDTH = 0.5
 private val MPV_STYLED_SUBTITLE_CODECS = setOf(
     "subrip", "srt", "webvtt", "text", "mov_text", "microdvd", "mpl2", "subviewer", "subviewer1", "sami", "realtext"
 )
@@ -25,7 +25,7 @@ private val MPV_STYLED_SUBTITLE_CODECS = setOf(
 class NuvioMpvSurfaceView @JvmOverloads constructor(
     context: Context,
     attrs: AttributeSet? = null
-) : BaseMPVView(context, attrs) {
+) : NuvioBaseMpvView(context, attrs) {
 
     private var initialized = false
     private var hasQueuedInitialMedia = false
@@ -314,7 +314,7 @@ class NuvioMpvSurfaceView @JvmOverloads constructor(
 
     fun applyAudioAmplificationDb(db: Int) {
         if (!initialized) return
-        val clampedDb = db.coerceIn(AUDIO_AMPLIFICATION_MIN_DB, AUDIO_AMPLIFICATION_MAX_DB)
+        val clampedDb = db.coerceIn(AUDIO_GAIN_MIN_DB, AUDIO_GAIN_MAX_DB)
         val linearScale = 10.0.pow(clampedDb / 20.0)
         val targetVolumePercent = (100.0 * linearScale).coerceIn(0.0, MPV_MAX_VOLUME_PERCENT)
         runCatching {
@@ -488,7 +488,7 @@ class NuvioMpvSurfaceView @JvmOverloads constructor(
             val outlineSize = when {
                 !style.outlineEnabled -> 0.0
                 isAssOrSsaSubtitleSelectedNow() -> style.outlineWidth.coerceIn(1, 6).toDouble()
-                else -> 1.0
+                else -> style.outlineWidth * MPV_TEXT_OUTLINE_SIZE_PER_WIDTH
             }
             val backgroundAlpha = (style.backgroundColor ushr 24) and 0xFF
             val borderStyle = if (backgroundAlpha > 0) "background-box" else "outline-and-shadow"
@@ -651,6 +651,55 @@ class NuvioMpvSurfaceView @JvmOverloads constructor(
         }
     }
 
+    /**
+     * Adds [path] (a retimed copy of a subtitle) as a new external track and selects it, then
+     * removes [replaceTrackId], an earlier copy, so repeated retiming doesn't pile up tracks.
+     * Returns the new track's id, or null when it could not be added.
+     */
+    fun replaceExternalSubtitle(
+        path: String,
+        title: String?,
+        language: String?,
+        replaceTrackId: Int?,
+    ): Int? {
+        if (!initialized || path.isBlank()) return null
+        return runCatching {
+            val safeTitle = title?.takeIf { it.isNotBlank() }
+            val safeLanguage = language?.takeIf { it.isNotBlank() }
+            when {
+                safeTitle != null && safeLanguage != null ->
+                    mpv.command("sub-add", path, "select", safeTitle, safeLanguage)
+                safeTitle != null -> mpv.command("sub-add", path, "select", safeTitle)
+                else -> mpv.command("sub-add", path, "select")
+            }
+            mpv.setPropertyBoolean("sub-visibility", !styledSubtitlesEnabled)
+            val added = mpv.getPropertyString("sid")?.toIntOrNull()
+            if (replaceTrackId != null && replaceTrackId != added) removeSubtitleTrack(replaceTrackId)
+            added
+        }.getOrElse {
+            Log.w(TAG, "Failed to replace external subtitle: ${it.message}")
+            null
+        }
+    }
+
+    /** Removes an external subtitle track added with [replaceExternalSubtitle]. */
+    fun removeSubtitleTrack(trackId: Int): Boolean {
+        if (!initialized) return false
+        return runCatching {
+            mpv.command("sub-remove", trackId.toString())
+            true
+        }.getOrElse {
+            Log.w(TAG, "Failed to remove subtitle track id=$trackId: ${it.message}")
+            false
+        }
+    }
+
+    /** The selected subtitle track id, or null when none is selected. */
+    fun selectedSubtitleTrackId(): Int? {
+        if (!initialized) return null
+        return runCatching { mpv.getPropertyString("sid")?.toIntOrNull() }.getOrNull()
+    }
+
     fun applySubtitleLanguagePreferences(preferred: String, secondary: String?) {
         if (!initialized) return
         val languages = listOfNotNull(
@@ -795,7 +844,7 @@ class NuvioMpvSurfaceView @JvmOverloads constructor(
     }
 
     override fun initOptions() {
-        mpv.setOptionString("profile", "fast")
+        mpv.command("apply-profile", "fast")
         mpv.setOptionString("msg-level", "ffmpeg=warn,vd=warn,ad=warn,vo=warn,ao=warn,demux=warn,lavf=warn,cplayer=warn,autoconvert=warn,hwupload=warn")
         setVo(if (hi10pGnextSoftwareFallbackActive) MPV_VIDEO_OUTPUT_GPU_NEXT else MPV_VIDEO_OUTPUT_GPU)
         mpv.setOptionString("gpu-context", "android")

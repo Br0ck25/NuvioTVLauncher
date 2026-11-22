@@ -34,6 +34,8 @@ import androidx.compose.runtime.setValue
 import androidx.compose.runtime.withFrameNanos
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.res.stringResource
+import com.nuvio.tv.R
 import androidx.compose.ui.focus.FocusRequester
 import androidx.compose.ui.focus.FocusDirection
 import androidx.compose.ui.focus.focusProperties
@@ -334,7 +336,7 @@ internal fun SportsGameStrip(
             if (streamsOpen) {
                 Column(Modifier.widthIn(max = 180.dp)) {
                     LiveText(streamGame?.event?.title ?: "Streams", size = 9.sp, color = NuvioTheme.colors.TextSecondary)
-                    LiveText("Other streams", size = 13.sp, weight = FontWeight.Bold)
+                    LiveText(stringResource(R.string.iptv_sports_other_streams), size = 13.sp, weight = FontWeight.Bold)
                 }
             } else {
                 Column(Modifier.widthIn(max = 180.dp)) {
@@ -348,7 +350,7 @@ internal fun SportsGameStrip(
                 key(control.id) {
                     if (control.id == "pane0") {
                         Spacer(Modifier.width(5.dp))
-                        LiveText("Pane", size = 11.sp, color = NuvioTheme.colors.TextSecondary)
+                        LiveText(stringResource(R.string.iptv_sports_pane), size = 11.sp, color = NuvioTheme.colors.TextSecondary)
                     }
                     if (control.id == "channels" || (control.id == "close" && onChannels == null)) Spacer(Modifier.weight(1f))
                     StripButton(
@@ -393,7 +395,7 @@ internal fun SportsGameStrip(
         if (streamsOpen) {
             if (streamGame == null || streams.isEmpty()) {
                 Column(Modifier.fillMaxWidth().weight(1f), verticalArrangement = Arrangement.Center) {
-                    LiveText("No streams available", size = 16.sp, weight = FontWeight.SemiBold)
+                    LiveText(stringResource(R.string.iptv_sports_no_streams), size = 16.sp, weight = FontWeight.SemiBold)
                     LiveText(if (streamGame == null) "Choose a game for this pane first."
                         else "No matched streams remain for ${streamGame.event.title}.",
                         size = 12.sp, color = NuvioTheme.colors.TextSecondary)
@@ -447,8 +449,8 @@ internal fun SportsGameStrip(
             }
         } else if (rowGames.isEmpty()) {
             Column(Modifier.fillMaxWidth().weight(1f), verticalArrangement = Arrangement.Center) {
-                LiveText("No live games available", size = 16.sp, weight = FontWeight.SemiBold)
-                LiveText("Your Sports games appear here when they are live or about to start.",
+                LiveText(stringResource(R.string.iptv_sports_no_live_games), size = 16.sp, weight = FontWeight.SemiBold)
+                LiveText(stringResource(R.string.iptv_sports_games_appear),
                     size = 12.sp, color = NuvioTheme.colors.TextSecondary)
             }
         } else {

@@ -2,6 +2,7 @@ package com.nuvio.tv.data.local
 
 import android.util.Log
 import androidx.datastore.preferences.core.booleanPreferencesKey
+import kotlinx.coroutines.launch
 import androidx.datastore.preferences.core.edit
 import androidx.datastore.preferences.core.intPreferencesKey
 import androidx.datastore.preferences.core.Preferences
@@ -15,8 +16,8 @@ import com.nuvio.tv.core.sync.SyncHomeCatalogPayload
 import com.nuvio.tv.core.sync.buildHomeCatalogSyncPayload
 import com.nuvio.tv.core.sync.homeCatalogKey
 import com.nuvio.tv.core.sync.homeCollectionKey
+import com.nuvio.tv.core.sync.isLocalOnlyHomeKey
 import com.nuvio.tv.core.sync.withLocalServerKeys
-import com.nuvio.tv.data.mediaserver.ServerCatalog
 import com.nuvio.tv.domain.model.Addon
 import com.nuvio.tv.domain.model.CardDepthStyle
 import com.nuvio.tv.domain.model.CardDepthSurface
@@ -43,7 +44,6 @@ import kotlinx.coroutines.flow.first
 import kotlinx.coroutines.flow.flatMapLatest
 import kotlinx.coroutines.flow.map
 import kotlinx.coroutines.flow.stateIn
-import kotlinx.coroutines.launch
 import javax.inject.Inject
 import javax.inject.Singleton
 
@@ -78,10 +78,10 @@ class LayoutPreferenceDataStore @Inject constructor(
     private val disabledHomeCatalogKeysKey = stringPreferencesKey("disabled_home_catalog_keys")
     private val customCatalogTitlesKey = stringPreferencesKey("custom_catalog_titles")
     private val sidebarCollapsedKey = booleanPreferencesKey("sidebar_collapsed_by_default")
+    private val floatingPillShowsProfileKey = booleanPreferencesKey("floating_pill_shows_profile")
     private val modernSidebarEnabledKey = booleanPreferencesKey("modern_sidebar_enabled")
     private val legacyModernSidebarEnabledKey = booleanPreferencesKey("glass_sidepanel_enabled")
     private val modernSidebarBlurEnabledKey = booleanPreferencesKey("modern_sidebar_blur_enabled")
-    private val floatingPillShowsProfileKey = booleanPreferencesKey("floating_pill_shows_profile")
     private val modernLandscapePostersEnabledKey = booleanPreferencesKey("modern_landscape_posters_enabled")
     private val heroSectionEnabledKey = booleanPreferencesKey("hero_section_enabled")
     private val posterLabelsEnabledKey = booleanPreferencesKey("poster_labels_enabled")
@@ -92,6 +92,7 @@ class LayoutPreferenceDataStore @Inject constructor(
     private val focusedPosterBackdropExpandDelaySecondsKey = intPreferencesKey("focused_poster_backdrop_expand_delay_seconds")
     private val focusedPosterBackdropTrailerEnabledKey = booleanPreferencesKey("focused_poster_backdrop_trailer_enabled")
     private val focusedPosterBackdropTrailerMutedKey = booleanPreferencesKey("focused_poster_backdrop_trailer_muted")
+    private val focusedPosterTrailerContinueInDetailsKey = booleanPreferencesKey("focused_poster_trailer_continue_in_details")
     private val focusedPosterBackdropTrailerPlaybackTargetKey =
         stringPreferencesKey("focused_poster_backdrop_trailer_playback_target")
     private val posterCardWidthDpKey = intPreferencesKey("poster_card_width_dp")
@@ -108,6 +109,7 @@ class LayoutPreferenceDataStore @Inject constructor(
     private val cardDepthCastEnabledKey = booleanPreferencesKey("card_depth_cast_enabled")
     private val cardDepthTrailersEnabledKey = booleanPreferencesKey("card_depth_trailers_enabled")
     private val blurUnwatchedEpisodesKey = booleanPreferencesKey("blur_unwatched_episodes")
+    private val detailSeasonPostersEnabledKey = booleanPreferencesKey("detail_season_posters_enabled")
     private val randomEpisodeEnabledKey = booleanPreferencesKey("random_episode_enabled")
     private val startupSplashEnabledKey = booleanPreferencesKey("startup_splash_enabled")
     private val alwaysShowLandscapeClearlogoKey = booleanPreferencesKey("always_show_landscape_clearlogo")
@@ -116,6 +118,7 @@ class LayoutPreferenceDataStore @Inject constructor(
     private val homeImdbRatingsVisibilityKey = stringPreferencesKey("home_imdb_ratings_visibility")
     private val detailImdbRatingsVisibilityKey = stringPreferencesKey("detail_imdb_ratings_visibility")
     private val useEpisodeThumbnailsInCwKey = booleanPreferencesKey("use_episode_thumbnails_in_cw")
+    private val showContinueWatchingEpisodeCountKey = booleanPreferencesKey("show_continue_watching_episode_count")
     private val continueWatchingEnabledKey = booleanPreferencesKey("continue_watching_enabled")
     private val continueWatchingCardStyleKey = stringPreferencesKey("continue_watching_card_style")
     private val showUnairedNextUpKey = booleanPreferencesKey("show_unaired_next_up")
@@ -235,13 +238,13 @@ class LayoutPreferenceDataStore @Inject constructor(
         prefs[sidebarCollapsedKey] ?: false
     }
 
-    val modernSidebarEnabled: Flow<Boolean> = profileFlow { prefs ->
-        prefs[modernSidebarEnabledKey] ?: prefs[legacyModernSidebarEnabledKey] ?: false
-    }
-
     /** The floating pill (Modern sidebar) shows the profile's picture and name instead of the page's icon and name. */
     val floatingPillShowsProfile: Flow<Boolean> = profileFlow { prefs ->
         prefs[floatingPillShowsProfileKey] ?: false
+    }
+
+    val modernSidebarEnabled: Flow<Boolean> = profileFlow { prefs ->
+        prefs[modernSidebarEnabledKey] ?: prefs[legacyModernSidebarEnabledKey] ?: false
     }
 
     val modernSidebarBlurEnabled: Flow<Boolean> = profileFlow { prefs ->
@@ -310,6 +313,10 @@ class LayoutPreferenceDataStore @Inject constructor(
         prefs[focusedPosterBackdropTrailerMutedKey] ?: true
     }
 
+    val focusedPosterTrailerContinueInDetails: Flow<Boolean> = profileFlow { prefs ->
+        prefs[focusedPosterTrailerContinueInDetailsKey] ?: false
+    }
+
     val focusedPosterBackdropTrailerPlaybackTarget: Flow<FocusedPosterTrailerPlaybackTarget> =
         profileFlow { prefs ->
             val stored = prefs[focusedPosterBackdropTrailerPlaybackTargetKey]
@@ -367,6 +374,10 @@ class LayoutPreferenceDataStore @Inject constructor(
         prefs[blurUnwatchedEpisodesKey] ?: false
     }
 
+    val detailSeasonPostersEnabled: Flow<Boolean> = profileFlow { prefs ->
+        prefs[detailSeasonPostersEnabledKey] ?: false
+    }
+
     val randomEpisodeEnabled: Flow<Boolean> = profileFlow { prefs ->
         prefs[randomEpisodeEnabledKey] ?: false
     }
@@ -407,6 +418,10 @@ class LayoutPreferenceDataStore @Inject constructor(
 
     val useEpisodeThumbnailsInCw: Flow<Boolean> = profileFlow { prefs ->
         prefs[useEpisodeThumbnailsInCwKey] ?: true
+    }
+
+    val showContinueWatchingEpisodeCount: Flow<Boolean> = profileFlow { prefs ->
+        prefs[showContinueWatchingEpisodeCountKey] ?: true
     }
 
     val showUnairedNextUp: Flow<Boolean> = profileFlow { prefs ->
@@ -597,15 +612,15 @@ class LayoutPreferenceDataStore @Inject constructor(
         }
     }
 
+    suspend fun setFloatingPillShowsProfile(enabled: Boolean) {
+        store().edit { prefs -> prefs[floatingPillShowsProfileKey] = enabled }
+    }
+
     suspend fun setModernSidebarEnabled(enabled: Boolean) {
         store().edit { prefs ->
             prefs[modernSidebarEnabledKey] = enabled
             prefs.remove(legacyModernSidebarEnabledKey)
         }
-    }
-
-    suspend fun setFloatingPillShowsProfile(enabled: Boolean) {
-        store().edit { prefs -> prefs[floatingPillShowsProfileKey] = enabled }
     }
 
     suspend fun setModernSidebarBlurEnabled(enabled: Boolean) {
@@ -698,6 +713,12 @@ class LayoutPreferenceDataStore @Inject constructor(
         }
     }
 
+    suspend fun setFocusedPosterTrailerContinueInDetails(enabled: Boolean) {
+        store().edit { prefs ->
+            prefs[focusedPosterTrailerContinueInDetailsKey] = enabled
+        }
+    }
+
     suspend fun setFocusedPosterBackdropTrailerPlaybackTarget(
         target: FocusedPosterTrailerPlaybackTarget
     ) {
@@ -787,6 +808,12 @@ class LayoutPreferenceDataStore @Inject constructor(
         }
     }
 
+    suspend fun setDetailSeasonPostersEnabled(enabled: Boolean) {
+        store().edit { prefs ->
+            prefs[detailSeasonPostersEnabledKey] = enabled
+        }
+    }
+
     suspend fun setRandomEpisodeEnabled(enabled: Boolean) {
         store().edit { prefs ->
             prefs[randomEpisodeEnabledKey] = enabled
@@ -832,6 +859,12 @@ class LayoutPreferenceDataStore @Inject constructor(
     suspend fun setUseEpisodeThumbnailsInCw(enabled: Boolean) {
         store().edit { prefs ->
             prefs[useEpisodeThumbnailsInCwKey] = enabled
+        }
+    }
+
+    suspend fun setShowContinueWatchingEpisodeCount(enabled: Boolean) {
+        store().edit { prefs ->
+            prefs[showContinueWatchingEpisodeCountKey] = enabled
         }
     }
 
@@ -975,8 +1008,8 @@ class LayoutPreferenceDataStore @Inject constructor(
         store().edit { prefs ->
             val local = readHomeCatalogSettingsState(prefs)
             val orderKeys = remoteOrderKeys.withLocalServerKeys(local.orderKeys)
-            val disabledKeys = remoteDisabledKeys + local.disabledKeys.filter(ServerCatalog::isServerKey)
-            val titles = remoteTitles + local.customTitles.filterKeys(ServerCatalog::isServerKey)
+            val disabledKeys = (remoteDisabledKeys + local.disabledKeys.filter(::isLocalOnlyHomeKey)).distinct()
+            val titles = remoteTitles + local.customTitles.filterKeys(::isLocalOnlyHomeKey)
             prefs[hideUnreleasedContentKey] = payload.hideUnreleasedContent
             if (orderKeys.isNotEmpty()) {
                 prefs[homeCatalogOrderKeysKey] = gson.toJson(orderKeys)

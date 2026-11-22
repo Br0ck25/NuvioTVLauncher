@@ -13,6 +13,7 @@ import com.nuvio.tv.data.local.NightMode
 import com.nuvio.tv.data.local.Dv7HandlingMode
 import com.nuvio.tv.data.local.PlayerSettings
 import com.nuvio.tv.data.local.PlayerSettingsDataStore
+import com.nuvio.tv.data.local.PlayerControlButton
 import com.nuvio.tv.data.local.PlayerPreference
 import com.nuvio.tv.core.player.LastPlaybackDiagnostics
 import com.nuvio.tv.data.local.FrameRateMatchingMode
@@ -175,8 +176,20 @@ class PlaybackSettingsViewModel @Inject constructor(
         playerSettingsDataStore.setLoadingOverlayEnabled(enabled)
     }
 
+    suspend fun setSeekPreviewEnabled(enabled: Boolean) {
+        playerSettingsDataStore.setSeekPreviewEnabled(enabled)
+    }
+
     suspend fun setShowPlayerLoadingStatus(enabled: Boolean) {
         playerSettingsDataStore.setShowPlayerLoadingStatus(enabled)
+    }
+
+    suspend fun setShowPlaybackInfo(enabled: Boolean) {
+        playerSettingsDataStore.setShowPlaybackInfo(enabled)
+    }
+
+    suspend fun setHiddenPlayerControls(controls: Set<PlayerControlButton>) {
+        playerSettingsDataStore.setHiddenPlayerControls(controls)
     }
 
     suspend fun setPauseOverlayEnabled(enabled: Boolean) {

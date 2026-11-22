@@ -67,6 +67,7 @@ import com.nuvio.tv.core.cloud.cloudLibraryDisplayArtworkUrl
 import com.nuvio.tv.ui.util.rememberRawSvgPainter
 
 private const val NuvioRepositoryUrl = "https://github.com/NuvioMedia/NuvioTV"
+private const val NuvioOneRepositoryUrl = "https://github.com/zoga2o3-ops/Nuvio-One"
 private const val TmdbUrl = "https://www.themoviedb.org"
 private const val TraktUrl = "https://trakt.tv"
 private const val SimklUrl = "https://simkl.com"
@@ -74,8 +75,12 @@ private const val PremiumizeUrl = "https://www.premiumize.me"
 private const val TorboxUrl = "https://torbox.app"
 private const val MdbListUrl = "https://mdblist.com"
 private const val IntroDbUrl = "https://introdb.app/"
+private const val SmartTubeUrl = "https://github.com/yuliskov/SmartTube"
+private const val SponsorBlockUrl = "https://sponsor.ajay.app"
+private const val DeArrowUrl = "https://dearrow.ajay.app"
 private const val ImdbDatasetsUrl = "https://developer.imdb.com/non-commercial-datasets/"
 private const val ApacheLicenseUrl = "https://www.apache.org/licenses/LICENSE-2.0"
+private const val SherpaOnnxUrl = "https://github.com/k2-fsa/sherpa-onnx"
 private const val HazeLicenseUrl = "https://github.com/chrisbanes/haze/blob/1.7.2/LICENSE"
 private const val LibMpvAndroidUrl = "https://github.com/jarnedemeulemeester/libmpv-android"
 
@@ -179,6 +184,7 @@ private fun LicensesAttributionsDetailsPanel(
                         item = appLicenseItem(),
                         modifier = Modifier.focusRequester(firstFocusRequester)
                     )
+                    AttributionDetailRow(item = nuvioLicenseItem())
                 }
 
                 AttributionSection(
@@ -351,6 +357,13 @@ private fun rememberUrlSvgPainter(url: String): Painter {
 
 @Composable
 private fun appLicenseItem() = LicenseAttributionItem(
+    title = stringResource(R.string.licenses_attributions_nuvio_one_title),
+    body = stringResource(R.string.licenses_attributions_nuvio_one_body),
+    url = NuvioOneRepositoryUrl
+)
+
+@Composable
+private fun nuvioLicenseItem() = LicenseAttributionItem(
     title = stringResource(R.string.licenses_attributions_nuvio_title),
     body = stringResource(R.string.licenses_attributions_nuvio_body),
     url = NuvioRepositoryUrl
@@ -401,6 +414,21 @@ private fun dataAttributionItems() = listOf(
         logo = LicenseLogo.Drawable(R.drawable.introdb_favicon)
     ),
     LicenseAttributionItem(
+        title = stringResource(R.string.licenses_attributions_smarttube_title),
+        body = stringResource(R.string.licenses_attributions_smarttube_body),
+        url = SmartTubeUrl
+    ),
+    LicenseAttributionItem(
+        title = stringResource(R.string.licenses_attributions_sponsorblock_title),
+        body = stringResource(R.string.licenses_attributions_sponsorblock_body),
+        url = SponsorBlockUrl
+    ),
+    LicenseAttributionItem(
+        title = stringResource(R.string.licenses_attributions_dearrow_title),
+        body = stringResource(R.string.licenses_attributions_dearrow_body),
+        url = DeArrowUrl
+    ),
+    LicenseAttributionItem(
         title = stringResource(R.string.licenses_attributions_imdb_title),
         body = stringResource(R.string.licenses_attributions_imdb_body),
         url = ImdbDatasetsUrl
@@ -418,5 +446,10 @@ private fun playbackLicenseItems() = listOf(
         title = stringResource(R.string.licenses_attributions_libmpv_title),
         body = stringResource(R.string.licenses_attributions_libmpv_body),
         url = LibMpvAndroidUrl
+    ),
+    LicenseAttributionItem(
+        title = stringResource(R.string.licenses_attributions_audio_sync_title),
+        body = stringResource(R.string.licenses_attributions_audio_sync_body),
+        url = SherpaOnnxUrl
     )
 )

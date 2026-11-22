@@ -37,10 +37,15 @@ import com.nuvio.tv.core.apps.InstalledAppsViewModel
 import com.nuvio.tv.ui.components.InstalledAppCard
 import com.nuvio.tv.ui.theme.NuvioTheme
 
-/** The Apps page: every app on the device, in a grid. OK opens one; long-press opens its system page. */
+/**
+ * The Apps page: the apps on the device, in a grid, without the ones this profile hid from it (the gear
+ * panel's Apps on Home still lists those). OK opens one; long-press opens its menu.
+ */
 @Composable
 fun AppsScreen(viewModel: InstalledAppsViewModel = hiltViewModel()) {
-    val apps by viewModel.apps.collectAsStateWithLifecycle()
+    val apps by viewModel.pageApps.collectAsStateWithLifecycle()
+    val allApps by viewModel.apps.collectAsStateWithLifecycle()
+    val hiddenCount = allApps.count { it.hiddenOnPage }
     val first = remember { FocusRequester() }
     var actionsFor by remember { mutableStateOf<com.nuvio.tv.core.apps.InstalledApp?>(null) }
     val move = rememberAppMoveState()
@@ -50,6 +55,13 @@ fun AppsScreen(viewModel: InstalledAppsViewModel = hiltViewModel()) {
     val context = LocalContext.current
     LaunchedEffect(apps.isNotEmpty()) {
         if (apps.isNotEmpty()) runCatching { first.requestFocus() }
+    }
+    // Hiding an app from this page takes away the card that had focus: put focus back on the first app.
+    var refocus by remember { androidx.compose.runtime.mutableIntStateOf(0) }
+    LaunchedEffect(refocus) {
+        if (refocus == 0) return@LaunchedEffect
+        repeat(2) { androidx.compose.runtime.withFrameNanos { } }
+        runCatching { first.requestFocus() }
     }
     // A focus handle per app, so the one being carried can be given the focus back (and kept on screen) after each step:
     // when it moves to a place that isn't composed yet (the top row, scrolled away) the highlight used to be lost and the
@@ -87,8 +99,17 @@ fun AppsScreen(viewModel: InstalledAppsViewModel = hiltViewModel()) {
             style = MaterialTheme.typography.headlineMedium,
             color = NuvioTheme.colors.TextPrimary
         )
+        if (hiddenCount > 0) {
+            Text(
+                text = androidx.compose.ui.res.pluralStringResource(R.plurals.apps_hidden_note, hiddenCount, hiddenCount),
+                style = MaterialTheme.typography.bodyMedium,
+                color = NuvioTheme.colors.TextSecondary,
+                modifier = Modifier.padding(top = 4.dp)
+            )
+        }
         if (apps.isEmpty()) {
-            Box(Modifier.fillMaxSize(), contentAlignment = Alignment.Center) {
+            // Every app hidden: the note above says where they are.
+            if (hiddenCount == 0) Box(Modifier.fillMaxSize(), contentAlignment = Alignment.Center) {
                 Text(
                     text = stringResource(R.string.apps_empty),
                     style = MaterialTheme.typography.bodyLarge,
@@ -115,7 +136,7 @@ fun AppsScreen(viewModel: InstalledAppsViewModel = hiltViewModel()) {
                     ) { delta ->
                         val carried = apps.firstOrNull { it.packageName == move.carrying } ?: return@appMoveKeys
                         val step = clampedStep(apps.indexOf(carried), delta, apps.lastIndex)
-                        if (step != 0) viewModel.moveAmongAll(carried, step)
+                        if (step != 0) viewModel.moveOnPage(carried, step)
                     }
             ) {
                 items(apps, key = { it.packageName }) { app ->
@@ -148,6 +169,7 @@ fun AppsScreen(viewModel: InstalledAppsViewModel = hiltViewModel()) {
             onRename = { viewModel.rename(app, it) },
             iconChooser = viewModel.iconChooser(app),
             onSetHidden = { viewModel.setHidden(app, it) },
+            onSetHiddenOnPage = { viewModel.setHiddenOnPage(app, it); if (it) refocus++ },
             onDismiss = { actionsFor = null }
         )
     }

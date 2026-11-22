@@ -1,5 +1,8 @@
 package com.nuvio.tv.ui.screens.player
 
+import com.nuvio.tv.data.repository.AddonEventDispatcher
+import com.nuvio.tv.data.repository.AddonPlayerAction
+import com.nuvio.tv.data.repository.AddonPlayerEventTarget
 import android.app.Activity
 import android.content.Context
 import android.media.AudioDeviceCallback
@@ -78,6 +81,7 @@ class PlayerRuntimeController(
     internal val subtitleRepository: com.nuvio.tv.domain.repository.SubtitleRepository,
     internal val parentalGuideRepository: ParentalGuideRepository,
     internal val trackingScrobbleCoordinator: TrackingScrobbleCoordinator,
+    internal val addonEventDispatcher: AddonEventDispatcher,
     internal val traktEpisodeMappingService: TraktEpisodeMappingService,
     internal val skipIntroRepository: SkipIntroRepository,
     internal val playerSettingsDataStore: PlayerSettingsDataStore,
@@ -176,6 +180,8 @@ class PlayerRuntimeController(
 
     internal val navigationArgs = PlayerNavigationArgs.from(savedStateHandle)
     internal val initialStreamUrl: String = navigationArgs.streamUrl
+    internal val audioSlaveUrl: String? = navigationArgs.audioSlaveUrl
+    internal val youtubeLive: Boolean = navigationArgs.youtubeLive
     internal val title: String = navigationArgs.title
     internal val streamName: String? = navigationArgs.streamName
     internal val year: String? = navigationArgs.year
@@ -266,8 +272,12 @@ class PlayerRuntimeController(
     internal var autoSelectedSourceUrl: String? = currentStreamUrl.takeIf {
         navigationArgs.autoPlayNav && it.isNotBlank() && !it.startsWith("torrent://")
     }
-    internal var sourceFallbackAttempts = 0
-    internal val sourceFallbackTriedKeys = mutableSetOf<String>()
+
+    /** The sources the stream screen tried before this one, so the fallback goes on from them. */
+    private val sourcesTriedBeforePlayback = SourceFallbackHandoff.take(initialStreamUrl, currentStreamUrl)
+        ?.takeIf { autoSelectedSourceUrl != null }
+    internal var sourceFallbackAttempts = sourcesTriedBeforePlayback?.attempts ?: 0
+    internal val sourceFallbackTriedKeys = sourcesTriedBeforePlayback?.keys.orEmpty().toMutableSet()
     internal var sourceFallbackJob: Job? = null
     internal var sourceStartupTimeoutJob: Job? = null
 
@@ -366,6 +376,10 @@ class PlayerRuntimeController(
     internal var livePlaybackLatched: Boolean = false
     internal var mpvDurationGrowth = LivePlaybackUiPolicy.DurationGrowth()
 
+    /** YouTube live streams carry a DVR window, so they can be rewound; other live sources may not. */
+    internal val isYouTubeLive: Boolean
+        get() = contentType.equals("youtube", ignoreCase = true)
+
     internal fun updatePlaybackTimeline(
         currentPosition: Long = _playbackTimeline.value.currentPosition,
         duration: Long = _playbackTimeline.value.duration,
@@ -394,6 +408,11 @@ class PlayerRuntimeController(
         playerReportsLive: Boolean,
         isPlaying: Boolean
     ) {
+        // Engines report "not seekable / zero length" for a moment while opening a VOD.
+        // Never let that latch a movie or series into the live UI.
+        if (LivePlaybackUiPolicy.isVodContentType(contentType)) {
+            livePlaybackLatched = false
+        }
         livePlaybackLatched = LivePlaybackUiPolicy.nextLiveLatch(
             playerReportsLive = playerReportsLive,
             previouslyLatched = livePlaybackLatched
@@ -458,6 +477,7 @@ class PlayerRuntimeController(
     internal var automaticSubtitleSyncJob: Job? = null // AutoSync hook
     /** mpv: the add-on subtitle download and sub-add in flight, which AutoSync lets land first. */
     internal var mpvAddonSubtitleSelectionJob: Job? = null // AutoSync hook
+    internal var vlcAddonSubtitleSelectionJob: Job? = null
     /** ExoPlayer sidecar path: external addon cues without setMediaSource (preserves buffer). */
     internal var sidecarSubtitleJob: Job? = null
     internal var sidecarGenerationCounter: Long = 0L // AutoSync hook
@@ -513,6 +533,10 @@ class PlayerRuntimeController(
 
     internal var playbackStartedForParentalGuide = false
     internal var hasRenderedFirstFrame = false
+    /** YouTube fork: SponsorBlock for the video playing, and whether your default quality is applied yet. */
+    internal var sponsorSession: com.nuvio.tv.youtube.SponsorBlockSession? = null
+    internal var youtubeQualityApplied = false
+    internal var youtubeSubtitleStartApplied = false
     // Prevent the previous stream's end from completing the new stream.
     internal var endDetectionArmed = false
     // Ignore EOF until MPV has reported a non-EOF state for this stream.
@@ -626,6 +650,7 @@ class PlayerRuntimeController(
     internal var pendingSeekFlush: Boolean = false
     internal var suppressBufferingUiForSeek: Boolean = false
     internal var isScrubbingModeActive: Boolean = false
+    internal var scrubbingModeResetJob: Job? = null
     internal var seekBufferingUiJob: Job? = null
     internal var seekBufferingUiDeferred: Boolean = false
     internal val seekBufferingUiDelayMs = 1000L
@@ -680,6 +705,16 @@ class PlayerRuntimeController(
     internal val mpvErrorHandlingInProgress = AtomicBoolean(false)
     internal var delayMpvResumeSeekUntilVideoTrack: Boolean = false
     internal var mpvDelayStartAfterAfrSwitch: Boolean = false
+    internal var vlcView: NuvioVlcSurfaceView? = null
+    internal var vlcInitializationInProgress: Boolean = false
+    internal var vlcMediaLoadPrepared: Boolean = false
+    internal var vlcAudioPreferenceApplied: Boolean = false
+    internal var vlcSubtitlePreferenceApplied: Boolean = false
+    internal var vlcEndReachedHandled: Boolean = false
+    /** Deduplicates the many ESAdded/ESSelected callbacks VLC sends while a file opens. */
+    internal var vlcTracksSignature: Int = 0
+    internal var vlcAudioTrackCount: Int = 0
+    internal var vlcSubtitleTrackCount: Int = 0
     internal var pauseOverlayJob: Job? = null
     internal val pauseOverlayDelayMs = 5000L
     internal val seekProgressSyncDebounceMs = 700L
@@ -744,6 +779,8 @@ class PlayerRuntimeController(
     internal var pendingSeekTelemetryReadyAssumed: Boolean = false
 
     internal var currentScrobbleItem: TrackingMediaReference? = null
+    internal var activeAddonPlayerEventTarget: AddonPlayerEventTarget? = null
+    internal var lastAddonPlayerAction: AddonPlayerAction? = null
     internal var currentTraktEpisodeMapping: EpisodeMappingEntry? = null
     internal var currentTraktEpisodeMappingKey: String? = null
     internal var hasSentScrobbleStartForCurrentItem: Boolean = false
@@ -776,6 +813,11 @@ class PlayerRuntimeController(
         }
 
     internal var currentStreamHasVideoTrack: Boolean = false
+    /**
+     * The stream URL whose hardware video decoder failed and should be retried with a
+     * software decoder. Keyed by URL so a different stream starts on hardware again.
+     */
+    @Volatile internal var forceSoftwareVideoDecoderForStreamUrl: String? = null
     internal var currentVideoTrackIsLikelyVc1: Boolean = false
     internal var currentVideoTrackMimeType: String? = null
     internal var currentVideoTrackCodecs: String? = null

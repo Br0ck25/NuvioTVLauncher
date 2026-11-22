@@ -179,7 +179,7 @@ class ThemeSettingsViewModel @Inject constructor(
 
     fun selectAppIcon(option: AppIconOption): Boolean = appIconManager.select(option)
 
-    /** Live TV fork: "+ IPTV" on the app icon on or off. */
+    /** Live TV fork: the Nuvio One Live TV badge on the app icon on or off. */
     fun setIptvBranding(enabled: Boolean): Boolean = appIconManager.setIptvBranding(enabled)
 
     private fun selectTheme(theme: AppTheme) {

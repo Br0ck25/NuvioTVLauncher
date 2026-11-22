@@ -55,7 +55,8 @@ import kotlinx.coroutines.launch
 @Composable
 internal fun UpdateReleaseNotesDialog(
     update: AppUpdate,
-    onDismiss: () -> Unit
+    onDismiss: () -> Unit,
+    dialogTitle: String? = null
 ) {
     val notesFocusRequester = remember { FocusRequester() }
     val scrollState = rememberScrollState()
@@ -70,7 +71,7 @@ internal fun UpdateReleaseNotesDialog(
 
     NuvioDialog(
         onDismiss = onDismiss,
-        title = stringResource(R.string.update_release_notes),
+        title = dialogTitle ?: stringResource(R.string.update_release_notes),
         subtitle = update.title,
         width = 680.dp,
         suppressFirstKeyUp = false

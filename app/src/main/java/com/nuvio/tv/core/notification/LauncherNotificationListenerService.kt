@@ -49,6 +49,24 @@ class LauncherNotificationListenerService : NotificationListenerService() {
             return "$key|$title|$text"
         }
 
+        private const val PERSISTENT_FLAGS = Notification.FLAG_ONGOING_EVENT or
+            Notification.FLAG_FOREGROUND_SERVICE or
+            Notification.FLAG_NO_CLEAR or
+            Notification.FLAG_GROUP_SUMMARY
+
+        /**
+         * Whether a notification belongs in the drawer. Persistent ones (ongoing, foreground-service, can't be
+         * cleared, group summaries) are system status, like "Wireless debugging connected" or a background
+         * service's "running" notice, not something to read and dismiss. Our own notifications are left out too.
+         */
+        internal fun shouldShow(flags: Int, isClearable: Boolean, packageName: String, ownPackage: String, category: String?): Boolean {
+            if (packageName == ownPackage) return false
+            if (flags and PERSISTENT_FLAGS != 0) return false
+            if (!isClearable) return false
+            if (category == Notification.CATEGORY_SERVICE || category == Notification.CATEGORY_SYSTEM) return false
+            return true
+        }
+
         fun isAccessGranted(context: Context): Boolean {
             return runCatching {
                 NotificationManagerCompat.getEnabledListenerPackages(context).contains(context.packageName)
@@ -170,6 +188,7 @@ class LauncherNotificationListenerService : NotificationListenerService() {
             }
             val items = sbns.mapNotNull { sbn ->
                 val notif = sbn.notification ?: return@mapNotNull null
+                if (!shouldShow(notif.flags, sbn.isClearable, sbn.packageName, packageName, notif.category)) return@mapNotNull null
                 val extras = notif.extras
                 val title = extras?.getCharSequence(Notification.EXTRA_TITLE)?.toString()
                     ?: extras?.getCharSequence(Notification.EXTRA_TITLE_BIG)?.toString()

@@ -98,6 +98,9 @@ import androidx.compose.ui.text.TextStyle
 import com.nuvio.tv.domain.model.CardDepthStyle
 import kotlinx.coroutines.delay
 
+/** Whether the cards show the "# EP left" badge. Provided by the Home screen from Layout settings. */
+internal val LocalShowContinueWatchingEpisodeCount = androidx.compose.runtime.compositionLocalOf { true }
+
 private val BadgeShape = RoundedCornerShape(NuvioTheme.radii.xs)
 private val UpcomingPillShape = RoundedCornerShape(4.dp)
 private val CwNewEpisodeBadgeColor = Color(0xFF1D4ED8)
@@ -190,6 +193,8 @@ fun ContinueWatchingSection(
     onMarkWatched: (ContinueWatchingItem) -> Unit = {},
     modifier: Modifier = Modifier,
     title: String? = null,
+    showLiveTvHint: Boolean = true,
+    showOptionsMenu: Boolean = true,
     focusedItemIndex: Int = -1,
     onItemFocused: (itemIndex: Int) -> Unit = {},
     blurUnwatchedEpisodes: Boolean = false,
@@ -243,11 +248,15 @@ fun ContinueWatchingSection(
             horizontalArrangement = Arrangement.SpaceBetween,
             verticalAlignment = Alignment.CenterVertically
         ) {
-            Text(
-                text = title ?: stringResource(R.string.continue_watching),
-                style = MaterialTheme.typography.headlineMedium,
-                color = NuvioTheme.colors.TextPrimary
-            )
+            Row(verticalAlignment = Alignment.CenterVertically) {
+                Text(
+                    text = title ?: stringResource(R.string.continue_watching),
+                    style = MaterialTheme.typography.headlineMedium,
+                    color = NuvioTheme.colors.TextPrimary
+                )
+                // Live TV fork: "Live TV ▲" hint when this is the top row.
+                if (showLiveTvHint) com.nuvio.tv.livetv.home.LiveTvHomeHint()
+            }
         }
 
         val density = LocalDensity.current
@@ -308,7 +317,9 @@ fun ContinueWatchingSection(
                 val requester = focusRequesters.getOrPut(index) { FocusRequester() }
                 val focusModifier = Modifier.focusRequester(requester)
                 val stableOnClick = remember(progress) { { onItemClick(progress) } }
-                val stableOnLongPress = remember(progress) { { optionsItem = progress } }
+                val stableOnLongPress = remember(progress, showOptionsMenu) {
+                    { if (showOptionsMenu) optionsItem = progress }
+                }
                 var isCardFocused by remember { mutableStateOf(false) }
 
                     ContinueWatchingCard(
@@ -531,6 +542,15 @@ fun ContinueWatchingCard(
 
     val progress = remember(item) { (item as? ContinueWatchingItem.InProgress)?.progress }
     val nextUp = remember(item) { (item as? ContinueWatchingItem.NextUp)?.info }
+    val remainingEpisodes = remember(item) {
+        when (item) {
+            is ContinueWatchingItem.InProgress -> item.remainingEpisodes
+            is ContinueWatchingItem.NextUp -> item.info.remainingEpisodes
+        }
+    }
+    val visibleRemainingEpisodes = remainingEpisodes.takeIf {
+        LocalShowContinueWatchingEpisodeCount.current
+    }
     val cardContext = LocalContext.current
     val episodeStr = remember(progress, nextUp, cardContext) {
         val season = progress?.season ?: nextUp?.season
@@ -820,6 +840,7 @@ fun ContinueWatchingCard(
                 badgeBackground = badgeBackground,
                 showBadge = progress == null,
                 shufflePlayback = item.shufflePlayback,
+                remainingEpisodes = visibleRemainingEpisodes,
                 progressFraction = progressFraction,
                 hasProgress = progress != null,
                 onImageError = {
@@ -925,7 +946,17 @@ fun ContinueWatchingCard(
                     )
                 }
 
-                if (item.shufflePlayback) EpisodeShuffleBadge(Modifier.align(Alignment.TopStart))
+                if (item.shufflePlayback || visibleRemainingEpisodes != null) {
+                    Column(
+                        modifier = Modifier
+                            .align(Alignment.TopStart)
+                            .padding(NuvioTheme.spacing.sm),
+                        verticalArrangement = Arrangement.spacedBy(NuvioTheme.spacing.xs)
+                    ) {
+                        if (item.shufflePlayback) EpisodeShuffleBadge()
+                        visibleRemainingEpisodes?.let { EpisodeCountBadge(it) }
+                    }
+                }
 
                 // Content info at bottom
                 if (!textBelowArtwork) {
@@ -1043,6 +1074,23 @@ fun ContinueWatchingCard(
                 }
             }
         }
+    }
+}
+
+/** Small badge for the number of episodes left in a series. */
+@Composable
+private fun EpisodeCountBadge(count: Int) {
+    Box(
+        modifier = Modifier
+            .clip(BadgeShape)
+            .background(Color.Black.copy(alpha = 0.72f))
+            .padding(horizontal = NuvioTheme.spacing.sm, vertical = NuvioTheme.spacing.xs)
+    ) {
+        Text(
+            text = stringResource(R.string.cw_episodes_left, count),
+            style = MaterialTheme.typography.labelSmall,
+            color = NuvioTheme.colors.TextPrimary
+        )
     }
 }
 
@@ -1175,6 +1223,7 @@ private fun WideCardContent(
     badgeBackground: Color,
     showBadge: Boolean,
     shufflePlayback: Boolean,
+    remainingEpisodes: Int?,
     progressFraction: Float,
     hasProgress: Boolean,
     onImageError: () -> Unit
@@ -1213,7 +1262,17 @@ private fun WideCardContent(
                     onError = { onImageError() }
                 )
             }
-            if (shufflePlayback) EpisodeShuffleBadge(Modifier.align(Alignment.TopStart))
+            if (shufflePlayback || remainingEpisodes != null) {
+                Column(
+                    modifier = Modifier
+                        .align(Alignment.TopStart)
+                        .padding(NuvioTheme.spacing.sm),
+                    verticalArrangement = Arrangement.spacedBy(NuvioTheme.spacing.xs)
+                ) {
+                    if (shufflePlayback) EpisodeShuffleBadge()
+                    remainingEpisodes?.let { EpisodeCountBadge(it) }
+                }
+            }
         }
 
         Column(

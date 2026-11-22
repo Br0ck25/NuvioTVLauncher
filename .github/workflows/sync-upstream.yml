@@ -1,8 +1,12 @@
 name: Sync upstream
 
 # Every 6 hours: try merging each upstream into the launcher branch:
-#   plus  = homelessbrian/NuvioPlusIPTV (the fork this app is built on; carries the IPTV features)
-# NuvioTV itself is not synced: Plus is a fork of it and carries its changes. Pull individual NuvioTV fixes by cherry-pick.
+#   nuvioone = zoga2o3-ops/Nuvio-One (the app this launcher is a fork of: OneTube, Music, Live TV, Sports).
+#   It is followed on the branch Nuvio One releases its betas from (hotfix/17.2.1 at the moment, which is where
+#   their Release workflow runs), not on `main`, which stops well before their latest release. When they start
+#   releasing from another branch, set the repository variable NUVIOONE_SYNC_BRANCH (Settings > Secrets and
+#   variables > Actions > Variables) instead of editing this file.
+# Nuvio and NuvioPlusIPTV are not synced directly: Nuvio One carries their changes. Pull individual fixes by cherry-pick.
 # Clean merge  -> pushed to the branch `sync/<name>` (review it, build it, merge it).
 # Conflicts    -> nothing is pushed; an issue lists the conflicting files.
 # NOTE: GitHub only runs scheduled workflows from the repository's default branch,
@@ -18,7 +22,7 @@ permissions:
 
 env:
   BASE_BRANCH: dev
-  UPSTREAM_BRANCH: dev
+  UPSTREAM_BRANCH: ${{ vars.NUVIOONE_SYNC_BRANCH || 'hotfix/17.2.1' }}
 
 jobs:
   sync:
@@ -27,8 +31,8 @@ jobs:
       fail-fast: false
       matrix:
         include:
-          - name: plus
-            url: https://github.com/homelessbrian/NuvioPlusIPTV.git
+          - name: nuvioone
+            url: https://github.com/zoga2o3-ops/Nuvio-One.git
     env:
       UPSTREAM_URL: ${{ matrix.url }}
       SYNC_BRANCH: sync/${{ matrix.name }}
@@ -44,7 +48,11 @@ jobs:
           git config user.name "upstream-sync"
           git config user.email "upstream-sync@users.noreply.github.com"
           git remote add upstream "$UPSTREAM_URL"
-          git fetch -q upstream "$UPSTREAM_BRANCH"
+          if ! git fetch -q upstream "$UPSTREAM_BRANCH"; then
+            echo "Could not fetch '$UPSTREAM_BRANCH' from $UPSTREAM_URL. If Nuvio One releases from another branch now," >&2
+            echo "set the repository variable NUVIOONE_SYNC_BRANCH to it." >&2
+            exit 1
+          fi
           if git merge-base --is-ancestor "upstream/$UPSTREAM_BRANCH" HEAD; then
             echo "state=uptodate" >> "$GITHUB_OUTPUT"; exit 0
           fi

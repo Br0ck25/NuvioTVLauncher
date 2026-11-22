@@ -56,7 +56,6 @@ import kotlinx.coroutines.delay
 import androidx.compose.ui.unit.IntSize
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.text.TextStyle
-import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.text.style.TextDirection
 import androidx.compose.ui.text.style.TextOverflow
@@ -145,7 +144,7 @@ internal fun DiscoverSection(
 
         Row(
             modifier = Modifier.fillMaxWidth(),
-            horizontalArrangement = Arrangement.spacedBy(NuvioTheme.spacing.sm)
+            horizontalArrangement = Arrangement.spacedBy(NuvioTheme.spacing.md)
         ) {
             DiscoverDropdownPicker(
                 modifier = Modifier.weight(1f)
@@ -344,7 +343,7 @@ private fun DiscoverDropdownPicker(
                     if (blockFocus) Modifier.focusProperties { canFocus = false }
                     else Modifier
                 ),
-            shape = CardDefaults.shape(shape = RoundedCornerShape(10.dp)),
+            shape = CardDefaults.shape(shape = RoundedCornerShape(14.dp)),
             colors = CardDefaults.colors(
                 containerColor = NuvioTheme.colors.BackgroundCard,
                 focusedContainerColor = NuvioTheme.colors.FocusBackground
@@ -352,11 +351,11 @@ private fun DiscoverDropdownPicker(
             border = CardDefaults.border(
                 border = Border(
                     border = BorderStroke(NuvioTheme.spacing.hairline, NuvioTheme.colors.Border),
-                    shape = RoundedCornerShape(10.dp)
+                    shape = RoundedCornerShape(14.dp)
                 ),
                 focusedBorder = Border(
                     border = NuvioTheme.focusRing.border(NuvioTheme.spacing.xxs),
-                    shape = RoundedCornerShape(10.dp)
+                    shape = RoundedCornerShape(14.dp)
                 )
             ),
             scale = CardDefaults.scale(
@@ -364,39 +363,38 @@ private fun DiscoverDropdownPicker(
                 pressedScale = 1.0f
             )
         ) {
-            Row(
+            Column(
                 modifier = Modifier
                     .fillMaxWidth()
-                    .padding(horizontal = 14.dp, vertical = 7.dp),
-                verticalAlignment = Alignment.CenterVertically,
-                horizontalArrangement = Arrangement.SpaceBetween
+                    .padding(horizontal = 14.dp, vertical = 10.dp),
+                verticalArrangement = Arrangement.spacedBy(NuvioTheme.spacing.xxs)
             ) {
+                Text(
+                    text = title,
+                    style = MaterialTheme.typography.labelSmall,
+                    color = NuvioTheme.colors.TextTertiary
+                )
                 Row(
+                    modifier = Modifier.fillMaxWidth(),
                     verticalAlignment = Alignment.CenterVertically,
-                    horizontalArrangement = Arrangement.spacedBy(6.dp),
-                    modifier = Modifier.weight(1f, fill = false)
+                    horizontalArrangement = Arrangement.SpaceBetween
                 ) {
                     Text(
-                        text = "$title:",
-                        style = MaterialTheme.typography.labelMedium,
-                        color = if (isFocused) NuvioTheme.colors.TextSecondary.copy(alpha = 0.9f) else NuvioTheme.colors.TextTertiary
-                    )
-                    Text(
                         text = value,
-                        style = MaterialTheme.typography.labelMedium,
-                        fontWeight = FontWeight.SemiBold,
+                        style = MaterialTheme.typography.titleMedium.copy(
+                            textDirection = value.contentTextDirection()
+                        ),
                         color = NuvioTheme.colors.TextPrimary,
                         maxLines = 1,
                         overflow = TextOverflow.Ellipsis
                     )
+                    Icon(
+                        imageVector = if (expanded) Icons.Default.KeyboardArrowUp else Icons.Default.KeyboardArrowDown,
+                        contentDescription = if (expanded) stringResource(R.string.cd_collapse, title) else stringResource(R.string.cd_expand, title),
+                        modifier = Modifier.size(20.dp),
+                        tint = if (isFocused) NuvioTheme.colors.FocusRing else NuvioTheme.colors.TextSecondary
+                    )
                 }
-                Spacer(modifier = Modifier.width(6.dp))
-                Icon(
-                    imageVector = if (expanded) Icons.Default.KeyboardArrowUp else Icons.Default.KeyboardArrowDown,
-                    contentDescription = if (expanded) stringResource(R.string.cd_collapse, title) else stringResource(R.string.cd_expand, title),
-                    modifier = Modifier.size(16.dp),
-                    tint = if (isFocused) NuvioTheme.colors.FocusRing else NuvioTheme.colors.TextSecondary
-                )
             }
         }
 
@@ -409,7 +407,7 @@ private fun DiscoverDropdownPicker(
             modifier = Modifier
                 .width(with(LocalDensity.current) { anchorSize.width.toDp() })
                 .heightIn(max = 320.dp),
-            shape = RoundedCornerShape(12.dp),
+            shape = RoundedCornerShape(14.dp),
             containerColor = NuvioTheme.colors.BackgroundCard,
             tonalElevation = NuvioTheme.spacing.none,
             shadowElevation = NuvioTheme.spacing.sm,

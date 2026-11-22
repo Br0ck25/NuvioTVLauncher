@@ -250,6 +250,8 @@ class PluginManager @Inject constructor(
 
     /** Prevents concurrent reconciliation from StartupSyncService and AccountViewModel */
     private val reconcileMutex = Mutex()
+    /** Serializes scraper-list read/modify/write so a toggle cannot erase a refresh's new items. */
+    private val scraperWriteMutex = Mutex()
 
     @Volatile
     private var pendingPushAfterSync = false
@@ -621,7 +623,7 @@ class PluginManager @Inject constructor(
     /**
      * Toggle scraper enabled state
      */
-    suspend fun toggleScraper(scraperId: String, enabled: Boolean) {
+    suspend fun toggleScraper(scraperId: String, enabled: Boolean) = scraperWriteMutex.withLock {
         val scraperList = dataStore.scrapers.first()
         val updatedScrapers = scraperList.map { scraper ->
             if (scraper.id == scraperId) scraper.copy(enabled = enabled) else scraper
@@ -632,7 +634,7 @@ class PluginManager @Inject constructor(
     /**
      * Toggle all scrapers belonging to a repository
      */
-    suspend fun toggleAllScrapersForRepo(repoId: String, enabled: Boolean) {
+    suspend fun toggleAllScrapersForRepo(repoId: String, enabled: Boolean) = scraperWriteMutex.withLock {
         val scraperList = dataStore.scrapers.first()
         val updatedScrapers = scraperList.map { scraper ->
             if (scraper.repositoryId == repoId) scraper.copy(enabled = enabled) else scraper
@@ -1058,6 +1060,7 @@ class PluginManager @Inject constructor(
         manifestUrl: String,
         scraperInfos: List<ScraperManifestInfo>
     ) = withContext(Dispatchers.IO) {
+        scraperWriteMutex.withLock {
         val baseUrl = manifestUrl.substringBeforeLast("/")
         val existingScrapers = dataStore.scrapers.first().toMutableList()
         
@@ -1150,6 +1153,7 @@ class PluginManager @Inject constructor(
         }
         
         dataStore.saveScrapers(existingScrapers)
+        }
     }
 
     /**
@@ -1161,6 +1165,7 @@ class PluginManager @Inject constructor(
         repoId: String,
         plugins: List<ExternalPluginEntry>
     ) = withContext(Dispatchers.IO) {
+        scraperWriteMutex.withLock {
         val existingScrapers = dataStore.scrapers.first().toMutableList()
         val downloadSemaphore = Semaphore(MAX_PARALLEL_DOWNLOADS)
         val newScrapers = java.util.Collections.synchronizedList(mutableListOf<ScraperInfo>())
@@ -1219,6 +1224,7 @@ class PluginManager @Inject constructor(
         dataStore.saveScrapers(existingScrapers)
 
         Log.d(TAG, "Downloaded ${newScrapers.size}/${plugins.size} extensions for repo $repoId")
+        }
     }
 
     companion object {

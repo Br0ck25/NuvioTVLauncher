@@ -421,10 +421,19 @@ class OnDemandViewModel @Inject constructor(
     private val homeTried = java.util.concurrent.ConcurrentHashMap.newKeySet<String>()
     private var homeGroups: List<Pair<VodCategory, String>> = emptyList()
     private var homeEnrichJob: kotlinx.coroutines.Job? = null
+    private var homeLoadJob: kotlinx.coroutines.Job? = null
+    /** Catalog version the displayed home rows were built from; -1 before the first build. */
+    private var homeVersion: Int = -1
+
+    /** True when the page on screen can be kept: it exists and the catalog hasn't changed. */
+    fun homeIsCurrent(): Boolean =
+        _home.value.rows.isNotEmpty() && homeVersion == repository.version.value
 
     /** Builds the page: every group in your order, hidden and locked ones left out. */
     fun loadHome() {
-        viewModelScope.launch {
+        homeLoadJob?.cancel()
+        homeLoadJob = viewModelScope.launch {
+            val versionAtStart = repository.version.value
             val user = prefs.userState.first()
             val cats = repository.categories(VodKind.MOVIE) + repository.categories(VodKind.SERIES)
             val orderIndex = user.vodGroupOrder.withIndex().associate { (i, uid) -> uid to i }
@@ -461,6 +470,7 @@ class OnDemandViewModel @Inject constructor(
                 if (raw.size < HOME_PAGE) homeEnded += c.uid
             }
             _home.value = VodHomeState(rows = buildHomeRows(), groups = entries, loading = false)
+            homeVersion = versionAtStart
             enrichHome()
         }
     }

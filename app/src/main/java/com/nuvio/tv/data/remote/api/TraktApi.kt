@@ -18,6 +18,7 @@ import com.nuvio.tv.data.remote.dto.trakt.TraktListSummaryDto
 import com.nuvio.tv.data.remote.dto.trakt.TraktMovieDto
 import com.nuvio.tv.data.remote.dto.trakt.TraktPlaybackItemDto
 import com.nuvio.tv.data.remote.dto.trakt.TraktProminentListDto
+import com.nuvio.tv.data.remote.dto.trakt.TraktRatingsRequestDto
 import com.nuvio.tv.data.remote.dto.trakt.TraktReorderListsRequestDto
 import com.nuvio.tv.data.remote.dto.trakt.TraktReorderListsResponseDto
 import com.nuvio.tv.data.remote.dto.trakt.TraktRefreshTokenRequestDto
@@ -373,4 +374,16 @@ interface TraktApi {
         @Header("Authorization") authorization: String,
         @Body body: TraktListItemsMutationRequestDto
     ): Response<TraktListItemsMutationResponseDto>
+
+    @POST("sync/ratings")
+    suspend fun addRatings(
+        @Header("Authorization") authorization: String,
+        @Body body: TraktRatingsRequestDto
+    ): Response<Unit>
+
+    @HTTP(method = "POST", path = "sync/ratings/remove", hasBody = true)
+    suspend fun removeRatings(
+        @Header("Authorization") authorization: String,
+        @Body body: TraktRatingsRequestDto
+    ): Response<Unit>
 }

@@ -22,6 +22,7 @@ class SettingsStructureTest {
                 PlaybackSection.AUDIO,
                 PlaybackSection.SUBTITLES,
                 PlaybackSection.VIDEO,
+                PlaybackSection.CAPABILITIES,
                 PlaybackSection.BUFFER_NETWORK,
                 PlaybackSection.P2P
             ),
@@ -63,9 +64,9 @@ class SettingsStructureTest {
     }
 
     @Test
-    fun `essential layout only offers the home layout`() {
+    fun `essential layout offers the home layout and the sidebar`() {
         assertEquals(
-            listOf(LayoutSection.HOME_LAYOUT),
+            listOf(LayoutSection.HOME_LAYOUT, LayoutSection.SIDEBAR),
             visibleLayoutSections(essentialMode = true, focusedPosterHasOptions = true)
         )
     }

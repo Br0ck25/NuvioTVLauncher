@@ -1,0 +1,210 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+  <meta name="theme-color" content="#08070b">
+  <title>Link Nuvio One Music</title>
+  <style>
+    :root {
+      --bg:#08070b; --surface:#14111c; --border:#2a2436; --text:#f8f6ff;
+      --secondary:#a9a4b8; --muted:#6d677e; --accent:#a78bfa; --accent-2:#7c3aed;
+      --teal:#5eead4;
+    }
+    *{box-sizing:border-box;-webkit-tap-highlight-color:transparent}
+    html,body{margin:0;padding:0;background:var(--bg);color:var(--text)}
+    body{font-family:-apple-system,BlinkMacSystemFont,"Segoe UI",Roboto,"Helvetica Neue",Arial,sans-serif;
+      min-height:100vh;background:
+      radial-gradient(1000px 520px at 10% -10%,rgba(124,58,237,.35),transparent 60%),
+      radial-gradient(800px 460px at 100% 0%,rgba(94,234,212,.10),transparent 55%),var(--bg);
+      padding:max(18px,env(safe-area-inset-top)) 16px max(28px,env(safe-area-inset-bottom))}
+    .wrap{max-width:560px;margin:0 auto}
+    header{display:flex;align-items:center;gap:12px;margin:6px 0 24px}
+    .mark{width:42px;height:42px;border-radius:13px;background:linear-gradient(135deg,#a78bfa,#22d3ee);
+      display:grid;place-items:center;color:#0b0812;font-weight:800;font-size:20px;box-shadow:0 8px 30px rgba(124,58,237,.35)}
+    .brand{font-size:14px;font-weight:800;letter-spacing:.14em}
+    .brand small{display:block;color:var(--muted);font-size:10px;letter-spacing:.18em;margin-top:2px}
+    .card{background:linear-gradient(180deg,rgba(28,24,38,.94),rgba(20,17,28,.94));
+      border:1px solid var(--border);border-radius:22px;padding:20px;box-shadow:0 18px 60px rgba(0,0,0,.28)}
+    h1{font-size:26px;line-height:1.15;margin:0 0 8px;letter-spacing:-.02em}
+    .lead{color:var(--secondary);font-size:13px;line-height:1.5;margin:0 0 22px}
+    label{display:block;color:var(--muted);font-size:10px;font-weight:800;letter-spacing:.12em;margin:0 0 6px}
+    input{width:100%;border:1px solid var(--border);background:#0f0c16;color:var(--text);
+      border-radius:13px;padding:13px 14px;font-size:16px;outline:none;margin-bottom:14px}
+    input:focus{border-color:var(--accent);box-shadow:0 0 0 3px rgba(167,139,250,.14)}
+    button{appearance:none;border:0;cursor:pointer;font-family:inherit;width:100%;
+      background:linear-gradient(135deg,var(--accent),var(--accent-2));color:#0b0812;
+      font-weight:800;font-size:15px;border-radius:14px;min-height:50px;margin-top:6px}
+    button:active{transform:scale(.99)} button:disabled{opacity:.55;cursor:default}
+    .note{color:var(--muted);font-size:11px;line-height:1.5;margin-top:14px}
+    #status{display:none;margin-top:14px;padding:12px 14px;border-radius:12px;font-size:13px;line-height:1.45}
+    #status.error{display:block;background:rgba(255,107,107,.12);border:1px solid rgba(255,107,107,.35);color:#ffc1c1}
+    #status.ok{display:block;background:rgba(94,234,212,.10);border:1px solid rgba(94,234,212,.35);color:#b8fff3}
+    .hidden{display:none!important}
+    .success{display:none;text-align:center;padding:12px 0 4px}
+    .success.show{display:block}
+    .success .big{font-size:44px;margin-bottom:10px}
+    .success h2{font-size:22px;margin:0 0 6px}
+    .success p{color:var(--secondary);font-size:13px;line-height:1.5;margin:0}
+    footer{color:var(--muted);font-size:11px;line-height:1.5;text-align:center;margin-top:18px}
+    footer b{color:var(--secondary);font-weight:600}
+  </style>
+</head>
+<body>
+<div class="wrap">
+  <header>
+    <div class="mark">♫</div>
+    <div class="brand">NUVIO ONE<small>LINK A SERVICE</small></div>
+  </header>
+
+  <div class="card" id="form-card">
+    <h1 id="title">Link a service</h1>
+    <p class="lead" id="lead">Type your details here; the TV will save them securely.</p>
+
+    <form id="form">
+      <div id="webdav" class="target hidden">
+        <label for="wd-url">Server URL</label>
+        <input id="wd-url" type="url" inputmode="url" autocapitalize="none" spellcheck="false" placeholder="https://example.com/music/">
+        <label for="wd-user">Username</label>
+        <input id="wd-user" type="text" autocomplete="username" autocapitalize="none" spellcheck="false" placeholder="optional">
+        <label for="wd-pass">Password</label>
+        <input id="wd-pass" type="password" autocomplete="current-password" placeholder="optional">
+      </div>
+
+      <div id="lastfm" class="target hidden">
+        <label for="lf-user">Username</label>
+        <input id="lf-user" type="text" autocomplete="username" autocapitalize="none" spellcheck="false" placeholder="Last.fm username">
+        <label for="lf-pass">Password</label>
+        <input id="lf-pass" type="password" autocomplete="current-password" placeholder="Last.fm password">
+      </div>
+
+      <div id="spotify" class="target hidden">
+        <label for="sp-playlist">Playlist link</label>
+        <input id="sp-playlist" type="url" inputmode="url" autocapitalize="none" spellcheck="false" placeholder="https://open.spotify.com/playlist/…">
+      </div>
+
+      <button id="connect" type="submit">Connect</button>
+    </form>
+
+    <div id="status"></div>
+    <p class="note" id="note"></p>
+  </div>
+
+  <div class="card success" id="success">
+    <div class="big">✓</div>
+    <h2 id="success-title">Connected</h2>
+    <p id="success-text">You can close this page.</p>
+  </div>
+
+  <footer><b>Nuvio One</b> · same Wi-Fi as the TV</footer>
+</div>
+
+<script>
+(() => {
+  const target = new URLSearchParams(location.search).get('target') || 'webdav';
+  const form = document.getElementById('form');
+  const connect = document.getElementById('connect');
+  const status = document.getElementById('status');
+  const formCard = document.getElementById('form-card');
+  const success = document.getElementById('success');
+  const successTitle = document.getElementById('success-title');
+  const successText = document.getElementById('success-text');
+  const notes = {
+    webdav: 'The TV tests the folder before saving. Credentials are stored on the TV for streaming.',
+    lastfm: 'Sign in with your Last.fm account. The password is sent once to Last.fm and never stored; only the session key stays on the TV.',
+    spotify: 'The TV reads the public playlist, matches tracks in the music catalogue and saves a normal local playlist. This can take a minute.'
+  };
+  const titles = {
+    webdav: 'Link WebDAV',
+    lastfm: 'Link Last.fm',
+    spotify: 'Import a Spotify playlist'
+  };
+  const leads = {
+    webdav: 'Type the collection URL and credentials here instead of the TV remote.',
+    lastfm: 'Type your Last.fm username and password here instead of the TV remote.',
+    spotify: 'Paste a public Spotify playlist link; the TV does the import.'
+  };
+  document.getElementById(target).classList.remove('hidden');
+  document.getElementById('title').textContent = titles[target] || 'Link a service';
+  document.getElementById('lead').textContent = leads[target] || '';
+  document.getElementById('note').textContent = notes[target] || '';
+  if (target === 'spotify') connect.textContent = 'Start import';
+
+  let pollTimer = null;
+  function showStatus(message, kind) {
+    status.className = kind || '';
+    status.textContent = message || '';
+  }
+  function showSuccess(title, message) {
+    formCard.classList.add('hidden');
+    success.classList.add('show');
+    successTitle.textContent = title;
+    successText.textContent = message;
+  }
+  function fields() {
+    return {
+      url: document.getElementById('wd-url').value.trim(),
+      username: document.getElementById('wd-user').value.trim(),
+      password: document.getElementById('wd-pass').value,
+      lastfmUsername: document.getElementById('lf-user').value.trim(),
+      lastfmPassword: document.getElementById('lf-pass').value,
+      playlist: document.getElementById('sp-playlist').value.trim()
+    };
+  }
+  async function pollImport() {
+    try {
+      const response = await fetch('api/state', {cache: 'no-store'});
+      const data = await response.json();
+      if (data.error) {
+        showStatus(data.error, 'error');
+        connect.disabled = false;
+        connect.textContent = 'Try import again';
+        clearInterval(pollTimer);
+        pollTimer = null;
+      } else if (data.result) {
+        showSuccess('Imported', data.result);
+        clearInterval(pollTimer);
+        pollTimer = null;
+      } else if (data.progress) {
+        showStatus(data.progress, 'ok');
+      }
+    } catch (error) {
+      showStatus('Lost the TV connection. Keep this page on the same Wi-Fi.', 'error');
+    }
+  }
+  form.addEventListener('submit', async (event) => {
+    event.preventDefault();
+    connect.disabled = true;
+    connect.textContent = target === 'spotify' ? 'Starting…' : 'Saving…';
+    showStatus('', '');
+    try {
+      const response = await fetch('connect', {
+        method: 'POST',
+        headers: {'Content-Type': 'application/json'},
+        body: JSON.stringify(fields())
+      });
+      const data = await response.json();
+      if (!data.ok) {
+        showStatus(data.message || 'Could not save those details.', 'error');
+        connect.disabled = false;
+        connect.textContent = target === 'spotify' ? 'Start import' : 'Connect';
+        return;
+      }
+      if (target === 'spotify') {
+        showStatus('Import started. Matching tracks on the TV…', 'ok');
+        connect.textContent = 'Importing…';
+        pollTimer = setInterval(pollImport, 2000);
+        pollImport();
+      } else {
+        showSuccess('Connected', data.message || 'The TV saved your details.');
+      }
+    } catch (error) {
+      showStatus('Could not reach the TV. Keep this page on the same Wi-Fi.', 'error');
+      connect.disabled = false;
+      connect.textContent = target === 'spotify' ? 'Start import' : 'Connect';
+    }
+  });
+})();
+</script>
+</body>
+</html>

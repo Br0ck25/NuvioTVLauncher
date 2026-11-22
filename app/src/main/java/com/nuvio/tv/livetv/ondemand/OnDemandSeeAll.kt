@@ -67,14 +67,32 @@ internal fun OnDemandSeeAll(
     /** The watched mark on a card, like Home's. */
     isWatched: (MetaPreview) -> Boolean = { false },
     /** Holding OK on a card: Home's options (details, library, watched). */
-    onLongPress: (MetaPreview) -> Unit = {}
+    onLongPress: (MetaPreview) -> Unit = {},
+    /** Restored position when this grid comes back after opening a title. */
+    initialFirstVisibleIndex: Int = 0,
+    initialFirstVisibleOffset: Int = 0,
+    /** The card that had focus, so Back lands on the title that was opened. */
+    initialFocusId: String? = null,
+    onSavePosition: (index: Int, offset: Int) -> Unit = { _, _ -> }
 ) {
     BackHandler { onBack() }
 
-    val gridState = rememberLazyGridState()
+    val gridState = rememberLazyGridState(
+        initialFirstVisibleItemIndex = initialFirstVisibleIndex,
+        initialFirstVisibleItemScrollOffset = initialFirstVisibleOffset
+    )
     val firstFocus = remember { FocusRequester() }
+    val restoredFocus = remember { FocusRequester() }
     var focusedOnce by remember { mutableStateOf(false) }
     val items = row?.items.orEmpty()
+    val savePosition by androidx.compose.runtime.rememberUpdatedState(onSavePosition)
+
+    // Keep the page's saved position up to date while the grid scrolls.
+    LaunchedEffect(gridState) {
+        snapshotFlow { gridState.firstVisibleItemIndex to gridState.firstVisibleItemScrollOffset }
+            .distinctUntilChanged()
+            .collect { (index, offset) -> savePosition(index, offset) }
+    }
 
     // More titles when you get near the end.
     LaunchedEffect(gridState, items.size, row?.hasMore) {
@@ -104,11 +122,19 @@ internal fun OnDemandSeeAll(
         resortPending = false
     }
 
-    // Start on the first poster.
-    LaunchedEffect(items.isNotEmpty()) {
+    // Start on the card you were on, or the first poster on a fresh grid.
+    LaunchedEffect(items.isNotEmpty(), initialFocusId) {
         if (items.isEmpty() || focusedOnce) return@LaunchedEffect
-        repeat(2) { withFrameNanos { } }
-        runCatching { firstFocus.requestFocus(); focusedOnce = true }
+        repeat(8) {
+            withFrameNanos { }
+            if (focusedOnce) return@LaunchedEffect
+            if (!initialFocusId.isNullOrBlank()) {
+                runCatching { restoredFocus.requestFocus() }
+                    .onSuccess { focusedOnce = true; return@LaunchedEffect }
+            }
+            runCatching { firstFocus.requestFocus() }
+                .onSuccess { focusedOnce = true; return@LaunchedEffect }
+        }
     }
 
     Column(
@@ -156,7 +182,11 @@ internal fun OnDemandSeeAll(
                     item = item,
                     posterCardStyle = posterCardStyle,
                     showLabel = showLabels,
-                    focusRequester = if (index == 0) firstFocus else null,
+                    focusRequester = when {
+                        item.id == initialFocusId -> restoredFocus
+                        index == 0 -> firstFocus
+                        else -> null
+                    },
                     isWatched = isWatched(item),
                     onLongPress = { onLongPress(item) },
                     onFocused = { onFocus(item) },

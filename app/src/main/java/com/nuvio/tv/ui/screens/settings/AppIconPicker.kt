@@ -55,7 +55,7 @@ internal fun AppIconPickerDialog(
     state: AppIconSettingsState,
     onSelected: (AppIconOption) -> Unit,
     onDismiss: () -> Unit,
-    /** Live TV fork: "+ IPTV" on the icon on or off. */
+    /** Live TV fork: Nuvio One Live TV badge on the icon on or off. */
     onToggleIptv: (Boolean) -> Unit = {}
 ) {
     val selectedFocusRequester = remember { FocusRequester() }
@@ -81,6 +81,12 @@ internal fun AppIconPickerDialog(
         contentSpacing = 12.dp
     ) {
         Column(verticalArrangement = Arrangement.spacedBy(10.dp)) {
+            // Live TV fork: show the Nuvio One Live TV badge, or use the plain Nuvio One icon.
+            com.nuvio.tv.livetv.branding.IptvIconToggle(
+                enabled = state.iptvBranding,
+                busy = state.pending != null,
+                onToggle = onToggleIptv
+            )
             AppIconOption.entries.chunked(3).forEach { options ->
                 Row(
                     modifier = Modifier.fillMaxWidth(),

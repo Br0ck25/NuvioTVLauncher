@@ -40,11 +40,23 @@ class LivePlaybackUiPolicyTest {
     }
 
     @Test
-    fun `player live window flag marks live hls regardless of movie type`() {
-        assertTrue(
+    fun `movie and series stay vod even if the player briefly reports live`() {
+        assertFalse(
             LivePlaybackUiPolicy.isLivePlayback(
                 playerReportsLive = true,
                 contentType = "movie"
+            )
+        )
+        assertFalse(
+            LivePlaybackUiPolicy.isLivePlayback(
+                playerReportsLive = true,
+                contentType = "series"
+            )
+        )
+        assertTrue(
+            LivePlaybackUiPolicy.isLivePlayback(
+                playerReportsLive = true,
+                contentType = null
             )
         )
     }
@@ -59,7 +71,7 @@ class LivePlaybackUiPolicyTest {
         assertTrue(
             LivePlaybackUiPolicy.isLivePlayback(
                 playerReportsLive = false,
-                contentType = "movie",
+                contentType = "youtube",
                 latchedLive = latched
             )
         )

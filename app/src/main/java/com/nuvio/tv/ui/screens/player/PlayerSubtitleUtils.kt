@@ -8,11 +8,21 @@ import androidx.media3.common.MimeTypes
 import androidx.media3.common.Tracks
 import androidx.media3.common.text.Cue
 import java.util.Locale
+import java.util.concurrent.ConcurrentHashMap
 import com.nuvio.tv.ui.util.LANGUAGE_OVERRIDES
 import com.nuvio.tv.ui.util.resolveLanguageNameAlias
 
 internal object PlayerSubtitleUtils {
+    private val WHITESPACE = Regex("\\s+")
+    private const val NORMALIZED_LANGUAGE_CACHE_LIMIT = 2_000
+    private val normalizedLanguageCache = ConcurrentHashMap<String, String>()
     fun normalizeLanguageCode(lang: String): String {
+        normalizedLanguageCache[lang]?.let { return it }
+        if (normalizedLanguageCache.size >= NORMALIZED_LANGUAGE_CACHE_LIMIT) normalizedLanguageCache.clear()
+        return computeNormalizedLanguageCode(lang).also { normalizedLanguageCache[lang] = it }
+    }
+
+    private fun computeNormalizedLanguageCode(lang: String): String {
         val code = lang.trim().lowercase()
         if (code.isBlank()) return ""
 
@@ -21,7 +31,7 @@ internal object PlayerSubtitleUtils {
             .replace('-', ' ')
             .replace('.', ' ')
             .replace('/', ' ')
-            .replace(Regex("\\s+"), " ")
+            .replace(WHITESPACE, " ")
             .trim()
 
         fun containsAny(vararg values: String): Boolean = values.any { value ->
@@ -249,6 +259,25 @@ internal object PlayerSubtitleUtils {
      * Merges simultaneously active unpositioned text cues into a single multi-line cue
      * to prevent Media3 SubtitlePainter from drawing colliding lines on top of each other.
      */
+    fun centerCue(cue: Cue): Cue {
+        if (cue.bitmap != null || cue.verticalType != Cue.TYPE_UNSET) return cue
+        val builder = cue.buildUpon()
+            .setPosition(Cue.DIMEN_UNSET)
+            .setPositionAnchor(Cue.TYPE_UNSET)
+            .setSize(Cue.DIMEN_UNSET)
+            .setTextAlignment(android.text.Layout.Alignment.ALIGN_CENTER)
+        val text = cue.text
+        if (text is android.text.Spanned) {
+            val spans = text.getSpans(0, text.length, android.text.style.AlignmentSpan::class.java)
+            if (spans.isNotEmpty()) {
+                val copy = android.text.SpannableStringBuilder(text)
+                spans.forEach { copy.removeSpan(it) }
+                builder.setText(copy)
+            }
+        }
+        return builder.build()
+    }
+
     fun mergeOverlappingCues(cues: List<Cue>): List<Cue> {
         if (cues.size <= 1) return cues
         val unpositioned = cues.filter { it.bitmap == null && it.line == Cue.DIMEN_UNSET }
@@ -271,7 +300,18 @@ internal object PlayerSubtitleUtils {
         } else {
             validTexts.distinct().joinToString("\n")
         }
-        return listOf(cues[0].buildUpon().setText(mergedText).build())
+        val first = cues[0]
+        val sharesPosition = cues.all { it.position == first.position && it.positionAnchor == first.positionAnchor }
+        val base = when {
+            sharesPosition -> first
+            else -> cues.firstOrNull { it.position == Cue.DIMEN_UNSET }
+                ?: first.buildUpon()
+                    .setPosition(Cue.DIMEN_UNSET)
+                    .setPositionAnchor(Cue.TYPE_UNSET)
+                    .setTextAlignment(null)
+                    .build()
+        }
+        return listOf(base.buildUpon().setText(mergedText).build())
     }
 
     fun normalizeBottomCuePosition(cue: Cue): Cue {

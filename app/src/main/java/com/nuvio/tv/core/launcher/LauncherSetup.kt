@@ -181,6 +181,9 @@ internal object LauncherSetup {
 
     private const val NATIVE_HOME_OBSERVED = "native_home_observed"
 
+    /** This app has been the TV's Home app before (so losing that after an update is a loss, not a choice). */
+    fun wasNativeHome(context: Context): Boolean = preferences(context).getBoolean(NATIVE_HOME_OBSERVED, false)
+
     internal fun observeNativeHome(context: Context, isDefault: Boolean) {
         if (isDefault && !preferences(context).getBoolean(NATIVE_HOME_OBSERVED, false)) {
             preferences(context).edit().putBoolean(NATIVE_HOME_OBSERVED, true).apply()

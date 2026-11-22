@@ -20,7 +20,6 @@ import androidx.compose.runtime.CompositionLocalProvider
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.State
 import androidx.compose.runtime.derivedStateOf
-import androidx.compose.runtime.collectAsState
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.remember
 import androidx.compose.runtime.rememberUpdatedState
@@ -36,7 +35,6 @@ import androidx.compose.ui.focus.focusRestorer
 import androidx.compose.foundation.focusGroup
 import androidx.compose.ui.focus.FocusDirection
 import androidx.compose.ui.platform.LocalFocusManager
-import androidx.compose.ui.graphics.graphicsLayer
 import androidx.compose.ui.input.key.Key
 import androidx.compose.ui.input.key.KeyEventType
 import androidx.compose.ui.input.key.key
@@ -51,7 +49,6 @@ import androidx.compose.ui.unit.dp
 import androidx.tv.material3.ExperimentalTvMaterial3Api
 import androidx.compose.ui.ExperimentalComposeUiApi
 import coil3.imageLoader
-import coil3.memory.MemoryCache
 import coil3.request.ImageRequest
 import com.nuvio.tv.domain.model.ContinueWatchingCardStyle
 import com.nuvio.tv.domain.model.FocusedPosterTrailerPlaybackTarget
@@ -91,7 +88,6 @@ internal fun ModernHomeRowsList(
     contentFocusRequester: FocusRequester,
     rowsViewportHeight: Dp,
     catalogBottomPadding: Dp,
-    trailerContentAlpha: () -> Float,
     verticalRowBringIntoViewSpec: BringIntoViewSpec,
     onRowItemFocusedInternal: (String, Int, Boolean) -> Unit,
     onNavigateToDetail: (String, String, String) -> Unit,
@@ -173,7 +169,7 @@ internal fun ModernHomeRowsList(
         verticalRowListState,
         density,
         useLandscapePosters,
-        effectiveExpandEnabled,
+        alwaysShowLandscapeClearlogo,
         portraitCatalogCardWidth,
         portraitCatalogCardHeight,
         landscapeCatalogCardWidth,
@@ -199,14 +195,15 @@ internal fun ModernHomeRowsList(
                                 portraitCardWidth = portraitCatalogCardWidth,
                                 portraitCardHeight = portraitCatalogCardHeight,
                                 landscapeCardWidth = landscapeCatalogCardWidth,
-                                landscapeCardHeight = landscapeCatalogCardHeight,
-                                expandEnabled = effectiveExpandEnabled
+                                landscapeCardHeight = landscapeCatalogCardHeight
                             )
                             val wPx = with(density) { metrics.width.roundToPx() }
                             val hPx = with(density) { metrics.height.roundToPx() }
                             if (wPx <= 0 || hPx <= 0) continue
-                            val cacheKey = "${url}_${wPx}x${hPx}"
-                            if (verticalPrefetchImageLoader.memoryCache?.get(MemoryCache.Key(cacheKey)) != null) continue
+                            val landscapeCustomPoster = useLandscapePosters && !alwaysShowLandscapeClearlogo &&
+                                !item.metaPreview?.landscapePoster.isNullOrBlank()
+                            val cacheKey = cardImageMemoryCacheKey(url, wPx, hPx, item.cardImageFallbackUrl(landscapeCustomPoster))
+                            if (verticalPrefetchImageLoader.memoryCache?.get(cacheKey) != null) continue
                             verticalPrefetchImageLoader.enqueue(
                                 ImageRequest.Builder(context)
                                     .data(url)
@@ -281,8 +278,7 @@ internal fun ModernHomeRowsList(
     CompositionLocalProvider(
         LocalBringIntoViewSpec provides verticalRowBringIntoViewSpec,
         LocalFastScrollActive provides isFastScrolling,
-        LocalVerticalRowsScrolling provides isVerticalRowsScrollingState,
-        com.nuvio.tv.livetv.home.LocalLiveTvPageListState provides verticalRowListState
+        LocalVerticalRowsScrolling provides isVerticalRowsScrollingState
     ) {
         LazyColumn(
             state = verticalRowListState,
@@ -292,7 +288,6 @@ internal fun ModernHomeRowsList(
                 .height(rowsViewportHeight)
                 .padding(bottom = catalogBottomPadding)
                 .clipToBounds()
-                .graphicsLayer { alpha = trailerContentAlpha() }
                 .focusRequester(contentFocusRequester)
                 .focusRestorer { focusRestorerRequester() }
                 .onPreviewKeyEvent { event ->
@@ -382,8 +377,12 @@ internal fun ModernHomeRowsList(
                 // Live TV fork: the Live TV row sits with Continue watching (above or below it),
                 // or above the first row when there's no Continue watching.
                 val hasContinueWatching = carouselRows.list.any { it.key == MODERN_CONTINUE_WATCHING_ROW_KEY }
-                val liveTvHere = liveTvRowAbove != null &&
-                    (if (hasContinueWatching) row.key == MODERN_CONTINUE_WATCHING_ROW_KEY else rowIndex == 0)
+                val hasOnDemandRow = carouselRows.list.any { it.key == MODERN_ON_DEMAND_ROW_KEY || it.key == MODERN_YOUTUBE_ROW_KEY }
+                val liveTvHere = liveTvRowAbove != null && when {
+                    hasContinueWatching -> row.key == MODERN_CONTINUE_WATCHING_ROW_KEY
+                    hasOnDemandRow -> row.key == MODERN_ON_DEMAND_ROW_KEY
+                    else -> rowIndex == 0
+                }
                 val stableOnContinueWatchingOptions = remember(onContinueWatchingOptions) {
                     { item: ContinueWatchingItem -> onContinueWatchingOptions(item) }
                 }

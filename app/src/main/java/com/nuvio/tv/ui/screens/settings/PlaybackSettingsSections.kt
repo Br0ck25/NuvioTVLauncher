@@ -10,6 +10,7 @@ import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.items
 import androidx.compose.foundation.lazy.rememberLazyListState
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.saveable.rememberSaveable
@@ -35,11 +36,22 @@ internal fun PlaybackSettingsSections(
     onOpenDialog: (PlaybackDialog) -> Unit,
     onMemorySettingChanged: () -> Unit,
     onClearTorrentCache: () -> Unit,
-    initialFocusRequester: FocusRequester? = null
+    initialFocusRequester: FocusRequester? = null,
+    initialSection: PlaybackSection? = null
 ) {
     val sections = visiblePlaybackSections(playerSettings)
     var expandedSections by rememberSaveable { mutableStateOf(emptyList<String>()) }
     val listState = rememberLazyListState()
+
+    LaunchedEffect(initialSection, sections) {
+        val target = initialSection ?: return@LaunchedEffect
+        if (target !in sections) return@LaunchedEffect
+        if (target.name !in expandedSections) {
+            expandedSections = expandedSections + target.name
+        }
+        val index = sections.indexOf(target)
+        if (index >= 0) listState.scrollToItem(index)
+    }
 
     Box(modifier = Modifier.fillMaxSize()) {
         LazyColumn(
@@ -100,11 +112,12 @@ private fun PlaybackSectionContent(
         PlaybackSection.STREAM_SELECTION -> PlaybackStreamSelectionSection(playerSettings, onUpdate, onOpenDialog)
         PlaybackSection.UP_NEXT -> PlaybackUpNextSection(playerSettings, onUpdate, onOpenDialog)
         PlaybackSection.SKIP_SEGMENTS -> PlaybackSkipSegmentsSection(playerSettings, onUpdate)
-        PlaybackSection.PLAYER_INTERFACE -> PlaybackPlayerInterfaceSection(playerSettings, onUpdate)
+        PlaybackSection.PLAYER_INTERFACE -> PlaybackPlayerInterfaceSection(playerSettings, onUpdate, onOpenDialog)
         PlaybackSection.SEEK_THUMBNAILS -> PlaybackSeekThumbnailSection()
         PlaybackSection.AUDIO -> PlaybackAudioSection(playerSettings, onUpdate, onOpenDialog)
         PlaybackSection.SUBTITLES -> PlaybackSubtitlesSection(playerSettings, onUpdate, onOpenDialog)
         PlaybackSection.VIDEO -> PlaybackVideoSection(playerSettings, transparentLetterbox, onUpdate, onOpenDialog)
+        PlaybackSection.CAPABILITIES -> PlaybackCapabilitySection(playerSettings, onUpdate)
         PlaybackSection.BUFFER_NETWORK -> PlaybackBufferNetworkSection(playerSettings, onUpdate, onMemorySettingChanged)
         PlaybackSection.P2P -> PlaybackP2pSection(p2p, onUpdate, onOpenDialog, onClearTorrentCache)
     }
@@ -143,6 +156,11 @@ internal fun PlaybackSettingsDialogs(
                 onUpdate { setP2pEnabled(true) }
                 onDismiss()
             },
+            onDismiss = onDismiss
+        )
+        PlaybackDialog.PLAYER_BUTTONS -> PlayerButtonsDialog(
+            settings = settings,
+            onUpdate = onUpdate,
             onDismiss = onDismiss
         )
         else -> {

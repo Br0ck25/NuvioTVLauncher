@@ -72,6 +72,18 @@ jobs:
           distribution: temurin
           java-version: "17"
           cache: gradle
+      # The native code needs these. The DV7 bridge and the VPN HTTP tunnel (vpn-android) are built with the Android NDK,
+      # and the tunnel is Go compiled with CGO. Install the exact versions the build asks for instead of relying on the runner image.
+      - name: Set up Android NDK
+        run: |
+          SDKMANAGER="${ANDROID_HOME:-$ANDROID_SDK_ROOT}/cmdline-tools/latest/bin/sdkmanager"
+          yes | "$SDKMANAGER" --licenses > /dev/null || true
+          "$SDKMANAGER" "ndk;29.0.14206865"
+
+      - uses: actions/setup-go@v5
+        with:
+          go-version-file: vpn-android/native/go.mod
+          cache: false
 
       # The app's keys. Starts from the LOCAL_PROPERTIES_BASE64 secret (a base64 copy of local.properties:
       # the Nuvio sign-in server and the other service keys), then any individual secret below replaces
@@ -146,7 +158,7 @@ jobs:
           set_prop SPOTIFY_LINK_BASE_URL "${SPOTIFY_LINK_BASE_URL:-https://br0ck25.github.io/NuvioTVLauncher/spotify-link}"
           set_prop IMDB_RATINGS_API_BASE_URL "$IMDB_RATINGS_API_BASE_URL"
           set_prop IMDB_TAPFRAME_API_BASE_URL "$IMDB_TAPFRAME_API_BASE_URL"
-          set_prop INTRODB_API_URL "$INTRODB_API_URL"
+          set_prop INTRODB_API_URL "${INTRODB_API_URL:-https://api.introdb.app/}"
           # Names only, never values.
           echo "Keys set:"; sed -E 's/[[:space:]]*=.*//' local.properties | grep -v '^[[:space:]]*$' | sort -u
 
@@ -167,10 +179,19 @@ jobs:
             echo "NUVIO_RELEASE_STORE_PASSWORD=$STORE_PASSWORD"
           } >> "$GITHUB_ENV"
 
+      # The runner lost contact mid-build on beta.15 (the build now also compiles the Go tunnel for four CPU types
+      # next to R8), which is what running out of memory looks like. Add swap, keep the JVMs smaller, and cap the workers.
+      - name: Give the build headroom
+        run: |
+          free -h
+          sudo fallocate -l 8G /swapfile && sudo chmod 600 /swapfile && sudo mkswap /swapfile && sudo swapon /swapfile
+          free -h
+
       - name: Build the release APKs
+        timeout-minutes: 50
         run: |
           chmod +x gradlew
-          ./gradlew --console=plain :app:assembleFullRelease --stacktrace \
+          ./gradlew --console=plain :app:assembleFullRelease --stacktrace --no-daemon --max-workers=2             -Dorg.gradle.jvmargs="-Xmx5120m -XX:MaxMetaspaceSize=1024m -Dfile.encoding=UTF-8"             -Pkotlin.daemon.jvmargs="-Xmx6144m" \
             -PlivetvBuildNumber=${{ github.run_number }} \
             -PlivetvVersionName=${{ inputs.version }}
 

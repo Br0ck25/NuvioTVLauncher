@@ -1,9 +1,11 @@
 package com.nuvio.tv.ui.screens.collection
 
+import androidx.activity.compose.BackHandler
 import com.nuvio.tv.ui.theme.NuvioTheme
 
 import androidx.compose.foundation.BorderStroke
 import androidx.compose.foundation.background
+import androidx.compose.foundation.focusGroup
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
@@ -32,6 +34,7 @@ import androidx.compose.material.icons.filled.Edit
 import androidx.compose.material.icons.filled.KeyboardArrowDown
 import androidx.compose.material.icons.filled.KeyboardArrowUp
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.CompositionLocalProvider
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
@@ -42,17 +45,27 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.alpha
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.layout.ContentScale
+import androidx.compose.ui.focus.FocusDirection
 import androidx.compose.ui.focus.FocusRequester
+import androidx.compose.ui.focus.focusProperties
 import androidx.compose.ui.focus.focusRequester
-import androidx.compose.ui.focus.focusRestorer
 import androidx.compose.ui.focus.onFocusChanged
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.SolidColor
+import androidx.compose.ui.input.key.Key
+import androidx.compose.ui.input.key.KeyEventType
+import androidx.compose.ui.input.key.key
+import androidx.compose.ui.input.key.onPreviewKeyEvent
+import androidx.compose.ui.input.key.type
+import androidx.compose.ui.platform.LocalFocusManager
 import androidx.compose.ui.platform.LocalSoftwareKeyboardController
+import androidx.compose.ui.platform.LocalLayoutDirection
 import androidx.compose.ui.text.input.ImeAction
+import androidx.compose.ui.text.input.KeyboardType
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
+import androidx.compose.ui.unit.LayoutDirection
 import androidx.hilt.navigation.compose.hiltViewModel
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import androidx.tv.material3.Border
@@ -82,10 +95,67 @@ import com.nuvio.tv.domain.model.TmdbCollectionSource
 import com.nuvio.tv.domain.model.TmdbCollectionSourceType
 import com.nuvio.tv.domain.model.TraktCollectionSource
 import com.nuvio.tv.ui.components.LoadingIndicator
+import com.nuvio.tv.ui.components.NuvioDialog
+import com.nuvio.tv.ui.components.tvReorderDisabledFocusBorder
 import com.nuvio.tv.R
+import androidx.compose.runtime.withFrameNanos
 import androidx.compose.ui.res.stringResource
+import androidx.compose.ui.semantics.Role
+import androidx.compose.ui.semantics.role
+import androidx.compose.ui.semantics.semantics
 import androidx.compose.ui.text.style.TextDirection
 import androidx.compose.ui.text.TextStyle
+
+internal suspend fun requestFocusWhenReady(
+    requester: FocusRequester,
+    maxFrames: Int = 8
+): Boolean {
+    repeat(maxFrames) {
+        val focused = runCatching { requester.requestFocus() }.getOrDefault(false)
+        if (focused) return true
+        withFrameNanos { }
+    }
+    return false
+}
+
+internal fun Modifier.trapHorizontalFocus(): Modifier = this
+    .focusProperties {
+        onExit = {
+            if (requestedFocusDirection == FocusDirection.Left ||
+                requestedFocusDirection == FocusDirection.Right
+            ) {
+                cancelFocusChange()
+            }
+        }
+    }
+    .focusGroup()
+
+internal fun Modifier.blockHorizontalFocus(): Modifier = this
+    .focusProperties {
+        left = FocusRequester.Cancel
+        right = FocusRequester.Cancel
+    }
+
+internal fun Modifier.focusEntryTarget(
+    target: FocusRequester
+): Modifier = this
+    .focusProperties {
+        onEnter = {
+            if (requestedFocusDirection == FocusDirection.Up ||
+                requestedFocusDirection == FocusDirection.Down
+            ) {
+                runCatching { target.requestFocus() }
+            }
+        }
+        onExit = {
+            if (requestedFocusDirection == FocusDirection.Left ||
+                requestedFocusDirection == FocusDirection.Right
+            ) {
+                cancelFocusChange()
+            }
+        }
+    }
+    .focusGroup()
 
 @OptIn(ExperimentalTvMaterial3Api::class)
 @Composable
@@ -94,19 +164,31 @@ fun NuvioTextField(
     onValueChange: (String) -> Unit,
     modifier: Modifier = Modifier,
     placeholder: String = "",
-    focusRequester: FocusRequester? = null
+    focusRequester: FocusRequester? = null,
+    imeAction: ImeAction = ImeAction.Done,
+    /** URL fields get the TV keyboard's slash/colon keys instead of the plain text layout. */
+    keyboardType: KeyboardType = KeyboardType.Text,
+    /** Optional URL prefix outside the editable value; an empty string keeps the same input layout. */
+    prefixText: String? = null
 ) {
     var isEditing by remember { mutableStateOf(false) }
     val textFieldFocusRequester = remember { FocusRequester() }
     val surfaceFocusRequester = focusRequester ?: remember { FocusRequester() }
     val keyboardController = LocalSoftwareKeyboardController.current
+    val focusManager = LocalFocusManager.current
 
     LaunchedEffect(isEditing) {
         if (isEditing) {
-            repeat(3) { androidx.compose.runtime.withFrameNanos { } }
-            try { textFieldFocusRequester.requestFocus() } catch (_: Exception) {}
+            requestFocusWhenReady(textFieldFocusRequester)
         }
     }
+
+    val finishEditing = {
+        isEditing = false
+        keyboardController?.hide()
+        runCatching { surfaceFocusRequester.requestFocus() }
+    }
+    BackHandler(enabled = isEditing) { finishEditing() }
 
     Surface(
         onClick = { isEditing = true },
@@ -134,36 +216,78 @@ fun NuvioTextField(
                 onValueChange = onValueChange,
                 modifier = Modifier
                     .fillMaxWidth()
+                    .focusProperties { canFocus = isEditing }
                     .focusRequester(textFieldFocusRequester)
                     .onFocusChanged {
                         if (!it.isFocused && isEditing) {
                             isEditing = false
                             keyboardController?.hide()
                         }
+                    }
+                    .onPreviewKeyEvent { event ->
+                        if (event.type != KeyEventType.KeyDown) {
+                            return@onPreviewKeyEvent false
+                        }
+                        when (event.key) {
+                            Key.Back -> {
+                                if (!isEditing) return@onPreviewKeyEvent false
+                                finishEditing()
+                                true
+                            }
+                            Key.DirectionUp, Key.DirectionDown -> {
+                                // While the field is editing, the on-screen keyboard owns the
+                                // direction keys. Only move focus once editing has ended.
+                                if (isEditing) return@onPreviewKeyEvent false
+                                focusManager.moveFocus(
+                                    if (event.key == Key.DirectionDown) FocusDirection.Down
+                                    else FocusDirection.Up
+                                )
+                                true
+                            }
+                            else -> false
+                        }
                     },
                 singleLine = true,
-                keyboardOptions = KeyboardOptions(imeAction = ImeAction.Done),
+                keyboardOptions = KeyboardOptions(keyboardType = keyboardType, imeAction = imeAction),
                 keyboardActions = KeyboardActions(
-                    onDone = {
-                        isEditing = false
-                        keyboardController?.hide()
-                        surfaceFocusRequester.requestFocus()
-                    }
+                    onDone = { finishEditing() },
+                    onNext = { finishEditing() },
+                    onGo = { finishEditing() },
+                    onSearch = { finishEditing() }
                 ),
                 textStyle = MaterialTheme.typography.bodyMedium.copy(
                     color = NuvioTheme.colors.TextPrimary,
-                                            textDirection = TextDirection.Content
+                    textDirection = if (prefixText == null) TextDirection.Content else TextDirection.Ltr
                 ),
                 cursorBrush = SolidColor(if (isEditing) NuvioTheme.colors.Primary else Color.Transparent),
                 decorationBox = { innerTextField ->
-                    if (value.isEmpty() && placeholder.isNotEmpty()) {
-                        Text(
-                            text = placeholder,
-                            style = MaterialTheme.typography.bodyMedium,
-                            color = NuvioTheme.colors.TextTertiary
-                        )
+                    if (prefixText == null) {
+                        if (value.isEmpty() && placeholder.isNotEmpty()) {
+                            Text(
+                                text = placeholder,
+                                style = MaterialTheme.typography.bodyMedium,
+                                color = NuvioTheme.colors.TextTertiary
+                            )
+                        }
+                        innerTextField()
+                    } else CompositionLocalProvider(LocalLayoutDirection provides LayoutDirection.Ltr) {
+                        // Keep the editable node in this same slot when a full URL is pasted.
+                        Row(verticalAlignment = Alignment.CenterVertically) {
+                            if (prefixText.isNotEmpty()) Text(
+                                text = prefixText,
+                                style = MaterialTheme.typography.bodyMedium,
+                                color = NuvioTheme.colors.TextPrimary
+                            )
+                            Box(Modifier.weight(1f)) {
+                                if (value.isEmpty() && placeholder.isNotEmpty()) Text(
+                                    text = placeholder,
+                                    style = MaterialTheme.typography.bodyMedium,
+                                    color = NuvioTheme.colors.TextTertiary
+                                )
+                                innerTextField()
+                            }
+                        }
                     }
-                    innerTextField()
                 }
             )
         }
@@ -192,11 +316,64 @@ fun NuvioButton(
             focusedBorder = Border(
                 border = NuvioTheme.focusRing.border(NuvioTheme.spacing.xxs),
                 shape = RoundedCornerShape(NuvioTheme.radii.md)
-            )
+            ),
+            focusedDisabledBorder = tvReorderDisabledFocusBorder(RoundedCornerShape(NuvioTheme.radii.md))
         ),
         shape = ButtonDefaults.shape(RoundedCornerShape(NuvioTheme.radii.md)),
         content = { content() }
     )
+}
+
+@OptIn(ExperimentalTvMaterial3Api::class)
+@Composable
+internal fun UnsavedChangesDialog(
+    title: String,
+    subtitle: String,
+    canSave: Boolean,
+    isSaving: Boolean = false,
+    onSave: () -> Unit,
+    onDiscard: () -> Unit,
+    onDismiss: () -> Unit
+) {
+    val primaryFocusRequester = remember { FocusRequester() }
+
+    LaunchedEffect(Unit) {
+        requestFocusWhenReady(primaryFocusRequester, maxFrames = 10)
+    }
+
+    NuvioDialog(
+        onDismiss = { if (!isSaving) onDismiss() },
+        title = title,
+        subtitle = subtitle,
+        width = 560.dp,
+        suppressFirstKeyUp = false
+    ) {
+        BackHandler(enabled = !isSaving) { onDismiss() }
+        Row(
+            modifier = Modifier.fillMaxWidth(),
+            horizontalArrangement = Arrangement.spacedBy(NuvioTheme.spacing.md, Alignment.End)
+        ) {
+            Button(
+                onClick = onDiscard,
+                enabled = !isSaving,
+                modifier = (if (canSave) Modifier else Modifier.focusRequester(primaryFocusRequester))
+                    .semantics { role = Role.Button }
+            ) {
+                Text(stringResource(R.string.collections_cancel))
+            }
+            if (canSave) {
+                Button(
+                    onClick = onSave,
+                    enabled = !isSaving,
+                    modifier = Modifier
+                        .focusRequester(primaryFocusRequester)
+                        .semantics { role = Role.Button }
+                ) {
+                    Text(stringResource(R.string.collections_editor_save))
+                }
+            }
+        }
+    }
 }
 
 fun collectionSourceKeys(sources: List<CollectionSource>): List<String> {
@@ -212,8 +389,8 @@ fun collectionSourceKeys(sources: List<CollectionSource>): List<String> {
 fun collectionSourceKey(source: CollectionSource): String {
     return when (source) {
         is AddonCatalogCollectionSource -> "addon_${source.addonId}_${source.type}_${source.catalogId}_${source.genre.orEmpty()}"
-        is TmdbCollectionSource -> "tmdb_${source.sourceType}_${source.tmdbId}_${source.mediaType}_${source.sortBy}_${source.filters.hashCode()}"
-        is TraktCollectionSource -> "trakt_${source.traktListId}_${source.mediaType}_${source.sortBy}_${source.sortHow}"
+        is TmdbCollectionSource -> "tmdb_${source.sourceType}_${source.tmdbId}_${source.mediaType}_${source.sortBy}_${source.title}_${source.filters.hashCode()}"
+        is TraktCollectionSource -> "trakt_${source.traktListId}_${source.mediaType}_${source.sortBy}_${source.sortHow}_${source.title}"
     }
 }
 

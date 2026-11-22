@@ -52,4 +52,38 @@ class SubtitleCuePositionTest {
         )
         assertSame(cues, PlayerSubtitleUtils.mergeOverlappingCues(cues))
     }
+
+    @Test
+    fun `identical overlapping cues are shown once`() {
+        val first = Cue.Builder().setText("مرحبا").build()
+        val second = Cue.Builder().setText("مرحبا").build()
+
+        val result = PlayerSubtitleUtils.mergeOverlappingCues(listOf(first, second))
+
+        assertEquals(listOf("مرحبا"), result.map { it.text.toString() })
+    }
+
+    @Test
+    fun `an identical positioned cue also removes the duplicate`() {
+        val top = Cue.Builder()
+            .setText("مرحبا")
+            .setLine(0.08f, Cue.LINE_TYPE_FRACTION)
+            .build()
+        val bottom = Cue.Builder().setText("مرحبا").build()
+
+        val result = PlayerSubtitleUtils.mergeOverlappingCues(listOf(top, bottom))
+
+        assertEquals(1, result.size)
+        assertEquals("مرحبا", result[0].text.toString())
+        assertEquals(0.08f, result[0].line)
+    }
+
+    @Test
+    fun `the same line twice inside one cue is shown once`() {
+        val cue = Cue.Builder().setText("مرحبا\nمرحبا").build()
+
+        val result = PlayerSubtitleUtils.mergeOverlappingCues(listOf(cue))
+
+        assertEquals(listOf("مرحبا"), result.map { it.text.toString() })
+    }
 }

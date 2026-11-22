@@ -8,6 +8,7 @@ import org.junit.Assert.assertTrue
 import org.junit.Test
 import java.time.Instant
 import java.time.LocalDate
+import java.time.ZoneId
 import java.time.ZoneOffset
 
 /**
@@ -163,10 +164,10 @@ class ContinueWatchingAiringRulesTest {
     @Test
     fun `watchableEpisodes excludes future mid-season episodes so checkmark can apply`() {
         // Documents a58809 behavior: only aired eps count → caught-up checkmark possible.
-        // Two days either side, so the result doesn't depend on the machine's time zone (the app
-        // compares air dates at UTC midnight, and "tomorrow" in the US evening is already "today" in UTC).
-        val tomorrow = LocalDate.now(ZoneOffset.UTC).plusDays(2).toString()
-        val yesterday = LocalDate.now(ZoneOffset.UTC).minusDays(2).toString()
+        // A week out, so the date cannot already have passed: a release date is read as
+        // midnight UTC, which can still be "yesterday" for a local date only a day ahead.
+        val nextWeek = LocalDate.now(ZoneId.systemDefault()).plusDays(7).toString()
+        val yesterday = LocalDate.now(ZoneId.systemDefault()).minusDays(1).toString()
         val meta = CwMetaSummary(
             id = "tt-airing",
             name = "Airing",
@@ -182,7 +183,7 @@ class ContinueWatchingAiringRulesTest {
             videos = listOf(
                 episode(1, 1, yesterday),
                 episode(1, 2, yesterday),
-                episode(1, 3, tomorrow),
+                episode(1, 3, nextWeek),
             ),
         )
         val watchable = meta.watchableEpisodes().map { it.season to it.episode }
@@ -197,6 +198,35 @@ class ContinueWatchingAiringRulesTest {
                 watchedEpisodes = setOf(1 to 1, 1 to 2),
             ),
         )
+    }
+
+    @Test
+    fun `remainingEpisodeCount ignores future episodes`() {
+        val nextWeek = LocalDate.now(ZoneId.systemDefault()).plusDays(7).toString()
+        val yesterday = LocalDate.now(ZoneId.systemDefault()).minusDays(1).toString()
+        val meta = CwMetaSummary(
+            id = "tt-count",
+            name = "Airing",
+            poster = null,
+            backdropUrl = null,
+            logo = null,
+            description = null,
+            genres = emptyList(),
+            releaseInfo = null,
+            imdbRating = null,
+            language = null,
+            country = null,
+            videos = listOf(
+                episode(1, 1, yesterday),
+                episode(1, 2, yesterday),
+                episode(1, 3, yesterday),
+                episode(1, 4, nextWeek),
+            ),
+        )
+
+        assertEquals(3, meta.remainingEpisodeCount(emptySet()))
+        assertEquals(2, meta.remainingEpisodeCount(setOf(1 to 1)))
+        assertEquals(0, meta.remainingEpisodeCount(setOf(1 to 3)))
     }
 
     private fun episode(season: Int, ep: Int, released: String) = CwVideoSummary(

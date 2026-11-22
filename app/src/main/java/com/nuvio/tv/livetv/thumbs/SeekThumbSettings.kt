@@ -44,7 +44,7 @@ object SeekThumbSettings {
         if (loaded) return _values.value
         synchronized(this) {
             if (loaded) return _values.value
-            val p = com.nuvio.tv.core.profile.ActiveProfile.prefs(context, FILE)
+            val p = context.applicationContext.getSharedPreferences(FILE, Context.MODE_PRIVATE)
             _values.value = Values(
                 enabled = p.getBoolean(ENABLED, false),
                 // Not chosen yet: on for devices with plenty of memory, off for lower-end ones (anyone can change it).
@@ -62,7 +62,7 @@ object SeekThumbSettings {
         load(context)
         val next = change(_values.value)
         _values.value = next
-        com.nuvio.tv.core.profile.ActiveProfile.prefs(context, FILE).edit()
+        context.applicationContext.getSharedPreferences(FILE, Context.MODE_PRIVATE).edit()
             .putBoolean(ENABLED, next.enabled)
             .putBoolean(INCLUDE_4K, next.include4k)
             .putString(WHEN, next.whenToMake.name)

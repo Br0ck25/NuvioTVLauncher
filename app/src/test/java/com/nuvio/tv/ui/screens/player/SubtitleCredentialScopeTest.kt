@@ -18,6 +18,7 @@ import javax.net.ssl.X509TrustManager
 import kotlin.concurrent.thread
 
 class SubtitleCredentialScopeTest {
+
     private val streamHeaders = mapOf(
         "Authorization" to "Bearer token",
         "Cookie" to "session=1",
@@ -278,7 +279,7 @@ class SubtitleCredentialScopeTest {
                 .retryOnConnectionFailure(false)
                 .build()
 
-            executeSubtitleRequest(request, validated, permissive, protect = { it }).use { assertEquals(200, it.code) }
+            executeSubtitleRequest(request, validated, permissive).use { assertEquals(200, it.code) }
 
             // Validated attempt, with credentials.
             val redirectHops = server.requestsTo("/redirect.srt")

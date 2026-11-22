@@ -7,6 +7,7 @@ import com.nuvio.tv.R
 import com.nuvio.tv.data.local.AutoSkipSegmentType
 import com.nuvio.tv.data.local.InternalPlayerEngine
 import com.nuvio.tv.data.local.PlayerPreference
+import com.nuvio.tv.data.local.PlayerControlButton
 import com.nuvio.tv.data.local.PlayerSettings
 
 @Composable
@@ -149,7 +150,8 @@ private fun AutoSkipToggle(
 @Composable
 internal fun PlaybackPlayerInterfaceSection(
     settings: PlayerSettings,
-    onUpdate: PlaybackSettingsUpdate
+    onUpdate: PlaybackSettingsUpdate,
+    onOpenDialog: (PlaybackDialog) -> Unit
 ) {
     val internalPlayer = settings.playerPreference != PlayerPreference.EXTERNAL
 
@@ -161,10 +163,37 @@ internal fun PlaybackPlayerInterfaceSection(
         enabled = internalPlayer
     )
     SettingsToggleRow(
+        title = stringResource(R.string.playback_seek_preview),
+        subtitle = stringResource(R.string.playback_seek_preview_sub),
+        checked = settings.seekPreviewEnabled,
+        onToggle = { onUpdate { setSeekPreviewEnabled(!settings.seekPreviewEnabled) } },
+        enabled = internalPlayer,
+        expandSubtitleOnFocus = true
+    )
+    SettingsToggleRow(
         title = stringResource(R.string.playback_show_loading_status),
         subtitle = stringResource(R.string.playback_show_loading_status_sub),
         checked = settings.showPlayerLoadingStatus,
         onToggle = { onUpdate { setShowPlayerLoadingStatus(!settings.showPlayerLoadingStatus) } }
+    )
+    SettingsToggleRow(
+        title = stringResource(R.string.playback_info),
+        subtitle = stringResource(R.string.playback_info_sub),
+        checked = settings.showPlaybackInfo,
+        onToggle = { onUpdate { setShowPlaybackInfo(!settings.showPlaybackInfo) } },
+        enabled = internalPlayer
+    )
+    val visibleButtonCount = PlayerControlButton.entries.count { it !in settings.hiddenPlayerControls }
+    SettingsActionRow(
+        title = stringResource(R.string.playback_visible_buttons),
+        subtitle = stringResource(R.string.playback_visible_buttons_sub),
+        value = stringResource(
+            R.string.playback_visible_buttons_value,
+            visibleButtonCount,
+            PlayerControlButton.entries.size
+        ),
+        onClick = { onOpenDialog(PlaybackDialog.PLAYER_BUTTONS) },
+        enabled = internalPlayer
     )
     SettingsToggleRow(
         title = stringResource(R.string.playback_pause_overlay),
@@ -215,6 +244,7 @@ private fun playerPreferenceLabel(preference: PlayerPreference): String = when (
 private fun internalEngineLabel(engine: InternalPlayerEngine): String = when (engine) {
     InternalPlayerEngine.EXOPLAYER -> stringResource(R.string.playback_engine_exoplayer)
     InternalPlayerEngine.MVP_PLAYER -> stringResource(R.string.playback_engine_mvplayer)
+    InternalPlayerEngine.VLC_PLAYER -> stringResource(R.string.playback_engine_vlc)
     InternalPlayerEngine.AUTO -> stringResource(R.string.playback_player_auto)
 }
 
@@ -259,6 +289,11 @@ internal fun InternalPlayerEngineDialog(
             stringResource(R.string.playback_engine_mvplayer_desc)
         ),
         SettingsPickerOption(
+            InternalPlayerEngine.VLC_PLAYER,
+            stringResource(R.string.playback_engine_vlc),
+            stringResource(R.string.playback_engine_vlc_desc)
+        ),
+        SettingsPickerOption(
             InternalPlayerEngine.AUTO,
             stringResource(R.string.playback_player_auto),
             stringResource(R.string.playback_player_auto_desc)
@@ -272,6 +307,59 @@ internal fun InternalPlayerEngineDialog(
         onOptionSelected = onEngineSelected,
         onDismiss = onDismiss,
         width = 420.dp,
-        maxHeight = 320.dp
+        maxHeight = 420.dp
     )
+}
+
+@Composable
+internal fun PlayerButtonsDialog(
+    settings: PlayerSettings,
+    onUpdate: PlaybackSettingsUpdate,
+    onDismiss: () -> Unit
+) {
+    val options = PlayerControlButton.entries.map { control ->
+        SettingsPickerOption(control, playerControlLabel(control), playerControlDescription(control))
+    }
+    SettingsMultiChoiceDialog(
+        title = stringResource(R.string.playback_buttons_dialog_title),
+        subtitle = stringResource(R.string.playback_buttons_dialog_sub),
+        options = options,
+        selectedValues = PlayerControlButton.entries.filter { it !in settings.hiddenPlayerControls },
+        onValuesSelected = { shown ->
+            onUpdate {
+                setHiddenPlayerControls(PlayerControlButton.entries.filter { it !in shown }.toSet())
+            }
+            onDismiss()
+        },
+        onDismiss = onDismiss,
+        showSelectAll = true
+    )
+}
+
+private fun playerControlLabel(control: PlayerControlButton): String = when (control) {
+    PlayerControlButton.NEXT_EPISODE -> "Next Episode Button"
+    PlayerControlButton.SUBTITLES -> "Subtitles Button"
+    PlayerControlButton.SPEED -> "Speed Button"
+    PlayerControlButton.QUALITY -> "Quality Button"
+    PlayerControlButton.AUDIO -> "Audio Button"
+    PlayerControlButton.CHAPTERS -> "Chapters Button"
+    PlayerControlButton.SOURCES -> "Sources Button"
+    PlayerControlButton.EPISODES -> "Episodes Button"
+    PlayerControlButton.PARTY -> "Watch Party Button"
+    PlayerControlButton.STREAM_INFO -> "Info Button"
+    PlayerControlButton.MORE -> "More Menu"
+}
+
+private fun playerControlDescription(control: PlayerControlButton): String = when (control) {
+    PlayerControlButton.NEXT_EPISODE -> "The next-episode shortcut in the control row. Auto-play is unaffected."
+    PlayerControlButton.SUBTITLES -> "The subtitles shortcut. Subtitles keep working."
+    PlayerControlButton.SPEED -> "The speed shortcut. Playback speed is unchanged."
+    PlayerControlButton.QUALITY -> "The quality shortcut. The current quality is unchanged."
+    PlayerControlButton.AUDIO -> "The audio-track shortcut. The selected track is unchanged."
+    PlayerControlButton.CHAPTERS -> "The chapter-list shortcut. Chapter titles on the seek bar remain."
+    PlayerControlButton.SOURCES -> "The sources shortcut. Automatic fallback still works."
+    PlayerControlButton.EPISODES -> "The episode-list shortcut. Auto-play is unaffected."
+    PlayerControlButton.PARTY -> "The Watch Party shortcut. An active party is unchanged."
+    PlayerControlButton.STREAM_INFO -> "The stream-info shortcut in the More menu. The remote INFO key still opens it."
+    PlayerControlButton.MORE -> "Aspect ratio, stream info, engine switch and reports. Turning this off hides the whole menu."
 }

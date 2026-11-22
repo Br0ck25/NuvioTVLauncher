@@ -39,6 +39,8 @@ internal data class PlayerNavigationArgs(
     val profileId: Int?,
     val audioDelayMs: Int? = null,
     val audioDelayLanguage: String? = null,
+    val audioSlaveUrl: String? = null,
+    val youtubeLive: Boolean = false,
     val fromLinkCache: Boolean = false,
     /** The source was picked by auto source selection (or reused from the link cache). */
     val autoPlayNav: Boolean = false
@@ -104,6 +106,8 @@ internal data class PlayerNavigationArgs(
                 profileId = savedStateHandle.get<String>("profileId")?.toIntOrNull(),
                 audioDelayMs = savedStateHandle.get<String>("audioDelayMs")?.toIntOrNull(),
                 audioDelayLanguage = decodedOrNull("audioDelayLanguage"),
+                audioSlaveUrl = savedStateHandle.get<String>("audioSlaveUrl")?.takeIf { it.isNotEmpty() },
+                youtubeLive = savedStateHandle.get<String>("youtubeLive")?.toBooleanStrictOrNull() == true,
                 fromLinkCache = savedStateHandle.get<String>("fromLinkCache")?.toBooleanStrictOrNull() == true,
                 autoPlayNav = savedStateHandle.get<String>("autoPlayNav")?.toBooleanStrictOrNull() == true
             )

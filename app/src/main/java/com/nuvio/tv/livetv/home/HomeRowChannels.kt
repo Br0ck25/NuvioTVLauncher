@@ -48,8 +48,11 @@ internal fun homeRowChannelSelections(
             a.user == b.user && sameRowSettings(a.settings, b.settings)
     }.map { input ->
         val s = input.settings
-        val list = if (!s.homeRowEnabled || input.channels.isEmpty()) emptyList()
-            else buildUi(input.channels, input.user, s, homeRowGroup(s), "", true, exactGroup = true).channels
+        // Add-on channels (Stremio TV catalogs such as the CNCVerse bridge) belong to the Live TV
+        // guide, not Nuvio's Home row. Keep them out of Favorites, Recently watched and All here.
+        val homeChannels = input.channels.filter { it.addon == null }
+        val list = if (!s.homeRowEnabled || homeChannels.isEmpty()) emptyList()
+            else buildUi(homeChannels, input.user, s, homeRowGroup(s), "", true, exactGroup = true).channels
         list to s
     }.flowOn(dispatcher).distinctUntilChanged()
         // Keep one result, rather than a queue of playlist-sized snapshots for a slow collector.
@@ -59,6 +62,8 @@ internal fun homeRowChannelSelections(
 // Retain only these collections, not older audio/quality/reminder maps from skipped saves.
 private fun rowUser(u: LiveUserState): LiveUserState = LiveUserState(
     hiddenChannels = u.hiddenChannels, hiddenGroups = u.hiddenGroups,
+    hiddenPlaylists = u.hiddenPlaylists,
+    groupTagFilters = u.groupTagFilters,
     favorites = u.favorites, recent = u.recent, lockedGroups = u.lockedGroups,
     customGroups = u.customGroups, channelOrder = u.channelOrder,
     channelCopies = u.channelCopies, groupOrder = u.groupOrder

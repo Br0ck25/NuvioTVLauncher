@@ -1,5 +1,5 @@
 <resources>
-    <string name="app_name">Nuvio</string>
+    <string name="app_name">Nuvio One</string>
     <string name="type_movie">Filmas</string>
     <string name="type_series">Serialas</string>
     <string name="type_unknown">Nežinoma</string>
@@ -46,8 +46,8 @@
     <string name="cw_next_up">Kitas</string>
     <string name="cw_resume">Tęsti</string>
     <string name="cw_percent_watched">Žiūrėta %1$d%%</string>
-    <string name="cw_hours_min_left">Liko %1$dv %2$dm</string>
-    <string name="cw_min_left">Liko %1$dm</string>
+    <string name="cw_hours_min_left">Liko %1$d val. %2$d min.</string>
+    <string name="cw_min_left">Liko %1$d min.</string>
     <string name="cw_almost_done">Beveik baigta</string>
     <string name="cw_airs_date">Pasirodo %1$s</string>
     <string name="cw_airs_today">Pasirodo šiandien</string>
@@ -126,7 +126,7 @@
     <string name="detail_tab_more_like_this">Panašūs</string>
     <string name="detail_section_network">Tinklas</string>
     <string name="detail_section_production">Produkcija</string>
-    <string name="episodes_unavailable">Nepasiekiamas</string>
+    <string name="episodes_unavailable">Nepasiekiama</string>
     <string name="series_status_ended">Baigtas</string>
     <string name="series_status_continuing">Tęsiamas</string>
     <string name="series_status_current">Dabartinis</string>
@@ -176,8 +176,8 @@
     <string name="about_check_updates_subtitle">Atsisiųsti naujausią versiją</string>
     <string name="about_privacy_policy">Privatumo politika</string>
     <string name="about_privacy_policy_subtitle">Peržiūrėti mūsų privatumo politiką</string>
-    <string name="about_supporters_contributors">Rėmėjai ir pagalbininkai</string>
-    <string name="about_supporters_contributors_subtitle">Viešas pripažinimas ir projekto nuopelnai</string>
+    <string name="about_supporters_contributors">Paremti „Nuvio“</string>
+    <string name="about_supporters_contributors_subtitle">Paremkite projektą ir peržiūrėkite bendruomenės narius</string>
 
     <!-- SettingsScreen categories -->
     <string name="settings_account">Paskyra</string>
@@ -212,12 +212,12 @@
     <string name="action_close">Uždaryti</string>
 
     <!-- SupportersContributorsScreen -->
-    <string name="supporters_contributors_title">Rėmėjai ir pagalbininkai</string>
+    <string name="supporters_contributors_title">Paremkite „Nuvio“</string>
     <string name="supporters_contributors_subtitle">Žmonės, palaikantys „Nuvio“, ir pagalbininkai, kuriantys ją televizijai ir mobiliesiems įrenginiams.</string>
     <string name="supporters_contributors_supporters_copy">Rėmėjai ir aukotojai padeda projektui judėti į priekį, finansuoja infrastruktūrą ir suteikia vietos ambicingoms funkcijoms.</string>
-    <string name="supporters_contributors_donate_copy">„Nuvio“ išliks nemokama ir atviro kodo sistema. Jei norite paremti projektą, galite padėti padengti laiką ir infrastruktūrą už jo.</string>
-    <string name="supporters_contributors_donate_button">Paaukoti „Nuvio“</string>
-    <string name="supporters_contributors_qr_title">Skenuoti, kad paaukotumėte</string>
+    <string name="supporters_contributors_donate_copy">„Nuvio“ išliks nemokama ir atviro kodo sistema. Jei norite paremti projektą, galite padėti padengti kūrimo ir infrastruktūros išlaidas.</string>
+    <string name="supporters_contributors_donate_button">Paremti „Nuvio“</string>
+    <string name="supporters_contributors_qr_title">Nuskaitykite, kad paremtumėte</string>
     <string name="supporters_contributors_qr_subtitle">Atidarykite nuorodą telefone ir paremkite „Nuvio“.</string>
     <string name="supporters_contributors_qr_hint">Nukreipkite kamerą į QR kodą arba naudokite žemiau esantį mygtuką.</string>
     <string name="supporters_contributors_back_button">Grįžti į informaciją</string>
@@ -227,7 +227,7 @@
     <string name="supporters_empty">Rėmėjų dar nerasta.</string>
     <string name="supporters_error_title">Nepavyko įkelti rėmėjų</string>
     <string name="supporters_no_message">Žinutė nepalikta.</string>
-    <string name="supporters_open_donations">Atidaryti aukojimo puslapį</string>
+    <string name="supporters_open_donations">Atidaryti paramos puslapį</string>
     <string name="contributors_loading">Įkeliami „GitHub“ pagalbininkai…</string>
     <string name="contributors_empty">Pagalbininkų dar nerasta.</string>
     <string name="contributors_error_title">Nepavyko įkelti pagalbininkų</string>
@@ -246,7 +246,7 @@
     <string name="playback_osd_clock">OSD ekraninis laikrodis</string>
     <string name="playback_skip_intro">Praleisti Intro</string>
     <string name="playback_skip_intro_sub">Naudoti „introdb.app“ įžangų ir santraukų aptikimui.</string>
-    <string name="playback_auto_frame_rate">Automatinis kadrų dažnis</string>
+    <string name="playback_auto_frame_rate">Automatinis kadrų dažnio ir skiriamosios gebos derinimas</string>
     <string name="playback_player_internal">Vidinis</string>
     <string name="playback_player_external">Išorinis</string>
     <string name="playback_player_ask">Klausti kiekvieną kartą</string>
@@ -266,14 +266,14 @@
     <!-- PlaybackAudioSettings -->
     <string name="audio_trailer_section">Anonsas</string>
     <string name="audio_autoplay_trailers">Automatiškai leisti anonsus</string>
-    <string name="audio_autoplay_trailers_sub">Automatiškai leisti anonsus informacijos ekrane po tam tikro neveiklumo laikotarpio</string>
+    <string name="audio_autoplay_trailers_sub">Automatiškai leisti anonsus informacijos ir peržiūros pabaigos ekranuose</string>
     <string name="audio_trailer_delay">Anonso delsa</string>
     <string name="audio_section">Garsas</string>
     <string name="audio_lang_default">Numatytoji (medijos failas)</string>
     <string name="audio_lang_device">Įrenginio kalba</string>
     <string name="audio_preferred_lang">Pageidaujama garso kalba</string>
     <string name="audio_skip_silence">Praleisti tylą</string>
-    <string name="audio_skip_silence_sub">Praleisti tylas garso dalis atkūrimo metu</string>
+    <string name="audio_skip_silence_sub">Praleisti tylias garso dalis atkūrimo metu</string>
     <string name="audio_advanced_section">Išplėstiniai garso nustatymai</string>
     <string name="audio_advanced_warning">Šie nustatymai kai kuriuose įrenginiuose gali sukelti problemų. Keiskite tik jei žinote, ką darote.</string>
     <string name="audio_decoder_device_only">Tik įrenginio dekoderiai</string>
@@ -309,7 +309,7 @@
     <string name="sub_outline_color">Kontūro spalva</string>
     <string name="sub_advanced_section">Išplėstinis subtitrų atvaizdavimas</string>
     <string name="sub_libass">Naudoti „libass“ ASS/SSA subtitrams</string>
-    <string name="sub_libass_sub">Eksperimentinis: išplėstinis ASS/SSA atvaizdavimas (stiliai, pozicionavimas, animacijos)</string>
+    <string name="sub_libass_sub">Išplėstinis ASS/SSA atvaizdavimas (stiliai, pozicionavimas, animacijos)</string>
     <string name="sub_libass_mode">„Libass“ atvaizdavimo režimas</string>
     <string name="sub_org_none">Nėra (numatytoji tvarka)</string>
     <string name="sub_org_by_lang">Pagal kalbą</string>
@@ -320,7 +320,7 @@
 
     <!-- PlaybackAutoPlaySettings -->
     <string name="autoplay_reuse_last_link">Naudoti paskutinę nuorodą</string>
-    <string name="autoplay_reuse_last_link_sub">Automatiškai paleisti paskutinį veikusią nuorodą tam pačiam filmui/serijai, kai talpykla vis dar galioja</string>
+    <string name="autoplay_reuse_last_link_sub">Automatiškai paleisti paskutinę veikusią nuorodą tam pačiam filmui ar serijai, kai talpykla vis dar galioja</string>
     <string name="autoplay_last_link_cache">Paskutinės nuorodos talpyklos trukmė</string>
     <string name="autoplay_mode_manual">Rankinis (pasirinkti srautą)</string>
     <string name="autoplay_mode_first">Automatiškai paleisti pirmą šaltinį</string>
@@ -333,10 +333,10 @@
     <string name="autoplay_threshold_pct">Slenksčio procentas</string>
     <string name="autoplay_threshold_min">Minutės iki pabaigos</string>
     <string name="autoplay_threshold_mode">Kitos serijos slenksčio režimas</string>
-    <string name="autoplay_threshold_pct_title">Threshold Percentage</string>
-    <string name="autoplay_threshold_pct_sub">Naudojama pasibaigus serijai, jei nėra pabaigos kadrų (outro) žymų.</string>
-    <string name="autoplay_threshold_min_title">Threshold Minutes</string>
-    <string name="autoplay_threshold_min_sub">Naudojama pasibaigus serijai, jei nėra pabaigos kadrų (outro) žymų.</string>
+    <string name="autoplay_threshold_pct_title">Slenkstis procentais</string>
+    <string name="autoplay_threshold_pct_sub">Naudojama, kai nėra pabaigos kadrų (outro) laiko žymos.</string>
+    <string name="autoplay_threshold_min_title">Slenkstis minutėmis</string>
+    <string name="autoplay_threshold_min_sub">Naudojama, kai nėra pabaigos kadrų (outro) laiko žymos.</string>
     <string name="autoplay_scope_all">Visi šaltiniai</string>
     <string name="autoplay_scope_addons">Tik įdiegti priedai</string>
     <string name="autoplay_scope_plugins">Tik įjungti įskiepiai</string>
@@ -375,8 +375,8 @@
     <string name="layout_modern_desc">Fiksuota pagrindinė (hero) dalis su viena aktyvia eilute greitesniam naršymui</string>
     <string name="layout_section_home">Pradinio ekrano išdėstymas</string>
     <string name="layout_section_home_desc">Pasirinkite struktūrą ir pagrindinės dalies šaltinį.</string>
-    <string name="layout_landscape_posters">Gulsčiai plakatai</string>
-    <string name="layout_landscape_posters_sub">Perjungti tarp stačių ir gulsčių kortelių moderniame rodinyje.</string>
+    <string name="layout_landscape_posters">Gulsčių plakatų režimas</string>
+    <string name="layout_landscape_posters_sub">Visur naudoti gulsčias korteles.</string>
     <string name="layout_preview_row">Rodyti peržiūros eilutę</string>
     <string name="layout_preview_row_sub">Rodyti dalinę žemiau esančios eilutės peržiūrą moderniame pradinio ekrano išdėstyme.</string>
     <string name="layout_hero_catalogs">Pagrindinės dalies (Hero) katalogai</string>
@@ -391,8 +391,8 @@
     <string name="layout_modern_sidebar_blur_sub">Perjungti suliejimo efektą modernios šoninės juostos paviršiams.</string>
     <string name="layout_show_hero">Rodyti pagrindinę (hero) dalį</string>
     <string name="layout_show_hero_sub">Rodyti pagrindinius elementus pradinio ekrano viršuje.</string>
-    <string name="layout_show_discover">Rodyti „Atrasti“ paieškoje</string>
-    <string name="layout_show_discover_sub">Rodyti naršymo skiltį, kai paieška tuščia.</string>
+    <string name="layout_show_discover">Rodyti arba slėpti „Atrasti“</string>
+    <string name="layout_show_discover_sub">Pridėti naršymui skirtą „Atrasti“ skiltį.</string>
     <string name="layout_poster_labels">Rodyti plakatų etiketes</string>
     <string name="layout_poster_labels_sub">Rodyti pavadinimus po plakatais eilutėse, tinklelyje ir „Rodyti viską“.</string>
     <string name="layout_addon_name">Rodyti priedo pavadinimą</string>
@@ -449,7 +449,6 @@
 
     <!-- MDBListSettingsScreen -->
     <string name="mdblist_title">MDBList įvertinimai</string>
-    <string name="mdblist_subtitle">Konfigūruoti išorinius įvertinimus, rodomus pagrindinėje informacijos dalyje</string>
     <string name="mdblist_enable_title">Įjungti MDBList įvertinimus</string>
     <string name="mdblist_enable_subtitle">Gauti įvertinimus iš išorinių teikėjų išsamios informacijos ekrane</string>
     <string name="mdblist_api_key_title">API raktas</string>
@@ -499,8 +498,8 @@
     <string name="tmdb_basic_info_title">Pagrindinė informacija</string>
     <string name="tmdb_basic_info_subtitle">Aprašymas, žanrai ir įvertinimas iš TMDB</string>
     <string name="tmdb_details_title">Išsami informacija</string>
-    <string name="tmdb_details_subtitle">Trukmė, išleidimo data, šalis ir kalba iš TMDB</string>
-    <string name="tmdb_credits_title">Nuopelnai</string>
+    <string name="tmdb_details_subtitle">Trukmė, būsena, šalis ir kalba iš TMDB</string>
+    <string name="tmdb_credits_title">Kūrėjai ir aktoriai</string>
     <string name="tmdb_credits_subtitle">Aktoriai su nuotraukomis, režisierius ir scenaristas iš TMDB</string>
     <string name="tmdb_productions_title">Produkcijos</string>
     <string name="tmdb_productions_subtitle">Gamybos kompanijos iš TMDB</string>
@@ -509,7 +508,7 @@
     <string name="tmdb_episodes_title">Serijos</string>
     <string name="tmdb_episodes_subtitle">Serijų pavadinimai, apžvalgos, miniatiūros ir trukmė iš TMDB</string>
     <string name="tmdb_more_like_this_title">Panašūs</string>
-    <string name="tmdb_more_like_this_subtitle">TMDB rekomendacijų fonai informacijos puslapyje</string>
+    <string name="tmdb_more_like_this_subtitle">TMDB rekomendacijų fonai informacijos ir peržiūros pabaigos ekranuose</string>
     <string name="tmdb_collections_title">Kolekcijos</string>
     <string name="tmdb_collections_subtitle">TMDB filmų kolekcijos išleidimo tvarka</string>
 
@@ -527,7 +526,7 @@
     <string name="trakt_code_expires">Kodas galioja dar %1$s</string>
     <string name="trakt_token_refreshes">„Trakt“ prieigos raktas atnaujinamas po %1$s</string>
     <string name="trakt_login_instruction">Paspauskite „Prisijungti“, kad pradėtumėte „Trakt“ įrenginio autentifikavimą. Čia pasirodys QR kodas.</string>
-    <string name="trakt_missing_credentials">„local.properties“ failo trūksta TRAKT_CLIENT_ID / TRAKT_CLIENT_SECRET parametrų.</string>
+    <string name="trakt_missing_credentials">Faile „local.properties“ trūksta TRAKT_CLIENT_ID / TRAKT_CLIENT_SECRET parametrų.</string>
     <string name="trakt_watch_progress_title">Žiūrėjimo pažanga</string>
     <string name="trakt_watch_progress_subtitle">Pasirinkite, kuris pažangos šaltinis valdys atkūrimo tęsimą ir „Tęsti žiūrėjimą“</string>
     <string name="trakt_watch_progress_dialog_title">Žiūrėjimo pažanga</string>
@@ -583,9 +582,7 @@
     <string name="debug_signing_in">Prisijungiama…</string>
     <string name="debug_sign_in">Prisijungti</string>
     <string name="debug_error_dialog_title">Atkūrimo klaida</string>
-    <string name="debug_error_dialog_subtitle">Atkūrimo metu įvyko klaida.
-
-Klaida: Bandomoji simuliuojama klaida — tai nėra tikras gedimas. Šaltinis grąžino HTTP 503 (Paslauga nepasiekiama).</string>
+    <string name="debug_error_dialog_subtitle">Atkūrimo metu įvyko klaida.\n\nKlaida: Bandomoji simuliuojama klaida — tai nėra tikras gedimas. Šaltinis grąžino HTTP 503 (Paslauga nepasiekiama).</string>
     <string name="debug_dismiss">Atmesti</string>
 
     <!-- ProfileSettingsContent -->
@@ -593,7 +590,7 @@ Klaida: Bandomoji simuliuojama klaida — tai nėra tikras gedimas. Šaltinis gr
     <string name="profile_subtitle">Valdyti šios paskyros naudotojų profilius</string>
     <string name="profile_manage_button">Valdyti profilius</string>
     <string name="profile_manage_title">Valdyti profilius</string>
-    <string name="profile_manage_subtitle">Pasirinkite profilį, kurį norite redaguoti, perjungti arba sukurti naują</string>
+    <string name="profile_manage_subtitle">Pasirinkite profilį redaguoti ar perjungti arba sukurkite naują</string>
     <string name="profile_manage_hint">Pasirinkite profilį valdymui</string>
     <string name="profile_primary_label">Pagrindinis</string>
     <string name="profile_shares_primary">Dalijasi pagrindinio profilio %1$s</string>
@@ -629,17 +626,17 @@ Klaida: Bandomoji simuliuojama klaida — tai nėra tikras gedimas. Šaltinis gr
     <string name="addon_title">Priedai</string>
     <string name="addon_readonly_notice">Naudojami pagrindinio profilio priedai, jų keisti negalima</string>
     <string name="addon_install_title">Įdiegti priedą</string>
-    <string name="addon_install_placeholder">https://pavyzdys.lt</string>
+    <string name="addon_install_placeholder">https://example.com</string>
     <string name="addon_installing">Įdiegiama</string>
     <string name="addon_install_btn">Įdiegti</string>
     <string name="addon_installed_section">Įdiegta</string>
     <string name="addon_empty">Nėra įdiegtų priedų. Pridėkite vieną, kad pradėtumėte.</string>
     <string name="addon_remove">Pašalinti</string>
     <string name="addon_manage_from_phone_title">Valdyti iš telefono</string>
-    <string name="addon_manage_from_phone_subtitle">Skenuokite QR kodą, kad valdytumėte priedus ir pradinio ekrano katalogus iš savo telefono</string>
+    <string name="addon_manage_from_phone_subtitle">Skenuokite QR kodą, kad telefonu valdytumėte priedus, katalogus ir kolekcijas</string>
     <string name="addon_reorder_title">Keisti pradinio ekrano katalogų tvarką</string>
-    <string name="addon_reorder_subtitle">Valdo katalogų eiliškumą pradiniame ekrane (Klasikinis + Modernus + Tinklelis)</string>
-    <string name="addon_qr_scan_instruction">Skenuokite telefonu, kad valdytumėte priedus ir katalogus</string>
+    <string name="addon_reorder_subtitle">Nustato katalogų ir kolekcijų eiliškumą pradiniame ekrane (Klasikinis + Modernus + Tinklelis)</string>
+    <string name="addon_qr_scan_instruction">Skenuokite telefonu, kad valdytumėte priedus, katalogus ir kolekcijas</string>
     <string name="addon_qr_close">Uždaryti</string>
     <string name="addon_confirm_title">Patvirtinti priedų ir katalogų pakeitimus</string>
     <string name="addon_confirm_subtitle">Iš jūsų telefono buvo padaryti šie pakeitimai:</string>
@@ -648,7 +645,7 @@ Klaida: Bandomoji simuliuojama klaida — tai nėra tikras gedimas. Šaltinis gr
     <string name="addon_confirm_catalog_reordered">Katalogų tvarka buvo pakeista</string>
     <string name="addon_confirm_catalogs_disabled">Katalogai išjungti pradiniame ekrane:</string>
     <string name="addon_confirm_catalogs_enabled">Katalogai įjungti pradiniame ekrane:</string>
-    <string name="addon_confirm_no_changes">Nematomų pakeitimų neaptikta</string>
+    <string name="addon_confirm_no_changes">Matomų pakeitimų neaptikta</string>
     <string name="addon_confirm_reject">Atmesti</string>
     <string name="addon_confirm_confirm">Patvirtinti</string>
 
@@ -682,7 +679,7 @@ Klaida: Bandomoji simuliuojama klaida — tai nėra tikras gedimas. Šaltinis gr
     <string name="parental_profanity">Keiksmažodžiai</string>
     <string name="parental_alcohol">Alkoholis / Narkotikai</string>
     <string name="parental_frightening">Baisus / Gąsdinantis</string>
-    <string name="parental_severity_severe">Griežtas (Severe)</string>
+    <string name="parental_severity_severe">Stiprus</string>
     <string name="parental_severity_moderate">Vidutinis</string>
     <string name="parental_severity_mild">Lengvas</string>
     <string name="player_ends_at">Baigiasi %1$s</string>
@@ -762,7 +759,7 @@ Klaida: Bandomoji simuliuojama klaida — tai nėra tikras gedimas. Šaltinis gr
     <string name="pause_you_are_watching">Jūs žiūrite</string>
     <string name="pause_cast_label">Aktoriai</string>
     <string name="pause_back_to_details">Grįžti į informaciją</string>
-    <string name="pause_as_character">kaip %1$s</string>
+    <string name="pause_as_character">Vaidmuo: %1$s</string>
 
     <!-- PostPlayOverlay -->
     <string name="next_episode_label">Kita serija</string>
@@ -770,7 +767,7 @@ Klaida: Bandomoji simuliuojama klaida — tai nėra tikras gedimas. Šaltinis gr
     <string name="next_episode_playing_via">Bus atkurta per %1$s po %2$ds</string>
     <string name="next_episode_play">Leisti</string>
     <string name="next_episode_unaired">Neišleista</string>
-    <string name="next_episode_not_aired_yet">Kita serija dar nepasirodyta</string>
+    <string name="next_episode_not_aired_yet">Kita serija dar nepasirodė</string>
     <string name="skip_intro">Praleisti Intro</string>
     <string name="skip_ending">Praleisti pabaigą</string>
     <string name="skip_recap">Praleisti santrauką</string>
@@ -818,77 +815,72 @@ Klaida: Bandomoji simuliuojama klaida — tai nėra tikras gedimas. Šaltinis gr
     <string name="library_delete_confirm">Ištrinti</string>
     <string name="library_source_local">VIETINĖ</string>
     <string name="library_type_all">Visi</string>
-    <string name="library_type_items">elementai</string>
-    <string name="library_empty_local_title">Kol kas čia nieko nėra</string>
-    <string name="library_empty_trakt_title">Šiame sąraše nieko nėra</string>
-    <string name="library_empty_local_subtitle">Išsaugokite mėgstamiausius, kad pamatytumėte juos čia</string>
-    <string name="library_empty_trakt_subtitle">Naudokite „+“ informacijos lange turiniui pridėti į žiūrėjimo ar kitus sąrašus</string>
 
     <!-- AccountSettingsContent -->
     <string name="account_loading">Įkeliama…</string>
-    <string name="account_sync_description">Jūsų paskyra sinchronizuojama per „Nuvio Sync“.</string>
-    <string name="account_sync_restart_note">Pakeitimų įsigaliojimui gali reikėti paleisti programą iš naujo.</string>
-    <string name="account_signin_qr_title">Prisijungti</string>
-    <string name="account_signin_qr_subtitle">„Nuvio“ naudoja „Supabase“ sinchronizavimui</string>
-    <string name="account_signed_in_label">Prisijungta kaip</string>
+    <string name="account_sync_description">Sinchronizuokite biblioteką, žiūrėjimo pažangą, priedus ir įskiepius tarp įrenginių.</string>
+    <string name="account_sync_restart_note">Aktyvūs įrenginiai nesinchronizuojami realiuoju laiku. Prisijungę arba norėdami gauti kitur atliktus pakeitimus, paleiskite šį įrenginį iš naujo.</string>
+    <string name="account_signin_qr_title">Prisijungti naudojant QR kodą</string>
+    <string name="account_signin_qr_subtitle">Nuskenuokite QR kodą ir prisijunkite el. paštu telefone</string>
+    <string name="account_signed_in_label">Prisijungta</string>
     <string name="account_total_label">Iš viso</string>
-    <string name="account_loading_sync">Sinchronizuojama…</string>
+    <string name="account_loading_sync">Įkeliami sinchronizavimo duomenys…</string>
     <string name="account_sign_out">Atsijungti</string>
 
     <!-- AuthSignInScreen -->
     <string name="auth_signin_title">Prisijungti</string>
-    <string name="auth_signin_tv_disabled">Rankinis prisijungimas televizoriuje saugumo sumetimais išjungtas.</string>
+    <string name="auth_signin_tv_disabled">El. pašto ir slaptažodžio įvedimas televizoriuje išjungtas. Prisijunkite naudodami QR kodą.</string>
     <string name="auth_signin_qr_btn">Prisijungti per QR</string>
 
     <!-- AuthQrSignInScreen -->
     <string name="auth_qr_title">Prisijungti per telefoną</string>
     <string name="auth_qr_finishing">Užbaigiama…</string>
-    <string name="auth_qr_code_label">Skenuokite QR kodą</string>
+    <string name="auth_qr_code_label">Kodas: %1$s</string>
     <string name="auth_qr_expires">Kodas baigsis po %1$s</string>
-    <string name="auth_qr_scan_instruction">Nukreipkite kamerą į kodą</string>
-    <string name="auth_qr_code_display">QR kodo rodymas</string>
+    <string name="auth_qr_scan_instruction">Nuskenuokite QR kodą arba įveskite trumpąjį kodą naršyklėje.</string>
+    <string name="auth_qr_code_display">Kodas: %1$s</string>
     <string name="auth_qr_refresh">Atnaujinti kodą</string>
     <string name="auth_qr_continue_without_account">Tęsti be paskyros</string>
-    <string name="auth_qr_connected">Prijungta</string>
-    <string name="auth_qr_synced_data">Duomenys sinchronizuoti</string>
+    <string name="auth_qr_connected">Jūsų paskyra prijungta šiame televizoriuje.</string>
+    <string name="auth_qr_synced_data">Jūsų sinchronizuojami duomenys</string>
     <string name="auth_qr_generating">Generuojama…</string>
-    <string name="auth_qr_unavailable">QR paslauga laikinai nepasiekiama</string>
+    <string name="auth_qr_unavailable">QR kodas nepasiekiamas. Atnaujinkite ir bandykite dar kartą.</string>
     <string name="auth_qr_please_wait">Prašome palaukti…</string>
     <string name="auth_qr_continue">Tęsti</string>
     <string name="auth_qr_back">Atgal</string>
 
     <!-- SyncCodeGenerateScreen -->
     <string name="sync_generate_title">Generuoti kodą</string>
-    <string name="sync_generate_subtitle">Naudokite šį kodą kitame įrenginyje</string>
+    <string name="sync_generate_subtitle">Sukurkite PIN kodą sinchronizavimo kodui apsaugoti. Pasidalykite kodu su kitais savo įrenginiais.</string>
     <string name="sync_generate_code_label">Sinchronizavimo kodas</string>
-    <string name="sync_generate_instruction">Įveskite šį kodą kitame įrenginyje</string>
+    <string name="sync_generate_instruction">Įveskite šį ir PIN kodą kitame įrenginyje, kad juos susietumėte.</string>
     <string name="sync_generate_done">Atlikta</string>
-    <string name="sync_generate_pin_label">PIN kodas</string>
+    <string name="sync_generate_pin_label">Pasirinkite PIN kodą (4–8 simboliai)</string>
     <string name="sync_generate_pin_placeholder">Įveskite PIN</string>
 
     <!-- SyncCodeClaimScreen -->
     <string name="sync_claim_title">Prijungti įrenginį</string>
-    <string name="sync_claim_subtitle">Įveskite kodą iš kito įrenginio</string>
-    <string name="sync_claim_success">Sėkmingai prijungta</string>
+    <string name="sync_claim_subtitle">Įveskite sinchronizavimo ir PIN kodus iš kito įrenginio, kad susietumėte šį įrenginį.</string>
+    <string name="sync_claim_success">Įrenginys susietas! Dabar bus sinchronizuojami jūsų priedai ir įskiepiai.</string>
     <string name="sync_claim_done">Atlikta</string>
-    <string name="sync_claim_code_label">Įvesti kodą</string>
-    <string name="sync_claim_code_placeholder">Kodas</string>
+    <string name="sync_claim_code_label">Sinchronizavimo kodas</string>
+    <string name="sync_claim_code_placeholder">XXXX-XXXX-XXXX-XXXX-XXXX</string>
     <string name="sync_claim_pin_label">PIN</string>
-    <string name="sync_claim_pin_placeholder">PIN</string>
+    <string name="sync_claim_pin_placeholder">Įveskite PIN kodą</string>
 
     <!-- PluginScreen -->
-    <string name="plugin_readonly_notice">Naudojami pagrindinio profilio įskiepiai</string>
+    <string name="plugin_readonly_notice">Naudojami pagrindinio profilio įskiepiai; jų pakeisti negalima</string>
     <string name="plugin_repositories_section">Repozitorijos (%1$d)</string>
     <string name="plugin_providers_section">Teikėjai (%1$d)</string>
     <string name="plugin_title">Įskiepiai</string>
-    <string name="plugin_subtitle">Tvarkyti projekto įskiepius ir šaltinius</string>
+    <string name="plugin_subtitle">Tvarkykite vietinius paieškos įrankius ir teikėjus</string>
     <string name="plugin_add_repository">Pridėti repozitoriją</string>
     <string name="plugin_add_btn">Pridėti</string>
     <string name="plugin_manage_from_phone_title">Valdyti iš telefono</string>
-    <string name="plugin_manage_from_phone_subtitle">Keisti įskiepių nustatymus per telefoną</string>
-    <string name="plugin_qr_instruction">Skenuokite QR kodą</string>
+    <string name="plugin_manage_from_phone_subtitle">Nuskenuokite QR kodą, kad pridėtumėte arba pašalintumėte repozitorijas telefonu</string>
+    <string name="plugin_qr_instruction">Nuskenuokite telefonu, kad tvarkytumėte repozitorijas</string>
     <string name="plugin_qr_close">Uždaryti</string>
-    <string name="plugin_confirm_title">Patvirtinti įskiepių pakeitimus</string>
+    <string name="plugin_confirm_title">Patvirtinti repozitorijų pakeitimus</string>
     <string name="plugin_confirm_subtitle">Padaryti šie pakeitimai:</string>
     <string name="plugin_confirm_added">Pridėta:</string>
     <string name="plugin_confirm_removed">Pašalinta:</string>
@@ -898,17 +890,17 @@ Klaida: Bandomoji simuliuojama klaida — tai nėra tikras gedimas. Šaltinis gr
     <string name="plugin_confirm_confirm">Patvirtinti</string>
     <string name="plugin_updated_format">Atnaujinta: %1$s</string>
     <string name="plugin_test_btn">Testuoti</string>
-    <string name="plugin_test_results">Testo rezultatai (%1$d)</string>
+    <string name="plugin_test_results">Testo rezultatai (srautų: %1$d)</string>
 
     <!-- ProfileSelectionScreen -->
     <string name="profile_selection_title">Kas žiūri?</string>
     <string name="profile_selection_subtitle">Pasirinkite savo profilį</string>
-    <string name="profile_selection_hint">Spustelėkite profilį, kad pradėtumėte</string>
+    <string name="profile_selection_hint">Palaikykite nuspaudę, kad tvarkytumėte profilį</string>
     <string name="profile_selection_empty">Profilių dar nėra</string>
     <string name="profile_selection_primary_badge">Pagrindinis</string>
     <string name="profile_selection_options_title">Profilio parinktys</string>
     <string name="profile_delete_confirm_title">Ištrinti profilį?</string>
-    <string name="profile_delete_confirm_subtitle">Visi šio profilio duomenys bus prarasti.</string>
+    <string name="profile_delete_confirm_subtitle">Šis profilis ir visi jo duomenys, įskaitant biblioteką, žiūrėjimo istoriją ir priedų nustatymus, bus negrįžtamai ištrinti. Šio veiksmo atšaukti negalima.</string>
     <string name="profile_delete_btn">Ištrinti</string>
     <string name="profile_saving">Išsaugoma…</string>
 
@@ -920,7 +912,7 @@ Klaida: Bandomoji simuliuojama klaida — tai nėra tikras gedimas. Šaltinis gr
     <!-- CatalogSeeAllScreen -->
     <string name="catalog_see_all_from">iš %1$s</string>
     <string name="catalog_see_all_empty_title">Elementų nėra</string>
-    <string name="catalog_see_all_empty_subtitle">Šiame kataloge turinio nerasta</string>
+    <string name="catalog_see_all_empty_subtitle">Išbandykite kitą katalogą arba patikrinkite vėliau</string>
 
     <!-- LayoutSelectionScreen -->
     <string name="layout_selection_welcome">Sveiki atvykę į Nuvio</string>
@@ -935,9 +927,9 @@ Klaida: Bandomoji simuliuojama klaida — tai nėra tikras gedimas. Šaltinis gr
     <string name="update_unknown_sources">Leisti diegti iš nežinomų šaltinių</string>
     <!-- AccountScreen -->
     <string name="account_title">Paskyra</string>
-    <string name="account_sign_in_description">Prisijunkite, kad sinchronizuotumėte biblioteką, pažangą ir priedus tarp įrenginių. Biblioteka sinchronizuojama per „Nuvio Sync“, kai „Trakt“ neprijungta.</string>
+    <string name="account_sign_in_description">Prisijunkite, kad sinchronizuotumėte biblioteką, žiūrėjimo pažangą, priedus ir įskiepius tarp įrenginių. Kai „Trakt“ neprijungta, biblioteka sinchronizuojama per „Nuvio Sync“. Žiūrėjimo pažangą galima sinchronizuoti per „Trakt“ arba „Nuvio Sync“.</string>
     <string name="account_sync_code_title">Sinchronizavimo kodas</string>
-    <string name="account_sync_code_description">Susiekite savo įrenginius naudodami kodą</string>
+    <string name="account_sync_code_description">Sinchronizuokite įrenginius nesukurdami paskyros.</string>
     <string name="account_linked_devices">Susieti įrenginiai (%1$d)</string>
     <string name="account_no_linked_devices">Susietų įrenginių nėra</string>
     <string name="account_unlink">Atsieti</string>
@@ -957,10 +949,10 @@ Klaida: Bandomoji simuliuojama klaida — tai nėra tikras gedimas. Šaltinis gr
     <string name="discover_filter_genre">Žanras</string>
     <string name="discover_select_catalog">Pasirinkti katalogą</string>
     <string name="discover_genre_default">Visi žanrai</string>
-    <string name="discover_empty_no_catalog_title">Katalogų nerasta</string>
-    <string name="discover_empty_no_catalog_subtitle">Įdiekite priedą, kad matytumėte „Atrasti“ turinį</string>
+    <string name="discover_empty_no_catalog_title">Pasirinkite katalogą</string>
+    <string name="discover_empty_no_catalog_subtitle">Pasirinkite atradimų katalogą, kurį norite naršyti</string>
     <string name="discover_empty_no_content_title">Turinio nerasta</string>
-    <string name="discover_empty_no_content_subtitle">Šioje kategorijoje elementų nėra</string>
+    <string name="discover_empty_no_content_subtitle">Išbandykite kitą žanrą arba katalogą</string>
 
     <!-- AddonManagerScreen -->
     <string name="addon_confirm_total_addons">Iš viso priedų: %1$d</string>
@@ -969,16 +961,16 @@ Klaida: Bandomoji simuliuojama klaida — tai nėra tikras gedimas. Šaltinis gr
 
     <!-- PluginScreen -->
     <string name="plugin_and_more">ir dar %1$d</string>
-    <string name="plugin_providers_count">%1$d teikėjai</string>
+    <string name="plugin_providers_count">Teikėjų: %1$d</string>
     <string name="plugin_enabled">Įjungta</string>
     <string name="plugin_disabled">Išjungta</string>
-    <string name="plugin_no_repos">Repozitorijų nerasta</string>
+    <string name="plugin_no_repos">Repozitorijų dar nepridėta.\nPridėkite repozitoriją, kad pradėtumėte.</string>
 
     <!-- ProfileSettingsContent -->
     <string name="profile_edit_title_id">Redaguoti profilį #%1$d</string>
 
     <!-- PlaybackAudioSettings -->
-    <string name="audio_passthrough_info">Garso pralaidumas tiesiogiai į jūsų garso sistemą</string>
+    <string name="audio_passthrough_info">Tiesioginis garso perdavimas (TrueHD, DTS, AC-3 ir kt.) veikia automatiškai. Prijungus suderinamą AV imtuvą arba garso juostą per HDMI, neprarastos kokybės garsas perduodamas nedekoduotas.</string>
 
     <!-- SidebarNavigation / MainActivity -->
     <string name="nav_home">Pagrindinis</string>
@@ -1293,6 +1285,7 @@ Klaida: Bandomoji simuliuojama klaida — tai nėra tikras gedimas. Šaltinis gr
     <string name="settings_content_discovery_addons_subtitle">Tvarkyti priedus, katalogų tvarką ir kolekcijas</string>
     <string name="settings_content_discovery_plugins_subtitle">Tvarkyti repozitorijas ir srautų teikėjus</string>
     <string name="settings_tracking_title">Stebėjimas</string>
+    <string name="settings_vpn">VPN</string>
     <string name="settings_tracking_description">Prijunkite stebėjimo paslaugas ir pasirinkite, kuri naudojama bibliotekai ir „Tęsti žiūrėjimą“.</string>
     <string name="tracking_accounts_title">Paskyros</string>
     <string name="tracking_accounts_subtitle">Prijungti ir tvarkyti stebėjimo paslaugas</string>
@@ -1804,7 +1797,6 @@ Klaida: Bandomoji simuliuojama klaida — tai nėra tikras gedimas. Šaltinis gr
     <string name="mdblist_show_on_hero_title">Rodyti įvertinimus pagrindinėje skiltyje</string>
     <string name="mdblist_show_on_hero_subtitle">Rodyti MDBList įvertinimus pagrindinėje karuselėje (modernioje ir klasikinėje / tinklelio)</string>
     <string name="mdblist_rating_order_title">Įvertinimų tvarka</string>
-    <string name="mdblist_rating_order_subtitle">Modernioje pagrindinėje skiltyje rodomi pirmi 3 įjungti ir prieinami įvertinimai. Tvarką keiskite rodyklėmis.</string>
     <string name="mdblist_library_lists">Bibliotekos sąrašai</string>
     <string name="mdblist_library_lists_description">Pasirinkite, kurie MDBList sąrašai rodomi bibliotekoje ir sąrašų tvarkymo lange. Žiūrėtinų sąrašas rodomas visada.</string>
     <string name="mdblist_library_lists_empty">Jūsų MDBList paskyroje sąrašų dar nerasta. Sinchronizuokite, kad juos įkeltumėte.</string>
@@ -2355,8 +2347,6 @@ Klaida: Bandomoji simuliuojama klaida — tai nėra tikras gedimas. Šaltinis gr
     <string name="library_syncing_library">Sinchronizuojama biblioteka\u2026</string>
     <string name="library_empty_trakt_not_auth_title">Trakt neprijungtas</string>
     <string name="library_empty_trakt_not_auth_subtitle">Nustatymuose prijunkite Trakt paskyrą, kad matytumėte Trakt biblioteką</string>
-    <string name="library_empty_simkl_title">Šioje būsenoje nerasta: %1$s</string>
-    <string name="library_empty_simkl_subtitle">Informacijos puslapyje naudokite +, kad pridėtumėte elementų prie Simkl būsenos</string>
     <string name="library_empty_simkl_not_auth_title">Simkl neprijungtas</string>
     <string name="library_empty_simkl_not_auth_subtitle">Nustatymuose prijunkite Simkl paskyrą, kad matytumėte Simkl biblioteką</string>
     <string name="library_list_create_dialog_title">Sukurti sąrašą</string>
@@ -3300,17 +3290,17 @@ Klaida: Bandomoji simuliuojama klaida — tai nėra tikras gedimas. Šaltinis gr
     <string name="stream_test_no_stream">Atkūrimo istorijos nėra. Paleiskite vaizdo įrašą, kad patikrintumėte jo serverį.</string>
     <string name="stream_test_btn_start">Pradėti testą</string>
     <string name="stream_test_btn_measuring_baseline">Matuojamas atskaitos greitis...</string>
-    <string name="stream_test_btn_measuring_parallel1">Matuojamas lygiagretusis ryšys (1 MB)...</string>
-    <string name="stream_test_btn_measuring_parallel4">Matuojamas lygiagretusis ryšys (4 MB)...</string>
-    <string name="stream_test_btn_measuring_parallel8">Matuojamas lygiagretusis ryšys (8 MB)...</string>
-    <string name="stream_test_btn_measuring_parallel16">Matuojamas lygiagretusis ryšys (16 MB)...</string>
+    <string name="stream_test_btn_measuring_parallel1">Matuojamas lygiagretusis ryšys (1 jungtis)...</string>
+    <string name="stream_test_btn_measuring_parallel4">Matuojamas lygiagretusis ryšys (4 jungtys)...</string>
+    <string name="stream_test_btn_measuring_parallel8">Matuojamas lygiagretusis ryšys (8 jungtys)...</string>
+    <string name="stream_test_btn_measuring_parallel16">Matuojamas lygiagretusis ryšys (16 jungčių)...</string>
     <string name="stream_test_btn_run_again">Tikrinti dar kartą</string>
     <string name="stream_test_btn_running">Vykdoma...</string>
     <string name="stream_test_label_baseline">Vienas standartinis ryšys (atskaita)</string>
-    <string name="stream_test_label_parallel1">Lygiagretusis ryšys (1 MB dalys)</string>
-    <string name="stream_test_label_parallel4">Lygiagretusis ryšys (4 MB dalys)</string>
-    <string name="stream_test_label_parallel8">Lygiagretusis ryšys (8 MB dalys)</string>
-    <string name="stream_test_label_parallel16">Lygiagretusis ryšys (16 MB dalys)</string>
+    <string name="stream_test_label_parallel1">Lygiagretusis ryšys (1 jungtis)</string>
+    <string name="stream_test_label_parallel4">Lygiagretusis ryšys (4 jungtys)</string>
+    <string name="stream_test_label_parallel8">Lygiagretusis ryšys (8 jungtys)</string>
+    <string name="stream_test_label_parallel16">Lygiagretusis ryšys (16 jungčių)</string>
     <string name="stream_test_error_prefix">Klaida: %1$s</string>
     <string name="stream_test_video_bitrate">Vidutinė vaizdo sparta bitais: %1$s</string>
     <string name="stream_test_error_connection">Nepavyko prisijungti. Paskutinio srauto nuoroda gali būti nebegaliojanti arba nepasiekiama. Paleiskite vaizdo įrašą iš naujo ir bandykite dar kartą.</string>
@@ -3346,7 +3336,6 @@ Klaida: Bandomoji simuliuojama klaida — tai nėra tikras gedimas. Šaltinis gr
     <string name="autosync_tolerance_value">%1$d ms</string>
     <string name="autosync_thorough_title">Kruopšti automatinio sinchronizavimo paieška</string>
     <string name="autosync_thorough_description">Prieš sinchronizuojant toliau lyginti kitus subtitrus ir įterptus takelius, ieškant tikslesnės atitikties. Išjungus greičiau naudojama pirma gera atitiktis. Taikomos tik patikimos atitiktys.</string>
-    <string name="autosync_toast_no_fit">Nepavyko sinchronizuoti: šie subtitrai neatitinka šios vaizdo įrašo versijos.</string>
     <string name="autosync_label_synced">Sinchronizuota automatiškai</string>
     <string name="stream_resume_from_time">Tęsti nuo %1$s</string>
     <string name="stream_resume_from_percent">Tęsti nuo %1$d%%</string>

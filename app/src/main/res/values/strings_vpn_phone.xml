@@ -1,0 +1,25 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <string name="vpn_phone_title">"Add VPN"</string>
+    <string name="vpn_phone_connected_to">"Connected to %1$s"</string>
+    <string name="vpn_phone_heading">"Add a WireGuard profile"</string>
+    <string name="vpn_phone_instructions">"Choose your WireGuard .conf file. The TV reads it, encrypts it and keeps it on this device."</string>
+    <string name="vpn_phone_choose">"Choose .conf file"</string>
+    <string name="vpn_phone_selected">"Selected: %1$s"</string>
+    <string name="vpn_phone_send">"Send to TV"</string>
+    <string name="vpn_phone_sending">"Sending…"</string>
+    <string name="vpn_phone_received">"Sent. Check your TV."</string>
+    <string name="vpn_phone_too_large">"That file is too large."</string>
+    <string name="vpn_phone_unreachable">"Couldn't reach the TV."</string>
+    <string name="vpn_phone_no_network">"No home network found. Connect this TV to Wi-Fi and try again."</string>
+    <string name="vpn_phone_nothing">"Choose a .conf file first."</string>
+    <string name="vpn_phone_network">"Only devices on this network can open this page. Your profile is sent directly to the TV."</string>
+    <string name="vpn_phone_add">"Add from phone"</string>
+    <string name="vpn_phone_add_detail">"Scan a QR code and choose the .conf file on your phone"</string>
+    <string name="vpn_phone_dialog_title">"Add VPN profile from your phone"</string>
+    <string name="vpn_phone_qr">"QR code"</string>
+    <string name="vpn_phone_waiting">"Waiting for your phone…"</string>
+    <string name="vpn_phone_received_tv">"Profile received. Saving…"</string>
+    <string name="vpn_phone_steps">"1. Put your phone on the same Wi-Fi as this TV.\n2. Scan the code with your phone's camera.\n3. Choose the .conf file and tap Send to TV."</string>
+    <string name="vpn_phone_address">"Or open %1$s"</string>
+</resources>

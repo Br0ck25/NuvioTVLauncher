@@ -60,6 +60,8 @@ internal object MyListsSync {
 
     /** Targets that belong to everybody, or are not viewers at all. */
     private val SHARED_TARGETS = setOf("nuvio-default", "default", "bp", "api")
+    /** Server ids of the stock preset channels every personal address gets; never synced. */
+    private const val PRESET_ID_PREFIX = "ch_preset_"
     private val EXACT_EPISODE = Regex("""^((?:tt\d+)|(?:tmdb:\d+)):(\d+):(\d+)$""")
 
     /**
@@ -93,6 +95,8 @@ internal object MyListsSync {
         (0 until array.length()).mapNotNull { i ->
             val o = array.optJSONObject(i) ?: return@mapNotNull null
             val id = o.optString("id").trim().ifBlank { return@mapNotNull null }
+            // Preset channels (ABC, HBO, ...) are the server's stock lineup, not channels the viewer made.
+            if (id.startsWith(PRESET_ID_PREFIX)) return@mapNotNull null
             val name = o.optString("name").trim().ifBlank { return@mapNotNull null }
             val catalog = o.optString("catalogId").trim().ifBlank { return@mapNotNull null }
             // A channel has a logo only sometimes; its poster stands in.

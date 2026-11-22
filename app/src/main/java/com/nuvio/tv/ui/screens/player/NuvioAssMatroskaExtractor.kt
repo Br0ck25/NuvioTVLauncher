@@ -175,6 +175,10 @@ private class NuvioAssTrackOutput(
 
     private var isAss = false
     private var trackId: String? = null
+    // ExoPlayer can read a subtitle sample again after a seek (from the preceding keyframe).
+    // libass keeps a track for the whole film, so feeding the same event twice would draw it
+    // twice. Keep the recent event keys and skip repeats.
+    private val seenDialogueKeys = HashSet<Long>()
 
     override fun format(format: Format) {
         if (format.sampleMimeType == MimeTypes.TEXT_SSA || format.codecs == MimeTypes.TEXT_SSA) {
@@ -205,14 +209,22 @@ private class NuvioAssTrackOutput(
                         limit = sampleLimit
                     )
 
-                    assHandler.readTrackDialogue(
-                        trackId = trackId,
-                        start = timeUs / 1000,
-                        duration = durationUs / 1000,
-                        data = dialogue,
-                        offset = 0,
-                        length = dialogue.size
+                    val eventKey = dialogueKey(
+                        timeUs = timeUs,
+                        durationUs = durationUs,
+                        dialogue = dialogue
                     )
+                    if (seenDialogueKeys.size >= MAX_SEEN_DIALOGUES) seenDialogueKeys.clear()
+                    if (seenDialogueKeys.add(eventKey)) {
+                        assHandler.readTrackDialogue(
+                            trackId = trackId,
+                            start = timeUs / 1000,
+                            duration = durationUs / 1000,
+                            data = dialogue,
+                            offset = 0,
+                            length = dialogue.size
+                        )
+                    }
                 }
             }
         }
@@ -229,6 +241,30 @@ private class NuvioAssTrackOutput(
         timestampUs += Util.castNonNull(matcher.group(3)).toLong() * C.MICROS_PER_SECOND
         timestampUs += Util.castNonNull(matcher.group(4)).toLong() * 10_000
         return timestampUs
+    }
+
+    private fun dialogueKey(timeUs: Long, durationUs: Long, dialogue: ByteArray): Long {
+        var hash = 1125899906842597L
+        hash = 31L * hash + timeUs
+        // Duration is intentionally not part of the key: two events for the same line can be
+        // written with slightly different end times and still overlap on screen.
+        val text = runCatching { String(dialogue, Charsets.UTF_8) }.getOrNull()
+        if (text != null) {
+            // The payload starts at Style. The visible Text is the seventh field; different
+            // styles for the same line should still count as the same event.
+            val visible = text.split(',', limit = 7).let { fields ->
+                if (fields.size == 7) fields[6] else text
+            }
+            for (char in visible) {
+                hash = 31L * hash + char.code
+            }
+        } else {
+            hash = 31L * hash + durationUs
+            for (byte in dialogue) {
+                hash = 31L * hash + byte.toLong()
+            }
+        }
+        return hash
     }
 
     private fun findTokenIndex(array: ByteArray, tokenNumber: Int, limit: Int = array.size): Int {
@@ -294,6 +330,7 @@ private class NuvioAssTrackOutput(
 
         const val COMMA: Byte = 44
         const val INFLATE_BUFFER_SIZE = 4096
+        const val MAX_SEEN_DIALOGUES = 20_000
         val EMPTY_BYTE_ARRAY = ByteArray(0)
     }
 }

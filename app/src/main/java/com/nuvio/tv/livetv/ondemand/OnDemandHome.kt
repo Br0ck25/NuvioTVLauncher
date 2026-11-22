@@ -35,6 +35,19 @@ object VodHomeIds {
     fun metaId(uid: String) = PREFIX + uid
     fun uidOf(metaId: String): String? = metaId.takeIf { it.startsWith(PREFIX) }?.removePrefix(PREFIX)
 
+    /** Whether a watch-progress content id belongs to an On Demand title. */
+    fun isOnDemandContentId(contentId: String?): Boolean = contentId?.startsWith(PREFIX) == true
+
+    /**
+     * The provider item UID behind a watch-progress content id. Series episode keys may carry
+     * a "_s<season>e<episode>" suffix; the base UID is what the On Demand database knows.
+     */
+    fun uidOfProgress(contentId: String): String? {
+        if (!contentId.startsWith(PREFIX)) return null
+        val raw = contentId.removePrefix(PREFIX)
+        return raw.substringBefore("_s").takeIf { it.isNotBlank() }
+    }
+
     /** A card for a provider title: the matched addon details when found (poster, backdrop,
      *  logo, description, rating), otherwise the provider's own name and picture. */
     fun toMeta(item: VodItem, matched: MetaPreview?, poster: String?, name: String): MetaPreview {
@@ -92,6 +105,7 @@ fun com.nuvio.tv.ui.screens.home.HomeUiState.settingsOnly(): com.nuvio.tv.ui.scr
     homeRows = emptyList(),
     gridItems = emptyList(),
     continueWatchingItems = emptyList(),
+    onDemandContinueWatchingItems = emptyList(),
     upcomingItems = emptyList(),
     heroItems = emptyList(),
     modernHomePresentation = com.nuvio.tv.ui.screens.home.ModernHomePresentationState()

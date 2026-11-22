@@ -88,6 +88,8 @@
     <uses-permission android:name="android.permission.RECEIVE_BOOT_COMPLETED" />
     <uses-permission android:name="android.permission.FOREGROUND_SERVICE" />
     <uses-permission android:name="android.permission.FOREGROUND_SERVICE_MEDIA_PLAYBACK" />
+    <!-- Music fork: the playback notification on Android 13+. -->
+    <uses-permission android:name="android.permission.POST_NOTIFICATIONS" />
     <!-- Live TV fork: recordings keep running in the background (foreground service, awake, Wi-Fi on). -->
     <uses-permission android:name="android.permission.FOREGROUND_SERVICE_DATA_SYNC" />
     <uses-permission android:name="android.permission.WAKE_LOCK" />
@@ -96,6 +98,10 @@
     <!-- Android 13+: granted automatically (SCHEDULE_EXACT_ALARM isn't on Android 14+), so
          recordings start on time and can run in the background with the app closed. -->
     <uses-permission android:name="android.permission.USE_EXACT_ALARM" />
+
+    <!-- Music fork: scanning audio on the device and USB drives. -->
+    <uses-permission android:name="android.permission.READ_EXTERNAL_STORAGE" android:maxSdkVersion="32" />
+    <uses-permission android:name="android.permission.READ_MEDIA_AUDIO" />
 
     <uses-feature
         android:name="android.hardware.touchscreen"
@@ -220,6 +226,24 @@
             android:exported="false"
             android:foregroundServiceType="mediaPlayback" />
 
+        <!-- Music fork: keeps audio playing while the music screens are closed. -->
+        <service
+            android:name=".music.MusicPlaybackService"
+            android:exported="false"
+            android:foregroundServiceType="mediaPlayback" />
+
+        <!-- Music fork: downloads continue while the viewer browses other sections. -->
+        <service
+            android:name=".music.MusicDownloadService"
+            android:exported="false"
+            android:foregroundServiceType="dataSync" />
+
+        <!-- Music fork: keeps the Party LAN page reachable while the viewer browses. -->
+        <service
+            android:name=".music.MusicPartyService"
+            android:exported="false"
+            android:foregroundServiceType="dataSync" />
+
         <activity
             android:name=".MainActivity"
             android:exported="true"
@@ -255,6 +279,13 @@
                 <data android:scheme="stremio" />
             </intent-filter>
         </activity>
+
+        <activity
+            android:name=".music.SpotifyLoginActivity"
+            android:exported="false"
+            android:configChanges="orientation|screenSize|smallestScreenSize|screenLayout|density|uiMode|keyboard|keyboardHidden|navigation|layoutDirection|fontScale|locale"
+            android:screenOrientation="landscape"
+            android:theme="@style/Theme.MyApplication" />
 
         <activity-alias
             android:name=".launcher.AppIconDefault"

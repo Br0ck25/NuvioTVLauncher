@@ -75,7 +75,7 @@ import java.util.Locale
 /** True = focused items are filled with the accent color; false = tinted fill with an accent outline. */
 internal val LocalLiveSolidHighlight = staticCompositionLocalOf { false }
 
-/** "Guide darkness" setting ("standard" = Lightest, "darker" = Standard, "solid" = Darkest): the guide bars follow it. */
+/** "Guide darkness" setting ("standard" = Light, "darker" = Standard, "solid" = Dark): the guide bars follow it. */
 internal val LocalGuideDarkness = staticCompositionLocalOf { "darker" }
 
 private val TEXT_OVER_PICTURE = androidx.compose.ui.graphics.Shadow(
@@ -510,6 +510,16 @@ internal class LiveMemo<K, V>(private val max: Int) {
 private val titleMarksMemo = LiveMemo<String, TitleMarks>(4096)
 
 internal fun titleMarks(title: String): TitleMarks = titleMarksMemo.get(title) { workOutTitleMarks(it) }
+
+/**
+ * The title as the guide's header shows it. Guides often put the match-up in the sub-title
+ * ("College Football" + "Texas at LSU"), which TiviMate shows as "College Football : Texas at LSU".
+ */
+internal fun programDisplayTitle(program: EpgProgram): String {
+    val title = titleMarks(program.title).title
+    val sub = program.subTitle?.trim().orEmpty()
+    return if (sub.isEmpty() || title.contains(sub, ignoreCase = true)) title else "$title : $sub"
+}
 
 private fun workOutTitleMarks(title: String): TitleMarks {
     var t = title

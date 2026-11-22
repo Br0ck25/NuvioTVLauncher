@@ -14,6 +14,7 @@ import com.nuvio.tv.core.streams.StreamBadgeMatcher
 import com.nuvio.tv.domain.model.StreamBadge
 import com.nuvio.tv.ui.components.StreamImportedBadgeChip
 import com.nuvio.tv.ui.util.languageCodeToName
+import kotlinx.coroutines.delay
 
 @Composable
 internal fun rememberPlayerBadges(viewModel: PlayerViewModel, uiState: PlayerUiState): List<StreamBadge> {
@@ -52,12 +53,43 @@ internal fun rememberPlayerBadges(viewModel: PlayerViewModel, uiState: PlayerUiS
     }
 }
 
+/**
+ * The compact "1920x1080 • VP9 • 1.25x" line above the player title. Polls while the controls are
+ * visible so it follows quality changes and the current speed.
+ */
+@Composable
+internal fun rememberPlaybackInfoText(
+    viewModel: PlayerViewModel,
+    uiState: PlayerUiState,
+    enabled: Boolean = true
+): String? {
+    var mediaInfo by remember { mutableStateOf(PlayerMediaInfo()) }
+    LaunchedEffect(enabled, uiState.showControls, uiState.currentStreamUrl, uiState.internalPlayerEngine) {
+        if (!enabled) return@LaunchedEffect
+        while (uiState.showControls) {
+            mediaInfo = runCatching { viewModel.playerMediaInfo() }.getOrDefault(PlayerMediaInfo())
+            delay(1_000)
+        }
+    }
+    if (!enabled) return null
+    val resolution = mediaInfo.videoWidth?.takeIf { it > 0 }?.let { width ->
+        mediaInfo.videoHeight?.takeIf { it > 0 }?.let { height -> "${width}x$height" }
+    }
+    val codec = mediaInfo.videoCodec?.takeIf { it.isNotBlank() }
+    val speed = uiState.playbackSpeed.takeIf { it > 0f }?.let(::playbackSpeedLabel)
+    return listOfNotNull(resolution, codec, speed)
+        .joinToString("  •  ")
+        .takeIf { it.isNotBlank() }
+}
+
+private fun playbackSpeedLabel(speed: Float): String =
+    if (speed == speed.toInt().toFloat()) "${speed.toInt()}x" else "${speed}x"
+
 @Composable
 internal fun PlayerBadges(
     badges: List<StreamBadge>,
     modifier: Modifier = Modifier
-) {
-    Layout(
+) {    Layout(
         content = { badges.forEach { StreamImportedBadgeChip(badge = it) } },
         modifier = modifier
     ) { measurables, constraints ->

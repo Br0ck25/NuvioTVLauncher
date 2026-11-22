@@ -130,6 +130,8 @@ supabase-postgrest = { group = "io.github.jan-tennert.supabase", name = "postgre
 supabase-storage = { group = "io.github.jan-tennert.supabase", name = "storage-kt" }
 supabase-realtime = { group = "io.github.jan-tennert.supabase", name = "realtime-kt" }
 ktor-client-okhttp = { group = "io.ktor", name = "ktor-client-okhttp", version.ref = "ktor" }
+ktor-client-content-negotiation = { group = "io.ktor", name = "ktor-client-content-negotiation", version.ref = "ktor" }
+ktor-serialization-kotlinx-json = { group = "io.ktor", name = "ktor-serialization-kotlinx-json", version.ref = "ktor" }
 sentry-android = { group = "io.sentry", name = "sentry-android", version.ref = "sentry" }
 
 # Kotlinx Serialization

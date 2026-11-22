@@ -1,0 +1,27 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <string name="vpn_phone_title">"VPN toevoegen"</string>
+    <string name="vpn_phone_connected_to">"Verbonden met %1$s"</string>
+    <string name="vpn_phone_heading">"WireGuard-profiel toevoegen"</string>
+    <string name="vpn_phone_instructions">"Kies je WireGuard-.conf-bestand. De tv leest het, versleutelt het en bewaart het op dit apparaat."</string>
+    <string name="vpn_phone_choose">"Kies .conf-bestand"</string>
+    <string name="vpn_phone_selected">"Geselecteerd: %1$s"</string>
+    <string name="vpn_phone_send">"Naar tv sturen"</string>
+    <string name="vpn_phone_sending">"Versturen?"</string>
+    <string name="vpn_phone_received">"Verzonden. Controleer je tv."</string>
+    <string name="vpn_phone_too_large">"Dat bestand is te groot."</string>
+    <string name="vpn_phone_unreachable">"Kan de tv niet bereiken."</string>
+    <string name="vpn_phone_nothing">"Kies eerst een .conf-bestand."</string>
+    <string name="vpn_phone_network">"Alleen apparaten op dit netwerk kunnen deze pagina openen. Je profiel wordt rechtstreeks naar de tv gestuurd."</string>
+    <string name="vpn_phone_add">"Toevoegen vanaf telefoon"</string>
+    <string name="vpn_phone_add_detail">"Scan een QR-code en kies het .conf-bestand op je telefoon"</string>
+    <string name="vpn_phone_dialog_title">"VPN-profiel vanaf je telefoon toevoegen"</string>
+    <string name="vpn_phone_qr">"QR-code"</string>
+    <string name="vpn_phone_waiting">"Wachten op je telefoon?"</string>
+    <string name="vpn_phone_received_tv">"Profiel ontvangen. Opslaan?"</string>
+    <string name="vpn_phone_steps">"1. Zet je telefoon op dezelfde Wi-Fi als deze tv.
+2. Scan de code met de camera van je telefoon.
+3. Kies het .conf-bestand en tik op Naar tv sturen."</string>
+    <string name="vpn_phone_address">"Of open %1$s"</string>
+    <string name="vpn_phone_no_network">"Geen thuisnetwerk gevonden. Verbind deze tv met Wi-Fi en probeer het opnieuw."</string>
+</resources>

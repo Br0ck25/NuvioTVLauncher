@@ -68,7 +68,7 @@ sealed class Screen(val route: String) {
             return "stream/$encodedVideoId/$encodedContentTypePath/$encodedTitle?poster=$encodedPoster&backdrop=$encodedBackdrop&logo=$encodedLogo&season=${season ?: ""}&episode=${episode ?: ""}&episodeName=$encodedEpisodeName&genres=$encodedGenres&year=$encodedYear&contentId=$encodedContentId&contentName=$encodedContentName&runtime=${runtime ?: ""}&manualSelection=$manualSelection&returnToDetailOnBack=$returnToDetailOnBack&returnToHomeOnBack=$returnToHomeOnBack&startFromBeginning=$startFromBeginning&contentLanguage=$encodedContentLanguage&profileId=${profileId ?: ""}"
         }
     }
-    data object Player : Screen("player/{streamUrl}/{title}?streamName={streamName}&year={year}&headers={headers}&contentId={contentId}&contentType={contentType}&contentName={contentName}&poster={poster}&backdrop={backdrop}&logo={logo}&videoId={videoId}&season={season}&episode={episode}&episodeTitle={episodeTitle}&bingeGroup={bingeGroup}&autoPlayNav={autoPlayNav}&returnToDetailOnBack={returnToDetailOnBack}&returnToHomeOnBack={returnToHomeOnBack}&filename={filename}&videoHash={videoHash}&videoSize={videoSize}&startFromBeginning={startFromBeginning}&addonName={addonName}&addonLogo={addonLogo}&streamDescription={streamDescription}&infoHash={infoHash}&fileIdx={fileIdx}&sources={sources}&contentLanguage={contentLanguage}&cloudSessionToken={cloudSessionToken}&launchStartedAtMs={launchStartedAtMs}&profileId={profileId}&audioDelayMs={audioDelayMs}&audioDelayLanguage={audioDelayLanguage}&fromLinkCache={fromLinkCache}") {
+    data object Player : Screen("player/{streamUrl}/{title}?streamName={streamName}&year={year}&headers={headers}&contentId={contentId}&contentType={contentType}&contentName={contentName}&poster={poster}&backdrop={backdrop}&logo={logo}&videoId={videoId}&season={season}&episode={episode}&episodeTitle={episodeTitle}&bingeGroup={bingeGroup}&autoPlayNav={autoPlayNav}&returnToDetailOnBack={returnToDetailOnBack}&returnToHomeOnBack={returnToHomeOnBack}&filename={filename}&videoHash={videoHash}&videoSize={videoSize}&startFromBeginning={startFromBeginning}&addonName={addonName}&addonLogo={addonLogo}&streamDescription={streamDescription}&infoHash={infoHash}&fileIdx={fileIdx}&sources={sources}&contentLanguage={contentLanguage}&cloudSessionToken={cloudSessionToken}&launchStartedAtMs={launchStartedAtMs}&profileId={profileId}&audioDelayMs={audioDelayMs}&audioDelayLanguage={audioDelayLanguage}&audioSlaveUrl={audioSlaveUrl}&youtubeLive={youtubeLive}&fromLinkCache={fromLinkCache}") {
         private fun encode(value: String): String =
             URLEncoder.encode(value, "UTF-8").replace("+", "%20")
 
@@ -108,6 +108,8 @@ sealed class Screen(val route: String) {
             profileId: Int? = null,
             audioDelayMs: Int? = null,
             audioDelayLanguage: String? = null,
+            audioSlaveUrl: String? = null,
+            youtubeLive: Boolean = false,
             fromLinkCache: Boolean = false
         ): String {
             val encodedUrl = encode(streamUrl)
@@ -136,7 +138,8 @@ sealed class Screen(val route: String) {
             val encodedContentLanguage = contentLanguage?.let { encode(it) } ?: ""
             val encodedCloudSessionToken = cloudSessionToken?.let { encode(it) } ?: ""
             val encodedAudioDelayLanguage = audioDelayLanguage?.let { encode(it) } ?: ""
-            return "player/$encodedUrl/$encodedTitle?streamName=$encodedStreamName&year=$encodedYear&headers=$encodedHeaders&contentId=$encodedContentId&contentType=$encodedContentType&contentName=$encodedContentName&poster=$encodedPoster&backdrop=$encodedBackdrop&logo=$encodedLogo&videoId=$encodedVideoId&season=${season ?: ""}&episode=${episode ?: ""}&episodeTitle=$encodedEpisodeTitle&bingeGroup=$encodedBingeGroup&autoPlayNav=$autoPlayNav&returnToDetailOnBack=$returnToDetailOnBack&returnToHomeOnBack=$returnToHomeOnBack&filename=$encodedFilename&videoHash=$encodedVideoHash&videoSize=${videoSize ?: ""}&startFromBeginning=$startFromBeginning&addonName=$encodedAddonName&addonLogo=$encodedAddonLogo&streamDescription=$encodedStreamDescription&infoHash=$encodedInfoHash&fileIdx=${fileIdx ?: ""}&sources=$encodedSources&contentLanguage=$encodedContentLanguage&cloudSessionToken=$encodedCloudSessionToken&launchStartedAtMs=$launchStartedAtMs&profileId=${profileId ?: ""}&audioDelayMs=${audioDelayMs ?: ""}&audioDelayLanguage=$encodedAudioDelayLanguage&fromLinkCache=$fromLinkCache"
+            val encodedAudioSlaveUrl = audioSlaveUrl?.let { encode(it) } ?: ""
+            return "player/$encodedUrl/$encodedTitle?streamName=$encodedStreamName&year=$encodedYear&headers=$encodedHeaders&contentId=$encodedContentId&contentType=$encodedContentType&contentName=$encodedContentName&poster=$encodedPoster&backdrop=$encodedBackdrop&logo=$encodedLogo&videoId=$encodedVideoId&season=${season ?: ""}&episode=${episode ?: ""}&episodeTitle=$encodedEpisodeTitle&bingeGroup=$encodedBingeGroup&autoPlayNav=$autoPlayNav&returnToDetailOnBack=$returnToDetailOnBack&returnToHomeOnBack=$returnToHomeOnBack&filename=$encodedFilename&videoHash=$encodedVideoHash&videoSize=${videoSize ?: ""}&startFromBeginning=$startFromBeginning&addonName=$encodedAddonName&addonLogo=$encodedAddonLogo&streamDescription=$encodedStreamDescription&infoHash=$encodedInfoHash&fileIdx=${fileIdx ?: ""}&sources=$encodedSources&contentLanguage=$encodedContentLanguage&cloudSessionToken=$encodedCloudSessionToken&launchStartedAtMs=$launchStartedAtMs&profileId=${profileId ?: ""}&audioDelayMs=${audioDelayMs ?: ""}&audioDelayLanguage=$encodedAudioDelayLanguage&audioSlaveUrl=$encodedAudioSlaveUrl&youtubeLive=$youtubeLive&fromLinkCache=$fromLinkCache"
         }
     }
     data object Search : Screen("search")
@@ -157,6 +160,10 @@ sealed class Screen(val route: String) {
     data object Calendar : Screen("calendar")
     /** Live TV fork: scores, schedules and where to watch. */
     data object Sports : Screen("sports")
+    /** YouTube fork: its own section, kept off Home. */
+    data object YouTube : Screen("youtube")
+    /** Music fork: YouTube Music browsing and the audio-first player. */
+    data object Music : Screen("music")
     data object Tracking : Screen("trakt")
     data object WatchParty : Screen("watch_party?code={code}") {
         fun createRoute(code: String = ""): String = "watch_party?code=$code"
@@ -191,8 +198,15 @@ sealed class Screen(val route: String) {
     data object Collections : Screen("collections")
 
     data object CollectionEditor : Screen("collection_editor?collectionId={collectionId}") {
+        private fun encode(value: String): String =
+            URLEncoder.encode(value, "UTF-8").replace("+", "%20")
+
         fun createRoute(collectionId: String? = null): String {
-            return "collection_editor?collectionId=${collectionId ?: ""}"
+            return if (collectionId.isNullOrEmpty()) {
+                "collection_editor?collectionId="
+            } else {
+                "collection_editor?collectionId=${encode(collectionId)}"
+            }
         }
     }
 

@@ -2,7 +2,7 @@ package com.nuvio.tv.ui.screens.settings
 
 import androidx.activity.ComponentActivity
 import androidx.compose.material.icons.Icons
-import androidx.compose.material.icons.filled.Refresh
+import androidx.compose.material.icons.automirrored.filled.OpenInNew
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
@@ -54,6 +54,17 @@ internal fun UpdateChannelSettings(
         }
     )
 
+    if (state.optimizeDuringInstallSupported) {
+        SettingsToggleRow(
+            title = stringResource(R.string.about_update_optimize_install_title),
+            subtitle = stringResource(R.string.about_update_optimize_install_subtitle),
+            checked = state.optimizeDuringInstall,
+            onToggle = {
+                viewModel.setOptimizeDuringInstall(!state.optimizeDuringInstall)
+            }
+        )
+    }
+
     if (state.autoInstallSupported) {
         SettingsToggleRow(
             title = stringResource(R.string.about_update_auto_install_title),
@@ -78,8 +89,7 @@ internal fun UpdateChannelSettings(
     SettingsActionRow(
         title = stringResource(R.string.about_check_updates),
         subtitle = stringResource(R.string.about_check_updates_subtitle),
-        // Not an external link: it checks here and the banner at the top then downloads and installs it.
-        trailingIcon = Icons.Default.Refresh,
+        trailingIcon = Icons.AutoMirrored.Filled.OpenInNew,
         onClick = {
             viewModel.checkForUpdates(force = true, showNoUpdateFeedback = true)
         }

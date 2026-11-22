@@ -14,6 +14,9 @@ import com.nuvio.tv.core.util.withAppLocale
  * no folder picker. A drive is remembered by its id, so it's found again when plugged back in.
  */
 object RecordingStorage {
+    /** Saved-to id for the SMB share. */
+    const val SMB_ID = "smb"
+
     data class Choice(
         /** "" for this device, else the drive's id. */
         val id: String,
@@ -21,10 +24,33 @@ object RecordingStorage {
         /** The recordings folder on it. */
         val dir: File,
         val freeBytes: Long,
-        val totalBytes: Long
+        val totalBytes: Long,
+        /** The media lives on an SMB share; [dir] is the local staging folder. */
+        val isSmb: Boolean = false
     ) {
         val isDevice: Boolean get() = id.isEmpty()
     }
+
+    /** Local folder that mirrors an SMB recording (metadata and playlists stay here). */
+    fun smbStagingDir(context: Context): File = File(context.filesDir, "recordings_smb")
+
+    /** The configured share's label, or null when it hasn't been set up. */
+    fun smbLabel(context: Context): String? = SmbSettings.load(context)?.label
+
+    fun isSmbConfigured(context: Context): Boolean = SmbSettings.load(context) != null
+
+    fun smbConfig(context: Context): SmbConfig? = SmbSettings.load(context)
+
+    fun saveSmbConfig(context: Context, config: SmbConfig) {
+        SmbSettings.save(context, config)
+        SmbSpace.refresh(context, config)
+    }
+
+    fun clearSmbConfig(context: Context) {
+        SmbSettings.clear(context)
+    }
+
+    fun testSmbConfig(config: SmbConfig): Result<String> = SmbClient.test(config)
 
     /** Every place recordings can go right now (this device first). */
     fun choices(context: Context): List<Choice> {
@@ -71,6 +97,22 @@ object RecordingStorage {
             val f = File(context.filesDir, "recordings")
             out.add(0, Choice("", displayContext.getString(R.string.iptv_storage_this_device), f, runCatching { context.filesDir.usableSpace }.getOrDefault(0L), runCatching { context.filesDir.totalSpace }.getOrDefault(0L)))
         }
+        // SMB is always listed so the picker can offer setup; when it isn't configured the
+        // recorder falls back to this device.
+        val smb = SmbSettings.load(context)
+        out += Choice(
+            id = SMB_ID,
+            label = if (smb != null) {
+                displayContext.getString(R.string.iptv_storage_network_share) + " · " + smb.label
+            } else {
+                displayContext.getString(R.string.iptv_storage_network_share)
+            },
+            dir = smbStagingDir(context),
+            freeBytes = if (smb != null) SmbSpace.freeBytes else 0L,
+            totalBytes = 0L,
+            isSmb = true
+        )
+        if (smb != null) SmbSpace.refresh(context, smb)
         return out.distinctBy { it.id }
     }
 
@@ -124,7 +166,13 @@ object RecordingStorage {
     /** The place for [id], or this device if that drive isn't plugged in. */
     fun resolve(context: Context, id: String): Choice {
         val all = choices(context)
-        return all.firstOrNull { it.id == id } ?: all.first { it.isDevice }
+        val chosen = all.firstOrNull { it.id == id }
+        if (chosen != null) {
+            // An SMB share that was never set up (or cleared) records to this device instead.
+            if (chosen.isSmb && SmbSettings.load(context) == null) return all.first { it.isDevice }
+            return chosen
+        }
+        return all.first { it.isDevice }
     }
 
     fun sizeLabel(bytes: Long): String = sizeLabel(bytes, Locale.US)
@@ -147,7 +195,12 @@ object RecordingResume {
     private const val PREFIX = "rec:"
 
     fun contentIdFor(recordingId: String) = PREFIX + recordingId
-    fun isRecording(contentType: String?) = contentType.equals(CONTENT_TYPE, ignoreCase = true)
+    /** YouTube fork: YouTube videos use the same path: own resume point, never Continue Watching, history or Trakt. */
+    const val YOUTUBE_CONTENT_TYPE = "youtube"
+
+    fun isRecording(contentType: String?) =
+        contentType.equals(CONTENT_TYPE, ignoreCase = true) ||
+            contentType.equals(YOUTUBE_CONTENT_TYPE, ignoreCase = true)
 
     private fun prefs(context: Context) = context.getSharedPreferences(PREFS, Context.MODE_PRIVATE)
 

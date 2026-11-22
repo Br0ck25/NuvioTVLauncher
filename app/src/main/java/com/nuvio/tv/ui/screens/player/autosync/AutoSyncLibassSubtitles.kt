@@ -9,6 +9,7 @@ import androidx.media3.extractor.text.CuesWithTiming
 import androidx.media3.extractor.text.SubtitleParser
 import com.nuvio.tv.libass.media.AssHandler
 import com.nuvio.tv.libass.media.parser.AssFullSubtitleParser
+import com.nuvio.tv.ui.screens.player.PlayerAssDialogueDedupe
 import java.util.Collections
 import java.util.WeakHashMap
 import java.util.concurrent.ConcurrentHashMap
@@ -51,7 +52,8 @@ internal object AutoSyncLibassSubtitles {
      * It runs on AutoSync's background dispatcher, as Media3's loader parses the original.
      */
     suspend fun apply(assHandler: AssHandler, trackId: String, retimedText: String) {
-        val bytes = retimedText.toByteArray(Charsets.UTF_8)
+        val cleanText = PlayerAssDialogueDedupe.dedupeText(retimedText) ?: retimedText
+        val bytes = cleanText.toByteArray(Charsets.UTF_8)
         val libassTrackId = libassTrackId(trackId, trackIdsByHandler[assHandler].orEmpty())
         synchronized(retimedByHandler) {
             retimedByHandler.getOrPut(assHandler) { ConcurrentHashMap() }[libassTrackId] = bytes

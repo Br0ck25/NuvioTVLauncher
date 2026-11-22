@@ -41,7 +41,9 @@ data class CachedNextUpItem(
     val seedSeason: Int? = null,
     val seedEpisode: Int? = null,
     val contentLanguage: String? = null,
-    val ratingVisible: Boolean = true
+    val ratingVisible: Boolean = true,
+    /** The last known "N EP left" count, so the badge can show before the next meta fetch. */
+    val remainingEpisodes: Int? = null
 )
 
 data class CachedInProgressItem(
@@ -65,7 +67,9 @@ data class CachedInProgressItem(
     val genres: List<String> = emptyList(),
     val releaseInfo: String? = null,
     val contentLanguage: String? = null,
-    val ratingVisible: Boolean = true
+    val ratingVisible: Boolean = true,
+    /** The last known "N EP left" count, so the badge can show before the next meta fetch. */
+    val remainingEpisodes: Int? = null
 )
 
 /**

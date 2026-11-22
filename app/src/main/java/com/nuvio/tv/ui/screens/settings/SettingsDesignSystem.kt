@@ -1057,7 +1057,8 @@ internal fun <T> SettingsMultiChoiceDialog(
     subtitle: String? = null,
     width: Dp = 520.dp,
     maxHeight: Dp = 420.dp,
-    maxSelections: Int? = null
+    maxSelections: Int? = null,
+    showSelectAll: Boolean = false
 ) {
     val focusRequester = remember { FocusRequester() }
     val selected = remember(selectedValues) { mutableStateListOf<T>().also { it.addAll(selectedValues) } }
@@ -1156,6 +1157,15 @@ internal fun <T> SettingsMultiChoiceDialog(
                 }
             }
             SettingsDialogActionRow {
+                if (showSelectAll) {
+                    SettingsDialogActionButton(
+                        text = stringResource(R.string.action_select_all),
+                        onClick = {
+                            selected.clear()
+                            selected.addAll(options.map { it.value })
+                        }
+                    )
+                }
                 SettingsDialogActionButton(
                     text = stringResource(R.string.action_clear),
                     onClick = { selected.clear() }
@@ -1188,11 +1198,13 @@ internal fun SettingsDialogActionButton(
     text: String,
     onClick: () -> Unit,
     primary: Boolean = false,
-    enabled: Boolean = true
+    enabled: Boolean = true,
+    modifier: Modifier = Modifier
 ) {
     Button(
         onClick = onClick,
         enabled = enabled,
+        modifier = modifier,
         colors = ButtonDefaults.colors(
             containerColor = if (primary) NuvioTheme.colors.FocusBackground else NuvioTheme.colors.BackgroundCard,
             contentColor = NuvioTheme.colors.TextPrimary
@@ -1286,7 +1298,7 @@ internal fun SettingsChoiceChip(
 }
 
 @Composable
-private fun SettingsTogglePill(
+internal fun SettingsTogglePill(
     checked: Boolean,
     enabled: Boolean
 ) {

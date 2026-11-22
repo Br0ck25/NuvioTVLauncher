@@ -1,6 +1,8 @@
 package com.nuvio.tv.livetv.multiview
 
 import android.os.SystemClock
+import com.nuvio.tv.R
+import com.nuvio.tv.core.util.withAppLocale
 import com.nuvio.tv.livetv.model.LiveTvLoadReport
 import android.content.Context
 import android.media.AudioFocusRequest
@@ -32,7 +34,6 @@ import dagger.hilt.InstallIn
 import dagger.hilt.android.EntryPointAccessors
 import dagger.hilt.components.SingletonComponent
 import com.nuvio.tv.ui.screens.settings.MemoryBudget
-import com.nuvio.vpn.android.VpnPlaybackProtection
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.asStateFlow
@@ -55,6 +56,8 @@ data class MultiviewPaneState(
     val error: String? = null,
     /** Reconnecting after a drop: the last picture stays up, with only a quiet mark if it takes a while. */
     val isReconnecting: Boolean = false,
+    /** A protected (DRM) channel: its picture can only be shown through the TV's video window. */
+    val isProtected: Boolean = false,
 )
 
 data class MultiviewState(
@@ -105,10 +108,31 @@ class MultiviewPlaybackSession(
         },
         onChanged = ::publishState,
         mayPlayChannel = mayPlayChannel,
+        onSetupFailed = ::reportSetupFailure,
     )
 
+    /**
+     * A pane that failed before its stream started used to show "Stream unavailable" with nothing
+     * in the report. Says what failed and where; only our own messages are written out, never a
+     * provider's, and the link is masked.
+     */
+    private fun reportSetupFailure(paneId: Int, channel: LiveChannel, failure: Exception) {
+        fun name(t: Throwable) = t.javaClass.simpleName.ifEmpty { t.javaClass.name }
+        val ours = failure is IllegalArgumentException || failure is IllegalStateException
+        val where = failure.stackTrace.take(3).joinToString(" < ") {
+            "${it.className.substringAfterLast('.')}.${it.methodName}:${it.lineNumber}"
+        }
+        val cause = failure.cause?.takeIf { it !== failure }?.let { ", caused by ${name(it)}" }.orEmpty()
+        LiveTvLoadReport.add(
+            "Multiview: ${channel.name} couldn't start in P${paneId + 1} (${name(failure)}" +
+                (if (ours) failure.message?.let { ": $it" }.orEmpty() else "") + cause + ")" +
+                (if (where.isNotEmpty()) " at $where" else "") +
+                (if (channel.stalkerRef == null) " · ${LiveStreamFormats.redact(channel.url)}" else "")
+        )
+    }
+
     // Closing this subscription matters: sessions are short lived, unlike the single player.
-    private val vpnSubscription = VpnPlaybackProtection.observeSettings {
+    private val vpnSubscription = com.nuvio.vpn.android.VpnPlaybackProtection.observeSettings {
         mainHandler.post { if (!released) core.restartPlayers() }
     }
 
@@ -187,11 +211,16 @@ class MultiviewPlaybackSession(
                     isPlaying = playback.isPlaying,
                     error = playback.error,
                     isReconnecting = playback.isReconnecting,
+                    isProtected = channel?.drm != null,
                 )
             },
         )
     }
 }
+
+/** How many Multiview panes currently have a video decoder (for the report's decoder lines). */
+@OptIn(UnstableApi::class)
+private fun decodersOpen(): Int = MultiviewDecoderReport.openPlayers.count { it.videoDecoderCounters != null }
 
 @OptIn(UnstableApi::class)
 private class AndroidMultiviewPanePlayer(
@@ -252,7 +281,7 @@ private class AndroidMultiviewPanePlayer(
                 player.stop()
                 player.clearMediaItems()
                 if (scheduleReconnect("stream ended")) return
-                fail(LOST_MESSAGE)
+                fail(appContext.withAppLocale().getString(R.string.iptv_mv_lost_connection))
             }
         }
     }
@@ -335,6 +364,32 @@ private class AndroidMultiviewPanePlayer(
         return true
     }
 
+    /** Channels whose decoder line is already in the report, so a reconnect doesn't repeat it. */
+    private val decoderReported = mutableSetOf<String>()
+
+    /**
+     * Which video decoder the box gave this pane and the picture's colour format, once per
+     * channel, so a pane whose picture looks wrong (e.g. tinted) can be told apart from one that's fine.
+     */
+    private val decoderReport = object : androidx.media3.exoplayer.analytics.AnalyticsListener {
+        override fun onVideoDecoderInitialized(
+            eventTime: androidx.media3.exoplayer.analytics.AnalyticsListener.EventTime,
+            decoderName: String,
+            initializedTimestampMs: Long,
+            initializationDurationMs: Long,
+        ) {
+            if (released) return
+            val ch = channel ?: return
+            val f = player.videoFormat
+            val key = "${ch.key}|$decoderName|${f?.sampleMimeType}|${f?.width}x${f?.height}|${f?.colorInfo}"
+            if (!decoderReported.add(key)) return
+            LiveTvLoadReport.add(
+                "Multiview: ${ch.name} video decoder $decoderName (${decodersOpen()} Multiview decoders open); " +
+                    MultiviewDecoderReport.describe(f)
+            )
+        }
+    }
+
     private val renderers = object : DefaultRenderersFactory(context) {
         override fun buildAudioSink(
             context: Context,
@@ -345,8 +400,9 @@ private class AndroidMultiviewPanePlayer(
             .setAudioCapabilities(AudioCapabilities.DEFAULT_AUDIO_CAPABILITIES)
             .setEnableFloatOutput(enableFloatOutput)
             .setEnableAudioTrackPlaybackParams(enableAudioTrackPlaybackParams)
+            // Offload is already off unless asked for. Don't switch it off here: that call only
+            // exists on Android 10 and up, and on older TVs it stopped every pane from starting.
             .build()
-            .apply { setOffloadMode(AudioSink.OFFLOAD_MODE_DISABLED) }
     }.setExtensionRendererMode(DefaultRenderersFactory.EXTENSION_RENDERER_MODE_ON)
         .setEnableDecoderFallback(true)
 
@@ -381,6 +437,8 @@ private class AndroidMultiviewPanePlayer(
                 )
                 .build()
             addListener(listener)
+            addAnalyticsListener(decoderReport)
+            MultiviewDecoderReport.openPlayers += this
         }
 
     override val playback: MultiviewPanePlayback
@@ -473,6 +531,8 @@ private class AndroidMultiviewPanePlayer(
     override fun release() {
         if (released) return
         released = true
+        player.removeAnalyticsListener(decoderReport)
+        MultiviewDecoderReport.openPlayers -= player
         generation++
         reconnectJob?.cancel()
         scope.cancel()
@@ -545,7 +605,6 @@ private class AndroidMultiviewAudioFocus(context: Context) : MultiviewAudioFocus
 
 private const val MAX_RECONNECTS = 6
 private const val RECOVERED_AFTER_MS = 60_000L
-private const val LOST_MESSAGE = "Lost the connection to this stream. Retry or choose another channel."
 
 /** Provider failures are deliberately described using codes only, never exception messages. */
 internal object MultiviewPlaybackErrors {

@@ -152,7 +152,7 @@ data class SubtitleStyleSettings(
     val backgroundColor: Int = Color.Transparent.toArgb(),
     val outlineEnabled: Boolean = true,
     val outlineColor: Int = Color.Black.toArgb(),
-    val outlineWidth: Int = 2, // 1-5
+    val outlineWidth: Int = OUTLINE_WIDTH_DEFAULT, // 1-5
     val hdrStyleEnabled: Boolean = false,
     val hdrTextColor: Int = Color.White.toArgb(),
     val hdrBrightness: Int = HDR_BRIGHTNESS_DEFAULT, // 0-100, see hdrBrightnessFactor
@@ -161,7 +161,8 @@ data class SubtitleStyleSettings(
     val backgroundRadius: Int = 0,
     val shadowEnabled: Boolean = false,
     val shadowOpacity: Int = SHADOW_OPACITY_DEFAULT,
-    val shadowSize: Int = SHADOW_SIZE_DEFAULT
+    val shadowSize: Int = SHADOW_SIZE_DEFAULT,
+    val fileColorBrightness: Float = 1f
 ) {
     /**
      * The style to render with: on HDR/Dolby Vision video with the override enabled, the HDR text
@@ -173,7 +174,8 @@ data class SubtitleStyleSettings(
         return copy(
             textColor = scaleColorBrightness(hdrTextColor, factor),
             backgroundColor = scaleColorBrightness(backgroundColor, factor),
-            outlineColor = scaleColorBrightness(outlineColor, factor)
+            outlineColor = scaleColorBrightness(outlineColor, factor),
+            fileColorBrightness = factor
         )
     }
 
@@ -197,6 +199,9 @@ data class SubtitleStyleSettings(
         const val HDR_BRIGHTNESS_MAX = 100
         const val HDR_BRIGHTNESS_DEFAULT = 40
         const val BACKGROUND_RADIUS_MAX = 24
+        const val OUTLINE_WIDTH_MIN = 1
+        const val OUTLINE_WIDTH_MAX = 5
+        const val OUTLINE_WIDTH_DEFAULT = 2
         const val SHADOW_OPACITY_DEFAULT = 75
         const val SHADOW_SIZE_MIN = 1
         const val SHADOW_SIZE_MAX = 8
@@ -332,6 +337,12 @@ data class PlayerSettings(
     val secondaryPreferredAudioLanguage: String? = null,
     val loadingOverlayEnabled: Boolean = true,
     val showPlayerLoadingStatus: Boolean = true,
+    /** The resolution, codec and speed line above the player title. Off unless turned on. */
+    val showPlaybackInfo: Boolean = false,
+    /** Optional control-row buttons turned off in Playback > Player Interface. */
+    val hiddenPlayerControls: Set<PlayerControlButton> = PlayerControlButton.defaultHidden,
+    /** Experimental: a second player grabs a frame above the seek bar. Off by default. */
+    val seekPreviewEnabled: Boolean = DEFAULT_SEEK_PREVIEW_ENABLED,
     val playbackIssueReportsEnabled: Boolean = false,
     val pauseOverlayEnabled: Boolean = true,
     val osdClockEnabled: Boolean = true,
@@ -490,11 +501,32 @@ data class PlayerSettings(
         const val MAX_PARALLEL_CHUNK_SIZE_KB = 128 * 1024
         const val DEFAULT_ENABLE_HTTP2 = false
         const val DEFAULT_NUVIO_PERFORMANCE_MODE_ENABLED = false
+        const val DEFAULT_SEEK_PREVIEW_ENABLED = false
     }
 }
 
 enum class StreamAutoPlayMode {
     MANUAL, FIRST_STREAM, REGEX_MATCH
+}
+
+/** Buttons in the player's control row that can be turned off in Playback settings. */
+enum class PlayerControlButton {
+    NEXT_EPISODE,
+    SUBTITLES,
+    SPEED,
+    QUALITY,
+    AUDIO,
+    CHAPTERS,
+    SOURCES,
+    EPISODES,
+    PARTY,
+    STREAM_INFO,
+    MORE;
+
+    companion object {
+        /** Everything is shown by default except the stream-info shortcut. */
+        val defaultHidden: Set<PlayerControlButton> = setOf(STREAM_INFO)
+    }
 }
 
 enum class StreamAutoPlaySource {
@@ -549,6 +581,7 @@ enum class PlayerPreference {
 enum class InternalPlayerEngine {
     EXOPLAYER,
     MVP_PLAYER,
+    VLC_PLAYER,
     AUTO
 }
 
@@ -684,6 +717,9 @@ class PlayerSettingsDataStore @Inject constructor(
     private val secondaryPreferredAudioLanguageKey = stringPreferencesKey("secondary_preferred_audio_language")
     private val loadingOverlayEnabledKey = booleanPreferencesKey("loading_overlay_enabled")
     private val showPlayerLoadingStatusKey = booleanPreferencesKey("show_player_loading_status")
+    private val showPlaybackInfoKey = booleanPreferencesKey("show_playback_info")
+    private val hiddenPlayerControlsKey = stringSetPreferencesKey("hidden_player_controls")
+    private val seekPreviewEnabledKey = booleanPreferencesKey("seek_preview_enabled")
     private val playbackIssueReportsEnabledKey = booleanPreferencesKey("playback_issue_reports_enabled")
     private val pauseOverlayEnabledKey = booleanPreferencesKey("pause_overlay_enabled")
     private val osdClockEnabledKey = booleanPreferencesKey("osd_clock_enabled")
@@ -1089,6 +1125,12 @@ class PlayerSettingsDataStore @Inject constructor(
                     ?.let(::normalizeSecondaryAudioLanguageCode),
                 loadingOverlayEnabled = prefs[loadingOverlayEnabledKey] ?: true,
                 showPlayerLoadingStatus = prefs[showPlayerLoadingStatusKey] ?: true,
+                showPlaybackInfo = prefs[showPlaybackInfoKey] ?: false,
+                hiddenPlayerControls = prefs[hiddenPlayerControlsKey]
+                    ?.mapNotNull { runCatching { PlayerControlButton.valueOf(it) }.getOrNull() }
+                    ?.toSet()
+                    ?: PlayerControlButton.defaultHidden,
+                seekPreviewEnabled = prefs[seekPreviewEnabledKey] ?: PlayerSettings.DEFAULT_SEEK_PREVIEW_ENABLED,
                 playbackIssueReportsEnabled = prefs[playbackIssueReportsEnabledKey] ?: false,
                 pauseOverlayEnabled = prefs[pauseOverlayEnabledKey] ?: true,
                 osdClockEnabled = prefs[osdClockEnabledKey] ?: true,
@@ -1237,7 +1279,8 @@ class PlayerSettingsDataStore @Inject constructor(
                         backgroundColor = prefs[subtitleBackgroundColorKey] ?: Color.Transparent.toArgb(),
                         outlineEnabled = prefs[subtitleOutlineEnabledKey] ?: true,
                         outlineColor = prefs[subtitleOutlineColorKey] ?: Color.Black.toArgb(),
-                        outlineWidth = prefs[subtitleOutlineWidthKey] ?: 2,
+                        outlineWidth = (prefs[subtitleOutlineWidthKey] ?: SubtitleStyleSettings.OUTLINE_WIDTH_DEFAULT)
+                            .coerceIn(SubtitleStyleSettings.OUTLINE_WIDTH_MIN, SubtitleStyleSettings.OUTLINE_WIDTH_MAX),
                         hdrStyleEnabled = prefs[subtitleHdrStyleEnabledKey] ?: false,
                         hdrTextColor = prefs[subtitleHdrTextColorKey] ?: Color.White.toArgb(),
                         hdrBrightness = prefs[subtitleHdrBrightnessKey] ?: SubtitleStyleSettings.HDR_BRIGHTNESS_DEFAULT,
@@ -1466,9 +1509,27 @@ class PlayerSettingsDataStore @Inject constructor(
         }
     }
 
+    suspend fun setSeekPreviewEnabled(enabled: Boolean) {
+        store().edit { prefs ->
+            prefs[seekPreviewEnabledKey] = enabled
+        }
+    }
+
     suspend fun setShowPlayerLoadingStatus(enabled: Boolean) {
         store().edit { prefs ->
             prefs[showPlayerLoadingStatusKey] = enabled
+        }
+    }
+
+    suspend fun setShowPlaybackInfo(enabled: Boolean) {
+        store().edit { prefs ->
+            prefs[showPlaybackInfoKey] = enabled
+        }
+    }
+
+    suspend fun setHiddenPlayerControls(controls: Set<PlayerControlButton>) {
+        store().edit { prefs ->
+            prefs[hiddenPlayerControlsKey] = controls.mapTo(HashSet()) { it.name }
         }
     }
 
@@ -1850,7 +1911,14 @@ class PlayerSettingsDataStore @Inject constructor(
     suspend fun setSubtitleBackgroundColor(color: Int) { store().edit { it[subtitleBackgroundColorKey] = color } }
     suspend fun setSubtitleOutlineEnabled(enabled: Boolean) { store().edit { it[subtitleOutlineEnabledKey] = enabled } }
     suspend fun setSubtitleOutlineColor(color: Int) { store().edit { it[subtitleOutlineColorKey] = color } }
-    suspend fun setSubtitleOutlineWidth(width: Int) { store().edit { it[subtitleOutlineWidthKey] = width.coerceIn(1, 5) } }
+    suspend fun setSubtitleOutlineWidth(width: Int) {
+        store().edit {
+            it[subtitleOutlineWidthKey] = width.coerceIn(
+                SubtitleStyleSettings.OUTLINE_WIDTH_MIN,
+                SubtitleStyleSettings.OUTLINE_WIDTH_MAX
+            )
+        }
+    }
     suspend fun setSubtitleHdrStyleEnabled(enabled: Boolean) { store().edit { it[subtitleHdrStyleEnabledKey] = enabled } }
     suspend fun setSubtitleHdrTextColor(color: Int) { store().edit { it[subtitleHdrTextColorKey] = color } }
     suspend fun setSubtitleHdrDimPlayerControls(enabled: Boolean) {

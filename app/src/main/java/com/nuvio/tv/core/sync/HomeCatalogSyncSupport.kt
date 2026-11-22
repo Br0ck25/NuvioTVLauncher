@@ -1,5 +1,6 @@
 package com.nuvio.tv.core.sync
 
+import com.nuvio.tv.core.apps.INSTALLED_APPS_CATALOG_KEY
 import com.nuvio.tv.data.mediaserver.ServerCatalog
 import com.nuvio.tv.domain.model.catalogTypeKey
 import com.nuvio.tv.domain.model.catalogRowLegacyKey
@@ -34,14 +35,19 @@ internal fun homeCollectionKey(collectionId: String): String {
     return "collection_${collectionId}"
 }
 
-/** Server rows and the Apps row belong to this device: their position and state are never taken from the account. */
-private fun isDeviceLocalHomeKey(key: String): Boolean =
-    ServerCatalog.isServerKey(key) || key == com.nuvio.tv.core.apps.INSTALLED_APPS_CATALOG_KEY
+/**
+ * Home rows that exist only on this device, so the synced list never mentions them: media-server
+ * catalogs and the launcher's Apps row. A pull from the sync service rebuilds the order, the off
+ * list and the custom titles from what the server has, so it must carry these over from the local
+ * copy, or they are lost (an Apps row you turned off came back after every restart's pull).
+ */
+internal fun isLocalOnlyHomeKey(key: String): Boolean =
+    ServerCatalog.isServerKey(key) || key == INSTALLED_APPS_CATALOG_KEY
 
 internal fun List<String>.withLocalServerKeys(local: List<String>): List<String> =
     local.withIndex()
-        .filter { isDeviceLocalHomeKey(it.value) }
-        .fold(filterNot(::isDeviceLocalHomeKey).toMutableList()) { keys, (index, key) ->
+        .filter { isLocalOnlyHomeKey(it.value) }
+        .fold(filterNot(::isLocalOnlyHomeKey).toMutableList()) { keys, (index, key) ->
             keys.apply { add(index.coerceAtMost(size), key) }
         }
 

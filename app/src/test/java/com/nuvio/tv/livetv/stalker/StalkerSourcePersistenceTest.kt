@@ -5,7 +5,6 @@ import com.nuvio.stalker.StalkerConfig
 import com.nuvio.tv.core.profile.ProfileManager
 import com.nuvio.tv.livetv.data.LiveTvPreferences
 import com.nuvio.tv.livetv.model.PlaylistSource
-import com.nuvio.vpn.android.VpnBackup
 import io.mockk.*
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.test.runTest
@@ -34,12 +33,9 @@ class StalkerSourcePersistenceTest {
         }
         val profiles = mockk<ProfileManager> { every { activeProfileId } returns MutableStateFlow(1) }
         preferences = LiveTvPreferences(context, profiles)
-        mockkStatic(VpnBackup::class)
-        every { VpnBackup.prepareExport(any<Context>(), null) } returns "{\"version\":1,\"profiles\":[]}"
-        every { VpnBackup.restoreSetup(any<Context>(), any<String>()) } just Runs
     }
 
-    @After fun tearDown() { unmockkStatic(VpnBackup::class); directory.deleteRecursively() }
+    @After fun tearDown() { directory.deleteRecursively() }
 
     @Test fun `provider identity and import choices survive backup and restore`() = runTest {
         val original = PlaylistSource("portal", "Portal", "", sourceType = "stalker", stalkerConfig = config,

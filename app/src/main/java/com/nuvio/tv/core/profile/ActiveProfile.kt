@@ -13,7 +13,15 @@ import kotlinx.coroutines.CompletableDeferred
  * between profiles again after that.
  */
 object ActiveProfile {
+    /** Switching profile also forgets the Home backdrop shown last, so one profile never sees another's artwork. */
     @Volatile var id: Int = 1
+        set(value) {
+            if (field != value) {
+                com.nuvio.tv.ui.screens.home.HeroBackdropState.reset()
+                field = value
+            }
+            field = value
+        }
 
     /** Completes once the profiles that existed before per-profile settings are known. */
     val baselineReady = CompletableDeferred<Unit>()

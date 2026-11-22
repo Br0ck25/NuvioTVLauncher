@@ -37,6 +37,16 @@
 -dontwarn org.bouncycastle.**
 -dontwarn org.openjsse.**
 
+# ── SMB (jcifs-ng / BouncyCastle) ─────────────────────────────────────────────
+# jcifs-ng builds a BouncyCastleProvider itself and asks it for MD4 (NTLM) and
+# AES-CMAC (SMB3 signing). BouncyCastle registers those algorithms from classes
+# loaded by name, so R8 strips them from release builds unless they are kept.
+# Without this, SMB fails with:
+#   NoSuchAlgorithmException: no such algorithm: MD4 for provider BC
+-keep class org.bouncycastle.jce.provider.** { *; }
+-keep class org.bouncycastle.jcajce.provider.** { *; }
+-keep class org.bouncycastle.crypto.** { *; }
+
 # ── Data classes (DTOs) ────────────────────────────────────────────────────────
 # Keep all DTO classes used with Moshi/Retrofit
 -keep class com.nuvio.tv.data.remote.dto.** { *; }
@@ -120,6 +130,14 @@
 # so keep the whole package to avoid JNI lookup crashes after R8.
 -keep class is.xyz.mpv.** { *; }
 
+# libVLC (native JNI callbacks)
+# libvlcjni.so looks up org.videolan.libvlc.VLCObject.mInstance and other
+# Java fields by name. The libvlc-all AAR ships no consumer ProGuard rules,
+# so without this R8 renames them and JNI_OnLoad fails with GetFieldID.
+-keep class org.videolan.libvlc.** { *; }
+-keep class org.videolan.libvlc.interfaces.** { *; }
+-dontwarn org.videolan.libvlc.**
+
 # ── Missing class stubs (referenced by cloudstream3 / jsoup / newpipe) ────────
 -dontwarn org.mozilla.javascript.**
 -dontwarn com.google.re2j.**
@@ -151,6 +169,28 @@
 
 -dontwarn java.beans.ConstructorProperties
 -dontwarn java.beans.Transient
+
+# Audio Sync speech recognition uses JNI to read configuration fields by name.
+-keep class com.k2fsa.sherpa.onnx.** { *; }
+-keep interface com.k2fsa.sherpa.onnx.** { *; }
+
+# YouTube fork: SmartTube's MediaServiceCore reads YouTube's JSON into classes by field name, calls into a
+# JavaScript engine, and builds its requests with reflection. Shrinking or renaming any of it breaks YouTube.
+-keep class com.liskovsoft.** { *; }
+-keepclassmembers class com.liskovsoft.** { *; }
+-dontwarn com.liskovsoft.**
+-keep class com.eclipsesource.v8.** { *; }
+-dontwarn com.eclipsesource.v8.**
+-keep class com.nuvio.tv.youtube.** { *; }
+-dontwarn org.chromium.net.**
+-dontwarn com.google.net.cronet.**
+-dontwarn com.jayway.jsonpath.**
+-dontwarn net.minidev.**
+-dontwarn sun.net.spi.nameservice.NameService
+-dontwarn sun.net.spi.nameservice.NameServiceDescriptor
+# dnsjava (used by the YouTube engine) mentions desktop-Java classes that Android doesn't have and never calls.
+-dontwarn org.xbill.DNS.spi.**
+
 # ── Live TV fork: readable crash and freeze reports ───────────────────────────
 # Keeps the app's own class and function names (unused code is still removed and the rest
 # still optimised), so a crash or freeze report names the real screen and function instead

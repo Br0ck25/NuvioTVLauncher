@@ -141,9 +141,11 @@ internal fun PlayerRuntimeController.fetchAddonSubtitles() {
         try {
             val subtitles = fetchAddonSubtitlesNow(
                 onSubtitlesEmitted = { currentList ->
+                    com.nuvio.tv.ui.screens.player.audiosync.AudioSyncFallback.offerSubtitles(this@fetchAddonSubtitles, currentList)
                     _uiState.update { it.copy(addonSubtitles = currentList) }
                 }
             )
+            com.nuvio.tv.ui.screens.player.audiosync.AudioSyncFallback.offerSubtitles(this@fetchAddonSubtitles, subtitles)
             val visibleSubtitles = filterToVisibleAddonSubtitles(subtitles)
             Log.d(PlayerRuntimeController.TAG, "fetchAddonSubtitles done: ${subtitles.size} subs, visible=${visibleSubtitles.size}, persistedPref=${persistedTrackPreference?.subtitle?.javaClass?.simpleName}")
             _uiState.update {
@@ -355,6 +357,9 @@ internal fun PlayerRuntimeController.observeSubtitleSettings() {
                     subtitleStyle = settings.subtitleStyle,
                     loadingOverlayEnabled = settings.loadingOverlayEnabled,
                     showPlayerLoadingStatus = settings.showPlayerLoadingStatus,
+                    showPlaybackInfo = settings.showPlaybackInfo,
+                    hiddenPlayerControls = settings.hiddenPlayerControls,
+                    seekPreviewEnabled = settings.seekPreviewEnabled,
                     playbackIssueReportsEnabled = settings.playbackIssueReportsEnabled,
                     showLoadingOverlay = shouldShowOverlay,
                     loadingIssueReportVisible = if (settings.playbackIssueReportsEnabled) {

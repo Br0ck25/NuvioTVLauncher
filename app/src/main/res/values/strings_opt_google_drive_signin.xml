@@ -1,0 +1,4 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <string name="iptv_status_google_drive_not_granted">Google signed you in but Drive access was not allowed. Connect again and tick the Google Drive box on the permissions screen.</string>
+</resources>

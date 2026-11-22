@@ -1,6 +1,8 @@
 package com.nuvio.tv.livetv.calendar
 
 import android.content.Context
+import com.nuvio.tv.R
+import com.nuvio.tv.core.util.withAppLocale
 import com.nuvio.tv.ui.screens.home.ContinueWatchingItem
 import com.nuvio.tv.ui.screens.home.NextUpInfo
 import kotlinx.coroutines.flow.MutableStateFlow
@@ -31,12 +33,14 @@ object CalendarHomeFeed {
     @Volatile private var injected: Set<String> = emptySet()
 
     private var prefs: android.content.SharedPreferences? = null
+    private var appContext: Context? = null
     private val dismissed = HashSet<String>()
 
     fun init(context: Context) {
         if (prefs != null) return
-        val p = com.nuvio.tv.core.profile.ActiveProfile.prefs(context, "calendar_home")
+        val p = context.applicationContext.getSharedPreferences("calendar_home", Context.MODE_PRIVATE)
         prefs = p
+        appContext = context.applicationContext
         synchronized(dismissed) { dismissed += p.getStringSet("dismissed", emptySet()).orEmpty() }
         synchronized(snoozed) {
             p.getStringSet("snoozed", emptySet()).orEmpty().forEach { v ->
@@ -84,7 +88,7 @@ object CalendarHomeFeed {
                     videoId = e.contentId,
                     season = null,
                     episode = null,
-                    episodeTitle = "Now out to watch at home",
+                    episodeTitle = appContext?.withAppLocale()?.getString(R.string.iptv_cal_out_home) ?: "Out to watch at home",
                     position = 0L,
                     duration = 0L,
                     lastWatched = at,
@@ -172,10 +176,7 @@ object CalendarHomeFeed {
         }.toSet()
         val gone = synchronized(dismissed) { dismissed.toSet() }
         val addMain = r.filter { it.info.contentId !in native && key(it.info.contentId, it.info.season, it.info.episode).let { k -> k !in gone && !isSnoozed(k) } }
-        // A show Continue Watching already has a card for still gets its next airing episode in
-        // Upcoming (the calendar lists it); only a show Nuvio's own Upcoming row already holds is skipped.
-        val nativeUp = baseUp.mapNotNull { (it as? ContinueWatchingItem.NextUp)?.info?.contentId }.toSet()
-        val addUp = u.filter { it.info.contentId !in nativeUp && it.info.contentId !in addMain.map { a -> a.info.contentId } }
+        val addUp = u.filter { it.info.contentId !in native && it.info.contentId !in addMain.map { a -> a.info.contentId } }
         val addMovies = mv.filter { it.progress.contentId !in native && key(it.progress.contentId, null, null) !in gone }
         injected = (addMain + addUp).map { "${it.info.contentId}|${it.info.videoId}" }.toSet()
         injectedMovies = addMovies.map { it.progress.contentId }.toSet()

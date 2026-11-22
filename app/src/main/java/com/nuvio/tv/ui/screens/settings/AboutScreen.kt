@@ -22,6 +22,7 @@ import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.verticalScroll
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.automirrored.filled.KeyboardArrowRight
+import androidx.compose.material.icons.filled.BugReport
 import androidx.compose.material.icons.filled.OpenInNew
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.CompositionLocalProvider
@@ -75,6 +76,7 @@ fun AboutSettingsContent(
     val context = LocalContext.current
     val aboutScrollState = rememberScrollState()
     var firstRowFocused by remember { mutableStateOf(false) }
+    var showDebugReportDialog by remember { mutableStateOf(false) }
     val firstRowModifier = Modifier.onFocusChanged { firstRowFocused = it.isFocused }
     val defaultBringIntoViewSpec = LocalBringIntoViewSpec.current
     val aboutBringIntoViewSpec = remember(aboutScrollState, defaultBringIntoViewSpec) {
@@ -180,11 +182,22 @@ fun AboutSettingsContent(
                                 trailingIcon = Icons.AutoMirrored.Filled.KeyboardArrowRight,
                                 onClick = onNavigateToLicensesAttributions
                             )
+
+                            SettingsActionRow(
+                                title = stringResource(R.string.about_send_debug_report),
+                                subtitle = stringResource(R.string.about_send_debug_report_subtitle),
+                                leadingIcon = Icons.Default.BugReport,
+                                onClick = { showDebugReportDialog = true }
+                            )
                         }
                     }
                 }
                 SettingsVerticalScrollIndicators(state = aboutScrollState)
             }
         }
+    }
+
+    if (showDebugReportDialog) {
+        DebugReportDialog(onDismiss = { showDebugReportDialog = false })
     }
 }

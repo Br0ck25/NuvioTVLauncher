@@ -58,15 +58,16 @@ interface SportsEntryPoint {
 
 /** Opens Live TV full screen on whatever it's now playing (or about to replay). */
 fun openLiveTvFullscreen(navController: NavController) {
-    // Said before the guide comes up, so a guide with its preview window off doesn't stop the
-    // game on its way to full screen.
+    // The shared video view starts full screen on its first frame. Going through the player
+    // alias as well would open this destination twice and briefly expose the guide.
     com.nuvio.tv.livetv.ui.LiveTvFullscreen.request()
     navController.navigate(Screen.LiveTv.route) {
         popUpTo(navController.graph.startDestinationId) { saveState = true }
         launchSingleTop = true
-        restoreState = true
+        // A saved Live TV stack may end in Multiview; start only the single-player destination.
+        // Sports is still saved above and restored by the return callback.
+        restoreState = false
     }
-    navController.navigate(Screen.LiveTvPlayer.route) { launchSingleTop = true }
 }
 
 /**
@@ -80,11 +81,7 @@ fun SportsHost(navController: NavController) {
         runCatching { EntryPointAccessors.fromApplication(context.applicationContext, SportsEntryPoint::class.java) }.getOrNull()
     } ?: return
     val repo = remember { entry.sportsRepository() }
-    // Sports only starts while its page is shown. Reading the saved scores is a lot of work on a slow box, and
-    // there is nothing to update, remind or alert about while Sports is off. (The repository is also started by
-    // the Sports page and by a game link, whenever those are opened.)
-    val showSports by repo.settings.collectAsState()
-    LaunchedEffect(showSports.showInSidebar) { if (repo.savedSettings().showInSidebar) repo.start() }
+    LaunchedEffect(Unit) { repo.start() }
     // Only update while the app is in front (TV boxes keep apps alive in the background for days).
     val owner = LocalLifecycleOwner.current
     DisposableEffect(owner) {
@@ -98,8 +95,10 @@ fun SportsHost(navController: NavController) {
         owner.lifecycle.addObserver(obs)
         onDispose { owner.lifecycle.removeObserver(obs) }
     }
-    val settings = showSports
-    if (!settings.showInSidebar) return
+    val settings by repo.settings.collectAsState()
+    // Scoring alerts are independent of the Sports page: a user can hide Sports from the
+    // side menu and still ask for goal cards. Only stop here when neither is wanted.
+    if (!settings.showInSidebar && !settings.scoringAlerts) return
 
     // ---- reminders
     var due by remember { mutableStateOf<Pair<SportsEvent, String>?>(null) }
@@ -127,6 +126,8 @@ fun SportsHost(navController: NavController) {
             delay(15_000)
             if (due != null) continue
             val s = repo.settings.value
+            // The Sports page being off means game reminders are off too; goal cards are separate.
+            if (!s.showInSidebar) continue
             val f = repo.follows.value
             val now = System.currentTimeMillis()
             val lead = s.remindMinutes.coerceAtLeast(0) * 60_000L
@@ -165,6 +166,7 @@ fun SportsHost(navController: NavController) {
             }
         }
     }
+    if (settings.showInSidebar) {
     countdown?.let { (ev, m) ->
         SwitchCountdown(
             ev = ev, match = m,
@@ -207,8 +209,9 @@ fun SportsHost(navController: NavController) {
             }
         )
     }
+    }
 
-    // ---- scoring alerts (never take the highlight: just a card in the corner for a few seconds)
+    // ---- scoring alerts (still shown when the Sports page itself is off)
     val alert by SportsLive.alerts.collectAsState()
     LaunchedEffect(alert) {
         val a = alert ?: return@LaunchedEffect

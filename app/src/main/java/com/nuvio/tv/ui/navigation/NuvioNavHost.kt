@@ -10,6 +10,9 @@ import androidx.compose.ui.platform.LocalContext
 import com.nuvio.tv.R
 import com.nuvio.tv.LocalRootContentInset
 import androidx.compose.foundation.layout.Box
+import androidx.compose.foundation.layout.fillMaxSize
+import com.nuvio.tv.core.player.LocalBackgroundTrailerController
+import com.nuvio.tv.ui.components.BackgroundTrailerLayer
 import androidx.compose.foundation.layout.padding
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.unit.dp
@@ -69,20 +72,39 @@ import com.nuvio.tv.ui.screens.settings.TmdbSettingsScreen
 import com.nuvio.tv.ui.screens.stream.StreamScreen
 import com.nuvio.tv.ui.screens.home.ContinueWatchingItem
 import com.nuvio.tv.ui.screens.account.AuthQrSignInScreen
+import androidx.compose.ui.input.key.key
+import androidx.compose.ui.input.key.type
+import com.nuvio.tv.youtube.SponsorBlockUi
+import com.nuvio.tv.youtube.SponsorSkipCard
+import com.nuvio.tv.youtube.YouTubeChatOverlay
+import com.nuvio.tv.youtube.YouTubePlayerPanel
+import com.nuvio.tv.youtube.YouTubeUpNext
 import com.nuvio.tv.ui.screens.cast.CastDetailScreen
 import com.nuvio.tv.ui.screens.profile.ProfileSelectionMode
 import com.nuvio.tv.ui.screens.profile.ProfileSelectionScreen
 import com.nuvio.tv.ui.screens.tmdb.TmdbEntityBrowseScreen
 import com.nuvio.tv.ui.screens.home.HeroBackdropState
 
+/** The player route for a YouTube video; used from the page and when autoplay moves on. */
+private fun youtubePlayerRoute(v: com.nuvio.tv.youtube.YtPlayable): String =
+    Screen.Player.createRoute(
+        streamUrl = v.url,
+        title = v.title,
+        headers = v.headers.takeIf { it.isNotEmpty() },
+        contentId = com.nuvio.tv.youtube.YouTubeProgress.ID_PREFIX + v.videoId,
+        contentType = "youtube",
+        contentName = v.title,
+        poster = v.poster,
+        addonName = "OneTube",
+        youtubeLive = v.isLive
+    )
+
 @Composable
 fun NuvioNavHost(
     navController: NavHostController,
     startDestination: String = Screen.Home.route,
     hideBuiltInHeaders: Boolean = false,
-    discoverIsRoot: Boolean = false,
-    liveTvIsRoot: Boolean = false,
-    recordingsIsRoot: Boolean = false
+    discoverIsRoot: Boolean = false
 ) {
     PlaybackAvailabilityProvider {
         // The NavController keeps its back stack ViewModels in the store of the owner it is
@@ -90,7 +112,12 @@ fun NuvioNavHost(
         val navViewModelStoreOwner = LocalNavViewModelStoreOwner.current
             ?: checkNotNull(LocalViewModelStoreOwner.current)
         CompositionLocalProvider(LocalViewModelStoreOwner provides navViewModelStoreOwner) {
-            PlaybackNavHost(navController, startDestination, hideBuiltInHeaders, discoverIsRoot, liveTvIsRoot, recordingsIsRoot)
+            Box(modifier = Modifier.fillMaxSize()) {
+                LocalBackgroundTrailerController.current?.let { controller ->
+                    BackgroundTrailerLayer(controller = controller)
+                }
+                PlaybackNavHost(navController, startDestination, hideBuiltInHeaders, discoverIsRoot)
+            }
         }
     }
     // Live TV fork: "Remind me" messages, shown on top of whatever screen you're on.
@@ -120,17 +147,53 @@ private fun NavGraphBuilder.rootComposable(
     }
 }
 
+/**
+ * Live TV fork pages that can be menu pages (Live TV, Recordings, On Demand, Sports, Calendar):
+ * moved aside for the older side menu only while the menu is showing (not in Live TV full screen,
+ * not when the page was opened from somewhere else), as they were before.
+ */
+private fun NavGraphBuilder.forkPageComposable(
+    route: String,
+    content: @Composable (NavBackStackEntry) -> Unit
+) {
+    composable(route) { backStackEntry ->
+        val liveTvFullscreen = if (route == Screen.LiveTv.route) {
+            val active by com.nuvio.tv.livetv.ui.LiveTvFullscreen.active.collectAsState()
+            active || com.nuvio.tv.livetv.ui.LiveTvFullscreen.pending
+        } else false
+        // Full screen must fill its first frame, without waiting for the sidebar inset animation.
+        val inset = if (liveTvFullscreen) 0.dp else com.nuvio.tv.LocalForkPageInset.current
+        Box(modifier = Modifier.padding(start = inset)) {
+            content(backStackEntry)
+        }
+    }
+}
+
 @Composable
 private fun PlaybackNavHost(
     navController: NavHostController,
     startDestination: String,
     hideBuiltInHeaders: Boolean,
-    discoverIsRoot: Boolean,
-    liveTvIsRoot: Boolean,
-    recordingsIsRoot: Boolean
+    discoverIsRoot: Boolean
 ) {
     val playbackAvailability = LocalPlaybackAvailability.current
     val context = LocalContext.current
+
+    // Music follows the user only when they asked for it, and never plays over a
+    // full-screen video. Both checks are cheap and idempotent.
+    val musicRouteEntry by navController.currentBackStackEntryAsState()
+    val musicRoute = musicRouteEntry?.destination?.route
+    androidx.compose.runtime.LaunchedEffect(musicRoute) {
+        if (musicRoute == Screen.Player.route) {
+            com.nuvio.tv.music.MusicPlayer.pauseForVideo()
+        }
+    }
+    val liveTvFullscreenForMusic by com.nuvio.tv.livetv.ui.LiveTvFullscreen.active.collectAsState()
+    androidx.compose.runtime.LaunchedEffect(liveTvFullscreenForMusic) {
+        if (liveTvFullscreenForMusic) {
+            com.nuvio.tv.music.MusicPlayer.pauseForVideo()
+        }
+    }
     fun isStreamToPlayer(from: String, to: String): Boolean {
         return from.startsWith("stream/") && to.startsWith("player/")
     }
@@ -299,6 +362,112 @@ private fun PlaybackNavHost(
                 }
             }
 
+            // Live TV fork: an On Demand card resumes the provider's own copy, like Play does.
+            val onDemandPlayScope = androidx.compose.runtime.rememberCoroutineScope()
+            fun playOnDemandContinueWatching(
+                item: ContinueWatchingItem,
+                startFromBeginning: Boolean,
+                fallback: () -> Unit
+            ) {
+                val progress = (item as? ContinueWatchingItem.InProgress)?.progress
+                val uid = progress?.contentId
+                    ?.let { com.nuvio.tv.livetv.ondemand.VodHomeIds.uidOfProgress(it) }
+                if (progress == null || uid == null) {
+                    fallback()
+                    return
+                }
+                onDemandPlayScope.launch {
+                    val resolved = runCatching {
+                        com.nuvio.tv.livetv.ondemand.OnDemandPlay.resolve(
+                            context, uid, progress.season, progress.episode
+                        )
+                    }.getOrNull()
+                    if (resolved == null) {
+                        // Gone from the provider's catalog (the row drops it on the next update).
+                        Toast.makeText(
+                            context,
+                            R.string.on_demand_continue_unavailable,
+                            Toast.LENGTH_SHORT
+                        ).show()
+                        return@launch
+                    }
+                    navController.navigate(
+                        Screen.Player.createRoute(
+                            streamUrl = resolved.url,
+                            title = resolved.title,
+                            contentId = progress.contentId,
+                            contentType = progress.contentType,
+                            contentName = progress.name,
+                            poster = progress.poster ?: resolved.poster,
+                            backdrop = progress.backdrop,
+                            logo = progress.logo,
+                            videoId = progress.videoId,
+                            season = progress.season,
+                            episode = progress.episode,
+                            episodeTitle = progress.episodeTitle,
+                            addonName = com.nuvio.tv.livetv.ondemand.OnDemandStreams.GROUP_NAME,
+                            bingeGroup = com.nuvio.tv.livetv.ondemand.OnDemandStreams.BINGE_GROUP,
+                            returnToHomeOnBack = true,
+                            startFromBeginning = startFromBeginning
+                        )
+                    )
+                }
+            }
+
+            // YouTube fork: a YouTube card resumes in Nuvio's player, resolving the stream first.
+            val youtubeExtractor = androidx.compose.runtime.remember(context) {
+                runCatching {
+                    dagger.hilt.android.EntryPointAccessors.fromApplication(
+                        context.applicationContext,
+                        com.nuvio.tv.youtube.YouTubePlaybackEntryPoint::class.java
+                    ).youTubeExtractor()
+                }.getOrNull()
+            }
+            val youtubePlayScope = androidx.compose.runtime.rememberCoroutineScope()
+            fun playYouTubeContinueWatching(
+                item: ContinueWatchingItem,
+                startFromBeginning: Boolean
+            ): Boolean {
+                val progress = (item as? ContinueWatchingItem.InProgress)?.progress ?: return false
+                if (!com.nuvio.tv.youtube.YouTubeProgress.isYouTubeId(progress.contentId)) return false
+                val videoId = progress.contentId.removePrefix(
+                    com.nuvio.tv.youtube.YouTubeProgress.ID_PREFIX
+                )
+                val extractor = youtubeExtractor
+                if (extractor == null) {
+                    Toast.makeText(context, R.string.youtube_continue_unavailable, Toast.LENGTH_SHORT).show()
+                    return true
+                }
+                youtubePlayScope.launch {
+                    val url = runCatching {
+                        extractor.extractSingleUrl("https://www.youtube.com/watch?v=$videoId")
+                    }.getOrNull()?.takeIf { it.isNotBlank() }
+                    if (url == null) {
+                        Toast.makeText(
+                            context,
+                            R.string.youtube_continue_unavailable,
+                            Toast.LENGTH_SHORT
+                        ).show()
+                        return@launch
+                    }
+                    navController.navigate(
+                        Screen.Player.createRoute(
+                            streamUrl = url,
+                            title = progress.name,
+                            contentId = progress.contentId,
+                            contentType = "youtube",
+                            contentName = progress.name,
+                            poster = progress.poster,
+                            videoId = videoId,
+                            addonName = "OneTube",
+                            returnToHomeOnBack = true,
+                            startFromBeginning = startFromBeginning
+                        )
+                    )
+                }
+                return true
+            }
+
             // Live TV fork: get Live TV ready in the background, so the guide is there when opened.
             androidx.compose.runtime.LaunchedEffect(Unit) {
                 runCatching { com.nuvio.tv.livetv.startup.LiveTvPreload.start(context) }
@@ -335,6 +504,18 @@ private fun PlaybackNavHost(
                     )
                 },
                 onContinueWatchingClick = onContinueWatchingClick@{ item ->
+                    if (playYouTubeContinueWatching(item, startFromBeginning = false)) {
+                        return@onContinueWatchingClick
+                    }
+                    if (com.nuvio.tv.livetv.ondemand.VodHomeIds.isOnDemandContentId(
+                            (item as? ContinueWatchingItem.InProgress)?.progress?.contentId
+                        )
+                    ) {
+                        playOnDemandContinueWatching(item, startFromBeginning = false) {
+                            navController.navigate(createContinueWatchingRoute(item))
+                        }
+                        return@onContinueWatchingClick
+                    }
                     if (!playbackAvailability.canStream(item)) {
                         Toast.makeText(context, R.string.playback_unavailable_message, Toast.LENGTH_SHORT).show()
                         return@onContinueWatchingClick
@@ -342,6 +523,20 @@ private fun PlaybackNavHost(
                     navController.navigate(createContinueWatchingRoute(item))
                 },
                 onContinueWatchingStartFromBeginning = onContinueWatchingStartFromBeginning@{ item ->
+                    if (playYouTubeContinueWatching(item, startFromBeginning = true)) {
+                        return@onContinueWatchingStartFromBeginning
+                    }
+                    if (com.nuvio.tv.livetv.ondemand.VodHomeIds.isOnDemandContentId(
+                            (item as? ContinueWatchingItem.InProgress)?.progress?.contentId
+                        )
+                    ) {
+                        playOnDemandContinueWatching(item, startFromBeginning = true) {
+                            navController.navigate(
+                                createContinueWatchingRoute(item, startFromBeginning = true)
+                            )
+                        }
+                        return@onContinueWatchingStartFromBeginning
+                    }
                     if (!playbackAvailability.canStream(item)) {
                         Toast.makeText(context, R.string.playback_unavailable_message, Toast.LENGTH_SHORT).show()
                         return@onContinueWatchingStartFromBeginning
@@ -1005,6 +1200,16 @@ private fun PlaybackNavHost(
                     type = NavType.StringType
                     nullable = true
                     defaultValue = null
+                },
+                navArgument("audioSlaveUrl") {
+                    type = NavType.StringType
+                    nullable = true
+                    defaultValue = null
+                },
+                navArgument("youtubeLive") {
+                    type = NavType.StringType
+                    nullable = true
+                    defaultValue = "false"
                 }
             )
         ) { backStackEntry ->
@@ -1051,7 +1256,218 @@ private fun PlaybackNavHost(
                 }
             }
 
+            // YouTube fork: the YouTube page is still underneath the player, and its view model knows what plays next.
+            val playerContext = androidx.compose.ui.platform.LocalContext.current
+            val youtubeEntry: androidx.navigation.NavBackStackEntry? =
+                runCatching { navController.getBackStackEntry(Screen.YouTube.route) }.getOrNull()
+            val youtubeVm: com.nuvio.tv.youtube.YouTubeViewModel? = if (youtubeEntry != null) {
+                androidx.hilt.navigation.compose.hiltViewModel<com.nuvio.tv.youtube.YouTubeViewModel>(youtubeEntry)
+            } else {
+                null
+            }
+
+            val upNextVideoId = backStackEntry.arguments?.getString("contentId")
+                ?.takeIf { com.nuvio.tv.youtube.YouTubeProgress.isYouTubeId(it) }
+                ?.removePrefix(com.nuvio.tv.youtube.YouTubeProgress.ID_PREFIX)
+            // The same view model the player screen uses, so the card can follow the playback position.
+            val upNextPlayerVm: com.nuvio.tv.ui.screens.player.PlayerViewModel =
+                androidx.hilt.navigation.compose.hiltViewModel()
+
+            val ytPlayerVm: com.nuvio.tv.youtube.YouTubePlayerViewModel = androidx.hilt.navigation.compose.hiltViewModel()
+
+            val ytState by ytPlayerVm.state.collectAsState()
+            // Know the channel and whether you're subscribed from the start, so the buttons are right.
+            androidx.compose.runtime.LaunchedEffect(upNextVideoId) { upNextVideoId?.let { ytPlayerVm.load(it) } }
+            // Say what a button did, whether or not the panel is open.
+            androidx.compose.runtime.LaunchedEffect(ytState.message) {
+                ytState.message?.let { message ->
+                    android.widget.Toast.makeText(playerContext, message, android.widget.Toast.LENGTH_SHORT).show()
+                    ytPlayerVm.clearMessage()
+                }
+            }
+
+            // Live chat on or off, and the OK press that has just answered the "skip?" card.
+            val chatOn = androidx.compose.runtime.remember { androidx.compose.runtime.mutableStateOf(false) }
+            val loopOn = androidx.compose.runtime.remember { androidx.compose.runtime.mutableStateOf(false) }
+            // The chat's look, and the settings panel that changes it while the chat is on screen.
+            val chatAppearance = androidx.compose.runtime.remember {
+                androidx.compose.runtime.mutableStateOf(com.nuvio.tv.youtube.loadChatAppearance(playerContext))
+            }
+            val chatSettingsOn = androidx.compose.runtime.remember { androidx.compose.runtime.mutableStateOf(false) }
+            val consumeConfirmUp = androidx.compose.runtime.remember { booleanArrayOf(false) }
+            androidx.compose.runtime.DisposableEffect(upNextVideoId) {
+                onDispose {
+                    SponsorBlockUi.clear()
+                    ytPlayerVm.stopChat()
+                }
+            }
+
             PlayerScreen(
+                previewKeyHook = hook@{ e ->
+                    val key = e.key
+                    val confirm = key == androidx.compose.ui.input.key.Key.DirectionCenter ||
+                        key == androidx.compose.ui.input.key.Key.Enter ||
+                        key == androidx.compose.ui.input.key.Key.NumPadEnter
+                    if (!confirm) return@hook false
+                    when {
+                        e.type == androidx.compose.ui.input.key.KeyEventType.KeyDown && SponsorBlockUi.accept() -> {
+                            consumeConfirmUp[0] = true
+                            true
+                        }
+                        e.type == androidx.compose.ui.input.key.KeyEventType.KeyUp && consumeConfirmUp[0] -> {
+                            consumeConfirmUp[0] = false
+                            true
+                        }
+                        else -> false
+                    }
+                },
+                youtubeChatOn = chatOn.value,
+                youtubeLoopOn = loopOn.value,
+                onYouTubeLoop = if (upNextVideoId != null) ({
+                    loopOn.value = !loopOn.value
+                    upNextPlayerVm.setRepeatOne(loopOn.value)
+                }) else null,
+                onYouTubePrevious = if (upNextVideoId != null && ytState.info?.isLive != true && youtubeVm != null) ({
+                    youtubeVm.playPrevious(
+                        currentVideoId = upNextVideoId,
+                        onReady = { v ->
+                            navController.navigate(youtubePlayerRoute(v)) {
+                                popUpTo(backStackEntry.destination.id) { inclusive = true }
+                            }
+                        },
+                        onNone = {
+                            android.widget.Toast.makeText(
+                                playerContext, "No previous video", android.widget.Toast.LENGTH_SHORT
+                            ).show()
+                        }
+                    )
+                }) else null,
+                onYouTubeNext = if (upNextVideoId != null && ytState.info?.isLive != true && youtubeVm != null) ({
+                    youtubeVm.playNext(
+                        currentVideoId = upNextVideoId,
+                        onReady = { v ->
+                            navController.navigate(youtubePlayerRoute(v)) {
+                                popUpTo(backStackEntry.destination.id) { inclusive = true }
+                            }
+                        },
+                        onNone = {
+                            android.widget.Toast.makeText(
+                                playerContext, "No next video", android.widget.Toast.LENGTH_SHORT
+                            ).show()
+                        }
+                    )
+                }) else null,
+                onYouTubeChat = if (ytState.info?.liveChatKey != null) ({
+                    if (!chatOn.value) {
+                        // First press: show the chat and its settings together, so changes are visible.
+                        chatOn.value = true
+                        chatSettingsOn.value = true
+                        ytPlayerVm.startChat()
+                    } else {
+                        chatOn.value = false
+                        chatSettingsOn.value = false
+                        ytPlayerVm.stopChat()
+                    }
+                }) else null,
+                // The YouTube page has to be underneath for the panel and buttons to work.
+                showYouTubeButton = upNextVideoId != null && youtubeVm != null,
+                youtubeLive = ytState.info?.isLive == true,
+                youtubeSubscribed = ytState.info?.subscribed == true,
+                youtubeLiked = ytState.info?.liked == true,
+                youtubeDisliked = ytState.info?.disliked == true,
+                youtubeChannelImage = ytState.info?.authorImage,
+                youtubeChannelName = ytState.info?.author,
+                youtubeViewCount = ytState.info?.viewCount,
+                youtubePublishedDate = ytState.info?.publishedDate,
+                youtubeLikeCount = ytState.info?.likeCount,
+                youtubeDislikeCount = ytState.info?.dislikeCount,
+                onYouTubeSubscribe = if (upNextVideoId != null) ({ ytPlayerVm.toggleSubscribe() }) else null,
+                onYouTubeLike = if (upNextVideoId != null) ({ ytPlayerVm.toggleLike() }) else null,
+                onYouTubeDislike = if (upNextVideoId != null) ({ ytPlayerVm.toggleDislike() }) else null,
+                onYouTubeComments = if (upNextVideoId != null) ({
+                    upNextPlayerVm.onEvent(com.nuvio.tv.ui.screens.player.PlayerEvent.OnShowYouTubeComments)
+                }) else null,
+                onYouTubeChannel = ytState.info?.channelId?.let { channel ->
+                    {
+                        youtubeVm?.openChannel(channel, ytState.info?.author.orEmpty())
+                        navController.popBackStack()
+                    }
+                },
+                extraOverlay = {
+                    if (upNextVideoId != null && youtubeVm != null) {
+                        val timeline by upNextPlayerVm.playbackTimeline.collectAsState()
+                        val playerUi by upNextPlayerVm.uiState.collectAsState()
+                        // The video's own chapters; set again once the stream is playing, in case it reset them.
+                        androidx.compose.runtime.LaunchedEffect(ytState.info?.chapters, timeline.duration > 0) {
+                            val chapters = ytState.info?.chapters.orEmpty()
+                            if (chapters.isNotEmpty() && timeline.duration > 0) {
+                                upNextPlayerVm.setExternalChapters(
+                                    chapters.map { (title, start) ->
+                                        com.nuvio.tv.ui.screens.player.PlayerChapter(startMs = start, title = title)
+                                    }
+                                )
+                            }
+                        }
+                        YouTubeUpNext(
+                            upNextVideoId,
+                            youtubeVm,
+                            timeline,
+                            isLiveStream = ytState.info?.isLive == true,
+                            looping = loopOn.value
+                        )
+                        if (ytState.info?.isLive == true && (playerUi.showControls || !playerUi.isPlaying)) {
+                            com.nuvio.tv.youtube.YouTubeLiveBadge(
+                                androidx.compose.ui.Modifier.align(androidx.compose.ui.Alignment.TopStart)
+                            )
+                        }
+                        SponsorSkipCard()
+                        if (chatOn.value) YouTubeChatOverlay(ytPlayerVm, chatAppearance.value)
+                        if (chatSettingsOn.value) {
+                            com.nuvio.tv.youtube.YouTubeChatSettingsPanel(
+                                appearance = chatAppearance.value,
+                                onChange = { updated ->
+                                    chatAppearance.value = updated
+                                    com.nuvio.tv.youtube.saveChatAppearance(updated, playerContext)
+                                },
+                                onClose = { chatSettingsOn.value = false }
+                            )
+                        }
+                        if (playerUi.showYouTubePanel) {
+                            YouTubePlayerPanel(
+                                videoId = upNextVideoId,
+                                viewModel = ytPlayerVm,
+                                onClose = {
+                                    upNextPlayerVm.onEvent(com.nuvio.tv.ui.screens.player.PlayerEvent.OnSetYouTubeScrollFraction(0f))
+                                    upNextPlayerVm.onEvent(com.nuvio.tv.ui.screens.player.PlayerEvent.OnDismissTransientOverlay)
+                                },
+                                onOpenChannel = { channelId, name ->
+                                    youtubeVm.openChannel(channelId, name)
+                                    navController.popBackStack()
+                                },
+                                onPlayVideo = { item ->
+                                    youtubeVm.activate(
+                                        item = item,
+                                        from = ytPlayerVm.state.value.related,
+                                        onReady = { v ->
+                                            navController.navigate(youtubePlayerRoute(v)) {
+                                                popUpTo(backStackEntry.destination.id) { inclusive = true }
+                                            }
+                                        }
+                                    )
+                                },
+                                onSeekTo = { positionMs ->
+                                    upNextPlayerVm.onEvent(com.nuvio.tv.ui.screens.player.PlayerEvent.OnSeekTo(positionMs))
+                                },
+                                startWithRecommendations = playerUi.youTubePanelStartWithRecommendations,
+                                startInComments = playerUi.youTubePanelStartWithComments,
+                                scrollFraction = playerUi.youTubeScrollFraction,
+                                onScrollFractionChange = { fraction ->
+                                    upNextPlayerVm.onEvent(com.nuvio.tv.ui.screens.player.PlayerEvent.OnSetYouTubeScrollFraction(fraction))
+                                }
+                            )
+                        }
+                    }
+                },
                 onBackPress = { currentVideoId, currentSeason, currentEpisode, autoPlayEnabled, playbackCompleted ->
                     val args = backStackEntry.arguments
                     // Live TV fork: a recording goes back to Recordings (it has no details page).
@@ -1102,6 +1518,14 @@ private fun PlaybackNavHost(
                         }
                     }
 
+                    fun popPlayerOrFinish() {
+                        if (!navController.popBackStack()) {
+                            // No screen underneath (launcher or deep-link playback). Close the
+                            // player instead of leaving a released player on a black screen.
+                            playerContext.findHostActivity()?.finish()
+                        }
+                    }
+
                     when {
                         playbackCompleted && contentId.isNotBlank() -> {
                             returnToDetail()
@@ -1125,7 +1549,7 @@ private fun PlaybackNavHost(
                                         state["returnFocusEpisode"] = focusEpisode
                                     }
                             } else {
-                                navController.popBackStack()
+                                popPlayerOrFinish()
                             }
                         }
                         playerBackOpensCurrentEpisodeStreams(episodeChangedInPlace, autoPlayEnabled) -> {
@@ -1155,7 +1579,7 @@ private fun PlaybackNavHost(
                                     launchSingleTop = true
                                 }
                             } else {
-                                navController.popBackStack()
+                                popPlayerOrFinish()
                             }
                         }
                         else -> {
@@ -1164,7 +1588,7 @@ private fun PlaybackNavHost(
                                 if (returnToDetailOnBack && contentType.equals("series", ignoreCase = true) && contentId.isNotBlank()) {
                                     returnToDetail()
                                 } else {
-                                    navController.popBackStack()
+                                    popPlayerOrFinish()
                                 }
                             }
                         }
@@ -1172,6 +1596,32 @@ private fun PlaybackNavHost(
                 },
                 onPlaybackEnded = { nextVideoId, nextSeason, nextEpisode, exitReason ->
                     val args = backStackEntry.arguments
+                    // YouTube fork: a video that ends by itself carries on with the next one, if autoplay is on.
+                    val endedYouTubeId = args?.getString("contentId")
+                        ?.takeIf { com.nuvio.tv.youtube.YouTubeProgress.isYouTubeId(it) }
+                        ?.removePrefix(com.nuvio.tv.youtube.YouTubeProgress.ID_PREFIX)
+                    if (endedYouTubeId != null && exitReason == null && youtubeVm != null &&
+                        com.nuvio.tv.youtube.YouTubeSettings.autoplayNext(playerContext)
+                    ) {
+                        android.util.Log.i(
+                            "YouTubeAutoplay",
+                            "ended video=$endedYouTubeId, moving to next"
+                        )
+                        youtubeVm.playNext(
+                            currentVideoId = endedYouTubeId,
+                            onReady = { v ->
+                                android.util.Log.i(
+                                    "YouTubeAutoplay",
+                                    "next ready video=${v.videoId} title=${v.title}"
+                                )
+                                navController.navigate(youtubePlayerRoute(v)) {
+                                    popUpTo(backStackEntry.destination.id) { inclusive = true }
+                                }
+                            },
+                            onNone = { navController.popBackStack() }
+                        )
+                        return@PlayerScreen
+                    }
                     // Live TV fork: a recording that finishes goes back to Recordings.
                     if (com.nuvio.tv.livetv.record.RecordingResume.isRecording(args?.getString("contentType"))) {
                         navController.popBackStack()
@@ -1453,7 +1903,7 @@ private fun PlaybackNavHost(
             )
         }
 
-        rootComposable(Screen.LiveTv.route, withInset = liveTvIsRoot) {
+        forkPageComposable(Screen.LiveTv.route) {
             com.nuvio.tv.livetv.ui.LiveTvGuideScreen(
                 onOpenFullscreen = {
                     navController.navigate(Screen.LiveTvPlayer.route) { launchSingleTop = true }
@@ -1486,7 +1936,7 @@ private fun PlaybackNavHost(
             )
         }
 
-        rootComposable(Screen.Recordings.route, withInset = recordingsIsRoot) {
+        forkPageComposable(Screen.Recordings.route) {
             // Live TV fork: recorded shows, played full screen in Live TV's own player (its seek
             // bar, 30 s skips); Back comes back here.
             com.nuvio.tv.livetv.record.RecordingsScreen(
@@ -1497,11 +1947,31 @@ private fun PlaybackNavHost(
             )
         }
 
+        composable(Screen.YouTube.route) {
+            // YouTube fork: browse and search, played in Nuvio's own player.
+            com.nuvio.tv.youtube.YouTubeScreen(
+                onOpenSettings = {
+                    // The gear goes straight to the YouTube section, not the top of Settings.
+                    com.nuvio.tv.ui.screens.settings.SettingsLaunch.pendingCategory =
+                        com.nuvio.tv.ui.screens.settings.SettingsCategory.YOUTUBE
+                    navController.navigate(Screen.Settings.route) { launchSingleTop = true }
+                },
+                onPlay = { v -> navController.navigate(youtubePlayerRoute(v)) }
+            )
+        }
+
+        composable(Screen.Music.route) {
+            // Music fork: YouTube Music browsing and the audio-first player. The host rail is
+            // hidden behind Music's own rail, and Left opens Nuvio's menu over it.
+            com.nuvio.tv.music.MusicScreen()
+        }
+
+        // Launcher: every app installed on the TV.
         rootComposable(Screen.Apps.route) {
             com.nuvio.tv.ui.screens.apps.AppsScreen()
         }
 
-        rootComposable(Screen.Calendar.route) {
+        forkPageComposable(Screen.Calendar.route) {
             // Live TV fork: when your shows' new episodes and your movies come out.
             com.nuvio.tv.livetv.calendar.CalendarScreen(
                 onOpenDetail = { id, type, addonBaseUrl, season, episode ->
@@ -1558,7 +2028,7 @@ private fun PlaybackNavHost(
             )
         }
 
-        rootComposable(Screen.Sports.route) { sportsEntry ->
+        forkPageComposable(Screen.Sports.route) { sportsEntry ->
             // A Sports page that isn't the one on screen (left behind by a page switch that got
             // cut short) stays drawn and working out of sight, a second copy alongside the real one,
             // until Sports is picked again. Once it's been off screen longer than a page fade, it's
@@ -1577,6 +2047,20 @@ private fun PlaybackNavHost(
             // Live TV fork: the Sports page (scores, schedules, which of your channels show each game).
             if (sportsShown) com.nuvio.tv.livetv.sports.SportsScreen(
                 onOpenLive = { com.nuvio.tv.livetv.sports.openLiveTvFullscreen(navController) },
+                onPlayHighlight = { playback ->
+                    navController.navigate(
+                        Screen.Player.createRoute(
+                            streamUrl = playback.streamUrl,
+                            title = playback.title,
+                            contentId = playback.contentId,
+                            contentType = playback.contentType,
+                            addonName = playback.addonName,
+                            poster = playback.poster,
+                            videoId = playback.videoId,
+                            startFromBeginning = playback.startFromBeginning
+                        )
+                    )
+                },
                 onOpenMultiview = { channelKey ->
                     com.nuvio.tv.livetv.sports.SportsWatchLaunch.request(2, channelKey)
                     navController.navigate(Screen.SportsMultiview.route) { launchSingleTop = true }
@@ -1600,7 +2084,7 @@ private fun PlaybackNavHost(
             )
         }
 
-        rootComposable(Screen.OnDemand.route) {
+        forkPageComposable(Screen.OnDemand.route) {
             // Live TV fork: On Demand in Nuvio's own home layout (Classic, Grid or Modern, as set
             // for Home), with every layout option taken from Home itself.
             // Home's settings, read safely: Home may not be in the history (it's removed when the
@@ -1995,4 +2479,10 @@ private fun PlaybackNavHost(
             )
         }
     }
+}
+
+private tailrec fun android.content.Context.findHostActivity(): android.app.Activity? = when (this) {
+    is android.app.Activity -> this
+    is android.content.ContextWrapper -> baseContext.findHostActivity()
+    else -> null
 }

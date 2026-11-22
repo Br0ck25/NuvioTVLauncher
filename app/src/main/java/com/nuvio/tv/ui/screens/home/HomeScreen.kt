@@ -16,6 +16,7 @@ import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.lazy.items
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.CompositionLocalProvider
 import androidx.compose.runtime.DisposableEffect
 import androidx.lifecycle.Lifecycle
 import androidx.lifecycle.LifecycleEventObserver
@@ -47,6 +48,7 @@ import com.nuvio.tv.domain.model.MetaPreview
 import com.nuvio.tv.domain.model.isSeriesLikeType
 import com.nuvio.tv.ui.components.ErrorState
 import com.nuvio.tv.ui.components.LoadingIndicator
+import com.nuvio.tv.ui.components.LocalShowContinueWatchingEpisodeCount
 import com.nuvio.tv.ui.components.LocalStartupLoadingState
 import com.nuvio.tv.ui.components.LocalStartupSplashEnabled
 import com.nuvio.tv.ui.components.shouldShowHomeStartupLoader
@@ -171,11 +173,23 @@ fun HomeScreen(
         }
     }
 
-    val onNavigateToDetailStable = remember(onNavigateToDetail) { onNavigateToDetail }
+    val onNavigateToDetailStable = remember(onNavigateToDetail, viewModel) {
+        { itemId: String, itemType: String, addonBaseUrl: String ->
+            viewModel.beginTrailerHandoff(itemId)
+            onNavigateToDetail(itemId, itemType, addonBaseUrl)
+        }
+    }
     val latestContinueWatchingClickAction = androidx.compose.runtime.rememberUpdatedState(uiState.continueWatchingClickAction)
     val onContinueWatchingClickStable = remember(onContinueWatchingClick, onNavigateToDetail) {
         { item: ContinueWatchingItem ->
-            if (latestContinueWatchingClickAction.value.opensDetails(item)) {
+            // Live TV fork: On Demand cards always resume from the provider; they have no
+            // Nuvio details page behind their `nuviovod:` id.
+            val onDemand = item is ContinueWatchingItem.InProgress &&
+                com.nuvio.tv.livetv.ondemand.VodHomeIds.isOnDemandContentId(item.progress.contentId)
+            // YouTube fork: these have no Nuvio details page; they always resume in the player.
+            val youtube = item is ContinueWatchingItem.InProgress &&
+                com.nuvio.tv.youtube.YouTubeProgress.isYouTubeId(item.progress.contentId)
+            if (!onDemand && !youtube && latestContinueWatchingClickAction.value.opensDetails(item)) {
                 when (item) {
                     is ContinueWatchingItem.InProgress -> onNavigateToDetail(item.progress.contentId, item.progress.contentType, "")
                     is ContinueWatchingItem.NextUp -> onNavigateToDetail(item.info.contentId, item.info.contentType, "")
@@ -575,6 +589,9 @@ private fun ClassicHomeRoute(
 ) {
     val focusState by viewModel.focusState.collectAsStateWithLifecycle()
     val scrollToTopTrigger by viewModel.scrollToTopTrigger.collectAsStateWithLifecycle()
+    CompositionLocalProvider(
+        LocalShowContinueWatchingEpisodeCount provides uiState.showContinueWatchingEpisodeCount
+    ) {
     ClassicHomeContent(
         uiState = uiState,
         posterCardStyle = posterCardStyle,
@@ -615,6 +632,7 @@ private fun ClassicHomeRoute(
             { catalogKey: String -> viewModel.requestLazyCatalogLoad(catalogKey) }
         }
     )
+    }
 }
 
 @Composable
@@ -634,6 +652,9 @@ private fun GridHomeRoute(
 ) {
     val gridFocusState by viewModel.gridFocusState.collectAsStateWithLifecycle()
     val scrollToTopTrigger by viewModel.scrollToTopTrigger.collectAsStateWithLifecycle()
+    CompositionLocalProvider(
+        LocalShowContinueWatchingEpisodeCount provides uiState.showContinueWatchingEpisodeCount
+    ) {
     GridHomeContent(
         onFocusedRowKeyChanged = remember(viewModel) {
             { key: String? -> viewModel.setLiveFocusedRowKey(key) }
@@ -670,6 +691,7 @@ private fun GridHomeRoute(
             }
         }
     )
+    }
 }
 
 @Composable
@@ -720,6 +742,9 @@ private fun ModernHomeRoute(
             viewModel.preloadAdjacentItem(item)
         }
     }
+    CompositionLocalProvider(
+        LocalShowContinueWatchingEpisodeCount provides uiState.showContinueWatchingEpisodeCount
+    ) {
     ModernHomeContent(
         uiState = uiState,
         modernPresentation = modernPresentation,
@@ -756,6 +781,7 @@ private fun ModernHomeRoute(
             { catalogKey: String -> viewModel.requestLazyCatalogLoad(catalogKey) }
         }
     )
+    }
 }
 
 @OptIn(ExperimentalTvMaterial3Api::class)

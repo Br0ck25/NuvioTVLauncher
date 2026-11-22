@@ -32,7 +32,9 @@ import androidx.compose.ui.focus.focusRequester
 import androidx.compose.ui.focus.onFocusChanged
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.platform.LocalContext
+import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.unit.dp
+import com.nuvio.tv.R
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import com.nuvio.tv.livetv.calendar.CalendarEntryPoint
 import com.nuvio.tv.livetv.calendar.SideMenuPages
@@ -56,6 +58,7 @@ private data class PageRow(val title: String, val subtitle: String, val on: Bool
 @Composable
 fun SideMenuSettingsContent(initialFocusRequester: FocusRequester? = null) {
     val context = LocalContext.current
+    val musicLabel = stringResource(R.string.music_nav_label)
     val entry = remember { EntryPointAccessors.fromApplication(context.applicationContext, CalendarEntryPoint::class.java) }
     val prefs = remember { entry.liveTvPreferences() }
     val sports = remember { entry.sportsRepository() }
@@ -147,11 +150,23 @@ fun SideMenuSettingsContent(initialFocusRequester: FocusRequester? = null) {
             else "Off the menu only: recording still works, and Recordings is always in Live TV (● by the guide's ⚙)",
             s.recordingsInSidebar
         ) { update { it.copy(recordingsInSidebar = !it.recordingsInSidebar) } }
+        SideMenuPages.YOUTUBE -> PageRow(
+            "OneTube",
+            "The OneTube YouTube section: Home, subscriptions, search, playlists and playback",
+            id !in hidden
+        ) { setHidden(id, id !in hidden) }
+        SideMenuPages.MUSIC -> PageRow(
+            musicLabel,
+            "YouTube Music browsing, playback, lyrics, downloads, library and party",
+            id !in hidden
+        ) { setHidden(id, id !in hidden) }
         else -> PageRow(id, "", true) {}
     }
 
     val startChoices = buildList {
         add("HOME" to "Home")
+        if (SideMenuPages.YOUTUBE !in hidden) add("YOUTUBE" to "OneTube")
+        if (SideMenuPages.MUSIC !in hidden) add("MUSIC" to musicLabel)
         if (s.showInSidebar) add("LIVE_TV" to "Live TV")
         if (sportsSettings.showInSidebar) add("SPORTS" to "Sports")
         if (s.onDemandEnabled && s.onDemandInSidebar && onDemandHas) add("ON_DEMAND" to "On Demand")
@@ -184,7 +199,7 @@ fun SideMenuSettingsContent(initialFocusRequester: FocusRequester? = null) {
                 }
             }
             item(key = "pages") {
-                SettingsGroupCard(title = "Pages", subtitle = "OK turns a page on or off. The arrows move it up or down the menu. Settings stays at the bottom when it's on.") {
+                SettingsGroupCard(title = "Pages", subtitle = "OK turns a page on or off. The arrows move it up or down the menu. Settings stays at the bottom when it's on the menu.") {
                     order.forEachIndexed { index, id ->
                         val r = rowFor(id)
                         Row(verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(8.dp)) {
@@ -385,6 +400,16 @@ fun CalendarSettingsContent(initialFocusRequester: FocusRequester? = null) {
                         "The next episodes of your shows in the coming week, in Home's Upcoming row",
                         s.calendarUpcomingRow,
                         { update { it.copy(calendarUpcomingRow = !it.calendarUpcomingRow) } }
+                    )
+                }
+            }
+            item(key = "detail_pages") {
+                SettingsGroupCard(title = "Show and Movie Pages") {
+                    SettingsToggleRow(
+                        "Live TV Options Button",
+                        "The Live TV button under the buttons on a show or movie page (record, remind, channel). Off hides it; recordings and reminders you already set stay.",
+                        s.pageLiveTvOptions,
+                        { update { it.copy(pageLiveTvOptions = !it.pageLiveTvOptions) } }
                     )
                 }
             }

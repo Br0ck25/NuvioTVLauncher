@@ -77,6 +77,7 @@ import androidx.compose.ui.focus.focusProperties
 import androidx.compose.ui.focus.onFocusChanged
 import androidx.compose.ui.input.key.onPreviewKeyEvent
 import androidx.compose.ui.platform.LocalContext
+import androidx.compose.ui.platform.LocalFocusManager
 import com.nuvio.tv.ui.util.recompositionHighlighter
 import com.nuvio.tv.ui.util.dpadRepeatThrottle
 import androidx.lifecycle.compose.LocalLifecycleOwner
@@ -150,6 +151,15 @@ fun SearchScreen(
     val context = LocalContext.current
     val view = LocalView.current
     val keyboardController = LocalSoftwareKeyboardController.current
+    val focusManager = LocalFocusManager.current
+    // Leaving Search for a detail page or the player: a keyboard left open used to follow
+    // the user and sit over the video, where Back went to the player instead of closing it.
+    fun hideSearchKeyboard() {
+        focusManager.clearFocus(force = true)
+        keyboardController?.hide()
+        (context.getSystemService(android.content.Context.INPUT_METHOD_SERVICE) as? InputMethodManager)
+            ?.hideSoftInputFromWindow(view.windowToken, 0)
+    }
     val strVoiceNoSpeech = stringResource(R.string.search_voice_no_speech)
     val strVoiceMicPermission = stringResource(R.string.search_voice_mic_permission)
     val strVoiceFailed = stringResource(R.string.search_voice_failed)
@@ -802,8 +812,14 @@ fun SearchScreen(
                                     results = onDemandResults,
                                     entryFocusRequester = onDemandRowFocusRequester,
                                     upFocusRequester = sectionUp("ondemand"),
-                                    onOpenDetail = onOpenOnDemand,
-                                    onPlay = onPlayOnDemand,
+                                    onOpenDetail = { id, type, addonBaseUrl, uid ->
+                                        hideSearchKeyboard()
+                                        onOpenOnDemand(id, type, addonBaseUrl, uid)
+                                    },
+                                    onPlay = { url, title, type, poster, contentId, contentName, season, episode, episodeName ->
+                                        hideSearchKeyboard()
+                                        onPlayOnDemand(url, title, type, poster, contentId, contentName, season, episode, episodeName)
+                                    },
                                     posterCardStyle = posterCardStyle
                                 )
                             }
@@ -1010,6 +1026,7 @@ fun SearchScreen(
                                     val backdrop = viewModel.getCachedBackdrop(id, type)
                                         ?: clickedItem?.backdropUrl
                                     HeroBackdropState.update(backdrop)
+                                    hideSearchKeyboard()
                                     onNavigateToDetail(id, type, addonBaseUrl)
                                 },
                                 onItemLongPress = { item, addonBaseUrl ->
@@ -1086,6 +1103,7 @@ fun SearchScreen(
                 .firstOrNull { it.id == id }
                 ?: uiState.discoverResults.firstOrNull { it.id == id }
             HeroBackdropState.update(clickedItem?.backdropUrl)
+            hideSearchKeyboard()
             onNavigateToDetail(id, type, addonBaseUrl)
         }
     )

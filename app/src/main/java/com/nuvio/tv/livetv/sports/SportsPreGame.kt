@@ -13,6 +13,8 @@ import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.runtime.Composable
+import androidx.compose.ui.res.stringResource
+import com.nuvio.tv.R
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
@@ -129,7 +131,7 @@ internal fun PreGameTimeColumn(ev: SportsEvent, sides: List<Side>, x: GameExtras
             sides.forEach { s -> if (s.team.abbr.isNotBlank()) text = text.replace(s.team.name, s.team.abbr) }
             val month = m.dateMs?.let { synchronized(monthFmt) { monthFmt.format(Date(it)) } }
             Spacer(Modifier.height(4.dp))
-            LiveText("Last met " + text + (month?.let { " · $it" } ?: ""), color = SportsLook.Dim, size = 9.sp, maxLines = 1, align = TextAlign.Center)
+            LiveText(stringResource(R.string.iptv_sports_last_met, text + (month?.let { " · $it" } ?: "")), color = SportsLook.Dim, size = 9.sp, maxLines = 1, align = TextAlign.Center)
         }
     }
 }

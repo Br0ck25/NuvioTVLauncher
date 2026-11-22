@@ -1,0 +1,74 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <string name="iptv_gear_audio">"Audio"</string>
+    <string name="iptv_gear_subtitles">"Subtitles"</string>
+    <string name="iptv_gear_sleep_timer">"Sleep timer"</string>
+    <string name="iptv_gear_on">"On"</string>
+    <string name="iptv_gear_off">"Off"</string>
+    <string name="iptv_gear_no_tracks">"No tracks available"</string>
+    <string name="iptv_gear_more_captions">"More caption tracks"</string>
+    <string name="iptv_gear_until_stop">"Until I stop it"</string>
+    <string name="iptv_gear_until_show_ends">"Until the show ends"</string>
+    <string name="iptv_gear_until_time">"Until a set time"</string>
+    <string name="iptv_gear_stop_at">"Stop at"</string>
+    <string name="iptv_gear_start_recording">"Start recording"</string>
+    <string name="iptv_gear_add_multiview">"Add to Multiview"</string>
+    <string name="iptv_gear_screen_size">"Screen size"</string>
+    <string name="iptv_gear_previous_channel">"Previous channel"</string>
+    <string name="iptv_gear_stream_info">"Stream info"</string>
+    <string name="iptv_gear_reload_stream">"Reload stream"</string>
+    <string name="iptv_gear_hide_channel">"Hide channel"</string>
+    <string name="iptv_gear_play_bar_layout">"Play bar layout"</string>
+    <string name="iptv_gear_settings">"Settings"</string>
+    <string name="iptv_gear_reset_default">"Reset to default"</string>
+    <string name="iptv_gear_bar_darkness">"Bar darkness"</string>
+    <string name="iptv_gear_bar_darkness_help">"How dark the play bar is"</string>
+    <string name="iptv_gear_quick_channels">"Quick channels"</string>
+    <string name="iptv_gear_quick_channels_help">"What it shows and in what order"</string>
+    <string name="iptv_gear_show_quick_channels">"Show quick channels"</string>
+    <string name="iptv_gear_opens_on">"Opens on"</string>
+    <string name="iptv_gear_first_list">"First list"</string>
+    <string name="iptv_gear_last_used">"Last one used"</string>
+    <string name="iptv_gear_audio_hint">"Applies to this channel"</string>
+    <string name="iptv_gear_sleep_hint">"Stops playback after"</string>
+    <string name="iptv_gear_size_hint">"Applies to every channel"</string>
+    <string name="iptv_gear_layout_hint">"The bar changes as you go"</string>
+    <string name="iptv_gear_quick_hint">"Changes show right away"</string>
+    <string name="iptv_gear_quick_opens_hint">"The list it shows first"</string>
+    <string name="iptv_gear_quick_lists_header">"LISTS · OK turns one on or off, the arrows move it"</string>
+    <string name="iptv_gear_add_group">"Add a playlist group"</string>
+    <string name="iptv_gear_add_group_ticked">"Ticked = in the row"</string>
+    <string name="iptv_gear_no_groups">"No groups yet. Add a playlist first."</string>
+    <string name="iptv_gear_any_group">"Any group from any playlist, your own too"</string>
+    <string name="iptv_gear_playlist_group">"%1$s · playlist group"</string>
+    <string name="iptv_gear_your_group">"Your group"</string>
+    <string name="iptv_gear_group_not_found">"Group not found"</string>
+    <string name="iptv_gear_group_missing">"Not in your playlists right now"</string>
+    <string name="iptv_gear_info_bar">"Info bar stays for"</string>
+    <string name="iptv_gear_info_bar_hint">"After changing channel or pressing OK"</string>
+    <string name="iptv_gear_theme_standard">"Standard"</string>
+    <string name="iptv_gear_theme_darkest">"Darkest"</string>
+    <string name="iptv_gear_theme_lightest">"Lightest"</string>
+    <string name="iptv_gear_part_poster">"Poster"</string>
+    <string name="iptv_gear_part_channel">"Channel name &amp; logo"</string>
+    <string name="iptv_gear_part_group">"Group name"</string>
+    <string name="iptv_gear_part_group_hint">"On the bar and in the backups lists"</string>
+    <string name="iptv_gear_part_tags">"Tags"</string>
+    <string name="iptv_gear_part_tags_hint">"Live, quality, sound, catch-up"</string>
+    <string name="iptv_gear_part_description">"Description"</string>
+    <string name="iptv_gear_part_progress">"Progress bar"</string>
+    <string name="iptv_gear_part_progress_hint">"Always shown while paused"</string>
+    <string name="iptv_gear_part_clock">"Clock"</string>
+    <string name="iptv_gear_part_next">"Up next"</string>
+    <string name="iptv_gear_part_recent">"Quick channels tab"</string>
+    <string name="iptv_gear_part_recent_hint">"The tab under the bar (▼ opens it)"</string>
+    <string name="iptv_gear_part_bell">"Bell"</string>
+    <string name="iptv_gear_part_bell_hint">"Follow the show, or put the movie on your Calendar"</string>
+    <plurals name="iptv_gear_list_count">
+        <item quantity="one">"%1$d list"</item>
+        <item quantity="other">"%1$d lists"</item>
+    </plurals>
+
+    <string name="iptv_player_provider_stopped">"The provider stopped sending this show. Try again, or skip to another point"</string>
+    <string name="iptv_player_recording_failed">"This recording couldn't be played"</string>
+</resources>

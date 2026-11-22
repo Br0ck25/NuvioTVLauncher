@@ -1,24 +1,25 @@
-# Privacy
+# Nuvio One Privacy Policy
 
-Nuvio Launcher is a free, open-source Android TV app. This page says what it does with your data.
+Last updated: November 13, 2026
 
-## What stays on your device
-Your installed-app order and names, Live TV playlists and settings, recordings, list channels and preferences are stored on your TV. We run no server that receives them.
+Nuvio One is a client application for playing media from sources you provide. It does not host, store or distribute media, and it ships with no channels, playlists or content sources.
 
-## Accounts and services you choose to use
-The app only contacts a service when you set it up or use it:
+## Account
 
-- **Nuvio account:** if you sign in, your profile and setup sync through Nuvio's backend (the same service the Nuvio apps use).
-- **Trakt:** if you connect Trakt, the app reads your Trakt library and sends watch progress, history and watchlist changes to Trakt. It signs in with Trakt's device-code flow, and the sign-in token is kept on your TV. Nuvio Launcher uses Trakt but is not endorsed or certified by Trakt.
-- **Simkl, MDBList, TMDB:** used only if you connect them or when the app loads posters, ratings and details.
-- **Addons, playlists, debrid services:** requests go to the addon, playlist or debrid provider you added, and are governed by that provider's policy.
-- **Updates:** the in-app updater checks this repository's GitHub releases.
+Nuvio One uses a Nuvio account for sign-in. Account authentication is handled by Nuvio's service. The app receives the account identifier and email address needed to identify your account and to keep your settings in sync. Your Nuvio password is never handled by Nuvio One.
 
-## What we collect
-Nothing. The app has no analytics or advertising, and we receive no data from it. If it crashes, a crash report is shown on screen and only leaves your TV if you copy it into a bug report yourself.
+## Live TV setup sync
 
-## Removing your data
-Clear the app's data in Android settings, or uninstall it. To remove data held by Trakt or Nuvio, use those services' own account settings.
+If you turn on Setup Sync, the app stores your Live TV setup (playlist and EPG definitions, favorites, hidden groups, sports and calendar choices, and look/layout settings) in a Nuvio One sync service backed by Cloudflare D1. The data is encrypted at rest, keyed to your Nuvio account, and is only returned to a device signed in to the same account. IPTV usernames and passwords are part of that encrypted setup. You can stop syncing or delete the saved copy at any time from Settings → Live TV → Setup Sync.
+
+## Google Drive (optional)
+
+If you connect Google Drive, the app stores a backup of the Live TV setup in a file the app creates in your own Google Drive, and Music uploads go to a folder the app creates in your Drive. Google OAuth tokens are kept on the device. You can disconnect Google Drive at any time; the files remain in your Drive until you delete them.
+
+## Diagnostics
+
+The app may offer optional debug or playback reports to help diagnose problems. Those reports are only sent when you choose to send them. Nuvio One does not sell personal data.
 
 ## Contact
-Open an issue at https://github.com/Br0ck25/NuvioTVLauncher/issues.
+
+For privacy questions, open an issue at https://github.com/Br0ck25/NuvioTVLauncher/issues.

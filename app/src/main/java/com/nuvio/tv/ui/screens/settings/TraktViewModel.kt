@@ -43,6 +43,7 @@ data class TraktUiState(
     val deviceCodeExpiresAtMillis: Long? = null,
     val continueWatchingDaysCap: Int = TraktSettingsDataStore.DEFAULT_CONTINUE_WATCHING_DAYS_CAP,
     val showMetaComments: Boolean = TraktSettingsDataStore.DEFAULT_SHOW_META_COMMENTS,
+    val promptToRateAfterWatching: Boolean = false,
     val connectedStats: TraktProgressService.TraktCachedStats? = null,
     val statusMessage: String? = null,
     val errorMessage: String? = null,
@@ -225,24 +226,34 @@ class TraktViewModel @Inject constructor(
         }
     }
 
+    fun onPromptToRateAfterWatchingChanged(enabled: Boolean) {
+        viewModelScope.launch {
+            traktSettingsDataStore.setPromptToRateAfterWatching(enabled)
+            _uiState.update { it.copy(promptToRateAfterWatching = enabled) }
+        }
+    }
+
     private fun observeSettings() {
         viewModelScope.launch {
             combine(
                 traktSettingsDataStore.continueWatchingDaysCap,
                 traktSettingsDataStore.showMetaComments,
-                traktSettingsDataStore.moreLikeThisSource
-            ) { daysCap, showMetaComments, moreLikeThisSource ->
+                traktSettingsDataStore.moreLikeThisSource,
+                traktSettingsDataStore.promptToRateAfterWatching
+            ) { daysCap, showMetaComments, moreLikeThisSource, promptToRateAfterWatching ->
                 SettingsSnapshot(
                     continueWatchingDaysCap = daysCap,
                     showMetaComments = showMetaComments,
-                    moreLikeThisSource = moreLikeThisSource
+                    moreLikeThisSource = moreLikeThisSource,
+                    promptToRateAfterWatching = promptToRateAfterWatching
                 )
             }.collectLatest { snapshot ->
                 _uiState.update {
                     it.copy(
                         continueWatchingDaysCap = snapshot.continueWatchingDaysCap,
                         showMetaComments = snapshot.showMetaComments,
-                        moreLikeThisSource = snapshot.moreLikeThisSource
+                        moreLikeThisSource = snapshot.moreLikeThisSource,
+                        promptToRateAfterWatching = snapshot.promptToRateAfterWatching
                     )
                 }
             }
@@ -252,7 +263,8 @@ class TraktViewModel @Inject constructor(
     private data class SettingsSnapshot(
         val continueWatchingDaysCap: Int,
         val showMetaComments: Boolean,
-        val moreLikeThisSource: MoreLikeThisSourcePreference
+        val moreLikeThisSource: MoreLikeThisSourcePreference,
+        val promptToRateAfterWatching: Boolean
     )
 
     private fun applyAuthState(authState: TraktAuthState) {

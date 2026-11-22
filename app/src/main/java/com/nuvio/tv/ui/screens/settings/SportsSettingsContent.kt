@@ -67,7 +67,7 @@ fun SportsSettingsContent(
     var dialog by remember { mutableStateOf<String?>(null) }
     fun update(t: (SportsSettings) -> SportsSettings) = viewModel.repo.updateSettings(t)
     val region = SportsCatalog.regionOf(s)
-    val shownCount = SportsCatalog.leagues.count { SportsCatalog.shown(it, s) }
+    val shownCount = SportsCatalog.all.count { SportsCatalog.shown(it, s) }
     val links = s.networkChannels.size + s.teamChannels.size + s.leagueChannels.size + s.eventChannels.size
     val fixes = links + s.blocked.size
 
@@ -172,6 +172,24 @@ fun SportsSettingsContent(
             }
             item(key = "reminders") {
                 SettingsGroupCard(title = "Reminders") {
+                    if ((f.teams.isNotEmpty() || f.leagues.isNotEmpty()) && !s.scoringAlerts) {
+                        SettingsActionRow(
+                            title = "Goal Alerts Are Off",
+                            subtitle = "You follow teams or leagues but won't get a card when they score.",
+                            value = "Turn On",
+                            leadingIcon = Icons.Default.Notifications,
+                            onClick = { update { it.copy(scoringAlerts = true) } }
+                        )
+                    }
+                    if (s.scoringAlerts && s.hideScores) {
+                        SettingsActionRow(
+                            title = "Goal Cards Are Hidden",
+                            subtitle = "Hide Scores is on, so scoring alerts can't appear.",
+                            value = "Show",
+                            leadingIcon = Icons.Default.Notifications,
+                            onClick = { update { it.copy(hideScores = false) } }
+                        )
+                    }
                     SettingsToggleRow(
                         "Remind Me About My Teams",
                         "A message before your teams play, with a button to watch. Games you set a reminder on are always reminded",
@@ -242,9 +260,10 @@ fun SportsSettingsContent(
             }
             item(key = "about") {
                 Text(
-                    text = "Scores, schedules, team logos and colors come from ESPN's free public feed. " +
-                        "Some event dates come from sporting-events.org, and the wrestling schedule and logos from TheSportsDB. " +
-                        "Darts, snooker, rugby and other sports they don't cover are found in your own TV guide.",
+                    text = "Scores, schedules, team logos and colors come from ESPN's free public feed and FotMob's league data through our sports data service. " +
+                        "Some event dates come from sporting-events.org" +
+                        (if (SportsCatalog.SHARED_DATA_ENABLED) ", and wrestling/boxing schedules from WWE, AEW, TNA and boxing sources" else "") +
+                        ". Darts, snooker, rugby and other sports they don't cover are found in your own TV guide.",
                     style = MaterialTheme.typography.bodySmall,
                     color = NuvioTheme.colors.TextTertiary,
                     modifier = Modifier.padding(start = NuvioTheme.spacing.lg, end = NuvioTheme.spacing.lg)

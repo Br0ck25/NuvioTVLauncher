@@ -1,5 +1,6 @@
 package com.nuvio.tv.ui.screens.player
 
+import com.nuvio.tv.data.repository.AddonEventDispatcher
 import android.content.Context
 import androidx.lifecycle.SavedStateHandle
 import androidx.lifecycle.ViewModel
@@ -59,6 +60,7 @@ class PlayerViewModel @Inject constructor(
     private val subtitleRepository: com.nuvio.tv.domain.repository.SubtitleRepository,
     private val parentalGuideRepository: ParentalGuideRepository,
     private val trackingScrobbleCoordinator: TrackingScrobbleCoordinator,
+    private val addonEventDispatcher: AddonEventDispatcher,
     private val traktEpisodeMappingService: TraktEpisodeMappingService,
     private val skipIntroRepository: SkipIntroRepository,
     private val playerSettingsDataStore: PlayerSettingsDataStore,
@@ -111,6 +113,10 @@ class PlayerViewModel @Inject constructor(
         trailerPlayerPool.yield()
     }
 
+    /** YouTube fork: chapters for the video playing, and repeating it. */
+    fun setExternalChapters(chapters: List<PlayerChapter>) = controller.setExternalChapters(chapters)
+    fun setRepeatOne(enabled: Boolean) = controller.setRepeatOne(enabled)
+
     internal val controller = PlayerRuntimeController(
         context = context,
         watchProgressRepository = watchProgressRepository,
@@ -121,6 +127,7 @@ class PlayerViewModel @Inject constructor(
         subtitleRepository = subtitleRepository,
         parentalGuideRepository = parentalGuideRepository,
         trackingScrobbleCoordinator = trackingScrobbleCoordinator,
+        addonEventDispatcher = addonEventDispatcher,
         traktEpisodeMappingService = traktEpisodeMappingService,
         skipIntroRepository = skipIntroRepository,
         playerSettingsDataStore = playerSettingsDataStore,
@@ -220,6 +227,12 @@ class PlayerViewModel @Inject constructor(
         get() = controller.exoPlayer
 
     fun getCurrentStreamUrl(): String = controller.getCurrentStreamUrl()
+    fun isYouTubePlayback(): Boolean = com.nuvio.tv.youtube.YouTubeProgress.isYouTubeId(controller.contentId)
+
+    /** The YouTube video id behind this playback, if it is a OneTube video. */
+    fun youtubeVideoId(): String? = controller.contentId
+        ?.takeIf { com.nuvio.tv.youtube.YouTubeProgress.isYouTubeId(it) }
+        ?.removePrefix(com.nuvio.tv.youtube.YouTubeProgress.ID_PREFIX)
 
     fun getCurrentHeaders(): Map<String, String> = controller.getCurrentHeaders()
 
@@ -233,6 +246,14 @@ class PlayerViewModel @Inject constructor(
 
     fun stopAndRelease() {
         postPlayRecommendationController.stop()
+        // Detach the view before the player is released. On some TV boxes (Xiaomi/Amlogic
+        // Android 11) a PlayerView that still points at a released player can leave its
+        // SurfaceView on screen, so the next screen stays black or grey until the app is
+        // restarted. Hiding it drops the surface before the next screen draws.
+        controller.exoPlayerView?.let { view ->
+            runCatching { view.player = null }
+            runCatching { view.visibility = android.view.View.GONE }
+        }
         controller.stopAndRelease()
     }
 
@@ -274,6 +295,10 @@ class PlayerViewModel @Inject constructor(
 
     fun attachMpvView(view: NuvioMpvSurfaceView?) {
         controller.attachMpvView(view)
+    }
+
+    fun attachVlcView(view: NuvioVlcSurfaceView?) {
+        controller.attachVlcView(view)
     }
 
     fun pauseForLifecycle() {

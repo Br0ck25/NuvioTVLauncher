@@ -95,6 +95,18 @@ internal fun PlayerRuntimeController.loadExoChapters() {
     }
 }
 
+/** YouTube fork: gives the player a YouTube video's chapters, which don't come with the stream. */
+internal fun PlayerRuntimeController.setExternalChapters(chapters: List<PlayerChapter>) {
+    val normalized = PlayerChapters.normalize(chapters)
+    if (normalized.isEmpty() || _uiState.value.chapters == normalized) return
+    _uiState.update { it.copy(chapters = normalized) }
+}
+
+/** YouTube fork: repeats the video that's playing instead of ending, or goes back to ending. */
+internal fun PlayerRuntimeController.setRepeatOne(enabled: Boolean) {
+    _exoPlayer?.repeatMode = if (enabled) androidx.media3.common.Player.REPEAT_MODE_ONE else androidx.media3.common.Player.REPEAT_MODE_OFF
+}
+
 /**
  * Store raw chapters for skip detection (independent of UI list) and compute intervals
  * if duration is already known. The raw chapters are kept so they survive the UI list

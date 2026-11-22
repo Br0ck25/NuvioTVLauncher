@@ -20,6 +20,7 @@ interface LiveTvStartupEntryPoint {
     fun epgDatabase(): com.nuvio.tv.livetv.data.EpgDatabase
     fun channelStore(): com.nuvio.tv.livetv.data.LiveTvChannelStore
     fun liveTvRecorder(): com.nuvio.tv.livetv.record.LiveTvRecorder
+    fun profileMatchMirror(): com.nuvio.tv.livetv.profile.ProfileMatchMirror
 }
 
 /**
@@ -36,6 +37,8 @@ object LiveTvPreload {
         val entry = dagger.hilt.android.EntryPointAccessors.fromApplication(
             context.applicationContext, LiveTvStartupEntryPoint::class.java
         )
+        // Matched profiles keep Nuvio's own settings the same (whether or not Live TV is used).
+        runCatching { entry.profileMatchMirror().start() }
         // Reading the saved channel list and guide is quick and only uses storage, so it starts
         // almost straight away, as the app opens. Checking for updates (network, heavy) waits
         // until the app has settled.
@@ -84,12 +87,13 @@ object StartPage {
 
     private val ROUTES = setOf(
         Screen.LiveTv.route, Screen.OnDemand.route, Screen.Sports.route,
-        Screen.Calendar.route, Screen.Library.route, Screen.Search.route
+        Screen.Calendar.route, Screen.Library.route, Screen.Search.route,
+        Screen.YouTube.route, Screen.Music.route
     )
 
     /** The page to open on, or null for Home. */
     fun cachedRoute(context: Context): String? = runCatching {
-        com.nuvio.tv.core.profile.ActiveProfile.prefs(context, PREFS).getString(KEY, null)
+        context.getSharedPreferences(PREFS, Context.MODE_PRIVATE).getString(KEY, null)
     }.getOrNull()?.takeIf { it in ROUTES }
 
     /** The page for a setting ([LiveTvSettings.openOn]); null for Home. Live TV only while it's in the menu. */
@@ -97,6 +101,8 @@ object StartPage {
         val off = com.nuvio.tv.livetv.calendar.SideMenuPages.hidden(s.sideMenuHidden)
         // Only pages that are switched on (Settings → Menu & Features); otherwise Home.
         return when (s.openOn) {
+            "YOUTUBE" -> Screen.YouTube.route.takeIf { com.nuvio.tv.livetv.calendar.SideMenuPages.YOUTUBE !in off }
+            "MUSIC" -> Screen.Music.route.takeIf { com.nuvio.tv.livetv.calendar.SideMenuPages.MUSIC !in off }
             "LIVE_TV" -> Screen.LiveTv.route.takeIf { s.showInSidebar }
             "ON_DEMAND" -> Screen.OnDemand.route.takeIf { s.onDemandEnabled && s.onDemandInSidebar }
             "SPORTS" -> Screen.Sports.route.takeIf { sportsOn }
@@ -109,7 +115,7 @@ object StartPage {
 
     fun save(context: Context, route: String?) {
         runCatching {
-            val prefs = com.nuvio.tv.core.profile.ActiveProfile.prefs(context, PREFS)
+            val prefs = context.getSharedPreferences(PREFS, Context.MODE_PRIVATE)
             if (prefs.getString(KEY, null) == route) return
             prefs.edit().apply { if (route == null) remove(KEY) else putString(KEY, route) }.apply()
         }

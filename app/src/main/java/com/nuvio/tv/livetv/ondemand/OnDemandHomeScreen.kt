@@ -27,6 +27,8 @@ import androidx.compose.runtime.rememberCoroutineScope
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.res.stringResource
+import com.nuvio.tv.R
 import androidx.compose.ui.focus.focusRequester
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.focus.onFocusChanged
@@ -89,7 +91,12 @@ fun OnDemandHomeScreen(
     val context = LocalContext.current
     val scope = rememberCoroutineScope()
     val state by viewModel.home.collectAsStateWithLifecycle()
-    LaunchedEffect(Unit) { viewModel.loadHome() }
+    LaunchedEffect(Unit) {
+        // Opening a title and pressing Back rebuilds this screen over the same ViewModel.
+        // Rebuilding the page would reset every group to its first page and pull the saved
+        // position out from under the list, so keep it unless the catalog actually changed.
+        if (!viewModel.homeIsCurrent()) viewModel.loadHome()
+    }
 
     var showManage by remember { mutableStateOf(false) }
     // The card last highlighted, for the Menu button's "Fix poster".
@@ -98,12 +105,14 @@ fun OnDemandHomeScreen(
     var fixFor by remember { mutableStateOf<VodItem?>(null) }
     var providerItem by remember { mutableStateOf<VodItem?>(null) }
     // "See all" on a row: that row in Nuvio's See all grid, over this page.
-    var seeAllUid by remember { mutableStateOf<String?>(null) }
     // The Sort list over See all.
     var sortingUid by remember { mutableStateOf<String?>(null) }
     var opening by remember { mutableStateOf(false) }
-    var focusState by remember { mutableStateOf(HomeScreenFocusState()) }
-    var gridFocusState by remember { mutableStateOf(HomeScreenFocusState()) }
+    // Where you were, kept while the app runs: opening a title and pressing Back returns to the
+    // same layout position (and the same See all grid position), not to the top.
+    var focusState by remember { mutableStateOf(OnDemandReturnState.focusState) }
+    var gridFocusState by remember { mutableStateOf(OnDemandReturnState.gridFocusState) }
+    var seeAllUid by remember { mutableStateOf(OnDemandReturnState.seeAllUid) }
 
     // Leaving this page (Back, the menu, opening a title): stop the trailer straight away, before
     // the switch animates. Tearing the trailer's player down mid-switch, while Home starts up its
@@ -116,7 +125,8 @@ fun OnDemandHomeScreen(
         com.nuvio.tv.core.player.TrailerPlayerPool(
             context.applicationContext,
             entry.playerSettingsDataStore(),
-            entry.trailerSettingsDataStore()
+            entry.trailerSettingsDataStore(),
+            entry.youTubeExtractor()
         )
     }
     androidx.compose.runtime.DisposableEffect(ownPool) { onDispose { runCatching { ownPool.release() } } }
@@ -165,6 +175,21 @@ fun OnDemandHomeScreen(
         // A fresh start in the other list (the saved position belongs to the old one).
         focusState = HomeScreenFocusState()
         gridFocusState = HomeScreenFocusState()
+        OnDemandReturnState.focusState = focusState
+        OnDemandReturnState.gridFocusState = gridFocusState
+        OnDemandReturnState.seeAllUid = null
+        OnDemandReturnState.seeAllIndex = 0
+        OnDemandReturnState.seeAllOffset = 0
+        OnDemandReturnState.seeAllFocusedId = null
+    }
+    fun openSeeAll(uid: String) {
+        if (OnDemandReturnState.seeAllUid != uid) {
+            OnDemandReturnState.seeAllIndex = 0
+            OnDemandReturnState.seeAllOffset = 0
+            OnDemandReturnState.seeAllFocusedId = null
+        }
+        OnDemandReturnState.seeAllUid = uid
+        seeAllUid = uid
     }
     val homeRows = remember(rows) { rows.map { HomeRow.Catalog(it) } }
     val gridItems = remember(rows) {
@@ -207,6 +232,7 @@ fun OnDemandHomeScreen(
         homeRows = homeRows,
         gridItems = gridItems,
         continueWatchingItems = emptyList(),
+        onDemandContinueWatchingItems = emptyList(),
         upcomingItems = emptyList(),
         heroItems = emptyList(),
         heroSectionEnabled = false,
@@ -293,11 +319,11 @@ fun OnDemandHomeScreen(
     // went to the page underneath (Home) on this one. The layouts' own Back handling (scroll a
     // row back to its start, close a full screen trailer) and any open dialog still come first,
     // and with the menu open Back is left to the app (exit).
-    val openSidebar = com.nuvio.tv.LocalOpenSidebar.current
+    val openNuvioSidebar = com.nuvio.tv.LocalOpenSidebar.current
     val sidebarOpen = com.nuvio.tv.LocalSidebarExpanded.current
     val topFocusManager = androidx.compose.ui.platform.LocalFocusManager.current
     val topContentFocus = com.nuvio.tv.LocalContentFocusRequester.current
-    androidx.activity.compose.BackHandler(enabled = !sidebarOpen) { openSidebar() }
+    androidx.activity.compose.BackHandler(enabled = !sidebarOpen) { openNuvioSidebar() }
 
     androidx.compose.runtime.CompositionLocalProvider(com.nuvio.tv.core.player.LocalTrailerPlayerPool provides ownPool) {
     Box(
@@ -316,10 +342,10 @@ fun OnDemandHomeScreen(
         when {
             state.loading && rows.isEmpty() -> Box(Modifier.fillMaxSize(), contentAlignment = Alignment.Center) { LoadingIndicator() }
             rows.isEmpty() -> Column(Modifier.fillMaxSize(), verticalArrangement = Arrangement.Center, horizontalAlignment = Alignment.CenterHorizontally) {
-                LiveText("Nothing to show yet", size = 20.sp, weight = FontWeight.SemiBold, color = NuvioTheme.colors.TextPrimary)
+                LiveText(stringResource(R.string.iptv_od_nothing), size = 20.sp, weight = FontWeight.SemiBold, color = NuvioTheme.colors.TextPrimary)
                 Spacer(Modifier.height(6.dp))
                 LiveText(
-                    "Turn on On Demand for a playlist in Settings → Live TV, or show some groups with the settings button.",
+                    stringResource(R.string.iptv_od_nothing_help),
                     size = 14.sp, color = NuvioTheme.colors.TextSecondary
                 )
             }
@@ -331,16 +357,31 @@ fun OnDemandHomeScreen(
                     posterCardStyle = posterCardStyle,
                     showLabels = ui.posterLabelsEnabled,
                     onOpen = { open(it) },
-                    onFocus = onItemFocus,
+                    onFocus = { card ->
+                        lastFocusedCard = card.id
+                        OnDemandReturnState.seeAllFocusedId = card.id
+                        viewModel.focusHome(card.id)
+                    },
                     onLoadMore = { seeAllUid?.let { viewModel.loadMoreHome(it) } },
-                    onBack = { viewModel.stopSeeAll(); seeAllUid = null },
+                    onBack = {
+                        viewModel.stopSeeAll()
+                        seeAllUid = null
+                        OnDemandReturnState.seeAllUid = null
+                    },
                     // The group's own sort, else Default Sort Order.
                     sortLabel = seeAllUid?.let { uid ->
                         sortLabel(state.groups.firstOrNull { it.uid == uid }?.sort) ?: viewModel.defaultSortLabel()
                     },
                     onSort = { sortingUid = seeAllUid },
                     isWatched = isWatched,
-                    onLongPress = longPress
+                    onLongPress = longPress,
+                    initialFirstVisibleIndex = OnDemandReturnState.seeAllIndex,
+                    initialFirstVisibleOffset = OnDemandReturnState.seeAllOffset,
+                    initialFocusId = OnDemandReturnState.seeAllFocusedId,
+                    onSavePosition = { index, offset ->
+                        OnDemandReturnState.seeAllIndex = index
+                        OnDemandReturnState.seeAllOffset = offset
+                    }
                 )
             }
             else -> when (ui.homeLayout) {
@@ -355,20 +396,21 @@ fun OnDemandHomeScreen(
                     onContinueWatchingStartFromBeginning = {},
                     onContinueWatchingPlayManually = {},
                     showContinueWatchingManualPlayOption = false,
-                    onNavigateToCatalogSeeAll = { catalogId, _, _ -> seeAllUid = catalogId },
+                    onNavigateToCatalogSeeAll = { catalogId, _, _ -> openSeeAll(catalogId) },
                     onNavigateToFolderDetail = { _, _ -> },
                     onRemoveContinueWatching = { _, _, _, _ -> },
                     isCatalogItemWatched = isWatched,
                     onCatalogItemLongPress = onCatalogLongPress,
                     onRequestTrailerPreview = requestTrailerForItem,
                     onItemFocus = onItemFocus,
-                    catalogSeeAllLabel = "See all",
+                    catalogSeeAllLabel = stringResource(R.string.iptv_od_see_all),
                     onSaveFocusState = { vi, vo, rk, ikm, m, ma, ri, ii ->
                         focusState = focusState.copy(
                             verticalScrollIndex = vi, verticalScrollOffset = vo, focusedRowKey = rk,
                             focusedItemKeyByRow = ikm, catalogRowScrollStates = m, catalogRowScrollAnchors = ma,
                             focusedRowIndex = ri, focusedItemIndex = ii, hasSavedFocus = true
                         )
+                        OnDemandReturnState.focusState = focusState
                     },
                     onFocusedRowKeyChanged = {},
                     scrollToTopTrigger = 0,
@@ -382,17 +424,18 @@ fun OnDemandHomeScreen(
                     onContinueWatchingStartFromBeginning = {},
                     onContinueWatchingPlayManually = {},
                     showContinueWatchingManualPlayOption = false,
-                    onNavigateToCatalogSeeAll = { catalogId, _, _ -> seeAllUid = catalogId },
+                    onNavigateToCatalogSeeAll = { catalogId, _, _ -> openSeeAll(catalogId) },
                     onNavigateToFolderDetail = { _, _ -> },
                     onRemoveContinueWatching = { _, _, _, _ -> },
                     isCatalogItemWatched = isWatched,
                     onCatalogItemLongPress = onCatalogLongPress,
                     posterCardStyle = posterCardStyle,
                     onItemFocus = onItemFocus,
-                    catalogSeeAllLabel = "See all",
+                    catalogSeeAllLabel = stringResource(R.string.iptv_od_see_all),
                     stickyTitle = homeHeader,
                     onSaveGridFocusState = { vi, vo, _ ->
                         gridFocusState = gridFocusState.copy(verticalScrollIndex = vi, verticalScrollOffset = vo, hasSavedFocus = true)
+                        OnDemandReturnState.gridFocusState = gridFocusState
                     },
                     onFocusedRowKeyChanged = {},
                     scrollToTopTrigger = 0
@@ -426,6 +469,7 @@ fun OnDemandHomeScreen(
                             focusedItemKeyByRow = ikm, catalogRowScrollStates = m, catalogRowScrollAnchors = ma,
                             focusedRowIndex = ri, focusedItemIndex = ii, hasSavedFocus = true
                         )
+                        OnDemandReturnState.focusState = focusState
                     },
                     onFocusedRowKeyChanged = {},
                     scrollToTopTrigger = 0,
@@ -465,9 +509,12 @@ fun OnDemandHomeScreen(
     sortingUid?.let { uid ->
         val saved = state.groups.firstOrNull { it.uid == uid }?.sort
         VodSortPicker(
-            title = "Sort " + (state.rows.firstOrNull { it.catalogId == uid }?.catalogName ?: "this group"),
+            title = stringResource(
+                R.string.iptv_od_sort_group,
+                state.rows.firstOrNull { it.catalogId == uid }?.catalogName ?: stringResource(R.string.iptv_od_this_group)
+            ),
             current = VodSort.parse(saved)?.first,
-            useDefaultLabel = "Default (${viewModel.defaultSortLabel()})",
+            useDefaultLabel = stringResource(R.string.iptv_od_default_sort, viewModel.defaultSortLabel()),
             onPick = { picked -> sortingUid = null; viewModel.setGroupSort(uid, picked) },
             onDismiss = { sortingUid = null }
         )
@@ -479,17 +526,17 @@ fun OnDemandHomeScreen(
             com.nuvio.tv.livetv.ui.LiveText(OnDemandDatabase.displayTitle(item.name), size = 20.sp, weight = androidx.compose.ui.text.font.FontWeight.Bold, maxLines = 2)
             androidx.compose.foundation.layout.Spacer(Modifier.height(14.dp))
             androidx.compose.foundation.layout.Column(verticalArrangement = androidx.compose.foundation.layout.Arrangement.spacedBy(4.dp)) {
-                com.nuvio.tv.livetv.ui.MenuItem("Fix poster", Modifier.focusRequester(first)) { cardMenu = null; fixFor = item }
-                com.nuvio.tv.livetv.ui.MenuItem("Manage VOD Groups") { cardMenu = null; showManage = true }
+                com.nuvio.tv.livetv.ui.MenuItem(stringResource(R.string.iptv_od_fix_poster), Modifier.focusRequester(first)) { cardMenu = null; fixFor = item }
+                com.nuvio.tv.livetv.ui.MenuItem(stringResource(R.string.iptv_vod_manage_groups)) { cardMenu = null; showManage = true }
             }
         }
         LaunchedEffect(Unit) { kotlinx.coroutines.delay(60); runCatching { first.requestFocus() } }
     }
     fixFor?.let { item ->
         com.nuvio.tv.livetv.ui.TextInputDialog(
-            title = "Fix poster",
+            title = stringResource(R.string.iptv_od_fix_poster),
             initial = OnDemandDatabase.displayTitle(item.name) + (item.year?.let { " ($it)" } ?: ""),
-            hint = "The movie or series name, and the year if you know it, like Dune (2021). Leave it empty to go back to automatic.",
+            hint = stringResource(R.string.iptv_od_fix_poster_hint),
             confirmLabel = "Save",
             onDismiss = { fixFor = null },
             onConfirm = { text ->
@@ -564,6 +611,22 @@ object OnDemandHomeTab {
     @Volatile var last: VodKind = VodKind.MOVIE
 }
 
+/**
+ * Where you were on the On Demand page, remembered while the app runs.
+ *
+ * The page is left behind when a title's details open, and its composition is rebuilt on the
+ * way back. Without this, Back landed on the top of the list (or closed See all) instead of the
+ * card you opened. It also keeps the position when switching pages from the menu.
+ */
+private object OnDemandReturnState {
+    @Volatile var focusState = HomeScreenFocusState()
+    @Volatile var gridFocusState = HomeScreenFocusState()
+    @Volatile var seeAllUid: String? = null
+    @Volatile var seeAllIndex: Int = 0
+    @Volatile var seeAllOffset: Int = 0
+    @Volatile var seeAllFocusedId: String? = null
+}
+
 @Composable
 private fun KindTab(label: String, selected: Boolean, onClick: () -> Unit) {
     val colors = NuvioTheme.colors
@@ -598,6 +661,7 @@ private fun KindTab(label: String, selected: Boolean, onClick: () -> Unit) {
 interface OnDemandPlayerEntryPoint {
     fun playerSettingsDataStore(): com.nuvio.tv.data.local.PlayerSettingsDataStore
     fun trailerSettingsDataStore(): com.nuvio.tv.data.local.TrailerSettingsDataStore
+    fun youTubeExtractor(): com.nuvio.tv.data.trailer.InAppYouTubeExtractor
 }
 
 /**

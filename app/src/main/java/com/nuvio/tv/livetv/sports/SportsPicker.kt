@@ -37,6 +37,8 @@ import androidx.compose.runtime.saveable.rememberSaveable
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.res.stringResource
+import com.nuvio.tv.R
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.focus.FocusRequester
 import androidx.compose.ui.focus.focusRequester
@@ -140,7 +142,7 @@ fun SportsPicker(viewModel: SportsViewModel, onClose: () -> Unit) {
         fun teamLeague(l: League) = l.espnPath != null && l.kind == LeagueKind.TEAMS && !l.national
         val searchIn = (viewModel.repo.activeLeagues().filter(::teamLeague) +
             SportsCatalog.ordered(settings).filter(::teamLeague) +
-            SportsCatalog.leagues.filter { it.national }.distinctBy { it.nationalGroup } + SportsCatalog.extra).distinctBy { it.id }
+            SportsCatalog.all.filter { it.national }.distinctBy { it.nationalGroup }).distinctBy { it.id }
         // Filtering and duplicate removal stay on a worker after teams() returns from I/O.
         teamPickerSearchResults(searchIn, q, viewModel::teams).collect { value = it }
     }
@@ -153,14 +155,14 @@ fun SportsPicker(viewModel: SportsViewModel, onClose: () -> Unit) {
                 SportsAction("‹  Sports", onClick = onClose)
                 Spacer(Modifier.width(14.dp))
                 Column(Modifier.weight(1f)) {
-                    LiveText("Follow Teams & Leagues", size = 26.sp, weight = FontWeight.Black)
+                    LiveText(stringResource(R.string.iptv_sports_follow_teams), size = 24.sp, weight = FontWeight.Black, maxLines = 2)
                     LiveText(
                         "Teams: their games, reminders and scoring alerts. Leagues: their schedule on My Sports.",
                         color = colors.TextSecondary, size = 13.sp
                     )
                 }
                 Box(Modifier.width(280.dp)) {
-                    LiveTextField(value = query, onValueChange = { query = it }, hint = "Search teams and leagues", focusRequester = searchReq)
+                    LiveTextField(value = query, onValueChange = { query = it }, hint = stringResource(R.string.iptv_sports_search_hint), focusRequester = searchReq)
                 }
                 Spacer(Modifier.width(12.dp))
                 SportsAction("↕  Arrange", onClick = { arrange = true })
@@ -282,7 +284,7 @@ fun SportsPicker(viewModel: SportsViewModel, onClose: () -> Unit) {
                         when {
                             league.sport == Sport.WRESTLING || league.id == "guide/boxing" -> LiveText(
                                 "${league.name}'s schedule (" + (if (league.id == "guide/boxing") "fight cards" else "weekly shows and big events") +
-                                    ", with times and venues) comes from TheSportsDB, updated every day. " +
+                                    ", with times and venues) comes from our sports data service, updated through the day. " +
                                     "Your own TV guide is checked too, to find the channel it's on. Follow it to see every show on My Sports.",
                                 color = colors.TextSecondary, size = 13.sp, maxLines = 4
                             )
@@ -296,7 +298,7 @@ fun SportsPicker(viewModel: SportsViewModel, onClose: () -> Unit) {
                                     "or follow a name to catch shows that mention a driver or fighter.",
                                 color = colors.TextSecondary, size = 13.sp, maxLines = 4
                             )
-                            teams == null -> LiveText("Getting the teams…", color = colors.TextSecondary, size = 13.sp)
+                            teams == null -> LiveText(stringResource(R.string.iptv_sports_getting_teams), color = colors.TextSecondary, size = 13.sp)
                             league.national && teams.orEmpty().isNotEmpty() -> Column(Modifier.weight(1f)) {
                                 LiveText(
                                     if (league.women) "Countries: follow one to see all its games, from friendlies and the Nations League to the Euros and the World Cup."
@@ -309,13 +311,13 @@ fun SportsPicker(viewModel: SportsViewModel, onClose: () -> Unit) {
                             }
                             league.id.startsWith("tsdb/") && teams.orEmpty().isNotEmpty() -> Column(Modifier.weight(1f)) {
                                 LiveText(
-                                    "Fixtures and results from TheSportsDB. On match days, scores update about every 15 minutes.",
+                                    "Fixtures, results and tables from FotMob through our sports data service. On match days, scores update every few minutes.",
                                     color = colors.TextSecondary, size = 12.sp, maxLines = 2
                                 )
                                 Spacer(Modifier.height(8.dp))
                                 TeamGrid(teams.orEmpty(), follows, viewModel, showLeague = false, modifier = Modifier.weight(1f))
                             }
-                            teams.orEmpty().isEmpty() -> LiveText("Couldn't get this league's teams. Try again in a little while.", color = colors.TextSecondary, size = 13.sp)
+                            teams.orEmpty().isEmpty() -> LiveText(stringResource(R.string.iptv_sports_teams_failed), color = colors.TextSecondary, size = 13.sp)
                             else -> TeamGrid(teams.orEmpty(), follows, viewModel, showLeague = false, modifier = Modifier.weight(1f))
                         }
                     }
@@ -326,10 +328,10 @@ fun SportsPicker(viewModel: SportsViewModel, onClose: () -> Unit) {
     if (arrange) ArrangeDialog(follows, viewModel) { arrange = false }
     if (askWord) {
         TextInputDialog(
-            title = "Follow a name",
+            title = stringResource(R.string.iptv_sports_follow_name),
             initial = "",
-            hint = "A player, driver, fighter or team",
-            confirmLabel = "Follow",
+            hint = stringResource(R.string.iptv_sports_person_hint),
+            confirmLabel = stringResource(R.string.iptv_sports_follow),
             onDismiss = { askWord = false },
             onConfirm = { w ->
                 askWord = false
@@ -377,10 +379,10 @@ private fun FollowingBar(follows: SportsFollows, viewModel: SportsViewModel, fir
                 .padding(horizontal = 12.dp, vertical = 8.dp),
             verticalAlignment = Alignment.CenterVertically
         ) {
-            LiveText("FOLLOWING · ${entries.size}", color = colors.TextTertiary, size = 10.sp, weight = FontWeight.ExtraBold)
+            LiveText(stringResource(R.string.iptv_sports_following_count, entries.size), color = colors.TextTertiary, size = 10.sp, weight = FontWeight.ExtraBold)
             Spacer(Modifier.width(10.dp))
             if (entries.isEmpty()) {
-                LiveText("Nothing yet: pick a team below.", color = colors.TextSecondary, size = 12.sp)
+                LiveText(stringResource(R.string.iptv_sports_nothing_pick_team), color = colors.TextSecondary, size = 12.sp)
             } else {
                 LazyRow(Modifier.weight(1f).keepFocusWhileHeld(vertical = false), horizontalArrangement = Arrangement.spacedBy(6.dp)) {
                     items(entries.size, key = { entries[it].key }) { i ->
@@ -396,7 +398,7 @@ private fun FollowingBar(follows: SportsFollows, viewModel: SportsViewModel, fir
             }
         }
         if (entries.isNotEmpty()) {
-            LiveText("OK on one to stop following it", color = colors.TextTertiary, size = 10.sp, modifier = Modifier.padding(start = 12.dp, top = 3.dp))
+            LiveText(stringResource(R.string.iptv_sports_ok_stop_following), color = colors.TextTertiary, size = 10.sp, modifier = Modifier.padding(start = 12.dp, top = 3.dp))
         }
     }
 }
@@ -605,14 +607,14 @@ private fun ArrangeDialog(follows: SportsFollows, viewModel: SportsViewModel, on
     }
     LaunchedEffect(Unit) { delay(90); keys.firstOrNull()?.let { runCatching { req("down#$it").requestFocus() } } }
     SportsDialog(onDismiss = onDismiss, width = 620.dp) {
-        LiveText("Arrange My Sports", size = 18.sp, weight = FontWeight.Bold)
+        LiveText(stringResource(R.string.iptv_sports_arrange_my_sports), size = 18.sp, weight = FontWeight.Bold)
         LiveText(
             "The order of the rows on My Sports. Live & Upcoming always comes first.",
             color = SportsLook.Dim, size = 12.sp, maxLines = 2
         )
         Spacer(Modifier.height(10.dp))
         if (keys.isEmpty()) {
-            LiveText("Follow some teams or leagues first.", color = SportsLook.Dim, size = 13.sp)
+            LiveText(stringResource(R.string.iptv_sports_follow_first), color = SportsLook.Dim, size = 13.sp)
         }
         LazyColumn(state = listState, modifier = Modifier.heightIn(max = 340.dp).keepFocusWhileHeld(horizontal = false), verticalArrangement = Arrangement.spacedBy(4.dp)) {
             items(keys.size, key = { keys[it] }) { i ->

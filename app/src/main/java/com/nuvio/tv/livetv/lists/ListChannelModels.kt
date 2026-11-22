@@ -108,6 +108,19 @@ internal class ListChannelStore(context: Context, profileId: Int) {
         (0 until array.length()).mapNotNull { array.optJSONObject(it)?.toChannel() }
     }.getOrDefault(emptyList())
 
+    /** The channels the viewer made (not the ones the My Lists server keeps), as the JSON Drive and cloud sync carry. */
+    fun definitionsJson(channels: List<ListChannel>): String {
+        val array = JSONArray()
+        channels.filterNot { it.isSynced }.forEach { array.put(it.toJson()) }
+        return array.toString()
+    }
+
+    /** The channels in [json] from [definitionsJson]; null when it can't be read. */
+    fun parseDefinitions(json: String): List<ListChannel>? = runCatching {
+        val array = JSONArray(json)
+        (0 until array.length()).mapNotNull { array.optJSONObject(it)?.toChannel() }.filterNot { it.isSynced }
+    }.getOrNull()
+
     fun saveChannels(channels: List<ListChannel>) {
         val array = JSONArray()
         channels.forEach { array.put(it.toJson()) }

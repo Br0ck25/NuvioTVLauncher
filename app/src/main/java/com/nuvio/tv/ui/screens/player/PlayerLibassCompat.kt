@@ -16,9 +16,10 @@ import androidx.media3.extractor.mkv.MatroskaExtractor as StockMatroskaExtractor
 import androidx.media3.extractor.text.SubtitleParser
 import com.nuvio.tv.core.player.dvmkv.MatroskaExtractor as DvMatroskaExtractor
 import com.nuvio.tv.libass.media.AssHandler
-import com.nuvio.tv.ui.screens.player.autosync.AutoSyncLibassSubtitles
+import com.nuvio.tv.libass.media.parser.AssFullSubtitleParser
 import com.nuvio.tv.libass.media.parser.AssSubtitleParserFactory
 import com.nuvio.tv.libass.media.render.AssRenderersFactory
+import com.nuvio.tv.ui.screens.player.autosync.AutoSyncLibassSubtitles
 import java.util.Collections
 import java.util.WeakHashMap
 
@@ -90,7 +91,15 @@ private class CompatAssSubtitleParserFactory(
 
     override fun create(format: Format): SubtitleParser {
         val normalized = normalizeSsaFormat(format)
-        return AutoSyncLibassSubtitles.wrapParser(assHandler, normalized, delegate.create(normalized)) // AutoSync hook
+        val parser = delegate.create(normalized)
+        val autoSynced = AutoSyncLibassSubtitles.wrapParser(assHandler, normalized, parser) // AutoSync hook
+        // External ASS/SSA is parsed by libass itself; remove repeated Dialogue events before
+        // libass registers them. Embedded ASS is deduped as samples are read instead.
+        return if (parser is AssFullSubtitleParser) {
+            AssDialogueDedupeParser(autoSynced)
+        } else {
+            autoSynced
+        }
     }
 
     private fun normalizeSsaFormat(format: Format): Format {

@@ -13,6 +13,12 @@ object LivePlaybackUiPolicy {
         return contentType.equals("channel", ignoreCase = true)
     }
 
+    /** A movie or series is VOD even if the engine briefly reports an unsettled live state. */
+    fun isVodContentType(contentType: String?): Boolean {
+        return contentType.equals("movie", ignoreCase = true) ||
+            contentType.equals("series", ignoreCase = true)
+    }
+
     fun nextLiveLatch(playerReportsLive: Boolean, previouslyLatched: Boolean): Boolean {
         return previouslyLatched || playerReportsLive
     }
@@ -50,6 +56,9 @@ object LivePlaybackUiPolicy {
         contentType: String?,
         latchedLive: Boolean = false
     ): Boolean {
+        // A movie or series is VOD even when an engine momentarily reports an
+        // unsettled live window while opening the stream.
+        if (isVodContentType(contentType)) return false
         return latchedLive ||
             playerReportsLive ||
             isLiveContentType(contentType)

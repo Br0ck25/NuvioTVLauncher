@@ -14,10 +14,19 @@ enum class DeviceAction(val id: String) {
     /** Let this launcher read notifications, for the bell at the top right of Home. */
     ENABLE_NOTIFICATIONS("enable-notifications"),
 
+    /** Stop Android limiting this app in the background (standby bucket, background restrictions, Doze), so recordings, guide updates and sync run on time. */
+    KEEP_RUNNING("keep-running"),
+
+    /** Pre-compile the app (`speed-profile`), which about halves its start-up time on a slow box. Lost on every update; the app repeats it after one. */
+    OPTIMIZE_SPEED("optimize-speed"),
+
     /** FLauncher's way: turn off the Google TV launcher so only this launcher is left. Optional and risky; see the warning on the setup page. */
     DISABLE_STOCK("disable-stock"),
 
-    /** Turn the stock launcher (and Google TV's setup service) back on. Undoes [DISABLE_STOCK]. */
+    /** Remove the Google TV launcher for this user. Unlike [DISABLE_STOCK] it stays gone after a restart. Optional and riskier. */
+    UNINSTALL_STOCK("uninstall-stock"),
+
+    /** Turn the stock launcher (and Google TV's setup service) back on. Undoes [DISABLE_STOCK] and [UNINSTALL_STOCK]. */
     ENABLE_STOCK("enable-stock"),
 
     /** Point the Home button back at the launcher the TV came with. */
@@ -40,6 +49,25 @@ object DeviceCommands {
     fun setHome(component: String) = "cmd package set-home-activity $component"
     /** Grants the notification-listener access that normally needs a trip through Settings. */
     fun allowNotificationListener(component: String) = "cmd notification allow_listener $component"
+    /**
+     * Keeps Android from limiting [pkg] in the background: the "active" standby bucket, the two background
+     * app-ops, and the Doze exemption. Scheduled recordings, guide and playlist updates and Drive sync depend on it
+     * when the TV has been idle or in standby. Each one is harmless on a TV that doesn't support it.
+     */
+    fun keepRunning(pkg: String) = listOf(
+        "am set-standby-bucket $pkg active",
+        "cmd appops set $pkg RUN_IN_BACKGROUND allow",
+        "cmd appops set $pkg RUN_ANY_IN_BACKGROUND allow",
+        "dumpsys deviceidle whitelist +$pkg"
+    )
+    /**
+     * Compiles [pkg] ahead of time from its own profile. Android leaves a freshly installed app uncompiled until the TV
+     * has been idle and charging for a while, which on a TV is rare; measured on a TiVo Stream 4K this took the launcher's
+     * start from about 2.1 s to 1.1 s. `speed-profile` was faster than `speed` there, and smaller. An update undoes it.
+     */
+    fun optimizeSpeed(pkg: String) = "cmd package compile -m speed-profile -f $pkg"
+    /** The command that lists the Doze-exempt apps, to check [keepRunning] took. */
+    val listDozeWhitelist = "dumpsys deviceidle whitelist"
     val resolveHome = "cmd package resolve-activity $HOME_QUERY"
     val listHomes = "cmd package query-activities $HOME_QUERY"
     /** Stock launchers seen on Google TV / Android TV. Nuvio's takeover needs the stock one to stay enabled. */
@@ -58,8 +86,15 @@ object DeviceCommands {
      */
     val disableStock = listOf("pm disable-user --user 0 $GOOGLE_TV_LAUNCHER")
 
+    /**
+     * Removes the Google TV launcher for this user only (the system copy stays on the TV). A disable can be
+     * undone by the TV at the next restart on a Chromecast; an uninstall stays. [enableStock] brings it back.
+     */
+    val uninstallStock = listOf("pm uninstall --user 0 $GOOGLE_TV_LAUNCHER")
+
     /** Turns the stock launchers (and Google TV's setup service) back on. Harmless if they already are. */
-    val enableStock = STOCK_LAUNCHERS.map { "pm enable $it" } + "pm enable $GOOGLE_TV_SETUP_FALLBACK"
+    val enableStock = listOf("cmd package install-existing --user 0 $GOOGLE_TV_LAUNCHER") +
+        STOCK_LAUNCHERS.map { "pm enable $it" } + "pm enable $GOOGLE_TV_SETUP_FALLBACK"
 
     /**
      * `enabled_accessibility_services` with [service] added (kept if the list already has it), as one

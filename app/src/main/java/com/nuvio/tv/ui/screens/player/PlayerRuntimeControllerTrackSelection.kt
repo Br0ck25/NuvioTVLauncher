@@ -48,6 +48,15 @@ internal fun PlayerRuntimeController.selectAudioTrack(trackIndex: Int) {
         message = "trackIndex=$trackIndex usingMpv=${isUsingMpvEngine()} " +
             "track=${_uiState.value.audioTracks.getOrNull(trackIndex)?.let { "${it.language}/${it.name}/${it.trackId}" } ?: "none"}"
     )
+    if (isUsingVlcEngine()) {
+        val track = _uiState.value.audioTracks.getOrNull(trackIndex) ?: return
+        val trackId = track.trackId?.toIntOrNull() ?: return
+        if (vlcView?.selectAudioTrackById(trackId) == true) {
+            _uiState.update { it.copy(selectedAudioTrackIndex = trackIndex) }
+            updateVlcAvailableTracks()
+        }
+        return
+    }
     if (isUsingMpvEngine()) {
         val wasPlaying = isPlaybackCurrentlyPlaying()
         val track = _uiState.value.audioTracks.getOrNull(trackIndex)
@@ -172,6 +181,23 @@ internal fun PlayerRuntimeController.selectSubtitleTrack(trackIndex: Int) {
         message = "trackIndex=$trackIndex usingMpv=${isUsingMpvEngine()} " +
             "track=${_uiState.value.subtitleTracks.getOrNull(trackIndex)?.let { "${it.language}/${it.name}/${it.trackId}/forced=${it.isForced}" } ?: "none"}"
     )
+    if (isUsingVlcEngine()) {
+        val track = _uiState.value.subtitleTracks.getOrNull(trackIndex) ?: return
+        val trackId = track.trackId?.toIntOrNull() ?: return
+        if (vlcView?.selectSubtitleTrackById(trackId) == true) {
+            pendingAddonSubtitleLanguage = null
+            pendingAddonSubtitleTrackId = null
+            pendingAudioSelectionAfterSubtitleRefresh = null
+            _uiState.update {
+                it.copy(
+                    selectedSubtitleTrackIndex = trackIndex,
+                    selectedAddonSubtitle = null
+                )
+            }
+            updateVlcAvailableTracks()
+        }
+        return
+    }
     if (isUsingMpvEngine()) {
         Log.d(PlayerRuntimeController.TAG, "Selecting INTERNAL subtitle trackIndex=$trackIndex (mpv)")
         val shouldKeepPlaying = !userPausedManually && !_uiState.value.playbackEnded
@@ -267,6 +293,21 @@ internal fun PlayerRuntimeController.disableSubtitles() {
         stage = "disable-subtitles",
         message = "usingMpv=${isUsingMpvEngine()} selectedSubtitleIndex=${_uiState.value.selectedSubtitleTrackIndex}"
     )
+    if (isUsingVlcEngine()) {
+        if (vlcView?.selectSubtitleTrackById(-1) == true) {
+            pendingAddonSubtitleLanguage = null
+            pendingAddonSubtitleTrackId = null
+            pendingAudioSelectionAfterSubtitleRefresh = null
+            _uiState.update {
+                it.copy(
+                    selectedAddonSubtitle = null,
+                    selectedSubtitleTrackIndex = -1
+                )
+            }
+            updateVlcAvailableTracks()
+        }
+        return
+    }
     if (isUsingMpvEngine()) {
         if (mpvView?.disableSubtitles() == true) {
             pendingAddonSubtitleLanguage = null
@@ -443,6 +484,35 @@ internal fun PlayerRuntimeController.selectAddonSubtitle(subtitle: Subtitle) {
         stage = "select-addon-subtitle",
         message = "usingMpv=${isUsingMpvEngine()} addonId=${subtitle.id} addonLang=${subtitle.lang} addonName=${subtitle.addonName}"
     )
+    if (isUsingVlcEngine()) {
+        val currentlySelected = _uiState.value.selectedAddonSubtitle
+        if (currentlySelected?.id == subtitle.id && currentlySelected.url == subtitle.url) return
+        vlcAddonSubtitleSelectionJob?.cancel()
+        vlcAddonSubtitleSelectionJob = scope.launch {
+            val localPath = try {
+                val decodedBody = downloadSubtitleBody(subtitle.url, subtitle.lang, subtitle.headers)
+                val sanitized = SubtitleMojibakeSanitizer.sanitize(decodedBody).toString()
+                val cacheDir = java.io.File(context.cacheDir, "subtitles").also { it.mkdirs() }
+                val ext = if (subtitle.url.contains(".vtt", ignoreCase = true)) "vtt" else "srt"
+                val file = java.io.File(cacheDir, "vlc_${subtitle.id.hashCode()}.$ext")
+                file.writeText(sanitized, Charsets.UTF_8)
+                file.absolutePath
+            } catch (e: Exception) {
+                Log.w(PlayerRuntimeController.TAG, "Failed to cache subtitle for VLC, falling back to URL", e)
+                subtitle.url
+            }
+            if (vlcView?.addSubtitleFile(localPath) == true) {
+                _uiState.update {
+                    it.copy(
+                        selectedAddonSubtitle = subtitle,
+                        selectedSubtitleTrackIndex = -1
+                    )
+                }
+                updateVlcAvailableTracks()
+            }
+        }
+        return
+    }
     if (isUsingMpvEngine()) {
         val currentlySelected = _uiState.value.selectedAddonSubtitle
         if (

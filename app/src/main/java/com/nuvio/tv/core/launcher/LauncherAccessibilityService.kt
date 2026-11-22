@@ -96,7 +96,7 @@ class LauncherAccessibilityService : AccessibilityService() {
         }
         // Consume the whole sequence, but only forward uncanceled releases, never held-key DOWNs.
         if (delivery.acceptKeyRelease(event.eventTime, event.action == KeyEvent.ACTION_UP, event.isCanceled)) {
-            launchHome(event.eventTime)
+            launchHome(event.eventTime, fromKeyPress = true)
             // Not tied to a stock-launcher window event: re-fronting its existing task may not emit one.
             scheduleHomeRecheck()
         }
@@ -163,6 +163,8 @@ class LauncherAccessibilityService : AccessibilityService() {
         if (nativeHome || !LauncherSetup.accessibilityFallbackAllowed(this)) return
         // Fast path: a known stock launcher's window. Start Nuvio straight away, with no further
         // package-manager scans, so the takeover is not delayed by anything else.
+        // Google's setup recovery screen is not a launcher to take over from: it closes itself at once.
+        if (pkg == "com.google.android.tungsten.setupwraith" || pkg == "com.google.android.setupwraith") return
         if (pkg in KNOWN_STOCK_LAUNCHERS) {
             val now = SystemClock.uptimeMillis()
             if (delivery.acceptLauncherWindow(now)) {
@@ -231,7 +233,28 @@ class LauncherAccessibilityService : AccessibilityService() {
         super.onDestroy()
     }
 
-    private fun launchHome(pressedAtMs: Long) {
+    /** When the service last started the launcher, to spot a loop (see [launchHome]). */
+    private val recentLaunches = ArrayDeque<Long>()
+
+    /**
+     * [fromKeyPress]: the start was asked for by a real Home button release. Those are already spaced out
+     * ([HomeFallbackPolicy.acceptKeyRelease]) and are never a loop, so they are neither counted nor refused;
+     * otherwise three quick presses in five seconds made the next one do nothing. Only starts the service
+     * decides on its own (window events, re-checks, after boot) are counted against the loop limit.
+     */
+    private fun launchHome(pressedAtMs: Long, fromKeyPress: Boolean = false) {
+        // A window that closes itself and is reopened by Android (Google's setup recovery screen when the TV's own
+        // launcher is gone) would make this start Nuvio again and again until the system crashed. Three automatic
+        // starts within five seconds is a loop, not a Home press: stop and let it settle.
+        val now = SystemClock.uptimeMillis()
+        if (!fromKeyPress) {
+            while (recentLaunches.isNotEmpty() && now - recentLaunches.first() > 5_000L) recentLaunches.removeFirst()
+            if (recentLaunches.size >= 3) {
+                Log.w(TAG, "Takeover loop: ${recentLaunches.size} starts in 5 s; skipping")
+                return
+            }
+            recentLaunches.addLast(now)
+        }
         try {
             if (!HomeForegroundDelivery.deliver(pressedAtMs)) {
                 val intent = Intent(this, MainActivity::class.java).apply {

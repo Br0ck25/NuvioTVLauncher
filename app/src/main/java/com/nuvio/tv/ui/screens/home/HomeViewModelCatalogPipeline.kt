@@ -196,6 +196,7 @@ internal suspend fun HomeViewModel.loadAllCatalogsPipeline(
     trailerPreviewNegativeCache.clear()
     trailerPreviewUrlsState.clear()
     trailerPreviewAudioUrlsState.clear()
+    trailerPreviewYoutubeKeys.clear()
     activeTrailerPreviewItemId = null
     trailerPreviewRequestVersion = 0L
     prefetchedExternalMetaIds.clear()
@@ -352,6 +353,11 @@ internal suspend fun HomeViewModel.loadAllCatalogsPipeline(
 
         val eagerCatalogs = eagerHomeCatalogs + heroOnlyCatalogs
         pendingCatalogLoads = eagerCatalogs.size
+        Log.w(
+            HomeViewModel.TAG,
+            "HomeDiag load addons=${addons.size} eager=${eagerHomeCatalogs.size} lazy=${lazyHomeCatalogs.size} heroOnly=${heroOnlyCatalogs.size} " +
+                "pending=$pendingCatalogLoads addonIds=${addons.joinToString(",") { it.id }}"
+        )
         eagerCatalogs.forEach { (addon, catalog) ->
             loadCatalogPipeline(addon, catalog, generation)
         }
@@ -433,6 +439,10 @@ internal fun HomeViewModel.loadCatalogPipeline(
         var hasCountedCompletion = false
         catalogLoadSemaphore.withPermit {
             if (generation != catalogLoadGeneration) return@withPermit
+            Log.w(
+                HomeViewModel.TAG,
+                "HomeDiag start addon=${addon.id} name=${addon.name} type=${catalog.apiType} catalog=${catalog.id} base=${addon.baseUrl.take(120)}"
+            )
             val supportsSkip = catalog.supportsExtra("skip")
             val skipStep = catalog.skipStep()
             Log.d(
@@ -478,19 +488,26 @@ internal fun HomeViewModel.loadCatalogPipeline(
                         if (pendingCatalogLoads == 0) {
                             catalogsLoadInProgress = false
                         }
-                        // Batch updates: only trigger a UI rebuild when all
-                        // eager catalogs have completed, or let the debounce
-                        // in scheduleUpdateCatalogRows coalesce intermediate
-                        // arrivals.  When pending == 0 we always flush.
+                        Log.w(
+                            HomeViewModel.TAG,
+                            "HomeDiag ok addon=${addon.id} type=${catalog.apiType} catalog=${catalog.id} items=${result.data.items.size} pending=$pendingCatalogLoads"
+                        )
+                        // Always redraw. The old code waited for pendingCatalogLoads to
+                        // reach zero, but a cancelled eager load can leave that counter
+                        // above zero forever: the catalog was in memory (the hero showed
+                        // it) while its row stayed as gray loading cards. The update is
+                        // debounced, so a burst of arrivals still coalesces.
+                        scheduleUpdateCatalogRows()
                         if (pendingCatalogLoads == 0) {
-                            scheduleUpdateCatalogRows()
-                        } else if (!hasRenderedFirstCatalog) {
-                            // First content arriving — show it quickly so the
-                            // user sees something beyond placeholders.
-                            scheduleUpdateCatalogRows()
+                            catalogsLoadInProgress = false
+                            // The final redraw above can be cancelled by a burst of arrivals.
+                            // Schedule one more after everything settled, so the last rows are
+                            // never left as gray cards.
+                            viewModelScope.launch {
+                                delay(400L)
+                                scheduleUpdateCatalogRows()
+                            }
                         }
-                        // Otherwise, let the next completion or the final
-                        // pendingCatalogLoads==0 trigger the update.
                     }
                     is NetworkResult.Error -> {
                         val errorKey = catalogKey(
@@ -513,10 +530,10 @@ internal fun HomeViewModel.loadCatalogPipeline(
                         if (pendingCatalogLoads == 0) {
                             catalogsLoadInProgress = false
                         }
-                        // Same batching logic as success path.
-                        if (pendingCatalogLoads == 0 || !hasRenderedFirstCatalog) {
-                            scheduleUpdateCatalogRows()
-                        }
+                        // Always redraw: the failed/timed-out row's placeholder must go now,
+                        // even while other catalogs are still loading. Waiting for the last
+                        // one left gray cards on screen when an addon never answered.
+                        scheduleUpdateCatalogRows()
                     }
                     NetworkResult.Loading -> {
                         /* Handled by individual row */

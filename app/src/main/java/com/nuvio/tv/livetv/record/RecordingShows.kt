@@ -29,6 +29,9 @@ import androidx.compose.runtime.remember
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.res.stringResource
+import androidx.compose.ui.res.pluralStringResource
+import com.nuvio.tv.R
 import androidx.compose.ui.draw.alpha
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.focus.FocusRequester
@@ -105,8 +108,8 @@ internal fun groupRecorded(done: List<LiveTvRecording>): List<RecordedEntry> {
 /** Where you are in one recording. */
 internal data class EpisodeState(val watched: Boolean, val resumeMs: Long?)
 
-internal fun episodeLabel(rec: LiveTvRecording): String =
-    rec.episode?.takeIf { it.isNotBlank() } ?: shortDayLabel(airedMs(rec))
+internal fun episodeLabel(context: android.content.Context, rec: LiveTvRecording): String =
+    rec.episode?.takeIf { it.isNotBlank() } ?: shortDayLabel(context, airedMs(rec))
 
 private fun newestOf(show: RecordedShow): LiveTvRecording = show.episodes.maxByOrNull { airedMs(it) } ?: show.episodes.first()
 
@@ -122,6 +125,7 @@ internal fun RecordedFolderCard(
     onMenu: () -> Unit
 ) {
     var focused by remember { mutableStateOf(false) }
+    val context = androidx.compose.ui.platform.LocalContext.current
     val colors = NuvioTheme.colors
     val shape = RoundedCornerShape(liveCorner())
     val layer = com.nuvio.tv.livetv.ui.guideSurfaceVariant()
@@ -157,13 +161,13 @@ internal fun RecordedFolderCard(
                     Box(
                         Modifier.align(Alignment.TopEnd).padding(8.dp).clip(RoundedCornerShape(50))
                             .background(colors.Secondary).padding(horizontal = 9.dp, vertical = 2.dp)
-                    ) { LiveText("$fresh new", size = 12.sp, weight = FontWeight.Bold, color = colors.Background) }
+                    ) { LiveText(stringResource(R.string.iptv_rec_fresh_new, fresh), size = 12.sp, weight = FontWeight.Bold, color = colors.Background) }
                 }
                 Box(
                     Modifier.align(Alignment.BottomStart).padding(8.dp).clip(RoundedCornerShape(6.dp))
                         .background(androidx.compose.ui.graphics.Color.Black.copy(alpha = 0.7f)).padding(horizontal = 8.dp, vertical = 3.dp)
                 ) {
-                    LiveText("${show.episodes.size} episodes", size = 12.sp, weight = FontWeight.SemiBold, color = androidx.compose.ui.graphics.Color.White)
+                    LiveText(pluralStringResource(R.plurals.iptv_rec_episode_count, show.episodes.size, show.episodes.size), size = 12.sp, weight = FontWeight.SemiBold, color = androidx.compose.ui.graphics.Color.White)
                 }
             }
         }
@@ -175,8 +179,8 @@ internal fun RecordedFolderCard(
             marquee = focused
         )
         LiveText(
-            (if (watched >= show.episodes.size) "All watched" else "$watched of ${show.episodes.size} watched") +
-                " · latest " + shortDayLabel(airedMs(newest)).lowercase(Locale.getDefault()),
+            (if (watched >= show.episodes.size) stringResource(R.string.iptv_rec_all_watched) else stringResource(R.string.iptv_rec_watched_of, watched, show.episodes.size)) +
+                " · " + stringResource(R.string.iptv_rec_latest, shortDayLabel(context, airedMs(newest)).lowercase(Locale.getDefault())),
             size = 13.sp,
             color = colors.TextSecondary
         )
@@ -204,6 +208,7 @@ internal fun RecordedShowPage(
 ) {
     androidx.activity.compose.BackHandler(onBack = onClose)
     val colors = NuvioTheme.colors
+    val context = androidx.compose.ui.platform.LocalContext.current
     val states = remember(show, resumeTick) {
         show.episodes.associate { it.id to EpisodeState(isWatched(it), resumeOf(it)) }
     }
@@ -252,11 +257,12 @@ internal fun RecordedShowPage(
                     },
                 verticalArrangement = Arrangement.spacedBy(12.dp)
             ) {
-                LiveText("Recordings  ›  ${show.title}", size = 14.sp, color = colors.TextSecondary)
+                LiveText(stringResource(R.string.iptv_rec_breadcrumb, show.title), size = 14.sp, color = colors.TextSecondary)
                 ArtThumb(art[newestOf(show).id], newestOf(show).channelLogo, show.title, Modifier.fillMaxWidth(0.85f).aspectRatio(16f / 9f))
                 LiveText(show.title, size = 28.sp, weight = FontWeight.Bold, maxLines = 2)
                 LiveText(
-                    "${show.episodes.size} episodes · $watchedCount watched" + (if (freshCount > 0) " · $freshCount new" else "") +
+                    pluralStringResource(R.plurals.iptv_rec_episode_count, show.episodes.size, show.episodes.size) + " · " +
+                        stringResource(R.string.iptv_rec_watched_of, watchedCount, show.episodes.size) + (if (freshCount > 0) " · " + stringResource(R.string.iptv_rec_fresh_new, freshCount) else "") +
                         "\n" + listOfNotNull(
                             durationLabel(totalSec).takeIf { totalSec > 0 },
                             sizeLabel(totalBytes).takeIf { totalBytes > 0 }
@@ -264,18 +270,18 @@ internal fun RecordedShowPage(
                     size = 14.sp, color = colors.TextSecondary, maxLines = 2
                 )
                 PillButton(
-                    (if (nextResume != null) "Resume " else "Play ") + episodeLabel(next),
+                    if (nextResume != null) stringResource(R.string.iptv_rec_resume, episodeLabel(context, next)) else stringResource(R.string.iptv_rec_play, episodeLabel(context, next)),
                     primary = true,
                     modifier = Modifier.fillMaxWidth().focusRequester(first).focusRequester(buttons[0]),
                     onFocus = { if (it) lastButton = 0 }, onClick = { onPlay(next) }, onMenu = { onMenu(next) }
                 )
                 if (watchedCount < show.episodes.size) {
-                    PillButton("Mark All as Watched", primary = false, modifier = Modifier.fillMaxWidth().focusRequester(buttons[1]), onFocus = { if (it) lastButton = 1 }, onClick = onMarkAllWatched, onMenu = onMarkAllWatched)
+                    PillButton(stringResource(R.string.iptv_rec_mark_all), primary = false, modifier = Modifier.fillMaxWidth().focusRequester(buttons[1]), onFocus = { if (it) lastButton = 1 }, onClick = onMarkAllWatched, onMenu = onMarkAllWatched)
                 } else if (lastButton == 1) lastButton = 0
                 onMoveAll?.let {
-                    PillButton("Move All to…", primary = false, modifier = Modifier.fillMaxWidth().focusRequester(buttons[2]), onFocus = { f -> if (f) lastButton = 2 }, onClick = it, onMenu = it)
+                    PillButton(stringResource(R.string.iptv_rec_move_all), primary = false, modifier = Modifier.fillMaxWidth().focusRequester(buttons[2]), onFocus = { f -> if (f) lastButton = 2 }, onClick = it, onMenu = it)
                 }
-                PillButton("Delete All Episodes", primary = false, modifier = Modifier.fillMaxWidth().focusRequester(buttons[3]), onFocus = { if (it) lastButton = 3 }, onClick = onDeleteAll, onMenu = onDeleteAll)
+                PillButton(stringResource(R.string.iptv_rec_delete_all_eps), primary = false, modifier = Modifier.fillMaxWidth().focusRequester(buttons[3]), onFocus = { if (it) lastButton = 3 }, onClick = onDeleteAll, onMenu = onDeleteAll)
             }
             Column(
                 Modifier.weight(1f).onPreviewKeyEvent { e ->
@@ -285,7 +291,7 @@ internal fun RecordedShowPage(
                     } else false
                 }
             ) {
-                SectionTitle("Episodes")
+                SectionTitle(stringResource(R.string.iptv_rec_episodes))
                 LazyColumn(
                     state = listState,
                     verticalArrangement = Arrangement.spacedBy(10.dp),
@@ -361,16 +367,16 @@ private fun EpisodeRow(
         Spacer(Modifier.width(16.dp))
         Column(Modifier.weight(1f), verticalArrangement = Arrangement.spacedBy(3.dp)) {
             LiveText(
-                episodeLabel(rec),
+                episodeLabel(androidx.compose.ui.platform.LocalContext.current, rec),
                 size = 17.sp,
                 weight = FontWeight.SemiBold,
                 color = if (state.watched) colors.TextSecondary else colors.TextPrimary,
                 marquee = focused
             )
             LiveText(
-                if (failed) rec.problem ?: "Couldn't be recorded"
+                if (failed) rec.problem ?: stringResource(R.string.iptv_rec_couldnt_record)
                 else listOfNotNull(
-                    dateLabel(airedMs(rec)),
+                    dateLabel(androidx.compose.ui.platform.LocalContext.current, airedMs(rec)),
                     durationLabel(rec.durationSec).takeIf { rec.durationSec > 0 },
                     sizeLabel(rec.sizeBytes).takeIf { rec.sizeBytes > 0 }
                 ).joinToString(" · "),
@@ -380,11 +386,11 @@ private fun EpisodeRow(
         }
         Spacer(Modifier.width(12.dp))
         when {
-            state.watched -> LiveText("Watched", size = 13.sp, color = colors.TextTertiary)
-            minutesLeft != null -> LiveText("$minutesLeft min left", size = 13.sp, weight = FontWeight.SemiBold)
+            state.watched -> LiveText(stringResource(R.string.iptv_rec_watched), size = 13.sp, color = colors.TextTertiary)
+            minutesLeft != null -> LiveText(stringResource(R.string.iptv_player_min_left, minutesLeft), size = 13.sp, weight = FontWeight.SemiBold)
             else -> Box(
                 Modifier.clip(RoundedCornerShape(50)).background(colors.Secondary).padding(horizontal = 10.dp, vertical = 2.dp)
-            ) { LiveText("NEW", size = 12.sp, weight = FontWeight.Bold, color = colors.Background) }
+            ) { LiveText(stringResource(R.string.iptv_ge_tag_new), size = 12.sp, weight = FontWeight.Bold, color = colors.Background) }
         }
     }
 }

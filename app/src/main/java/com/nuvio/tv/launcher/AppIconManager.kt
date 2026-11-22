@@ -16,7 +16,7 @@ data class AppIconSettingsState(
     val selected: AppIconOption = AppIconOption.ORIGINAL,
     val pending: AppIconOption? = null,
     val changeFailed: Boolean = false,
-    /** Live TV fork: show "+ IPTV" on the icon and banner (off: the original Nuvio icons). */
+    /** Live TV fork: show the Nuvio One Live TV badge on the icon and banner (off: the plain Nuvio One icons). */
     val iptvBranding: Boolean = true
 )
 
@@ -33,7 +33,7 @@ class AppIconManager @Inject constructor(
         AppIconOption.GRAPHITE to "com.nuvio.tv.launcher.AppIconGraphite"
     )
 
-    // Live TV fork: the same colors with "+ IPTV" on the icon and banner.
+    // Live TV fork: the same colors with the Nuvio One Live TV badge on the icon and banner.
     private val iptvClasses = mapOf(
         AppIconOption.ORIGINAL to "com.nuvio.tv.livetv.branding.IptvIconDefault",
         AppIconOption.ARCTIC_BLUE to "com.nuvio.tv.livetv.branding.IptvIconArcticBlue",
@@ -56,7 +56,7 @@ class AppIconManager @Inject constructor(
         _state.value = AppIconSettingsState(selected = currentOption(), iptvBranding = iptvBranding())
     }
 
-    /** Live TV fork: "+ IPTV" on the icon on or off, keeping the chosen color. */
+    /** Live TV fork: the Nuvio One Live TV badge on the icon on or off, keeping the chosen color. */
     fun setIptvBranding(enabled: Boolean): Boolean {
         val current = _state.value
         if (current.pending != null || current.iptvBranding == enabled) return false
@@ -68,8 +68,8 @@ class AppIconManager @Inject constructor(
     }
 
     /**
-     * Exactly one launcher entry enabled: the chosen color, with or without "+ IPTV". Also moves
-     * people who picked a color before this existed onto the matching "+ IPTV" version.
+     * Exactly one launcher entry enabled: the chosen color, with or without the Live TV badge. Also moves
+     * people who picked a color before this existed onto the matching Live TV badge version.
      */
     private fun normalizeLauncherEntries() {
         val pm = context.packageManager

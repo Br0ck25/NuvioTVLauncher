@@ -32,6 +32,15 @@ class LauncherSetupCommandsTest {
     }
 
     @Test
+    fun uninstallingTheStockLauncherIsPerUserAndUndoneByTheReEnableCommands() {
+        assertEquals(listOf("pm uninstall --user 0 com.google.android.apps.tv.launcherx"), DeviceCommands.uninstallStock)
+        assertTrue(all.any { "pm uninstall --user 0 com.google.android.apps.tv.launcherx" in it })
+        // The re-enable commands bring an uninstalled launcher back, not only a disabled one.
+        assertTrue(DeviceCommands.enableStock.any { it == "cmd package install-existing --user 0 com.google.android.apps.tv.launcherx" })
+        assertTrue(all.any { "install-existing --user 0 com.google.android.apps.tv.launcherx" in it })
+    }
+
+    @Test
     fun parsesTheHomeRoleHolder() {
         assertEquals("com.nuvio.tv.launcher", DeviceCommands.roleHolder("com.nuvio.tv.launcher\n"))
         assertEquals("com.google.android.apps.tv.launcherx", DeviceCommands.roleHolder("com.google.android.apps.tv.launcherx"))
@@ -112,6 +121,7 @@ class LauncherSetupCommandsTest {
         assertFalse("<b>\"" in html)
         // The stock-launcher button is there, behind a confirm and a warning.
         assertTrue(Regex("data-action=\"disable-stock\" data-confirm=").containsMatchIn(html))
+        assertTrue(Regex("data-action=\"uninstall-stock\" data-confirm=").containsMatchIn(html))
         assertFalse("%%" in html)
     }
 }

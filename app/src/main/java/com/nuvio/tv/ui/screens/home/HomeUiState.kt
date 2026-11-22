@@ -20,6 +20,14 @@ import com.nuvio.tv.domain.model.WatchProgress
 data class HomeUiState(
     val catalogRows: List<CatalogRow> = emptyList(),
     val continueWatchingItems: List<ContinueWatchingItem> = emptyList(),
+    /**
+     * Live TV fork: On Demand titles you started, for their own Continue Watching row.
+     * Nuvio's normal pipeline can't resolve `nuviovod:` ids through addons, so these are
+     * mapped back to the provider's items instead.
+     */
+    val onDemandContinueWatchingItems: List<ContinueWatchingItem> = emptyList(),
+    /** YouTube fork: videos started on the YouTube page, shown only when that row is switched on. */
+    val youtubeContinueWatchingItems: List<ContinueWatchingItem> = emptyList(),
     val upcomingItems: List<ContinueWatchingItem> = emptyList(),
     val isLoading: Boolean = true,
     val layoutPreferencesReady: Boolean = false,
@@ -68,6 +76,7 @@ data class HomeUiState(
     val showFullReleaseDate: Boolean = true,
     val blurUnwatchedEpisodes: Boolean = false,
     val useEpisodeThumbnailsInCw: Boolean = true,
+    val showContinueWatchingEpisodeCount: Boolean = true,
     val continueWatchingEnabled: Boolean = true,
     val continueWatchingCardStyle: ContinueWatchingCardStyle = ContinueWatchingCardStyle.CARD,
     val continueWatchingClickAction: ContinueWatchingClickAction = ContinueWatchingClickAction.STREAM,
@@ -96,7 +105,9 @@ sealed class ContinueWatchingItem {
         override val shufflePlayback: Boolean = false,
         val originalPoster: String? = null,
         val customLandscapePoster: String? = null,
-        val mdbListRatings: com.nuvio.tv.domain.model.MDBListRatings? = null
+        val mdbListRatings: com.nuvio.tv.domain.model.MDBListRatings? = null,
+        /** Episodes in the series not watched yet, for the card's "N left" badge. */
+        val remainingEpisodes: Int? = null
     ) : ContinueWatchingItem()
 
     @Immutable
@@ -149,6 +160,8 @@ data class NextUpInfo(
     val seedEpisode: Int? = null,
     val contentLanguage: String? = null,
     val mdbListRatings: com.nuvio.tv.domain.model.MDBListRatings? = null,
+    /** Episodes in the series not watched yet, for the card's "N left" badge. */
+    val remainingEpisodes: Int? = null,
     /** Live TV fork: a card from the Calendar (a show whose bell is rung, or an upcoming episode). */
     val fromCalendar: Boolean = false
 )

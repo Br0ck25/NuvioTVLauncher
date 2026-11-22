@@ -10,6 +10,7 @@ import com.nuvio.tv.data.local.InternalPlayerEngine
 import com.nuvio.tv.data.local.LibassRenderType
 import com.nuvio.tv.data.local.LibassRenderMode
 import com.nuvio.tv.data.local.NightMode
+import com.nuvio.tv.data.local.PlayerControlButton
 import com.nuvio.tv.data.local.StreamAutoPlayMode
 import com.nuvio.tv.data.local.SubtitleStyleSettings
 import com.nuvio.tv.data.repository.SkipInterval
@@ -86,6 +87,12 @@ data class PlayerUiState(
     val playbackSpeed: Float = 1f,
     val loadingOverlayEnabled: Boolean = true,
     val showPlayerLoadingStatus: Boolean = false,
+    /** The resolution, codec and speed line above the title. Off unless turned on. */
+    val showPlaybackInfo: Boolean = false,
+    /** Control-row buttons turned off in Playback settings. */
+    val hiddenPlayerControls: Set<PlayerControlButton> = PlayerControlButton.defaultHidden,
+    /** Experimental seek-bar thumbnails, off unless the viewer turns them on. */
+    val seekPreviewEnabled: Boolean = false,
     val playbackIssueReportsEnabled: Boolean = false,
     val showLoadingOverlay: Boolean = true,
     val loadingMessage: String? = null,
@@ -121,6 +128,18 @@ data class PlayerUiState(
     val nightMode: NightMode = NightMode.OFF,
     val isNightModeAvailable: Boolean = false,
     val showAudioOverlay: Boolean = false,
+    /** Video sizes the stream offers, tallest first; only set when there is a real choice. */
+    val videoQualities: List<VideoQualityOption> = emptyList(),
+    val showQualityOverlay: Boolean = false,
+    val showYouTubePanel: Boolean = false,
+    /** The panel was opened for recommendations (Down) rather than the action list. */
+    val youTubePanelStartWithRecommendations: Boolean = false,
+    /** The panel was opened by the player's Comments button. */
+    val youTubePanelStartWithComments: Boolean = false,
+    /** 0 = video full screen, 1 = recommendations fill the screen and the video is scrolled away. */
+    val youTubeScrollFraction: Float = 0f,
+    /** The chosen video height; 0 is automatic. */
+    val selectedVideoQualityHeight: Int = 0,
     val showSubtitleOverlay: Boolean = false,
     val showSubtitleStylePanel: Boolean = false,
     val showSubtitleTimingDialog: Boolean = false,
@@ -162,6 +181,7 @@ data class PlayerUiState(
     val watchedEpisodeKeys: Set<Pair<Int, Int>> = emptySet(),
     val showEpisodeStreams: Boolean = false,
     val isLoadingEpisodeStreams: Boolean = false,
+    val isEpisodeAutoPlaySearching: Boolean = false,
     val episodeStreamsError: String? = null,
     val episodeAllStreams: List<Stream> = emptyList(),
     val episodeSelectedAddonFilter: String? = null, // null means "All"
@@ -230,6 +250,8 @@ data class PlayerUiState(
     // Aspect ratio / resize mode
     val resizeMode: Int = AspectRatioFrameLayout.RESIZE_MODE_FIT,
     val aspectMode: AspectMode = AspectMode.ORIGINAL,
+    /** A vertical video (such as a Short): its aspect is fixed to the video's own shape. */
+    val isPortraitVideo: Boolean = false,
     val tunneledSurfaceFill: Boolean = false,
     val tunnelingEnabled: Boolean = false,
     val showAspectRatioIndicator: Boolean = false,
@@ -276,6 +298,20 @@ internal fun PlayerUiState.clearFrameRateDetection(): PlayerUiState = copy(
     detectedFrameRateSource = null
 )
 
+internal val PlayerUiState.showEpisodeAutoPlayLoadingOverlay: Boolean
+    get() = isEpisodeAutoPlaySearching && loadingOverlayEnabled
+
+internal fun PlayerUiState.finishEpisodeAutoPlaySearch(showStreamPicker: Boolean = false): PlayerUiState =
+    copy(
+        isEpisodeAutoPlaySearching = false,
+        showEpisodeStreams = showEpisodeStreams || (isEpisodeAutoPlaySearching && showStreamPicker),
+        isLoadingEpisodeStreams = if (isEpisodeAutoPlaySearching && showStreamPicker) {
+            false
+        } else {
+            isLoadingEpisodeStreams
+        }
+    )
+
 data class PlaybackTimelineState(
     val currentPosition: Long = 0L,
     val duration: Long = 0L,
@@ -286,6 +322,8 @@ data class PlaybackTimelineState(
     /** Wall-clock time spent playing the current live stream. */
     val watchedDurationMs: Long = 0L
 )
+
+data class VideoQualityOption(val height: Int, val label: String)
 
 data class TrackInfo(
     val index: Int,
@@ -298,6 +336,10 @@ data class TrackInfo(
     val isSelected: Boolean = false,
     val sampleRate: Int? = null
 )
+
+/** The aspect the picture uses. Portrait videos follow the same setting so the More menu can change them. */
+internal val PlayerUiState.effectiveAspectMode: AspectMode
+    get() = aspectMode
 
 data class NextEpisodeInfo(
     val videoId: String,
@@ -343,6 +385,12 @@ sealed class PlayerEvent {
     data class OnSetPlaybackSpeed(val speed: Float) : PlayerEvent()
     data object OnToggleControls : PlayerEvent()
     data object OnShowAudioOverlay : PlayerEvent()
+    data object OnShowQualityOverlay : PlayerEvent()
+    data object OnShowYouTubePanel : PlayerEvent()
+    data object OnShowYouTubeRecommendations : PlayerEvent()
+    data object OnShowYouTubeComments : PlayerEvent()
+    data class OnSetYouTubeScrollFraction(val fraction: Float) : PlayerEvent()
+    data class OnSelectVideoQuality(val height: Int) : PlayerEvent()
     data object OnShowSubtitleOverlay : PlayerEvent()
     data object OnOpenSubtitleStylePanel : PlayerEvent()
     data object OnDismissSubtitleStylePanel : PlayerEvent()

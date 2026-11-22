@@ -46,9 +46,10 @@ fun PlaybackSettingsScreen(
 }
 
 @Composable
-fun PlaybackSettingsContent(
+internal fun PlaybackSettingsContent(
     viewModel: PlaybackSettingsViewModel = hiltViewModel(),
-    initialFocusRequester: FocusRequester? = null
+    initialFocusRequester: FocusRequester? = null,
+    initialSection: PlaybackSection? = null
 ) {
     val playerSettings by viewModel.playerSettings.collectAsStateWithLifecycle(initialValue = PlayerSettings())
     val transparentLetterbox by viewModel.transparentLetterbox.collectAsStateWithLifecycle(initialValue = false)
@@ -122,7 +123,8 @@ fun PlaybackSettingsContent(
                             .onFailure { torrentCacheClearFailed = true }
                     }
                 },
-                initialFocusRequester = initialFocusRequester
+                initialFocusRequester = initialFocusRequester,
+                initialSection = initialSection
             )
         }
 

@@ -1,6 +1,7 @@
 package com.nuvio.tv.ui.screens.player
 
 import android.util.Log
+import androidx.media3.exoplayer.ScrubbingModeParameters
 import androidx.media3.exoplayer.SeekParameters
 import com.nuvio.tv.data.local.InternalPlayerEngine
 import kotlinx.coroutines.CancellationException
@@ -29,7 +30,7 @@ internal fun PlayerRuntimeController.attachMpvView(view: NuvioMpvSurfaceView?) {
         registerMpvEventRelay(view)
         view.setMedia(currentStreamUrl, currentHeaders)
         view.setPlaybackSpeed(_uiState.value.playbackSpeed)
-        view.applyAudioAmplificationDb(_uiState.value.audioAmplificationDb)
+        view.applyAudioAmplificationDb(effectiveAudioGainDb(_uiState.value.audioAmplificationDb))
         view.applyAudioLanguagePreferences(mpvPreferredAudioLanguages)
         view.applySubtitleLanguagePreferences(
             preferred = _uiState.value.subtitleStyle.preferredLanguage,
@@ -39,7 +40,7 @@ internal fun PlayerRuntimeController.attachMpvView(view: NuvioMpvSurfaceView?) {
         view.setSubtitleDelayMs(mpvSubtitleDelayMs(_uiState.value.subtitleDelayMs))
         view.applyBluetoothAudioRoute(currentAudioOutputRoute?.isBluetooth == true)
         view.setAudioDelayMs(_uiState.value.audioDelayMs)
-        view.applyAspectMode(_uiState.value.aspectMode)
+        view.applyAspectMode(_uiState.value.effectiveAspectMode)
         view.setPaused(false)
         applyPendingMpvSeekIfNeeded(view)
         installMpvMediaSession()
@@ -146,7 +147,7 @@ internal fun PlayerRuntimeController.initializeMpvPlayer(
             updatePlaybackTimeline(currentPosition = initialResumePosition)
         }
         view.setPlaybackSpeed(_uiState.value.playbackSpeed)
-        view.applyAudioAmplificationDb(_uiState.value.audioAmplificationDb)
+        view.applyAudioAmplificationDb(effectiveAudioGainDb(_uiState.value.audioAmplificationDb))
         view.applyAudioLanguagePreferences(mpvPreferredAudioLanguages)
         view.applySubtitleLanguagePreferences(
             preferred = _uiState.value.subtitleStyle.preferredLanguage,
@@ -156,7 +157,7 @@ internal fun PlayerRuntimeController.initializeMpvPlayer(
         view.setSubtitleDelayMs(mpvSubtitleDelayMs(_uiState.value.subtitleDelayMs))
         view.applyBluetoothAudioRoute(currentAudioOutputRoute?.isBluetooth == true)
         view.setAudioDelayMs(_uiState.value.audioDelayMs)
-        view.applyAspectMode(_uiState.value.aspectMode)
+        view.applyAspectMode(_uiState.value.effectiveAspectMode)
         view.setPaused(false)
         applyPendingMpvSeekIfNeeded(view)
         installMpvMediaSession()
@@ -252,6 +253,14 @@ internal fun PlayerRuntimeController.pauseForLifecycle() {
         _uiState.update { it.copy(isPlaying = false) }
         return
     }
+    if (isUsingVlcEngine()) {
+        vlcView?.setPaused(true)
+        emitPauseScrobbleForCurrentProgress()
+        stopWatchProgressSaving()
+        stopProgressUpdates()
+        _uiState.update { it.copy(isPlaying = false) }
+        return
+    }
     _exoPlayer?.let { player ->
         // Disable automatic audio focus handling so ExoPlayer can't
         // re-acquire focus and set playWhenReady=true behind our back.
@@ -268,7 +277,7 @@ internal fun PlayerRuntimeController.pauseForLifecycle() {
  * the decoder it only turns a screensaver or a quick app switch into a full player rebuild.
  */
 internal fun PlayerRuntimeController.releaseForBackground() {
-    if (!releaseDecoderOnBackground || isUsingMpvEngine() || pendingBackgroundCrashRecovery) return
+    if (!releaseDecoderOnBackground || isUsingMpvEngine() || isUsingVlcEngine() || pendingBackgroundCrashRecovery) return
     val player = _exoPlayer ?: return
     if (currentStreamUrl.isEmpty()) return
     backgroundCrashSavedPositionMs = if (_uiState.value.isLive) 0L else player.currentPosition.coerceAtLeast(0L)
@@ -584,26 +593,26 @@ internal fun PlayerRuntimeController.isUsingMpvEngine(): Boolean {
 }
 
 internal fun PlayerRuntimeController.currentPlaybackPositionMs(): Long? {
-    return if (isUsingMpvEngine()) {
-        mpvView?.currentPositionMs()
-    } else {
-        _exoPlayer?.currentPosition
+    return when {
+        isUsingVlcEngine() -> vlcView?.currentPositionMs()
+        isUsingMpvEngine() -> mpvView?.currentPositionMs()
+        else -> _exoPlayer?.currentPosition
     }
 }
 
 internal fun PlayerRuntimeController.currentPlaybackDurationMs(): Long {
-    return if (isUsingMpvEngine()) {
-        mpvView?.durationMs() ?: 0L
-    } else {
-        _exoPlayer?.duration ?: 0L
+    return when {
+        isUsingVlcEngine() -> vlcView?.durationMs() ?: 0L
+        isUsingMpvEngine() -> mpvView?.durationMs() ?: 0L
+        else -> _exoPlayer?.duration ?: 0L
     }
 }
 
 internal fun PlayerRuntimeController.isPlaybackCurrentlyPlaying(): Boolean {
-    return if (isUsingMpvEngine()) {
-        mpvView?.isPlayingNow() == true
-    } else {
-        _exoPlayer?.isPlaying == true
+    return when {
+        isUsingVlcEngine() -> vlcView?.isPlayingNow() == true
+        isUsingMpvEngine() -> mpvView?.isPlayingNow() == true
+        else -> _exoPlayer?.isPlaying == true
     }
 }
 
@@ -612,11 +621,24 @@ internal fun PlayerRuntimeController.isPlaybackCurrentlyPlaying(): Boolean {
  * but pausing on a route change then would strand playback stopped once buffering ends.
  */
 internal fun PlayerRuntimeController.hasActivePlayIntent(): Boolean {
-    return if (isUsingMpvEngine()) {
-        mpvView?.isPlayingNow() == true
-    } else {
-        _exoPlayer?.playWhenReady == true
+    return when {
+        isUsingVlcEngine() -> vlcView?.isPlayingNow() == true
+        isUsingMpvEngine() -> mpvView?.isPlayingNow() == true
+        else -> _exoPlayer?.playWhenReady == true
     }
+}
+
+/**
+ * Ends scrubbing mode even if ExoPlayer never leaves STATE_READY (an in-buffer seek often
+ * doesn't fire onPlaybackStateChanged). Leaving it on disables audio/metadata and can leave
+ * the video renderer in a strange state after a seek.
+ */
+internal fun PlayerRuntimeController.clearScrubbingMode() {
+    scrubbingModeResetJob?.cancel()
+    scrubbingModeResetJob = null
+    if (!isScrubbingModeActive) return
+    isScrubbingModeActive = false
+    _exoPlayer?.setScrubbingModeParameters(ScrubbingModeParameters.Builder().build())
 }
 
 /**
@@ -628,7 +650,9 @@ internal fun PlayerRuntimeController.seekPlaybackTo(
     seekParameters: SeekParameters = SeekParameters.CLOSEST_SYNC,
     exact: Boolean = false
 ) {
-    if (isUsingMpvEngine()) {
+    if (isUsingVlcEngine()) {
+        vlcView?.seekToMs(positionMs)
+    } else if (isUsingMpvEngine()) {
         mpvView?.let { view ->
             if (exact) view.seekToMsExact(positionMs) else view.seekToMs(positionMs)
             // Keep subtitle/audio delay sticky during FF/RW seeks.
@@ -652,9 +676,18 @@ internal fun PlayerRuntimeController.seekPlaybackTo(
                     seekBufferingUiJob?.cancel()
                     _uiState.update { it.copy(isBuffering = true) }
                 }
-                NuvioExoPlayerPerformanceHelper.buildScrubbingParams()?.let { params ->
+                NuvioExoPlayerPerformanceHelper.buildScrubbingParams(
+                    // YouTube VODs skip this: some TV decoders show the previous frame after
+                    // a seek when the MediaCodec flush is skipped.
+                    allowSkippingMediaCodecFlush = !com.nuvio.tv.youtube.YouTubeProgress.isYouTubeId(contentId)
+                )?.let { params ->
                     isScrubbingModeActive = true
                     player.setScrubbingModeParameters(params)
+                    scrubbingModeResetJob?.cancel()
+                    scrubbingModeResetJob = scope.launch {
+                        delay(1_500L)
+                        clearScrubbingMode()
+                    }
                 }
             }
             player.setSeekParameters(seekParameters)
@@ -664,15 +697,18 @@ internal fun PlayerRuntimeController.seekPlaybackTo(
 }
 
 internal fun PlayerRuntimeController.setPlaybackSpeedInternal(speed: Float) {
-    if (isUsingMpvEngine()) {
-        mpvView?.setPlaybackSpeed(speed)
-    } else {
-        _exoPlayer?.setPlaybackSpeed(speed)
+    when {
+        isUsingVlcEngine() -> vlcView?.setPlaybackSpeed(speed)
+        isUsingMpvEngine() -> mpvView?.setPlaybackSpeed(speed)
+        else -> _exoPlayer?.setPlaybackSpeed(speed)
     }
 }
 
 internal fun PlayerRuntimeController.setPlaybackPaused(paused: Boolean) {
-    if (isUsingMpvEngine()) {
+    if (isUsingVlcEngine()) {
+        vlcView?.setPaused(paused)
+        _uiState.update { it.copy(isPlaying = !paused) }
+    } else if (isUsingMpvEngine()) {
         mpvView?.setPaused(paused)
         _uiState.update { it.copy(isPlaying = !paused) }
         refreshMpvMediaSession()
