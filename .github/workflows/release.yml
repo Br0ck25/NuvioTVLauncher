@@ -190,7 +190,7 @@ jobs:
       - name: Build the release APKs
         run: |
           chmod +x gradlew
-          ./gradlew --console=plain :app:assembleFullRelease --stacktrace --no-daemon --max-workers=2             -Dorg.gradle.jvmargs="-Xmx3072m -XX:MaxMetaspaceSize=1024m -Dfile.encoding=UTF-8"             -Pkotlin.daemon.jvmargs="-Xmx5120m" \
+          ./gradlew --console=plain :app:assembleFullRelease --stacktrace --no-daemon --max-workers=2             -Dorg.gradle.jvmargs="-Xmx6144m -XX:MaxMetaspaceSize=1024m -Dfile.encoding=UTF-8"             -Pkotlin.daemon.jvmargs="-Xmx4096m" \
             -PlivetvBuildNumber=${{ github.run_number }} \
             -PlivetvVersionName=${{ inputs.version }}
 
