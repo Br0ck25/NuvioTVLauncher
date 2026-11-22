@@ -43,7 +43,6 @@ object LiveTvLauncherRows {
     const val ROW_RECENT = "recent"
 
     private const val PREFS = "live_tv_launcher_rows"
-    private const val MAX_ITEMS = 24
     private const val ACTION_REFRESH = "com.nuvio.tv.livetv.LAUNCHER_ROWS"
     private val scope = CoroutineScope(SupervisorJob() + Dispatchers.IO)
     private val lock = Mutex()
@@ -108,6 +107,10 @@ object LiveTvLauncherRows {
         val shape = CardShape.of(settings.launcherCardShape)
         // The three rows are always on offer: the launcher's own settings decide which to show.
         val wanted = listOf(ROW_SPORTS, ROW_FAVORITES, ROW_RECENT)
+        // The device profile decides whether this is the full 24-card path or the lighter
+        // low-RAM path; no user setting is involved.
+        val profile = LauncherRowsProfile.current
+        val maxItems = profile.maxItems
         val store = context.getSharedPreferences(PREFS, Context.MODE_PRIVATE)
         val helper = PreviewChannelHelper(context)
         LauncherImages.tidy(context)
@@ -215,12 +218,12 @@ object LiveTvLauncherRows {
         var sportsLive = false
         for (row in wanted) {
             val items: List<Item>? = when (row) {
-                ROW_FAVORITES -> user.favorites.mapNotNull { sources[it] }.take(MAX_ITEMS).map(::channelItem)
-                ROW_RECENT -> user.recent.mapNotNull { sources[it] }.take(MAX_ITEMS).map(::channelItem)
+                ROW_FAVORITES -> user.favorites.mapNotNull { sources[it] }.take(maxItems).map(::channelItem)
+                ROW_RECENT -> user.recent.mapNotNull { sources[it] }.take(maxItems).map(::channelItem)
                 ROW_SPORTS -> when {
                     known.isNotEmpty() -> {
                         store.edit().putLong("sports_at", now).apply()
-                        liveGames.take(MAX_ITEMS).map { ev ->
+                        liveGames.take(maxItems).map { ev ->
                             val best = matches[ev.id]?.firstOrNull()?.channel
                             Item(ev.title, listOfNotNull(best?.name, SportsCatalog.league(ev.leagueId)?.name).joinToString("  ·  ").ifBlank { null },
                                 gameSpec(ev, best?.logo, best?.name), "nuvio://livetv/game/" + Uri.encode(ev.id), "g:" + ev.id)
@@ -244,7 +247,9 @@ object LiveTvLauncherRows {
         // games are on (games starting and finishing), never more than every two minutes.
         var next = minOf(now + 60 * 60_000L, if (nextChange == Long.MAX_VALUE) Long.MAX_VALUE else nextChange + 20_000L)
         if (sportsLive) next = minOf(next, now + 5 * 60_000L)
-        schedule(context, next.coerceAtLeast(now + 2 * 60_000L))
+        // Low-RAM TVs are slow enough that frequent card redraws are not free; the rows only
+        // show show names/times, so a 15-minute floor is plenty. Higher-RAM devices keep 2 min.
+        schedule(context, next.coerceAtLeast(now + profile.minRefreshMs))
     }
 
     /** Wakes the app for the next update. Not the TV from standby: it runs once the TV is on. */
@@ -432,13 +437,11 @@ object LiveTvLauncherRows {
 /** Wakes the app to bring the launcher rows up to date (a new show, a new score). */
 class LauncherRowsReceiver : android.content.BroadcastReceiver() {
     override fun onReceive(context: Context, intent: android.content.Intent) {
-        val pending = goAsync()
-        CoroutineScope(SupervisorJob() + Dispatchers.IO).launch {
-            try {
-                withTimeoutOrNull(25_000) { LiveTvLauncherRows.refreshNow(context.applicationContext) }
-            } finally {
-                pending.finish()
-            }
-        }
+        // Start the refresh on the app's own IO scope and return immediately. Holding the
+        // broadcast open (the old code waited up to 25 s) made Android report a foreground
+        // broadcast ANR after about 10 s while a slow TV was still drawing cards and reading
+        // the guide. If the process is killed before the refresh finishes, the next alarm or
+        // app start repeats it.
+        LiveTvLauncherRows.refresh(context.applicationContext)
     }
 }

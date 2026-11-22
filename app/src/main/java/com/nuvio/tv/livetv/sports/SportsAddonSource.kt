@@ -117,7 +117,7 @@ class SportsAddonSource @Inject constructor(
     // ------------------------------------------------------------------ live
 
     private suspend fun liveFor(a: Addon, cats: List<CatalogDescriptor>, ev: SportsEvent): List<ChannelMatch> = coroutineScope {
-        val use = cats.take(MAX_CATALOGS)
+        val use = cats.take(catalogLimit())
         // All of the add-on's lists at once; a search only when none of them has the game.
         var found = use.map { c -> async { gamesOf(a, c, emptyMap(), LIVE_TTL).filter { gameScore(ev, it, false) > 0 } } }
             .awaitAll().flatten()
@@ -169,7 +169,7 @@ class SportsAddonSource @Inject constructor(
         }
         // Replay lists and highlight lists are looked through side by side.
         val (highlightLists, replayLists) = lists.partition { it.kind == VodKind.HIGHLIGHTS }
-        val replays = async { lookIn(a, replayLists.take(MAX_CATALOGS), ev, ttl) }
+        val replays = async { lookIn(a, replayLists.take(catalogLimit()), ev, ttl) }
         val highlights = async { lookIn(a, highlightLists.take(2), ev, ttl) }
         val hits = (replays.await() + highlights.await()).distinctBy { it.first.id }.take(6)
         class Vod(val g: AddonGame, val s: AddonStream, val i: Int, val kind: VodKind, val res: Int?, val single: Boolean)
@@ -438,6 +438,10 @@ class SportsAddonSource @Inject constructor(
         /** Replay lists read before any others (see [lookIn]). */
         private const val FIRST_LISTS = 2
         private const val MAX_CATALOGS = 6
+
+    /** Low-RAM TVs ask fewer add-on lists at once; the full list is still available later. */
+    private fun catalogLimit(): Int =
+        if (com.nuvio.tv.ui.screens.settings.MemoryBudget.isLowRamTier) 3 else MAX_CATALOGS
         /** Extra pages read back through a recaps list that can't be searched. */
         private const val MAX_VOD_PAGES = 10
         private const val MAX_STREAMS = 12

@@ -9,6 +9,7 @@ internal object SpotConnections {
     private const val LOW_MEMORY_BYTES = 2_560L * 1024 * 1024
 
     fun isLowMemoryTv(context: Context): Boolean {
+        if (com.nuvio.tv.ui.screens.settings.MemoryBudget.isLowRamTier) return true
         val manager = context.getSystemService(Context.ACTIVITY_SERVICE) as? ActivityManager ?: return true
         if (manager.isLowRamDevice) return true
         val info = ActivityManager.MemoryInfo().also(manager::getMemoryInfo)

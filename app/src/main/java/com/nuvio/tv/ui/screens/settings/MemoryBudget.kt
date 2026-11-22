@@ -1,5 +1,6 @@
 package com.nuvio.tv.ui.screens.settings
 
+import android.app.ActivityManager
 import android.content.Context
 import android.util.Log
 import androidx.media3.common.util.UnstableApi
@@ -80,9 +81,13 @@ object MemoryBudget {
      * (Application.onCreate, before super.onCreate()).
      */
     fun init(context: Context) {
+        val activityManager = context.getSystemService(Context.ACTIVITY_SERVICE) as? ActivityManager
         snapshot = snapshotFor(
             maxHeapMb = runtimeMaxHeapMb(),
             physicalRamBytes = NuvioExoPlayerPerformanceHelper.getDevicePhysicalRamBytes(context),
+            // Android's own low-RAM flag catches devices whose heap looks large but whose
+            // system is still 1 GB class (or an OEM low-RAM build).
+            androidLowRam = activityManager?.isLowRamDevice == true,
         )
         Log.i(TAG, "Memory budget: $snapshot")
     }
@@ -112,9 +117,13 @@ object MemoryBudget {
 
     private fun runtimeMaxHeapMb(): Long = Runtime.getRuntime().maxMemory() / (1024L * 1024L)
 
-    internal fun snapshotFor(maxHeapMb: Long, physicalRamBytes: Long): Snapshot {
+    internal fun snapshotFor(
+        maxHeapMb: Long,
+        physicalRamBytes: Long,
+        androidLowRam: Boolean = false,
+    ): Snapshot {
         val heapMb = budgetHeapMb(maxHeapMb, physicalRamBytes)
-        val lowRamTier = heapMb < HIGH_HEAP_THRESHOLD_MB
+        val lowRamTier = androidLowRam || heapMb < HIGH_HEAP_THRESHOLD_MB
         // Pre-cap ratio budget, before the low-RAM reserve trims it below.
         val rawBudgetMb = (heapMb * (if (lowRamTier) LOW_HEAP_RATIO else HIGH_HEAP_RATIO)).toInt()
         // The flat reserve collapses the budget on small heaps, so hold a floor that still leaves
