@@ -719,6 +719,12 @@ dependencies {
     add("fullImplementation", "com.github.MuntashirAkon:libadb-android:3.0.0")
     // libadb-android only exposes BouncyCastle at runtime; used to create the ADB identity cert.
     add("fullImplementation", "org.bouncycastle:bcprov-jdk15to18:1.78")
+    // Nuvio One's SMB library (jcifs-ng) pulls org.bouncycastle:bcprov-jdk18on:1.76, the same classes as the
+    // bcprov-jdk15to18:1.78 above. Two copies fail the duplicate-class check, so the full flavor keeps the newer one.
+    // (The playstore flavor has no launcher libraries and keeps jcifs-ng's own copy.)
+    configurations.matching { it.name.startsWith("full") }.configureEach {
+        exclude(group = "org.bouncycastle", module = "bcprov-jdk18on")
+    }
     testImplementation("org.robolectric:robolectric:4.17")
     // Icon pack tests parse appfilter.xml; Android's XmlPullParser is not on the JVM test classpath.
     testImplementation("net.sf.kxml:kxml2:2.3.0")
