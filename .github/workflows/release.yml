@@ -179,10 +179,18 @@ jobs:
             echo "NUVIO_RELEASE_STORE_PASSWORD=$STORE_PASSWORD"
           } >> "$GITHUB_ENV"
 
+      # The runner lost contact mid-build on beta.15 (the build now also compiles the Go tunnel for four CPU types
+      # next to R8), which is what running out of memory looks like. Add swap, keep the JVMs smaller, and cap the workers.
+      - name: Give the build headroom
+        run: |
+          free -h
+          sudo fallocate -l 8G /swapfile && sudo chmod 600 /swapfile && sudo mkswap /swapfile && sudo swapon /swapfile
+          free -h
+
       - name: Build the release APKs
         run: |
           chmod +x gradlew
-          ./gradlew --console=plain :app:assembleFullRelease --stacktrace \
+          ./gradlew --console=plain :app:assembleFullRelease --stacktrace --no-daemon --max-workers=2             -Dorg.gradle.jvmargs="-Xmx4096m -XX:MaxMetaspaceSize=1024m -Dfile.encoding=UTF-8"             -Pkotlin.daemon.jvmargs="-Xmx2048m" \
             -PlivetvBuildNumber=${{ github.run_number }} \
             -PlivetvVersionName=${{ inputs.version }}
 
