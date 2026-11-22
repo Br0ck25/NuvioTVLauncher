@@ -1025,13 +1025,14 @@ class SportsRepository @Inject constructor(
     }
 
     /**
-     * Boxes that give the app 256 MB or less (Android 7 boxes such as the Formuler Z8): one
-     * league at a time, and leagues you don't follow or look at less often. Fetching and reading
-     * several leagues at once filled their memory and the app froze.
+     * Low-RAM TVs (the automatic [MemoryBudget] tier, or boxes that give the app 256 MB or less,
+     * such as the Formuler Z8): one league at a time, and leagues you don't follow or look at
+     * less often. Fetching and reading several leagues at once filled their memory and the app
+     * froze.
      */
     private val smallMemory: Boolean by lazy {
-        val max = Runtime.getRuntime().maxMemory()
-        max in 1 until Long.MAX_VALUE && max <= 300L * 1024 * 1024
+        com.nuvio.tv.ui.screens.settings.MemoryBudget.isLowRamTier ||
+            Runtime.getRuntime().maxMemory().let { it in 1 until Long.MAX_VALUE && it <= 300L * 1024 * 1024 }
     }
 
     /** Memory more than 70% used: leave leagues nobody is looking at for a later round. */

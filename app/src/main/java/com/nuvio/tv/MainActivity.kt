@@ -2006,7 +2006,9 @@ open class MainActivity : ComponentActivity() {
         startupSyncService.startPeriodicSurfacePulls()
         androidTvChannelSyncService.onForegroundChanged(true)
         // Live TV fork: make sure the launcher rows exist once the app has loaded its channels.
-        runCatching { com.nuvio.tv.livetv.home.LiveTvLauncherRows.refresh(applicationContext, afterMs = 6000) }
+        // On a low-RAM TV, let startup sync and the first screen settle before drawing 36 cards.
+        val launcherRowsDelay = com.nuvio.tv.livetv.home.LauncherRowsProfile.current.startupDelayMs
+        runCatching { com.nuvio.tv.livetv.home.LiveTvLauncherRows.refresh(applicationContext, afterMs = launcherRowsDelay) }
     }
 
     override fun onStop() {

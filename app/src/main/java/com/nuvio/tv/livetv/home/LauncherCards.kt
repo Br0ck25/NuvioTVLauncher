@@ -108,7 +108,7 @@ internal object LauncherCards {
     private const val MAX_UPSCALE = 2f
 
     fun draw(spec: CardSpec, shape: CardShape, load: (String?) -> Bitmap?): Bitmap {
-        val bmp = Bitmap.createBitmap(shape.w, shape.h, Bitmap.Config.ARGB_8888)
+        val bmp = Bitmap.createBitmap(shape.w, shape.h, LauncherRowsProfile.current.cardConfig)
         val c = Canvas(bmp)
         when (spec) {
             is CardSpec.Show -> drawShow(c, shape, spec, LogoArt.of(load(spec.logo)))

@@ -71,10 +71,11 @@ object SeekThumbSettings {
             .apply()
     }
 
-    /** Android counts this box as low on memory (most cheap sticks and older boxes). */
+    /** The same automatic low-RAM tier the player and launcher rows use. */
     fun isLowMemoryDevice(context: Context): Boolean =
-        runCatching {
-            val am = context.getSystemService(Context.ACTIVITY_SERVICE) as ActivityManager
-            am.isLowRamDevice || am.memoryClass <= 192
-        }.getOrDefault(false)
+        com.nuvio.tv.ui.screens.settings.MemoryBudget.isLowRamTier ||
+            runCatching {
+                val am = context.getSystemService(Context.ACTIVITY_SERVICE) as ActivityManager
+                am.isLowRamDevice || am.memoryClass <= 192
+            }.getOrDefault(false)
 }
