@@ -72,6 +72,43 @@ class PlaylistAddressInputTest {
     }
 
     @Test
+    fun `the https switch gives a bare host a secure scheme`() {
+        for (address in listOf(
+            "example.test",
+            "example.test:8443",
+            "example.test/live/playlist.m3u8?token=A%2FB",
+            "[2001:db8::1]:8443/list.m3u",
+        )) {
+            assertEquals("https://", playlistAddressPrefix(address, useHttps = true))
+            assertEquals("https://$address", completePlaylistAddress(address, useHttps = true))
+        }
+    }
+
+    @Test
+    fun `the https switch turns a scheme relative URL into https`() {
+        assertEquals("https://example.test/list.m3u", completePlaylistAddress("//example.test/list.m3u", useHttps = true))
+    }
+
+    @Test
+    fun `a typed scheme still wins over the https switch`() {
+        for (address in listOf(
+            "http://example.test/list.m3u",
+            "https://example.test/list.m3u",
+            "HTTPS://EXAMPLE.test:8443/Keep/Case",
+        )) {
+            assertEquals(address, completePlaylistAddress(address, useHttps = true))
+            assertEquals(address, completePlaylistAddress(address, useHttps = false))
+        }
+    }
+
+    @Test
+    fun `the switch can take over an address that already has a scheme`() {
+        assertEquals("example.test:8443/Keep/Case", stripPlaylistAddressScheme("https://example.test:8443/Keep/Case"))
+        assertEquals("example.test/list.m3u", stripPlaylistAddressScheme("  HTTP://example.test/list.m3u"))
+        assertEquals("example.test/list.m3u?next=https://nested.test", stripPlaylistAddressScheme("example.test/list.m3u?next=https://nested.test"))
+    }
+
+    @Test
     fun `only surrounding whitespace is removed`() {
         val complete = "https://example.test/Keep/Path?name=a+b&token=A%2FB"
         assertEquals("", playlistAddressPrefix(" \t$complete\n"))
