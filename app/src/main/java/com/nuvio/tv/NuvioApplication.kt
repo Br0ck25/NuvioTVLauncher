@@ -207,7 +207,8 @@ class NuvioApplication : Application(), SingletonImageLoader.Factory {
             .precision(coil3.size.Precision.INEXACT)
             .allowHardware(false)
             .allowRgb565(imagePerformancePreferences.rgb565Enabled)
-            .bitmapFactoryMaxParallelism(4)
+            // Four parallel decodes spike the bitmap working set on a 1 GB TV.
+            .bitmapFactoryMaxParallelism(if (MemoryBudget.isLowRamTier) 2 else 4)
             .build()
     }
 }

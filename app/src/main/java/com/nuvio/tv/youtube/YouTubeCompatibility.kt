@@ -76,7 +76,8 @@ internal object YouTubeCompatibility {
             val vp9 = hardwareSupport(MimeTypes.VIDEO_VP9)
             val av1 = hardwareSupport(MimeTypes.VIDEO_AV1)
             val profile = YouTubeDeviceProfile(
-                lowRamDevice = activityManager?.isLowRamDevice == true,
+                lowRamDevice = activityManager?.isLowRamDevice == true ||
+                    com.nuvio.tv.ui.screens.settings.MemoryBudget.isLowRamTier,
                 totalRamBytes = memory.totalMem,
                 hasHardwareAvc = avc.available,
                 hasHardwareVp9 = vp9.available,
