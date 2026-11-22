@@ -122,11 +122,35 @@ Home catalogs, and a large block of localization work.
 - Declaration cross-check: no fork declaration removed by the merge is still referenced.
 - All 18 workflow YAML files parse.
 
-**Not performed here, and why:** no Gradle build or unit-test run. This sandbox has no JDK, no Android
-SDK, and no route to `dl.google.com`, `maven.google.com`, `repo.maven.apache.org` or
-`plugins.gradle.org` (only GitHub, PyPI and npm are reachable), so dependencies cannot be resolved.
-The real compile gate is the repository's own **PR Full Debug Build** workflow, which runs
-`:app:testFullDebugUnitTest --tests 'com.nuvio.tv.updater.*'` and `:app:assembleFullDebug` on this PR.
+**Not performed here, and why:** no Gradle build locally. This sandbox has no JDK, no Android SDK, and
+no route to `dl.google.com`, `maven.google.com`, `repo.maven.apache.org` or `plugins.gradle.org` (only
+GitHub, PyPI and npm are reachable), so dependencies cannot be resolved.
+
+**Build and tests, run in CI on this branch:** the repository's own **PR Full Debug Build** workflow
+(`:app:testFullDebugUnitTest --tests 'com.nuvio.tv.updater.*'` then `:app:assembleFullDebug`) passes,
+and it produced `app-full-universal-debug.apk` (360.4 MB). That compiler run is what found the two
+defects listed below, so those fixes are verified by a real build, not by inspection.
+
+## Defects the build found, and their fixes
+
+The sandbox could not compile, so CI compiled it. That found three things, all now fixed and verified
+by a green build:
+
+1. **`UpdatePreferences.kt` — duplicate key, property and setter.** Upstream added `optimizeDuringInstall`
+   support while the fork already had its own copy. Git merged both cleanly because the hunks sat in
+   different places in the file, so nothing conflicted; only the compiler could see it.
+2. **`CalendarHomeFeed.kt` — `appContext` declared twice and assigned twice in `init()`.** Same cause:
+   upstream and the fork each added the same field in a different spot.
+3. **`checkFullDebugDuplicateClasses` / `mergeFullDebugJavaResource` — BouncyCastle.** Upstream's SMB
+   support adds `eu.agno3.jcifs:jcifs-ng`, which depends on `org.bouncycastle:bcprov-jdk18on`. The fork
+   pins `bcprov-jdk15to18` for the on-device ADB identity certificate, and both jars ship the same
+   `org.bouncycastle.*` classes. Fixed by keeping the pinned provider and excluding jcifs's copy
+   (`exclude(group = "org.bouncycastle", module = "bcprov-jdk18on")`); jcifs only asks it for the JCE
+   provider, which the pinned jar supplies, and upstream's 1.2.0-beta.3.2 MD4/SMB keep rules still apply.
+
+Classes 1 and 2 are the failure mode this kind of sync produces most often: a real conflict is easy,
+but two independent additions of the same member are invisible to `git merge` and surface only at
+compile time. That is why the build gate, not the merge itself, is the real check.
 
 ## Known issue found, not introduced here
 
