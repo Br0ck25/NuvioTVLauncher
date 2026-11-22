@@ -72,6 +72,18 @@ jobs:
           distribution: temurin
           java-version: "17"
           cache: gradle
+      # The native code needs these. The DV7 bridge and the VPN HTTP tunnel (vpn-android) are built with the Android NDK,
+      # and the tunnel is Go compiled with CGO. Install the exact versions the build asks for instead of relying on the runner image.
+      - name: Set up Android NDK
+        run: |
+          SDKMANAGER="${ANDROID_HOME:-$ANDROID_SDK_ROOT}/cmdline-tools/latest/bin/sdkmanager"
+          yes | "$SDKMANAGER" --licenses > /dev/null || true
+          "$SDKMANAGER" "ndk;29.0.14206865"
+
+      - uses: actions/setup-go@v5
+        with:
+          go-version-file: vpn-android/native/go.mod
+          cache: false
 
       # The app's keys. Starts from the LOCAL_PROPERTIES_BASE64 secret (a base64 copy of local.properties:
       # the Nuvio sign-in server and the other service keys), then any individual secret below replaces
