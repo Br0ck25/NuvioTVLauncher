@@ -108,14 +108,7 @@ internal object LauncherCards {
     private const val MAX_UPSCALE = 2f
 
     fun draw(spec: CardSpec, shape: CardShape, load: (String?) -> Bitmap?): Bitmap {
-        // The cards are opaque. A 1 GB TV halves the bitmap memory and GC churn with RGB_565;
-        // high-RAM devices keep the sharper 32-bit canvas.
-        val config = if (com.nuvio.tv.ui.screens.settings.MemoryBudget.isLowRamTier) {
-            Bitmap.Config.RGB_565
-        } else {
-            Bitmap.Config.ARGB_8888
-        }
-        val bmp = Bitmap.createBitmap(shape.w, shape.h, config)
+        val bmp = Bitmap.createBitmap(shape.w, shape.h, LauncherRowsProfile.current.cardConfig)
         val c = Canvas(bmp)
         when (spec) {
             is CardSpec.Show -> drawShow(c, shape, spec, LogoArt.of(load(spec.logo)))

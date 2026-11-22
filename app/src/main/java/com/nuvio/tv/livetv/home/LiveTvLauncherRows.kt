@@ -20,7 +20,6 @@ import com.nuvio.tv.livetv.sports.SportsLaunch
 import com.nuvio.tv.livetv.sports.openLiveTvFullscreen
 import com.nuvio.tv.livetv.startup.LiveTvStartupEntryPoint
 import com.nuvio.tv.ui.navigation.Screen
-import com.nuvio.tv.ui.screens.settings.MemoryBudget
 import dagger.hilt.android.EntryPointAccessors
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Dispatchers
@@ -44,7 +43,6 @@ object LiveTvLauncherRows {
     const val ROW_RECENT = "recent"
 
     private const val PREFS = "live_tv_launcher_rows"
-    private const val MAX_ITEMS = 24
     private const val ACTION_REFRESH = "com.nuvio.tv.livetv.LAUNCHER_ROWS"
     private val scope = CoroutineScope(SupervisorJob() + Dispatchers.IO)
     private val lock = Mutex()
@@ -109,8 +107,10 @@ object LiveTvLauncherRows {
         val shape = CardShape.of(settings.launcherCardShape)
         // The three rows are always on offer: the launcher's own settings decide which to show.
         val wanted = listOf(ROW_SPORTS, ROW_FAVORITES, ROW_RECENT)
-        // A 1 GB TV doesn't need 72 card images and content-provider writes in one go.
-        val maxItems = if (MemoryBudget.isLowRamTier) 12 else MAX_ITEMS
+        // The device profile decides whether this is the full 24-card path or the lighter
+        // low-RAM path; no user setting is involved.
+        val profile = LauncherRowsProfile.current
+        val maxItems = profile.maxItems
         val store = context.getSharedPreferences(PREFS, Context.MODE_PRIVATE)
         val helper = PreviewChannelHelper(context)
         LauncherImages.tidy(context)
@@ -248,9 +248,8 @@ object LiveTvLauncherRows {
         var next = minOf(now + 60 * 60_000L, if (nextChange == Long.MAX_VALUE) Long.MAX_VALUE else nextChange + 20_000L)
         if (sportsLive) next = minOf(next, now + 5 * 60_000L)
         // Low-RAM TVs are slow enough that frequent card redraws are not free; the rows only
-        // show show names/times, so a 15-minute floor is plenty.
-        val minGap = if (MemoryBudget.isLowRamTier) 15 * 60_000L else 2 * 60_000L
-        schedule(context, next.coerceAtLeast(now + minGap))
+        // show show names/times, so a 15-minute floor is plenty. Higher-RAM devices keep 2 min.
+        schedule(context, next.coerceAtLeast(now + profile.minRefreshMs))
     }
 
     /** Wakes the app for the next update. Not the TV from standby: it runs once the TV is on. */

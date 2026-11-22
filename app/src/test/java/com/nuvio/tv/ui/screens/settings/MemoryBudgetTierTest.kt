@@ -43,4 +43,14 @@ class MemoryBudgetTierTest {
     fun `unknown physical RAM keeps the heap`() {
         assertEquals(512L, MemoryBudget.budgetHeapMb(maxHeapMb = 512L, physicalRamBytes = 0L))
     }
+
+    @Test
+    fun `android low ram flag forces the low tier even with a large heap`() {
+        val snapshot = MemoryBudget.snapshotFor(
+            maxHeapMb = 512L,
+            physicalRamBytes = twoGbRam,
+            androidLowRam = true,
+        )
+        assertTrue(snapshot.isLowRamTier)
+    }
 }

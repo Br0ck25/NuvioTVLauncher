@@ -9,7 +9,7 @@
 ## Stability
 
 - Fixed the random return to the TV home screen / “Nuvio One isn’t responding” freeze. The launcher-rows alarm could keep a foreground broadcast open for up to 25 seconds; Android closes one after about 10 seconds. The refresh now starts in the background and the broadcast finishes immediately.
-- On 1 GB TVs the launcher rows now draw 12 cards instead of 24, use lower-memory card bitmaps, refresh at most every 15 minutes, and wait for startup sync to settle before drawing.
+- Low-RAM TVs are detected automatically: they draw 12 launcher cards instead of 24, use lower-memory card bitmaps, refresh at most every 15 minutes, and wait for startup sync to settle. Higher-RAM TVs keep the full 24-card, 32-bit, two-minute profile.
 
 ## Also in this build
 
