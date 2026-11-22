@@ -188,7 +188,7 @@ jobs:
           free -h
 
       - name: Build the release APKs
-        timeout-minutes: 50
+        timeout-minutes: 80
         run: |
           chmod +x gradlew
           ./gradlew --console=plain :app:assembleFullRelease --stacktrace --no-daemon --max-workers=2             -Dorg.gradle.jvmargs="-Xmx5120m -XX:MaxMetaspaceSize=1024m -Dfile.encoding=UTF-8"             -Pkotlin.daemon.jvmargs="-Xmx6144m" \
