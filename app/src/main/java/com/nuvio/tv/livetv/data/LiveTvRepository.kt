@@ -2321,7 +2321,9 @@ class LiveTvRepository @Inject constructor(
             val now = System.currentTimeMillis()
             val selectedIds = addonSources.mapTo(HashSet()) { it.id }
             prefs.updateAddonChannelSources { list ->
-                list.map { source ->
+                // An addon that was uninstalled has nothing left to show: drop its saved entry
+                // instead of listing it forever with "no longer installed".
+                list.filterNot { it.id in loaded.missing }.map { source ->
                     if (source.id !in selectedIds) source
                     else source.copy(
                         lastUpdatedMs = if (loaded.counts.containsKey(source.id)) now else source.lastUpdatedMs,

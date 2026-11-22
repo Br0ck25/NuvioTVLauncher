@@ -31,7 +31,9 @@ class AddonChannelRepository @Inject constructor(
         /** Source id -> why it returned nothing (or fewer channels), when it failed. */
         val errors: Map<String, String>,
         /** Source id -> channels this load produced. */
-        val counts: Map<String, Int>
+        val counts: Map<String, Int>,
+        /** Source ids whose addon is no longer installed, so the saved selection can be dropped. */
+        val missing: Set<String> = emptySet()
     )
 
     private val cacheMs = 10 * 60_000L
@@ -56,6 +58,7 @@ class AddonChannelRepository @Inject constructor(
         val out = ArrayList<LiveChannel>()
         val errors = HashMap<String, String>()
         val counts = HashMap<String, Int>()
+        val missing = HashSet<String>()
         val usedKeys = HashSet<String>()
 
         for (source in enabled) {
@@ -63,6 +66,9 @@ class AddonChannelRepository @Inject constructor(
             if (addon == null) {
                 errors[source.id] = "This addon is no longer installed."
                 counts[source.id] = 0
+                // An empty installed list may just mean the addons have not loaded yet, so only a
+                // non-empty list is trusted to say this addon is really gone.
+                if (addons.isNotEmpty()) missing += source.id
                 continue
             }
             val catalog = addon.catalogs.firstOrNull {
@@ -126,7 +132,7 @@ class AddonChannelRepository @Inject constructor(
             )
         }
 
-        cached = Loaded(out, errors, counts)
+        cached = Loaded(out, errors, counts, missing)
         cacheKey = key
         cacheAt = now
         return cached
