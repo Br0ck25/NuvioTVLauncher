@@ -66,6 +66,7 @@ import androidx.compose.ui.input.key.onPreviewKeyEvent
 import androidx.compose.ui.input.key.key
 import androidx.compose.ui.input.key.KeyEventType
 import androidx.compose.ui.input.key.Key
+import androidx.compose.ui.text.input.KeyboardType
 import kotlinx.coroutines.launch
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.collect
@@ -83,6 +84,7 @@ import com.nuvio.tv.livetv.model.LiveTvSettings
 import com.nuvio.tv.livetv.model.PlaylistSource
 import com.nuvio.tv.livetv.model.completePlaylistAddress
 import com.nuvio.tv.livetv.model.playlistAddressPrefix
+import com.nuvio.tv.livetv.model.stripPlaylistAddressScheme
 import com.nuvio.tv.livetv.model.ZapMode
 import com.nuvio.tv.livetv.ui.LiveTvSettingsViewModel
 import com.nuvio.tv.livetv.ui.TextInputDialog
@@ -1855,8 +1857,13 @@ internal fun LiveTvSettingsContent(
             title = context.getString(R.string.iptv_settings_add_m3u_playlist_2),
             fields = listOf(
                 FormField(context.getString(R.string.iptv_settings_name), context.getString(R.string.iptv_settings_my_provider)),
-                FormField(context.getString(R.string.iptv_settings_playlist_url), "…/playlist.m3u", defaultHttp = true),
-                FormField(context.getString(R.string.iptv_settings_guide_link_optional), "http://…/epg.xml.gz"),
+                FormField(
+                    context.getString(R.string.iptv_settings_playlist_url), "…/playlist.m3u",
+                    defaultHttp = true, uriInput = true,
+                    httpsSwitch = context.getString(R.string.iptv_settings_use_https) to
+                        context.getString(R.string.iptv_settings_use_https_desc)
+                ),
+                FormField(context.getString(R.string.iptv_settings_guide_link_optional), "http://…/epg.xml.gz", uriInput = true),
                 FormField(context.getString(R.string.iptv_settings_user_agent_optional), context.getString(R.string.iptv_settings_leave_empty_for_default))
             ),
             onDismiss = close,
@@ -1866,10 +1873,15 @@ internal fun LiveTvSettingsContent(
             title = context.getString(R.string.iptv_settings_add_xtream_codes_login_2),
             fields = listOf(
                 FormField(context.getString(R.string.iptv_settings_name), context.getString(R.string.iptv_settings_my_provider)),
-                FormField(context.getString(R.string.iptv_settings_server), "host:port", defaultHttp = true),
+                FormField(
+                    context.getString(R.string.iptv_settings_server), "host:port",
+                    defaultHttp = true, uriInput = true,
+                    httpsSwitch = context.getString(R.string.iptv_settings_use_https) to
+                        context.getString(R.string.iptv_settings_use_https_desc)
+                ),
                 FormField(context.getString(R.string.iptv_settings_username), ""),
                 FormField(context.getString(R.string.iptv_settings_password), ""),
-                FormField(context.getString(R.string.iptv_settings_guide_link_optional), "http://…/epg.xml.gz")
+                FormField(context.getString(R.string.iptv_settings_guide_link_optional), "http://…/epg.xml.gz", uriInput = true)
             ),
             onDismiss = close,
             onSave = { v, _ -> if (v[1].isNotBlank()) viewModel.addXtream(v[0], v[1], v[2], v[3], epgUrl = v[4]); close() },
@@ -1890,7 +1902,10 @@ internal fun LiveTvSettingsContent(
         LiveDialog.AddFromPhone -> AddFromPhoneDialog(viewModel = viewModel, onDismiss = close)
         LiveDialog.AddEpg -> SourceFormDialog(
             title = context.getString(R.string.iptv_settings_add_epg_source_2),
-            fields = listOf(FormField(context.getString(R.string.iptv_settings_name), context.getString(R.string.iptv_settings_guide)), FormField(context.getString(R.string.iptv_settings_xmltv_url), "http://…/epg.xml.gz")),
+            fields = listOf(
+                FormField(context.getString(R.string.iptv_settings_name), context.getString(R.string.iptv_settings_guide)),
+                FormField(context.getString(R.string.iptv_settings_xmltv_url), "http://…/epg.xml.gz", uriInput = true)
+            ),
             onDismiss = close,
             onSave = { v, _ -> if (v[1].isNotBlank()) viewModel.addEpg(v[0], v[1]); close() }
         )
@@ -1981,7 +1996,13 @@ internal fun LiveTvSettingsContent(
                     title = context.getString(R.string.iptv_settings_edit_xtream_login),
                     fields = listOf(
                         FormField(context.getString(R.string.iptv_settings_name), "", src.name),
-                        FormField(context.getString(R.string.iptv_settings_server), "", src.xtreamServer, defaultHttp = true),
+                        FormField(
+                            context.getString(R.string.iptv_settings_server), "",
+                            src.xtreamServer, defaultHttp = true, uriInput = true,
+                            httpsSwitch = context.getString(R.string.iptv_settings_use_https) to
+                                context.getString(R.string.iptv_settings_use_https_desc),
+                            useHttps = src.xtreamServer.startsWith("https://", ignoreCase = true)
+                        ),
                         FormField(context.getString(R.string.iptv_settings_username), "", src.xtreamUsername),
                         FormField(context.getString(R.string.iptv_settings_password), "", src.xtreamPassword),
                         FormField(context.getString(R.string.iptv_settings_user_agent_optional), "", src.userAgent)
@@ -2009,7 +2030,13 @@ internal fun LiveTvSettingsContent(
                     title = context.getString(R.string.iptv_settings_edit_playlist),
                     fields = listOf(
                         FormField(context.getString(R.string.iptv_settings_name), "", src.name),
-                        FormField(context.getString(R.string.iptv_settings_playlist_url), "", src.url, defaultHttp = true),
+                        FormField(
+                            context.getString(R.string.iptv_settings_playlist_url), "",
+                            src.url, defaultHttp = true, uriInput = true,
+                            httpsSwitch = context.getString(R.string.iptv_settings_use_https) to
+                                context.getString(R.string.iptv_settings_use_https_desc),
+                            useHttps = src.url.startsWith("https://", ignoreCase = true)
+                        ),
                         FormField(context.getString(R.string.iptv_settings_user_agent_optional), "", src.userAgent)
                     ),
                     toggle = context.getString(R.string.iptv_settings_load_guide_linked_in_playlist) to src.useEmbeddedEpg,
@@ -2243,7 +2270,10 @@ internal fun LiveTvSettingsContent(
         )
         is LiveDialog.EditEpg -> SourceFormDialog(
             title = context.getString(R.string.iptv_settings_edit_epg_source),
-            fields = listOf(FormField(context.getString(R.string.iptv_settings_name), "", d.source.name), FormField(context.getString(R.string.iptv_settings_xmltv_url), "", d.source.url)),
+            fields = listOf(
+                FormField(context.getString(R.string.iptv_settings_name), "", d.source.name),
+                FormField(context.getString(R.string.iptv_settings_xmltv_url), "", d.source.url, uriInput = true)
+            ),
             onDismiss = close,
             onSave = { v, _ -> viewModel.saveEpg(d.source.copy(name = v[0], url = v[1])); close() }
         )
@@ -3135,7 +3165,7 @@ private fun StalkerSourceDialog(
         title = if (source == null) context.getString(R.string.iptv_settings_add_stalker_ministra_portal_2) else context.getString(R.string.iptv_settings_edit_stalker_ministra_portal),
         fields = listOf(
             FormField(context.getString(R.string.iptv_settings_name), context.getString(R.string.iptv_settings_my_provider), source?.name.orEmpty()),
-            FormField(context.getString(R.string.iptv_settings_portal_url), "https://…/stalker_portal/c/", config?.portalUrl.orEmpty()),
+            FormField(context.getString(R.string.iptv_settings_portal_url), "https://…/stalker_portal/c/", config?.portalUrl.orEmpty(), uriInput = true),
             FormField(context.getString(R.string.iptv_settings_provider_issued_mac_address), "00:00:00:00:00:00", config?.mac.orEmpty())
         ) + listOfNotNull(
             FormField(context.getString(R.string.iptv_settings_guide_link_optional), "http://…/epg.xml.gz").takeIf { source == null }
@@ -3176,7 +3206,13 @@ private data class FormField(
     val label: String,
     val hint: String,
     val initial: String = "",
-    val defaultHttp: Boolean = false
+    val defaultHttp: Boolean = false,
+    /** A URL field: use the TV keyboard layout that has slash and colon keys. */
+    val uriInput: Boolean = false,
+    /** Shows an HTTP/HTTPS switch under this field (title to subtitle). */
+    val httpsSwitch: Pair<String, String?>? = null,
+    /** Initial HTTPS state, for editing an existing address. */
+    val useHttps: Boolean = false
 )
 
 @Composable
@@ -3198,6 +3234,7 @@ private fun SourceFormDialog(
 ) {
     val context = LocalContext.current
     val values = remember { fields.map { mutableStateOf(it.initial) } }
+    val httpsValues = remember { fields.map { mutableStateOf(it.useHttps) } }
     var showAdvanced by remember { mutableStateOf(false) }
     var formError by remember { mutableStateOf<String?>(null) }
     var toggleValue by remember { mutableStateOf(toggle?.second ?: false) }
@@ -3228,14 +3265,36 @@ private fun SourceFormDialog(
                     style = MaterialTheme.typography.bodySmall,
                     color = NuvioTheme.colors.TextSecondary
                 )
+                val useHttps = httpsValues[i].value
                 NuvioTextField(
                     value = values[i].value,
-                    onValueChange = { values[i].value = it },
+                    onValueChange = { text ->
+                        values[i].value = text
+                        if (field.httpsSwitch != null) {
+                            val typed = text.trimStart()
+                            when {
+                                typed.startsWith("https://", ignoreCase = true) -> httpsValues[i].value = true
+                                typed.startsWith("http://", ignoreCase = true) -> httpsValues[i].value = false
+                            }
+                        }
+                    },
                     modifier = Modifier.fillMaxWidth(),
                     placeholder = field.hint,
-                    prefixText = if (field.defaultHttp) playlistAddressPrefix(values[i].value) else null,
+                    keyboardType = if (field.uriInput || field.defaultHttp) KeyboardType.Uri else KeyboardType.Text,
+                    prefixText = if (field.defaultHttp) playlistAddressPrefix(values[i].value, useHttps) else null,
                     focusRequester = if (i == 0) firstField else null
                 )
+                field.httpsSwitch?.let { switch ->
+                    SettingsToggleRow(
+                        title = switch.first,
+                        subtitle = switch.second,
+                        checked = useHttps,
+                        onToggle = {
+                            httpsValues[i].value = !useHttps
+                            values[i].value = stripPlaylistAddressScheme(values[i].value)
+                        }
+                    )
+                }
             }
         }
         if (toggleLive != null) {
@@ -3272,7 +3331,7 @@ private fun SourceFormDialog(
                 onClick = {
                     val v = values.mapIndexed { i, value ->
                         when {
-                            fields[i].defaultHttp -> completePlaylistAddress(value.value)
+                            fields[i].defaultHttp -> completePlaylistAddress(value.value, httpsValues[i].value)
                             i in preserveWhitespaceAt -> value.value
                             else -> value.value.trim()
                         }

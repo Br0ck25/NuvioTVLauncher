@@ -61,6 +61,7 @@ import androidx.compose.ui.platform.LocalFocusManager
 import androidx.compose.ui.platform.LocalSoftwareKeyboardController
 import androidx.compose.ui.platform.LocalLayoutDirection
 import androidx.compose.ui.text.input.ImeAction
+import androidx.compose.ui.text.input.KeyboardType
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
@@ -165,6 +166,8 @@ fun NuvioTextField(
     placeholder: String = "",
     focusRequester: FocusRequester? = null,
     imeAction: ImeAction = ImeAction.Done,
+    /** URL fields get the TV keyboard's slash/colon keys instead of the plain text layout. */
+    keyboardType: KeyboardType = KeyboardType.Text,
     /** Optional URL prefix outside the editable value; an empty string keeps the same input layout. */
     prefixText: String? = null
 ) {
@@ -245,7 +248,7 @@ fun NuvioTextField(
                         }
                     },
                 singleLine = true,
-                keyboardOptions = KeyboardOptions(imeAction = imeAction),
+                keyboardOptions = KeyboardOptions(keyboardType = keyboardType, imeAction = imeAction),
                 keyboardActions = KeyboardActions(
                     onDone = { finishEditing() },
                     onNext = { finishEditing() },

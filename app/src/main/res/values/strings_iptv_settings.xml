@@ -464,6 +464,8 @@
     <string name="iptv_settings_leave_empty_for_default">"Leave empty for default"</string>
     <string name="iptv_settings_add_xtream_codes_login_2">"Add Xtream Codes login"</string>
     <string name="iptv_settings_server">"Server"</string>
+    <string name="iptv_settings_use_https">"Use HTTPS"</string>
+    <string name="iptv_settings_use_https_desc">"Turn off if your provider only supports HTTP."</string>
     <string name="iptv_settings_username">"Username"</string>
     <string name="iptv_settings_password">"Password"</string>
     <string name="iptv_settings_include_tv_channels">"Include TV channels"</string>

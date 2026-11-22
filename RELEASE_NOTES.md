@@ -1,6 +1,12 @@
-# Nuvio One 1.2.0-beta.1.17.2.1
+# Nuvio One 1.2.0-beta.3.5
 
-## Live TV
+## Live TV setup
 
-- Fixed: Restore from Google Drive could fail with HTTP 403 when the TV still had an old backup file ID. The saved ID is now reset on sign-in and after a failed read, the lookup is retried, and Google's actual reason is shown if it still fails.
-- New: Restore from Phone. Scan a QR code, choose the Live TV backup (.json) from Google Drive, Downloads or Files on your phone, and send it to the TV. The phone page shows the chosen file name before sending, and the file no longer needs to be copied to the TV.
+- Xtream and M3U address fields now have a **Use HTTPS** switch, so an HTTPS provider no longer means typing the full scheme on the TV keyboard.
+- URL fields use the TV keyboard's URL layout with slash and colon keys.
+- Typing or pasting a complete `http://` or `https://` address still works, and editing a source starts the switch from its saved scheme.
+
+## Also in this build
+
+- The music Now Playing crash fix from 1.2.0-beta.3.4.
+- SMB recordings, Combine, MP4 export and the Live TV source fixes from earlier builds.
