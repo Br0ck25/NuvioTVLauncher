@@ -36,8 +36,6 @@ object CalendarHomeFeed {
     private var appContext: Context? = null
     private val dismissed = HashSet<String>()
 
-    @Volatile private var appContext: Context? = null
-
     /** A different profile is now in use: drop the last profile's cards and read this profile's own dismissed/snoozed picks. */
     fun onProfileChanged() {
         released = emptyList()
@@ -57,7 +55,6 @@ object CalendarHomeFeed {
         if (prefs != null) return
         val p = com.nuvio.tv.core.profile.ActiveProfile.prefs(context, "calendar_home")
         prefs = p
-        appContext = context.applicationContext
         synchronized(dismissed) { dismissed += p.getStringSet("dismissed", emptySet()).orEmpty() }
         synchronized(snoozed) {
             p.getStringSet("snoozed", emptySet()).orEmpty().forEach { v ->
