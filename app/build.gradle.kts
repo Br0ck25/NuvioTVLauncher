@@ -586,7 +586,12 @@ val downloadAudioSyncRuntime by tasks.registering {
 
 dependencies {
     implementation(files(sherpaOnnxAar).builtBy(downloadAudioSyncRuntime))
-    implementation("eu.agno3.jcifs:jcifs-ng:2.1.10")
+    // jcifs-ng pulls bcprov-jdk18on, which ships the same org.bouncycastle classes as the
+    // bcprov-jdk15to18 pin below (needed by the on-device ADB identity certificate). Keep the
+    // pinned provider and drop jcifs's copy; it uses only org.bouncycastle.jce.provider.
+    implementation("eu.agno3.jcifs:jcifs-ng:2.1.10") {
+        exclude(group = "org.bouncycastle", module = "bcprov-jdk18on")
+    }
     implementation("org.slf4j:slf4j-android:1.7.30")
     implementation(project(":vpn-core"))
     implementation(project(":vpn-android"))
