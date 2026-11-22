@@ -1,10 +1,12 @@
-# Nuvio One 1.2.0-beta.3.4
+# Nuvio One 1.2.0-beta.3.5
 
-## Music
+## Live TV setup
 
-- Fixed a crash on the Now Playing screen when album details finished loading while a song was playing.
-- Back still closes the playlist picker first, then the full-screen lyrics, then Now Playing.
+- Xtream and M3U address fields now have a **Use HTTPS** switch, so an HTTPS provider no longer means typing the full scheme on the TV keyboard.
+- URL fields use the TV keyboard's URL layout with slash and colon keys.
+- Typing or pasting a complete `http://` or `https://` address still works, and editing a source starts the switch from its saved scheme.
 
-## Recording
+## Also in this build
 
-- Everything from 1.2.0-beta.3.3 is included: shared SMB recordings across devices, Combine to one file, and the SMB compatibility fixes.
+- The music Now Playing crash fix from 1.2.0-beta.3.4.
+- SMB recordings, Combine, MP4 export and the Live TV source fixes from earlier builds.
