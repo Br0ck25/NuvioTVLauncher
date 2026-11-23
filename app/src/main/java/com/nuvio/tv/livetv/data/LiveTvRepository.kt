@@ -105,7 +105,12 @@ class LiveTvRepository @Inject constructor(
     private val epgDir = File(baseDir, "epg")
 
     private val _channels = MutableStateFlow<List<LiveChannel>>(emptyList())
-    val channels: StateFlow<List<LiveChannel>> = _channels.asStateFlow()
+
+    /** The playlists' channels, plus the viewer's list channels (see [com.nuvio.tv.livetv.lists.ListChannels]). */
+    val channels: StateFlow<List<LiveChannel>> = kotlinx.coroutines.flow.combine(
+        _channels, com.nuvio.tv.livetv.lists.ListChannels.liveChannelsFlow
+    ) { playlist, lists -> if (lists.isEmpty()) playlist else playlist + lists }
+        .stateIn(scope, kotlinx.coroutines.flow.SharingStarted.Eagerly, emptyList())
 
     /** Programs keyed by [LiveChannel.key], sorted by start. Offset is not applied here. */
     private val _programs = MutableStateFlow<Map<String, List<EpgProgram>>>(emptyMap())
@@ -114,8 +119,10 @@ class LiveTvRepository @Inject constructor(
      * merged with the XMLTV guide so an event channel still shows what's on and when.
      */
     private val _addonPrograms = MutableStateFlow<Map<String, List<EpgProgram>>>(emptyMap())
+    // The viewer's list channels carry their own schedule (see ListChannels.programmesFlow).
     val programs: StateFlow<Map<String, List<EpgProgram>>> =
-        combine(_programs, _addonPrograms) { guide, addon ->
+        combine(_programs, _addonPrograms, com.nuvio.tv.livetv.lists.ListChannels.programmesFlow) { guide0, addon, lists ->
+            val guide = if (lists.isEmpty()) guide0 else guide0 + lists
             if (addon.isEmpty()) {
                 guide
             } else {
@@ -1405,7 +1412,8 @@ class LiveTvRepository @Inject constructor(
 
     /** One show's full details (description, cast…), from the stored guide. */
     suspend fun programDetails(channelKey: String, startMs: Long): EpgProgram? = withContext(Dispatchers.IO) {
-        if (!guideInDb) null else runCatching { guideDb.program(channelKey, startMs) }.getOrNull()
+        if (channelKey.startsWith("list:")) com.nuvio.tv.livetv.lists.ListChannels.schedule(channelKey).firstOrNull { it.startMs == startMs }
+        else if (!guideInDb) null else runCatching { guideDb.program(channelKey, startMs) }.getOrNull()
     }
 
     /**
@@ -1726,6 +1734,7 @@ class LiveTvRepository @Inject constructor(
     /** A channel's listings from an hour ago to [days] ahead (series recordings look through these). */
     suspend fun upcomingListings(channelKey: String, days: Int): List<EpgProgram> = withContext(Dispatchers.IO) {
         val now = System.currentTimeMillis()
+        if (channelKey.startsWith("list:")) return@withContext com.nuvio.tv.livetv.lists.ListChannels.schedule(channelKey).filter { it.stopMs > now - HOUR && it.startMs < now + days * 24 * HOUR }
         if (!guideInDb) return@withContext _programs.value[channelKey].orEmpty()
         runCatching { guideDb.channelRange(channelKey, now - HOUR, now + days * 24 * HOUR) }
             .getOrNull()?.takeIf { it.isNotEmpty() } ?: _programs.value[channelKey].orEmpty()
