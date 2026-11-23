@@ -26,5 +26,6 @@
 - **Audio sync** is now in the player's Audio menu for every channel. Use Left/Right to shift the sound against the picture in 50 ms steps, within ±5 seconds.
 - The correction applies immediately, is remembered per profile and per channel, and is restored the next time that channel plays.
 - Live TV add-on source rows for an add-on you have uninstalled are removed on the next refresh instead of staying switched on with an error.
+- Automatic EPG matching now considers **dummy/event guide channels with no listings in the kept window**. They match at a lower priority than channels with real listings, so providers with hundreds of placeholder channels no longer need manual assignment.
 - A **Sync ±… ms** badge appears in the play bar while a channel has an active correction, and **Reset audio sync** returns it to zero.
 
