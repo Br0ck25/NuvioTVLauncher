@@ -123,6 +123,19 @@ object MusicLibrary {
     fun addLikedSongs(songs: List<Song>): Int {
         if (songs.isEmpty()) return 0
         val current = _liked.value
+        val next = mergeLikedSongs(current, songs)
+        val added = next.size - current.size
+        if (added <= 0) return 0
+        _liked.value = next
+        persist(KEY_LIKED, next)
+        return added
+    }
+
+    /**
+     * The pure part of [addLikedSongs], kept testable without Android storage. [current] is
+     * returned unchanged when every song is already liked.
+     */
+    internal fun mergeLikedSongs(current: List<StoredSong>, songs: List<Song>): List<StoredSong> {
         val existingIds = current.mapTo(HashSet()) { it.videoId }
         fun keyOf(title: String, artist: String): String? =
             if (title.isBlank() || artist.isBlank()) null
@@ -135,11 +148,8 @@ object MusicLibrary {
                 existingKeys.add(key)
             }
             .map { it.toStored() }
-        if (additions.isEmpty()) return 0
-        val next = current + additions
-        _liked.value = next
-        persist(KEY_LIKED, next)
-        return additions.size
+        if (additions.isEmpty()) return current
+        return current + additions
     }
 
     /** Moves [song] to the front of Recently Played, keeping one entry per video. */
