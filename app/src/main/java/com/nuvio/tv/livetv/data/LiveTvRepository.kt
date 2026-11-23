@@ -2757,11 +2757,17 @@ class LiveTvRepository @Inject constructor(
             val best = HashMap<String, Candidate>()
             for (read in reads.values) {
                 fun offer(xmlId: String, chans: Set<LiveChannel>, idMatch: Boolean) {
-                    val m = read.meta[xmlId] ?: return
-                    if (m.count <= 0) return
-                    val real = m.placeholders * 10 < m.count * 8
+                    val m = read.meta[xmlId]
+                    // A guide channel can exist in the guide's <channel> list but have no kept
+                    // listings: an event/dummy channel whose shows are outside the window, or a
+                    // provider's placeholder channel. Manual Assign EPG lists it, so automatic
+                    // matching must consider it too; it just scores below any channel that does
+                    // have listings.
+                    if (m != null && m.count <= 0) return
+                    val real = m != null && m.placeholders * 10 < m.count * 8
                     // Higher is better; then more days ahead, then the guide's position.
-                    val score = guideRank(real, idMatch, m.lastStop, read.order)
+                    val score = guideRank(real, idMatch, m?.lastStop ?: 0L, read.order) -
+                        if (m == null) EMPTY_GUIDE_CHANNEL_PENALTY else 0L
                     chans.forEach { c ->
                         if (!guideFor(read.target.fileId, c.sourceId)) return@forEach // switched off for its playlist
                         val cur = best[c.key]
@@ -3979,6 +3985,8 @@ class LiveTvRepository @Inject constructor(
     companion object {
         private const val TAG = "LiveTvRepository"
         private const val HOUR = 60L * 60L * 1000L
+        /** How far below a guide channel with listings an empty guide channel scores. */
+        private const val EMPTY_GUIDE_CHANNEL_PENALTY = 500_000L
         /** A server time zone lookup that failed is tried again after this long. */
         private const val ZONE_RETRY_MS = 2L * 60L * 1000L
         /** A worked-out time zone (fixed offset) is looked up again after this long, in the background. */
