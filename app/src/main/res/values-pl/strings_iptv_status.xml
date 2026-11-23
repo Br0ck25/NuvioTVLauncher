@@ -61,9 +61,9 @@
     <string name="iptv_status_sync_limit">"Za dużo zapisów dzisiaj. Synchronizacja będzie kontynuowana jutro."</string>
     <string name="iptv_status_sync_unreachable">"Nie udało się połączyć z synchronizacją. Ponowna próba wkrótce."</string>
     <string name="iptv_crash_no_details">"Nie zapisano żadnych szczegółów awarii."</string>
-    <string name="iptv_crash_title">"Nuvio One został zatrzymany"</string>
+    <string name="iptv_crash_title">"Nuvio TV Launcher został zatrzymany"</string>
     <string name="iptv_crash_help">"Aby wysłać ten raport: podłącz telefon do tej samej sieci Wi-Fi co telewizor, zeskanuj kod aparatem w telefonie, kliknij Skopiuj krótki raport i wklej go w wiadomości. Brak Wi-Fi? Zamiast tego zrób zdjęcie tego ekranu. Użyj góra/dół, aby przewijać."</string>
     <string name="iptv_crash_restart">"Uruchom ponownie aplikację"</string>
     <string name="iptv_crash_close">"Zamknij"</string>
-    <string name="iptv_crash_report_page_title">"Raport o awarii Nuvio One"</string>
+    <string name="iptv_crash_report_page_title">"Raport o awarii Nuvio TV Launcher"</string>
 </resources>

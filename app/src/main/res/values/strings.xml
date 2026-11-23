@@ -1,5 +1,5 @@
 <resources>
-    <string name="app_name">Nuvio One</string>
+    <string name="app_name">Nuvio TV Launcher</string>
     <string name="music_downloads_channel_name">Music downloads</string>
     <string name="music_party_channel_name">Music party</string>
     <string name="tv_channel_continue_watching">Continue Watching</string>
@@ -2523,7 +2523,7 @@
     <string name="update_later">Later</string>
     <string name="update_download_now">Download now</string>
     <string name="update_new_version_message">A new version is ready. Download it now, or choose Later.</string>
-    <string name="update_installed_title">Nuvio One updated</string>
+    <string name="update_installed_title">Nuvio TV Launcher updated</string>
     <string name="update_installed_message">This device is now on the latest version.</string>
     <string name="update_downloading">Downloading update</string>
     <string name="update_download">Download</string>

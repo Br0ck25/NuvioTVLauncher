@@ -62,9 +62,9 @@
     <string name="iptv_status_sync_unreachable">"Couldn\'t reach sync. Will try again."</string>
 
     <string name="iptv_crash_no_details">"No crash details were saved."</string>
-    <string name="iptv_crash_title">"Nuvio One stopped"</string>
+    <string name="iptv_crash_title">"Nuvio TV Launcher stopped"</string>
     <string name="iptv_crash_help">"To send this report: put your phone on the same Wi-Fi as this TV, scan the code with your phone's camera, tap Copy short report and paste it in your message. No Wi-Fi? Take a photo of this screen instead. Use up/down to scroll."</string>
     <string name="iptv_crash_restart">"Restart app"</string>
     <string name="iptv_crash_close">"Close"</string>
-    <string name="iptv_crash_report_page_title">"Nuvio One crash report"</string>
+    <string name="iptv_crash_report_page_title">"Nuvio TV Launcher crash report"</string>
 </resources>

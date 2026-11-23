@@ -728,8 +728,8 @@
     <string name="iptv_sync_host_combine">"İkisini Birleştir"</string>
     <string name="iptv_sync_host_use_saved">"Kayıtlı Kurulumu Kullan"</string>
     <string name="iptv_settings_live_tv_badge_help">"Simgede Canlı TV rozetini göster"</string>
-    <string name="iptv_settings_badge_on">"Açık: Seçtiğiniz renkte Nuvio One Live TV simgesi ve başlığı"</string>
-    <string name="iptv_settings_badge_off">"Kapalı: Seçtiğiniz renkte Nuvio One simgeleri"</string>
+    <string name="iptv_settings_badge_on">"Açık: Seçtiğiniz renkte Nuvio TV Launcher simgesi ve başlığı"</string>
+    <string name="iptv_settings_badge_off">"Kapalı: Seçtiğiniz renkte Nuvio TV Launcher simgeleri"</string>
     <string name="iptv_settings_stalker_portal_1_s">"Stalker portalı \&quot;%1$s\&quot;"</string>
     <string name="iptv_settings_1_s_and_its_guide">"%1$s ve kılavuzu"</string>
     <string name="iptv_settings_guide_link_optional">"Kılavuz (EPG) bağlantısı (isteğe bağlı)"</string>

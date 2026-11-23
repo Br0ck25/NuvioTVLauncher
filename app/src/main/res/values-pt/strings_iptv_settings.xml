@@ -728,8 +728,8 @@
     <string name="iptv_sync_host_combine">"Combine ambos"</string>
     <string name="iptv_sync_host_use_saved">"Use a configuração salva"</string>
     <string name="iptv_settings_live_tv_badge_help">"Mostre o emblema da TV ao vivo no ícone"</string>
-    <string name="iptv_settings_badge_on">"Ativado: ícone e banner do Nuvio One Live TV na cor escolhida"</string>
-    <string name="iptv_settings_badge_off">"Desativado: ícones do Nuvio One, na cor escolhida"</string>
+    <string name="iptv_settings_badge_on">"Ativado: ícone e banner do Nuvio TV Launcher na cor escolhida"</string>
+    <string name="iptv_settings_badge_off">"Desativado: ícones do Nuvio TV Launcher, na cor escolhida"</string>
     <string name="iptv_settings_stalker_portal_1_s">"Portal de perseguidores \&quot;%1$s\&quot;"</string>
     <string name="iptv_settings_1_s_and_its_guide">"%1$s e seu guia"</string>
     <string name="iptv_settings_guide_link_optional">"Link do guia (EPG) (opcional)"</string>

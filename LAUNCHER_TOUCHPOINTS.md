@@ -48,7 +48,7 @@ To check whether a bug is ours or Nuvio One's, build that tag. If the bug is the
 MDBList, Simkl, Premiumize and the Nuvio account sign-in code are identical to Nuvio One's; only the
 credentials differ, and those come from `release.yml`.
 
-Branding: the app icons (all colour variants), logo, wordmark, TV banner and the app name "Nuvio Launcher" are ours.
+Branding: the app icons (all colour variants), logo, wordmark, TV banner and the app name "Nuvio TV Launcher" are ours.
 
 ## Left out on purpose (still only on `dev`)
 
