@@ -19,6 +19,7 @@
 - A track that is already in **Liked Songs** is not added again to a Spotify playlist, and the same recording matched to a different video on another device is not added to Liked Songs twice.
 - **Home rows** can now be arranged from Music Settings. Move a row with Left/Right, hide or show it with OK, pin your own playlists to the top, or reset every row. Each profile keeps its own arrangement.
 - The Nuvio side rail no longer rests over the Music section; open it from the left edge or Back when you need it.
+- Music videos can be **minimized to an in-app mini player** while you keep browsing Music. The mini player keeps the same video playing and gives you expand, play/pause and close buttons.
 
 ## Live TV
 

@@ -126,6 +126,7 @@ fun MusicScreen(
     val scope = rememberCoroutineScope()
     var showNowPlaying by remember { mutableStateOf(false) }
     var musicVideo by remember { mutableStateOf<MusicVideoRequest?>(null) }
+    var musicVideoMinimized by remember { mutableStateOf(false) }
     var showSettings by remember { mutableStateOf(false) }
     var showDownloads by remember { mutableStateOf(false) }
     var showParty by remember { mutableStateOf(false) }
@@ -257,6 +258,7 @@ fun MusicScreen(
             val video = if (song.isVideo) song else withContext(Dispatchers.IO) {
                 YtMusicRepository.resolveVideo(song) ?: song
             }
+            musicVideoMinimized = false
             musicVideo = MusicVideoRequest(video, startMs)
         }
     }
@@ -298,6 +300,7 @@ fun MusicScreen(
         val request = musicVideo ?: return
         val mapped = MusicPlayer.audioPositionForVideo(request.video.videoId, videoPositionMs)
         musicVideo = null
+        musicVideoMinimized = false
         showNowPlaying = true
         MusicPlayer.jumpTo(MusicPlayer.state.value.index, mapped, play = true)
     }
@@ -318,7 +321,8 @@ fun MusicScreen(
     val musicOverlayOpen = showNowPlaying || state.detail.open ||
         state.explore.selected != null || openPlaylistId != null ||
         showSettings || showDownloads || showParty || showWebDav ||
-        showIntegrations || showSources || showNavidrome || showAccount || musicVideo != null
+        showIntegrations || showSources || showNavidrome || showAccount ||
+        (musicVideo != null && !musicVideoMinimized)
 
     // Re-anchor focus to the selected top tab whenever the tab changes or an overlay closes.
     // Without this, tapping a tab (which does not move focus) or closing Integrations leaves
@@ -350,6 +354,7 @@ fun MusicScreen(
     }
 
     MusicTextTheme {
+        Box(Modifier.fillMaxSize()) {
         Column(
             Modifier
                 .fillMaxSize()
@@ -637,6 +642,35 @@ fun MusicScreen(
                 }
             }
         }
+        musicVideo?.let { request ->
+            MusicVideoPlayerScreen(
+                video = request.video,
+                startPositionMs = request.startPositionMs,
+                minimized = musicVideoMinimized,
+                onMinimize = { musicVideoMinimized = true },
+                onExpand = { musicVideoMinimized = false },
+                onClose = ::closeVideo,
+                onSkip = { skipVideo(it) },
+                onSelectQueue = ::selectVideoQueue,
+                onEnded = { skipVideo(1, auto = true) },
+                modifier = if (musicVideoMinimized) {
+                    Modifier
+                        .align(Alignment.BottomEnd)
+                        .padding(end = 28.dp, bottom = 24.dp)
+                        .width(360.dp)
+                        .height(203.dp)
+                        .clip(RoundedCornerShape(14.dp))
+                        .border(
+                            2.dp,
+                            MusicPalette.accent.copy(alpha = 0.8f),
+                            RoundedCornerShape(14.dp)
+                        )
+                } else {
+                    Modifier
+                }
+            )
+        }
+        }
     }
 
     if (showNowPlaying) {
@@ -646,6 +680,7 @@ fun MusicScreen(
                 onOpenSettings = { showSettings = true },
                 onOpenMusicVideo = { video, startPositionMs ->
                     MusicPlayer.pause()
+                    musicVideoMinimized = false
                     musicVideo = MusicVideoRequest(video, startPositionMs)
                     showNowPlaying = false
                 },
@@ -655,23 +690,6 @@ fun MusicScreen(
                 onOpenAlbum = { song ->
                     viewModel.openAlbum(song) { showNowPlaying = false }
                 }
-            )
-        }
-    }
-
-    musicVideo?.let { request ->
-        MusicOverlayDialog(onDismiss = {
-            musicVideo = null
-            showNowPlaying = true
-            if (!MusicPlayer.state.value.isPlaying) MusicPlayer.toggle()
-        }) {
-            MusicVideoPlayerScreen(
-                video = request.video,
-                startPositionMs = request.startPositionMs,
-                onClose = ::closeVideo,
-                onSkip = { skipVideo(it) },
-                onSelectQueue = ::selectVideoQueue,
-                onEnded = { skipVideo(1, auto = true) }
             )
         }
     }

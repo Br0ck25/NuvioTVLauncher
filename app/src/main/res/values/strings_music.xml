@@ -390,6 +390,9 @@
     <string name="music_video_label">"MUSIC VIDEO"</string>
     <string name="music_video_next_track">"Next track"</string>
     <string name="music_video_back_now_playing">"Back to Now Playing"</string>
+    <string name="music_video_minimize">"Minimize"</string>
+    <string name="music_video_expand">"Expand"</string>
+    <string name="music_video_close">"Close video"</string>
     <string name="music_new_qr">"New QR"</string>
     <string name="music_phone_wifi_help">"Only reachable on the same Wi-Fi. This link expires after five minutes."</string>
     <string name="music_done">"Done"</string>
