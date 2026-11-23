@@ -1762,9 +1762,12 @@ private fun LegacySidebarScaffold(
     val liveTvFullscreen by com.nuvio.tv.livetv.ui.LiveTvFullscreen.active.collectAsState()
     val showSidebar = currentRoute in rootRoutes && !liveTvFullscreen &&
         !com.nuvio.tv.livetv.ui.LiveTvFullscreen.pending
+    // Music is a full-bleed page: its rail only appears when the menu is opened, not as a
+    // permanently visible collapsed strip along the left edge.
+    val hideSidebarRail = currentRoute == Screen.Music.route
 
     val sidebarTokens = NuvioComponents.tokens.sidebar
-    val closedDrawerWidth = if (sidebarCollapsed) NuvioTheme.spacing.none else sidebarTokens.legacyCollapsedWidth
+    val closedDrawerWidth = if (sidebarCollapsed || hideSidebarRail) NuvioTheme.spacing.none else sidebarTokens.legacyCollapsedWidth
     val openDrawerWidth = sidebarTokens.legacyExpandedWidth
     val openDrawerItemWidth = sidebarTokens.itemWidth
 
@@ -1872,7 +1875,7 @@ private fun LegacySidebarScaffold(
     ModalNavigationDrawer(
         drawerState = drawerState,
         drawerContent = { drawerValue ->
-            if (showSidebar) {
+            if (showSidebar && (drawerValue == DrawerValue.Open || !hideSidebarRail)) {
                 val drawerWidth = if (drawerValue == DrawerValue.Open) openDrawerWidth else closedDrawerWidth
                 Box(
                     modifier = Modifier
@@ -2082,7 +2085,7 @@ private fun LegacySidebarScaffold(
         // Applied per root destination (not on the NavHost container) so it only changes
         // with the collapse setting, never during a navigation transition.
         val rootContentInset by animateDpAsState(
-            targetValue = if (sidebarCollapsed) {
+            targetValue = if (sidebarCollapsed || hideSidebarRail) {
                 NuvioTheme.spacing.none
             } else {
                 NuvioLayout.tokens.sidebarContentOffset
@@ -2092,7 +2095,7 @@ private fun LegacySidebarScaffold(
         )
         // Live TV fork pages keep the old rule: room for the menu only while it's showing.
         val forkPageInset by animateDpAsState(
-            targetValue = if (showSidebar && !sidebarCollapsed) {
+            targetValue = if (showSidebar && !sidebarCollapsed && !hideSidebarRail) {
                 NuvioLayout.tokens.sidebarContentOffset
             } else {
                 NuvioTheme.spacing.none
@@ -2340,8 +2343,10 @@ private fun ModernSidebarScaffold(
     val liveTvFullscreen by com.nuvio.tv.livetv.ui.LiveTvFullscreen.active.collectAsState()
     val showSidebar = currentRoute in rootRoutes && !liveTvFullscreen &&
         !com.nuvio.tv.livetv.ui.LiveTvFullscreen.pending
+    // Music is full-bleed: no permanent collapsed strip or pill until the menu is opened.
+    val hideSidebarRail = currentRoute == Screen.Music.route
     val sidebarTokens = NuvioComponents.tokens.sidebar
-    val collapsedSidebarWidth = if (sidebarCollapsed) NuvioTheme.spacing.none else sidebarTokens.collapsedWidth
+    val collapsedSidebarWidth = if (sidebarCollapsed || hideSidebarRail) NuvioTheme.spacing.none else sidebarTokens.collapsedWidth
     val openSidebarWidth = sidebarTokens.expandedWidth
 
     val focusManager = LocalFocusManager.current
@@ -2450,7 +2455,7 @@ private fun ModernSidebarScaffold(
         isFloatingPillIconOnly = true
     }
 
-    val sidebarVisible = showSidebar && (isSidebarExpanded || !sidebarCollapsed)
+    val sidebarVisible = showSidebar && (isSidebarExpanded || (!sidebarCollapsed && !hideSidebarRail))
     val sidebarHazeState = remember { HazeState() }
     // Panel is always laid out at full expanded width; open/close is
     // purely a graphicsLayer transform (scale + alpha) so Compose never
@@ -2465,7 +2470,8 @@ private fun ModernSidebarScaffold(
         animationSpec = tween(durationMillis = if (isSidebarExpanded) 280 else 200, easing = animationEasing),
         label = "sidebarSurfaceAlpha"
     )
-    val shouldApplySidebarHaze = showSidebar && modernSidebarBlurEnabled
+    val shouldApplySidebarHaze = showSidebar && modernSidebarBlurEnabled &&
+        (isSidebarExpanded || !hideSidebarRail)
     val sidebarTransition = updateTransition(
         targetState = isSidebarExpanded,
         label = "sidebarTransition"
@@ -2814,6 +2820,7 @@ private fun ModernSidebarScaffold(
 
             if (
                 !sidebarCollapsed &&
+                !hideSidebarRail &&
                 sidebarShowCollapsedPill &&
                 selectedDrawerRoute != Screen.Search.route
             ) {

@@ -354,8 +354,6 @@ fun MusicScreen(
             Modifier
                 .fillMaxSize()
                 .background(MusicPalette.background)
-                // Clear Nuvio's collapsed side menu, which overlays the page's left edge.
-                .padding(start = 64.dp)
         ) {
             MusicTopNavigation(
                 selectedTab = state.tab,
