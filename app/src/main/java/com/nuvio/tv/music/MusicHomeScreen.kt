@@ -63,6 +63,7 @@ internal fun MusicHomeScreen(
     recentSongs: List<Song> = emptyList(),
     localPlaylists: List<StoredPlaylist> = emptyList(),
     accountPlaylists: List<MusicAccountPlaylist> = emptyList(),
+    homeRows: MusicHomeRowConfig = MusicHomeRowConfig(),
     gemini: MusicGeminiUiState = MusicGeminiUiState(),
     onPlayCurated: (List<Song>, Int) -> Unit = { _, _ -> },
     onPlayMix: (MusicCuratedMix) -> Unit = {},
@@ -90,6 +91,7 @@ internal fun MusicHomeScreen(
             recentSongs = recentSongs,
             localPlaylists = localPlaylists,
             accountPlaylists = accountPlaylists,
+            homeRows = homeRows,
             gemini = gemini,
             onPlayCurated = onPlayCurated,
             onPlayMix = onPlayMix,
@@ -109,6 +111,7 @@ private fun MusicHomeFeed(
     recentSongs: List<Song>,
     localPlaylists: List<StoredPlaylist>,
     accountPlaylists: List<MusicAccountPlaylist>,
+    homeRows: MusicHomeRowConfig,
     gemini: MusicGeminiUiState,
     onPlayCurated: (List<Song>, Int) -> Unit,
     onPlayMix: (MusicCuratedMix) -> Unit,
@@ -161,82 +164,102 @@ private fun MusicHomeFeed(
             }
         }
         val curation = state.curation
-        if (curation.quickPicks.isNotEmpty()) {
-            item(key = "curated-quick") {
-                MusicCuratedSongsRow(
-                    title = stringResource(R.string.music_home_quick_picks),
-                    subtitle = stringResource(R.string.music_home_quick_picks_sub),
-                    songs = curation.quickPicks,
-                    onPlay = onPlayCurated
-                )
-            }
-        }
-        if (curation.dailyMixes.isNotEmpty()) {
-            item(key = "curated-mixes") {
-                MusicCuratedMixesRow(
-                    mixes = curation.dailyMixes,
-                    title = stringResource(R.string.music_home_daily_mixes),
-                    subtitle = stringResource(R.string.music_home_daily_mixes_sub),
-                    onPlay = onPlayMix
-                )
-            }
-        }
-        if (jumpBackSongs.isNotEmpty()) {
-            item(key = "curated-recents") {
-                MusicCuratedSongsRow(
-                    title = stringResource(R.string.music_home_jump_back),
-                    songs = jumpBackSongs,
-                    onPlay = onPlayCurated
-                )
-            }
-        }
-        if (curation.onRepeat.isNotEmpty()) {
-            item(key = "curated-repeat") {
-                MusicCuratedSongsRow(
-                    title = stringResource(R.string.music_home_on_repeat),
-                    subtitle = stringResource(R.string.music_home_on_repeat_sub),
-                    songs = curation.onRepeat,
-                    onPlay = onPlayCurated
-                )
-            }
-        }
-        curation.because.forEachIndexed { index, feed ->
-            item(key = "curated-because-$index") {
-                MusicCuratedSongsRow(
-                    title = feed.title,
-                    songs = feed.tracks,
-                    onPlay = onPlayCurated
-                )
-            }
-        }
-        if (curation.forgotten.isNotEmpty()) {
-            item(key = "curated-forgotten") {
-                MusicCuratedSongsRow(
-                    title = stringResource(R.string.music_home_forgotten),
-                    subtitle = stringResource(R.string.music_home_forgotten_sub),
-                    songs = curation.forgotten,
-                    onPlay = onPlayCurated
-                )
-            }
-        }
-        if (gemini.tracks.isNotEmpty()) {
-            item(key = "gemini-tracks") {
-                MusicCuratedSongsRow(
-                    title = stringResource(R.string.music_gemini_picks_title),
-                    subtitle = stringResource(R.string.music_gemini_picks_subtitle),
-                    songs = gemini.tracks,
-                    onPlay = onPlayCurated
-                )
-            }
-        }
-        if (gemini.albums.isNotEmpty()) {
-            item(key = "gemini-albums") {
-                MusicCuratedMixesRow(
-                    mixes = gemini.albums,
-                    title = stringResource(R.string.music_gemini_albums_title),
-                    subtitle = null,
-                    onPlay = onPlayMix
-                )
+        homeRows.visibleRows().forEach { row ->
+            when (row) {
+                MusicHomeRow.QUICK_PICKS -> if (curation.quickPicks.isNotEmpty()) {
+                    item(key = "curated-quick") {
+                        MusicCuratedSongsRow(
+                            title = stringResource(R.string.music_home_quick_picks),
+                            subtitle = stringResource(R.string.music_home_quick_picks_sub),
+                            songs = curation.quickPicks,
+                            onPlay = onPlayCurated
+                        )
+                    }
+                }
+                MusicHomeRow.DAILY_MIXES -> if (curation.dailyMixes.isNotEmpty()) {
+                    item(key = "curated-mixes") {
+                        MusicCuratedMixesRow(
+                            mixes = curation.dailyMixes,
+                            title = stringResource(R.string.music_home_daily_mixes),
+                            subtitle = stringResource(R.string.music_home_daily_mixes_sub),
+                            onPlay = onPlayMix
+                        )
+                    }
+                }
+                MusicHomeRow.JUMP_BACK -> if (jumpBackSongs.isNotEmpty()) {
+                    item(key = "curated-recents") {
+                        MusicCuratedSongsRow(
+                            title = stringResource(R.string.music_home_jump_back),
+                            songs = jumpBackSongs,
+                            onPlay = onPlayCurated
+                        )
+                    }
+                }
+                MusicHomeRow.ON_REPEAT -> if (curation.onRepeat.isNotEmpty()) {
+                    item(key = "curated-repeat") {
+                        MusicCuratedSongsRow(
+                            title = stringResource(R.string.music_home_on_repeat),
+                            subtitle = stringResource(R.string.music_home_on_repeat_sub),
+                            songs = curation.onRepeat,
+                            onPlay = onPlayCurated
+                        )
+                    }
+                }
+                MusicHomeRow.BECAUSE -> curation.because.forEachIndexed { index, feed ->
+                    item(key = "curated-because-$index") {
+                        MusicCuratedSongsRow(
+                            title = feed.title,
+                            songs = feed.tracks,
+                            onPlay = onPlayCurated
+                        )
+                    }
+                }
+                MusicHomeRow.FORGOTTEN -> if (curation.forgotten.isNotEmpty()) {
+                    item(key = "curated-forgotten") {
+                        MusicCuratedSongsRow(
+                            title = stringResource(R.string.music_home_forgotten),
+                            subtitle = stringResource(R.string.music_home_forgotten_sub),
+                            songs = curation.forgotten,
+                            onPlay = onPlayCurated
+                        )
+                    }
+                }
+                MusicHomeRow.GEMINI_TRACKS -> if (gemini.tracks.isNotEmpty()) {
+                    item(key = "gemini-tracks") {
+                        MusicCuratedSongsRow(
+                            title = stringResource(R.string.music_gemini_picks_title),
+                            subtitle = stringResource(R.string.music_gemini_picks_subtitle),
+                            songs = gemini.tracks,
+                            onPlay = onPlayCurated
+                        )
+                    }
+                }
+                MusicHomeRow.GEMINI_ALBUMS -> if (gemini.albums.isNotEmpty()) {
+                    item(key = "gemini-albums") {
+                        MusicCuratedMixesRow(
+                            mixes = gemini.albums,
+                            title = stringResource(R.string.music_gemini_albums_title),
+                            subtitle = null,
+                            onPlay = onPlayMix
+                        )
+                    }
+                }
+                MusicHomeRow.PLAYLISTS -> if (localPlaylists.isNotEmpty()) {
+                    item(key = "curated-playlists") {
+                        MusicCuratedPlaylistsRow(
+                            playlists = localPlaylists,
+                            onOpen = onOpenLocalPlaylist
+                        )
+                    }
+                }
+                MusicHomeRow.ACCOUNT_PLAYLISTS -> if (accountPlaylists.isNotEmpty()) {
+                    item(key = "curated-account-playlists") {
+                        MusicCuratedAccountPlaylistsRow(
+                            playlists = accountPlaylists,
+                            onOpen = onOpenAccountPlaylist
+                        )
+                    }
+                }
             }
         }
         if (gemini.generating) {
@@ -246,22 +269,6 @@ private fun MusicHomeFeed(
                     color = MusicPalette.textMuted,
                     fontSize = 10.5.sp,
                     modifier = Modifier.padding(horizontal = 26.dp)
-                )
-            }
-        }
-        if (localPlaylists.isNotEmpty()) {
-            item(key = "curated-playlists") {
-                MusicCuratedPlaylistsRow(
-                    playlists = localPlaylists,
-                    onOpen = onOpenLocalPlaylist
-                )
-            }
-        }
-        if (accountPlaylists.isNotEmpty()) {
-            item(key = "curated-account-playlists") {
-                MusicCuratedAccountPlaylistsRow(
-                    playlists = accountPlaylists,
-                    onOpen = onOpenAccountPlaylist
                 )
             }
         }

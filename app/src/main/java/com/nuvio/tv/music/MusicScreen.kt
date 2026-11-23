@@ -113,6 +113,7 @@ fun MusicScreen(
     val liked by MusicLibrary.liked.collectAsState()
     val recents by MusicLibrary.recents.collectAsState()
     val playlists by MusicLibrary.playlists.collectAsState()
+    val homeRows by MusicHomeRows.config.collectAsState()
     val spotifySync by MusicSpotifyWebSync.state.collectAsState()
     val party by MusicPartyManager.state.collectAsState()
     val accountViewModel: YouTubeAccountViewModel = hiltViewModel()
@@ -477,6 +478,7 @@ fun MusicScreen(
                         recentSongs = recents.map { it.toSong() },
                         localPlaylists = playlists,
                         accountPlaylists = state.accountLibrary.playlists,
+                        homeRows = homeRows,
                         gemini = gemini,
                         onPlayCurated = { songs, index -> play(songs, index) },
                         onPlayMix = { mix -> play(mix.tracks, 0) },

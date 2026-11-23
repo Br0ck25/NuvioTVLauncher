@@ -413,7 +413,16 @@
     <string name="music_home_daily_mixes">"Your daily mixes"</string>
     <string name="music_home_daily_mixes_sub">"Your favourite artists, blended with music like theirs"</string>
     <string name="music_home_your_playlists">"Your playlists"</string>
+    <string name="music_home_because">"Because you listened"</string>
     <string name="music_home_from_account">"From your account"</string>
+    <string name="music_settings_home_rows">"Home rows"</string>
+    <string name="music_settings_home_rows_detail">"Left/Right moves a row; OK shows or hides it"</string>
+    <string name="music_settings_row_position">"%1$d of %2$d"</string>
+    <string name="music_settings_row_hidden">"Hidden"</string>
+    <string name="music_settings_pin_library">"Pin your library"</string>
+    <string name="music_settings_pin_library_detail">"Keep your playlists at the top of Home"</string>
+    <string name="music_settings_reset_rows">"Reset home rows"</string>
+    <string name="music_settings_reset_rows_detail">"Put every row back in its usual place"</string>
     <string name="music_discover_learning">"Discover is still learning"</string>
     <string name="music_discover_weekly">"Discover Weekly"</string>
     <string name="music_discover_weekly_sub">"Your weekly mixtape of fresh music — new every week"</string>
