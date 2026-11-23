@@ -32,6 +32,8 @@ class SettingsCatalogTest {
                 SettingsCategory.VPN,
                 SettingsCategory.INTEGRATION,
                 SettingsCategory.TRACKING,
+                SettingsCategory.DEFAULT_LAUNCHER,
+                SettingsCategory.REMOTE_BUTTONS,
                 SettingsCategory.ADVANCED,
                 SettingsCategory.ABOUT,
                 SettingsCategory.DEBUG
@@ -99,7 +101,7 @@ class SettingsCatalogTest {
                 SettingsCategory.APPEARANCE,
                 SettingsCategory.CONTENT_DISCOVERY,
                 SettingsCategory.INTEGRATION,
-                SettingsCategory.ADVANCED
+                SettingsCategory.DEFAULT_LAUNCHER
             ),
             dividerBefore
         )
