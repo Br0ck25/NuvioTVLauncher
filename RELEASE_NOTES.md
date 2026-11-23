@@ -15,6 +15,7 @@
 - The Gemini key is stored encrypted for the active profile, carried to your other TVs by the existing credential sync, and is never shown or logged after saving.
 - Gemini only proposes titles. Every suggestion is checked against YouTube Music first, and playback still uses your add-ons first, then YouTube.
 - Choose which taste signals Gemini may use, change the model, generate fresh picks or clear them at any time. Suggestions are cached per profile, so opening Music does not spend API quota.
+- **Home rows** can now be arranged from Music Settings. Move a row with Left/Right, hide or show it with OK, pin your own playlists to the top, or reset every row. Each profile keeps its own arrangement.
 
 ## Live TV
 
