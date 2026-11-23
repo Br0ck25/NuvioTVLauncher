@@ -247,18 +247,19 @@ fun MusicScreen(
         }
     }
 
-    fun showVideoFor(song: Song, startMs: Long) {
+    fun showVideoFor(song: Song, startMs: Long, keepMini: Boolean = false) {
         // A local track has no YouTube video; leave the video screen and let its audio play.
         if (!song.hasMusicVideo()) {
             musicVideo = null
-            showNowPlaying = true
+            musicVideoMinimized = false
+            if (!keepMini) showNowPlaying = true
             return
         }
         scope.launch {
             val video = if (song.isVideo) song else withContext(Dispatchers.IO) {
                 YtMusicRepository.resolveVideo(song) ?: song
             }
-            musicVideoMinimized = false
+            musicVideoMinimized = keepMini
             musicVideo = MusicVideoRequest(video, startMs)
         }
     }
@@ -279,7 +280,8 @@ fun MusicScreen(
             if (auto && direction > 0) {
                 MusicPlayer.next(auto = true)
                 musicVideo = null
-                showNowPlaying = true
+                if (!musicVideoMinimized) showNowPlaying = true
+                musicVideoMinimized = false
             }
             return
         }
@@ -287,7 +289,7 @@ fun MusicScreen(
         // A local track has no video to open: start its audio and let showVideoFor
         // hand the screen back to Now Playing.
         MusicPlayer.jumpTo(target, play = !next.hasMusicVideo())
-        MusicPlayer.state.value.song?.let { showVideoFor(it, 0L) }
+        MusicPlayer.state.value.song?.let { showVideoFor(it, 0L, keepMini = musicVideoMinimized) }
     }
 
     fun selectVideoQueue(index: Int) {
@@ -327,8 +329,8 @@ fun MusicScreen(
     // Re-anchor focus to the selected top tab whenever the tab changes or an overlay closes.
     // Without this, tapping a tab (which does not move focus) or closing Integrations leaves
     // the remote with no focused control, and the next D-pad press lands somewhere random.
-    LaunchedEffect(state.tab, musicOverlayOpen) {
-        if (!musicOverlayOpen) {
+    LaunchedEffect(state.tab, musicOverlayOpen, musicVideoMinimized) {
+        if (!musicOverlayOpen && !musicVideoMinimized) {
             kotlinx.coroutines.delay(250)
             runCatching { topNavFocus.requestFocus() }
         }

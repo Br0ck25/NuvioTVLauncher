@@ -728,6 +728,11 @@ private fun MiniVideoPlayerSurface(
     onExpand: () -> Unit,
     onClose: () -> Unit
 ) {
+    val expandFocus = remember { FocusRequester() }
+    LaunchedEffect(Unit) {
+        withFrameNanos { }
+        runCatching { expandFocus.requestFocus() }
+    }
     Box(modifier.background(Color.Black)) {
         player?.let { exo ->
             AndroidView(
@@ -808,6 +813,7 @@ private fun MiniVideoPlayerSurface(
             MiniVideoButton(
                 icon = Icons.Default.Fullscreen,
                 label = stringResource(R.string.music_video_expand),
+                modifier = Modifier.focusRequester(expandFocus),
                 onClick = onExpand
             )
             Spacer(Modifier.width(6.dp))
@@ -824,11 +830,12 @@ private fun MiniVideoPlayerSurface(
 private fun MiniVideoButton(
     icon: ImageVector,
     label: String,
+    modifier: Modifier = Modifier,
     onClick: () -> Unit
 ) {
     var focused by remember { mutableStateOf(false) }
     Box(
-        Modifier
+        modifier
             .size(34.dp)
             .clip(CircleShape)
             .background(if (focused) Color.White else Color.White.copy(alpha = 0.16f))
