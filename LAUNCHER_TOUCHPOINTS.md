@@ -55,6 +55,6 @@ Branding: the app icons (all colour variants), logo, wordmark, TV banner and the
 - Anything from unreleased Nuvio One work (`fix/livetv-green`) and edits we made to Nuvio One's Live TV, Music and YouTube code.
 - Continue Watching and Upcoming card resizing, and collection-folder scaling (the Tile size setting now only sizes the apps row).
 - Essential-mode override in `SettingsScreen` (Nuvio One's behavior kept).
-- Live TV "My Lists" channels.
+- Live TV list channels (made from Home rows, collection folders and library lists; no mylistsaddon.com sync).
 - Per-profile YouTube, Music and Spotify sign-ins, and the Google Drive sign-in changes and logging (Nuvio One's versions kept).
 - Docs, and `sync-upstream.yml` (still follows Nuvio One's `main`; to be repointed at release tags).
