@@ -864,7 +864,7 @@ private fun RecordingNowCard(
     var watchFocused by remember { mutableStateOf(false) }
     var stopFocused by remember { mutableStateOf(false) }
     val (bg, ring) = cardColors(watchFocused || stopFocused)
-    val time = SimpleDateFormat("h:mm a", Locale.getDefault())
+    val time = SimpleDateFormat(com.nuvio.tv.livetv.ui.LiveClock.timePattern(), Locale.getDefault())
     val from = rec.programStartMs.takeIf { it > 0 } ?: rec.startedAtMs
     val to = rec.programStopMs.takeIf { it > 0 } ?: rec.stopAtMs
     // Catch-up downloads come faster than the show and have a long time limit: go by how much
@@ -1099,7 +1099,7 @@ private fun RecordingInfoDialog(rec: LiveTvRecording, savedOn: String, playlist:
     val first = remember { FocusRequester() }
     LaunchedEffect(Unit) { kotlinx.coroutines.delay(80); runCatching { first.requestFocus() } }
     val day = SimpleDateFormat("EEE d MMM", Locale.getDefault())
-    val time = SimpleDateFormat("h:mm a", Locale.getDefault())
+    val time = SimpleDateFormat(com.nuvio.tv.livetv.ui.LiveClock.timePattern(), Locale.getDefault())
     val aired = if (rec.programStartMs > 0 && rec.programStopMs > rec.programStartMs)
         day.format(Date(rec.programStartMs)) + ", " + time.format(Date(rec.programStartMs)) + " – " + time.format(Date(rec.programStopMs))
     else day.format(Date(rec.startedAtMs)) + ", " + time.format(Date(rec.startedAtMs))
@@ -1145,7 +1145,7 @@ private fun savedOnLabel(context: android.content.Context, dir: String): String 
 
 internal fun dateLabel(context: android.content.Context, ms: Long): String {
     val day = shortDayLabel(context, ms)
-    return day + ", " + SimpleDateFormat("h:mm a", Locale.getDefault()).format(Date(ms))
+    return day + ", " + SimpleDateFormat(com.nuvio.tv.livetv.ui.LiveClock.timePattern(), Locale.getDefault()).format(Date(ms))
 }
 
 /** "Today", "Tomorrow", "Yesterday", the weekday within a week, else the date. */

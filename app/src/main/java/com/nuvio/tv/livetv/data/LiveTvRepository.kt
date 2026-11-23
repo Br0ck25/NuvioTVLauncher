@@ -2698,7 +2698,7 @@ class LiveTvRepository @Inject constructor(
                     runCatching { File(file.parentFile, file.name + ".meta").delete() }
                 }
                 if (lastStop > 0) {
-                    val fmt = java.text.SimpleDateFormat("EEE d MMM, h:mm a", java.util.Locale.getDefault())
+                    val fmt = java.text.SimpleDateFormat("EEE d MMM, ${com.nuvio.tv.livetv.ui.LiveClock.timePattern()}", java.util.Locale.getDefault())
                     val hours = ((lastStop - System.currentTimeMillis()) / HOUR).coerceAtLeast(0)
                     LIVE_REPORT.add(
                         "Guide \"${target.name}\": listings until ${fmt.format(java.util.Date(lastStop))} " +

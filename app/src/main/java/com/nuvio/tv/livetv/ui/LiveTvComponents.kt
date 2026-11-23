@@ -740,6 +740,16 @@ internal fun formatClock(ms: Long, use24h: Boolean): String {
     }
 }
 
+/**
+ * The clock style chosen in Live TV settings, for code that has no settings object at hand (notifications, reminders,
+ * the guide report). It is kept up to date whenever the settings load.
+ */
+internal object LiveClock {
+    @Volatile var use24h: Boolean = false
+    /** A [SimpleDateFormat] pattern for a time of day in the chosen style. */
+    fun timePattern(): String = if (use24h) "HH:mm" else "h:mm a"
+}
+
 internal fun formatRange(startMs: Long, stopMs: Long, use24h: Boolean): String =
     "${formatClock(startMs, use24h)} – ${formatClock(stopMs, use24h)}"
 
