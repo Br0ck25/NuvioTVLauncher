@@ -50,13 +50,13 @@ jobs:
           if ! [[ "$VERSION" =~ ^[0-9]+\.[0-9]+\.[0-9]+(-[0-9A-Za-z.]+)?$ ]]; then
             echo "Version must look like 1.0.0 (or 1.0.0-beta.1), not '$VERSION'." >&2; exit 1
           fi
-          # Betas are built from dev, stable releases from main (promote dev into main first).
+          # Stable releases are built from dev. Betas are built from the branch that holds the change. main only mirrors Nuvio One.
           if [ "$PRERELEASE" = "true" ]; then
             [[ "$VERSION" == *-* ]] || { echo "A pre-release version needs a suffix, e.g. 1.2.4-beta.1 (got '$VERSION')." >&2; exit 1; }
-            [ "$BRANCH" != "main" ] || { echo "Pre-releases are built from dev, not main." >&2; exit 1; }
+            [ "$BRANCH" != "main" ] || { echo "main only mirrors Nuvio One. Build betas from the branch with the change." >&2; exit 1; }
           else
             [[ "$VERSION" != *-* ]] || { echo "A stable release version has no suffix (got '$VERSION'). Tick pre-release for betas." >&2; exit 1; }
-            [ "$BRANCH" = "main" ] || { echo "Stable releases are built from main (run the workflow on main after promoting dev into it). This run is on '$BRANCH'." >&2; exit 1; }
+            [ "$BRANCH" = "dev" ] || { echo "Stable releases are built from dev (merge the tested branch into dev first). This run is on '$BRANCH'." >&2; exit 1; }
           fi
           if gh release view "$VERSION" >/dev/null 2>&1; then
             echo "A release named $VERSION already exists. Use a higher version." >&2; exit 1
