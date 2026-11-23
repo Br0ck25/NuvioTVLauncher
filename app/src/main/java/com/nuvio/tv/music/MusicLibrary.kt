@@ -74,7 +74,6 @@ object MusicLibrary {
     }
 
     private var prefs: SharedPreferences? = null
-    private var loadedProfile = -1
 
     private val _liked = MutableStateFlow<List<StoredSong>>(emptyList())
     val liked: StateFlow<List<StoredSong>> = _liked.asStateFlow()
@@ -87,9 +86,8 @@ object MusicLibrary {
 
     @Synchronized
     fun init(context: Context) {
-        if (prefs != null && loadedProfile == com.nuvio.tv.core.profile.ActiveProfile.id) return
-        val store = com.nuvio.tv.core.profile.ActiveProfile.prefs(context.applicationContext, PREFS_NAME)
-        loadedProfile = com.nuvio.tv.core.profile.ActiveProfile.id
+        if (prefs != null) return
+        val store = context.applicationContext.getSharedPreferences(PREFS_NAME, Context.MODE_PRIVATE)
         prefs = store
         _liked.value = decode(store.getString(KEY_LIKED, null), emptyList<StoredSong>())
         _recents.value = decode(store.getString(KEY_RECENTS, null), emptyList<StoredSong>())

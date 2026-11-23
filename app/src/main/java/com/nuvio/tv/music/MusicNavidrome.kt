@@ -81,7 +81,8 @@ object MusicNavidrome {
 
     @Synchronized
     fun init(context: Context) {
-        val prefs = com.nuvio.tv.core.profile.ActiveProfile.prefs(context.applicationContext, PREFS)
+        val prefs = context.applicationContext
+            .getSharedPreferences(PREFS, Context.MODE_PRIVATE)
         _config.value = NavidromeConfig(
             url = prefs.getString(KEY_URL, "").orEmpty(),
             username = prefs.getString(KEY_USER, "").orEmpty(),
@@ -103,7 +104,7 @@ object MusicNavidrome {
         val candidate = NavidromeConfig(base, user, token, salt)
         return request(candidate, "ping", emptyMap()).map {
             _config.value = candidate
-            com.nuvio.tv.core.profile.ActiveProfile.prefs(app, PREFS).edit()
+            app.getSharedPreferences(PREFS, Context.MODE_PRIVATE).edit()
                 .putString(KEY_URL, candidate.url)
                 .putString(KEY_USER, candidate.username)
                 .putString(KEY_TOKEN, candidate.token)
@@ -114,7 +115,7 @@ object MusicNavidrome {
 
     fun disconnect(context: Context) {
         _config.value = NavidromeConfig()
-        com.nuvio.tv.core.profile.ActiveProfile.prefs(context.applicationContext, PREFS)
+        context.applicationContext.getSharedPreferences(PREFS, Context.MODE_PRIVATE)
             .edit().clear().apply()
     }
 

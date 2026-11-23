@@ -33,5 +33,5 @@ internal object MusicMoodCovers {
         "$browseId|${params.orEmpty()}"
 
     private fun prefs(context: Context) =
-        com.nuvio.tv.core.profile.ActiveProfile.prefs(context.applicationContext, PREFS_NAME)
+        context.applicationContext.getSharedPreferences(PREFS_NAME, Context.MODE_PRIVATE)
 }

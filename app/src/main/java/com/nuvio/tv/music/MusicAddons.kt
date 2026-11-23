@@ -405,7 +405,6 @@ object MusicAddonRegistry {
     private var context: Context? = null
     private var prefs: SharedPreferences? = null
     private var loaded = false
-    private var loadedProfile = -1
     private val clients = ConcurrentHashMap<String, MusicAddonClient>()
 
     /** Rows that carried their own `streamURL`, so playback skips `/stream/{id}` entirely. */
@@ -426,10 +425,9 @@ object MusicAddonRegistry {
         val app = context.applicationContext
         this.context = app
         MusicLosslessOutput.init(app)
-        if (loaded && loadedProfile == com.nuvio.tv.core.profile.ActiveProfile.id) return
+        if (loaded) return
         prefs = MusicSecurePreferences.open(app, SECURE_PREFS, PLAIN_PREFS, LEGACY_PREFS)
         loaded = true
-        loadedProfile = com.nuvio.tv.core.profile.ActiveProfile.id
         load()
     }
 
