@@ -54,7 +54,6 @@ internal object MusicListeningStore {
     }
 
     private var prefs: SharedPreferences? = null
-    private var loadedProfile = -1
     private var tracks: List<MusicTrackListen> = emptyList()
     private var artists: List<MusicArtistListen> = emptyList()
 
@@ -67,13 +66,9 @@ internal object MusicListeningStore {
 
     @Synchronized
     fun init(context: Context) {
-        if (prefs != null && loadedProfile == com.nuvio.tv.core.profile.ActiveProfile.id) return
-        val store = com.nuvio.tv.core.profile.ActiveProfile.prefs(context.applicationContext, PREFS_NAME)
-        loadedProfile = com.nuvio.tv.core.profile.ActiveProfile.id
+        if (prefs != null) return
+        val store = context.applicationContext.getSharedPreferences(PREFS_NAME, Context.MODE_PRIVATE)
         prefs = store
-        tracks = emptyList()
-        artists = emptyList()
-        recalculateStats()
         runCatching {
             val raw = store.getString(KEY_PAYLOAD, null) ?: return@runCatching
             val payload = json.decodeFromString<MusicListeningPayload>(raw)

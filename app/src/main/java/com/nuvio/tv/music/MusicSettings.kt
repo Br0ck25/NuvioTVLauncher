@@ -81,15 +81,11 @@ object MusicSettings {
     private val _keepPlayingWhileBrowsing = MutableStateFlow(false)
     val keepPlayingWhileBrowsing: StateFlow<Boolean> = _keepPlayingWhileBrowsing.asStateFlow()
 
-    /** The profile whose settings are loaded into the flows below. */
-    private var loadedProfile = -1
-
-    /** Loads the active profile's settings; called again when the profile changed since the last load. */
     @Synchronized
     fun init(context: Context) {
-        if (prefs != null && loadedProfile == com.nuvio.tv.core.profile.ActiveProfile.id) return
-        val store = com.nuvio.tv.core.profile.ActiveProfile.prefs(context.applicationContext, PREFS_NAME)
-        loadedProfile = com.nuvio.tv.core.profile.ActiveProfile.id
+        if (prefs != null) return
+        val store = context.applicationContext
+            .getSharedPreferences(PREFS_NAME, Context.MODE_PRIVATE)
         prefs = store
         _audioQuality.value = runCatching {
             MusicAudioQuality.valueOf(store.getString(KEY_QUALITY, null).orEmpty())

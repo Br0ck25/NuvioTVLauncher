@@ -145,7 +145,7 @@ object YouTubeProgress {
     fun localPercent(context: Context, videoId: String?): Int {
         if (videoId == null) return 0
         val entry = runCatching {
-            val prefs = com.nuvio.tv.core.profile.ActiveProfile.prefs(context.applicationContext, PREFS)
+            val prefs = context.applicationContext.getSharedPreferences(PREFS, Context.MODE_PRIVATE)
             parse(videoId, prefs.getString(videoId, null))
         }.getOrNull() ?: return 0
         return entry.percent
@@ -154,7 +154,7 @@ object YouTubeProgress {
     /** Everything with a saved place, newest first. */
     fun history(context: Context, limit: Int = 60): List<YouTubeHistoryItem> {
         val prefs = runCatching {
-            com.nuvio.tv.core.profile.ActiveProfile.prefs(context.applicationContext, PREFS)
+            context.applicationContext.getSharedPreferences(PREFS, Context.MODE_PRIVATE)
         }.getOrNull() ?: return emptyList()
         return prefs.all.asSequence()
             .mapNotNull { (id, value) -> parse(id, value as? String) }
@@ -204,7 +204,7 @@ object YouTubeProgress {
     }
 
     private fun prefs(context: Context) =
-        com.nuvio.tv.core.profile.ActiveProfile.prefs(context.applicationContext, PREFS)
+        context.applicationContext.getSharedPreferences(PREFS, Context.MODE_PRIVATE)
 
     private fun parse(videoId: String, raw: String?): YouTubeHistoryItem? {
         if (raw.isNullOrBlank()) return null

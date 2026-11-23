@@ -120,9 +120,8 @@ object YouTubeSettings {
     /** The sizes you can set as a default; 0 is automatic. */
     val qualityChoices = listOf(0, 2160, 1440, 1080, 720, 480, 360)
 
-    /** Each Nuvio profile has its own OneTube settings (tabs, quality, SponsorBlock, ...). */
     private fun prefs(context: Context) =
-        com.nuvio.tv.core.profile.ActiveProfile.prefs(context.applicationContext, PREFS)
+        context.applicationContext.getSharedPreferences(PREFS, Context.MODE_PRIVATE)
 
     fun sponsorBlockEnabled(context: Context) = prefs(context).getBoolean(KEY_SPONSORBLOCK, true)
 

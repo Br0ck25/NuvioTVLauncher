@@ -138,7 +138,7 @@ class CatalogOrderViewModelTest {
         // buildOrderedCatalogItems (keeping collection_c1 between addonA and addonB).
         assertEquals(
             listOf(keyA1, keyA2, keyCol1, keyB1),
-            h.vm.uiState.value.items.map { it.key }
+            h.vm.uiState.value.items.map { it.key }.filterNot { it == com.nuvio.tv.core.apps.INSTALLED_APPS_CATALOG_KEY }
         )
 
         writeGate.complete(Unit)
@@ -147,7 +147,7 @@ class CatalogOrderViewModelTest {
 
         assertEquals(
             listOf(keyA1, keyA2, keyCol1, keyB1),
-            h.vm.uiState.value.items.map { it.key }
+            h.vm.uiState.value.items.map { it.key }.filterNot { it == com.nuvio.tv.core.apps.INSTALLED_APPS_CATALOG_KEY }
         )
     }
 
@@ -180,7 +180,7 @@ class CatalogOrderViewModelTest {
 
         assertEquals(
             listOf(keyA1, keyA2, keyCol1, keyB1),
-            h.vm.uiState.value.items.map { it.key }
+            h.vm.uiState.value.items.map { it.key }.filterNot { it == com.nuvio.tv.core.apps.INSTALLED_APPS_CATALOG_KEY }
         )
 
         writeGate.complete(Unit)
@@ -219,7 +219,7 @@ class CatalogOrderViewModelTest {
         runCurrent()
 
         assertNull(h.vm.uiState.value.movingKey)
-        assertEquals(listOf(keyA1, keyA2), h.vm.uiState.value.items.map { it.key })
+        assertEquals(listOf(keyA1, keyA2), h.vm.uiState.value.items.map { it.key }.filterNot { it == com.nuvio.tv.core.apps.INSTALLED_APPS_CATALOG_KEY })
         coVerify(exactly = 0) { h.syncService.triggerPush() }
     }
 
@@ -244,10 +244,10 @@ class CatalogOrderViewModelTest {
 
         h.vm.enterMoveMode(keyCol1)
         assertEquals(2, h.vm.moveDuringDrag(keyCol1, -1))
-        assertEquals(listOf(keyA1, keyA2, keyCol1, keyB1), h.vm.uiState.value.items.map { it.key })
+        assertEquals(listOf(keyA1, keyA2, keyCol1, keyB1), h.vm.uiState.value.items.map { it.key }.filterNot { it == com.nuvio.tv.core.apps.INSTALLED_APPS_CATALOG_KEY })
 
         assertEquals(0, h.vm.moveDuringDrag(keyCol1, -1))
-        assertEquals(listOf(keyCol1, keyA1, keyA2, keyB1), h.vm.uiState.value.items.map { it.key })
+        assertEquals(listOf(keyCol1, keyA1, keyA2, keyB1), h.vm.uiState.value.items.map { it.key }.filterNot { it == com.nuvio.tv.core.apps.INSTALLED_APPS_CATALOG_KEY })
     }
 
     @Test
@@ -270,7 +270,7 @@ class CatalogOrderViewModelTest {
         runCurrent()
 
         val items = h.vm.uiState.value.items
-        assertEquals(listOf(keyPinned, keyA1, keyA2, keyUnpinned), items.map { it.key })
+        assertEquals(listOf(keyPinned, keyA1, keyA2, keyUnpinned), items.map { it.key }.filterNot { it == com.nuvio.tv.core.apps.INSTALLED_APPS_CATALOG_KEY })
 
         assertTrue(items[0].isPinnedToTop)
         assertFalse(items[0].canMove)
@@ -306,10 +306,10 @@ class CatalogOrderViewModelTest {
 
         h.vm.enterMoveMode(keyA2)
         assertEquals(1, h.vm.moveDuringDrag(keyA2, -1))
-        assertEquals(listOf(keyPinned, keyA2, keyA1), h.vm.uiState.value.items.map { it.key })
+        assertEquals(listOf(keyPinned, keyA2, keyA1), h.vm.uiState.value.items.map { it.key }.filterNot { it == com.nuvio.tv.core.apps.INSTALLED_APPS_CATALOG_KEY })
 
         assertNull(h.vm.moveDuringDrag(keyA2, -1))
-        assertEquals(listOf(keyPinned, keyA2, keyA1), h.vm.uiState.value.items.map { it.key })
+        assertEquals(listOf(keyPinned, keyA2, keyA1), h.vm.uiState.value.items.map { it.key }.filterNot { it == com.nuvio.tv.core.apps.INSTALLED_APPS_CATALOG_KEY })
     }
 
     @Test
@@ -351,14 +351,14 @@ class CatalogOrderViewModelTest {
         )
         runCurrent()
 
-        assertEquals(listOf(keyPinned, keyA1, keyA2, keyUnpinned), h.vm.uiState.value.items.map { it.key })
+        assertEquals(listOf(keyPinned, keyA1, keyA2, keyUnpinned), h.vm.uiState.value.items.map { it.key }.filterNot { it == com.nuvio.tv.core.apps.INSTALLED_APPS_CATALOG_KEY })
 
         h.vm.enterMoveMode(keyUnpinned)
         assertEquals(1, h.vm.moveDuringDrag(keyUnpinned, -1))
-        assertEquals(listOf(keyPinned, keyUnpinned, keyA1, keyA2), h.vm.uiState.value.items.map { it.key })
+        assertEquals(listOf(keyPinned, keyUnpinned, keyA1, keyA2), h.vm.uiState.value.items.map { it.key }.filterNot { it == com.nuvio.tv.core.apps.INSTALLED_APPS_CATALOG_KEY })
 
         assertNull(h.vm.moveDuringDrag(keyUnpinned, -1))
-        assertEquals(listOf(keyPinned, keyUnpinned, keyA1, keyA2), h.vm.uiState.value.items.map { it.key })
+        assertEquals(listOf(keyPinned, keyUnpinned, keyA1, keyA2), h.vm.uiState.value.items.map { it.key }.filterNot { it == com.nuvio.tv.core.apps.INSTALLED_APPS_CATALOG_KEY })
     }
 
     @Test
@@ -389,7 +389,7 @@ class CatalogOrderViewModelTest {
         runCurrent()
 
         val items = h.vm.uiState.value.items
-        assertEquals(listOf(keyPinned, keyA1, keyA2, keyUnpinned), items.map { it.key })
+        assertEquals(listOf(keyPinned, keyA1, keyA2, keyUnpinned), items.map { it.key }.filterNot { it == com.nuvio.tv.core.apps.INSTALLED_APPS_CATALOG_KEY })
         assertTrue(items[0].isPinnedToTop)
         assertFalse(items[0].canMove)
 
@@ -415,7 +415,7 @@ class CatalogOrderViewModelTest {
 
         assertEquals(
             listOf("collection_p1", "collection_p2", keyA1, "collection_u1"),
-            h.vm.uiState.value.items.map { it.key }
+            h.vm.uiState.value.items.map { it.key }.filterNot { it == com.nuvio.tv.core.apps.INSTALLED_APPS_CATALOG_KEY }
         )
     }
 }

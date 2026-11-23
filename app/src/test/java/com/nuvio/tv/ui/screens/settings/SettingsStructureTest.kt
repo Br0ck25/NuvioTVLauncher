@@ -64,9 +64,9 @@ class SettingsStructureTest {
     }
 
     @Test
-    fun `essential layout offers the home layout and the sidebar`() {
+    fun `essential layout only offers the home layout`() {
         assertEquals(
-            listOf(LayoutSection.HOME_LAYOUT, LayoutSection.SIDEBAR),
+            listOf(LayoutSection.HOME_LAYOUT),
             visibleLayoutSections(essentialMode = true, focusedPosterHasOptions = true)
         )
     }

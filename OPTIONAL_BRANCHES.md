@@ -29,6 +29,13 @@ nine reproduces the shipped build's files, except for the differences listed und
 | `opt-on-demand-db-fix` | **Superseded.** The same fix is already in the launcher branch (database stays at version 10, `onDowngrade` keeps a version 11 file). Safe to delete | n/a |
 | `opt-nuvioone-unreleased` | **Reference only.** Nuvio One's `fix/livetv-green` at `ab5e959`: what they have after their last release | n/a |
 
+## Not in `dev` any more (kept here in case they are wanted again)
+Profiles follow Nuvio One now, so these layers were removed from `dev` and `main` on 2026-11-23:
+- `opt-per-profile-music-onetube`: Music and OneTube settings and sign-ins per profile.
+- `opt-full-settings-all-profiles`: every profile gets the full Settings (Essential mode no longer hides pages).
+- `opt-per-profile-live-tv` was already dropped when Nuvio One's `main` was merged.
+Still in `dev`: the launcher's Apps row (kept per profile) and list channels (each profile has its own), which Nuvio One does not have.
+
 ## Known differences from the shipped build (launcher branch plus all nine)
 - **`MainActivity.kt`:** the launcher branch keeps Nuvio One's "sync watch state when leaving the player" block, which the shipped build had dropped, and the original order of two `CompositionLocal` declarations. `opt-live-tv-my-lists` adds the one `ListChannels` hook.
 - **Translations:** the shipped build had ar, fr, pt-PT and vi translations of the new strings; these branches carry the English strings only.
