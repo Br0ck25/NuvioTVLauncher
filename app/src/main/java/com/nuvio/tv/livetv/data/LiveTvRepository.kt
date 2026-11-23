@@ -746,12 +746,13 @@ class LiveTvRepository @Inject constructor(
         }
 
         // Build channels first so EPG matching knows which channels exist.
+        val addonSourcesDropped = dropStaleAddonSources()
         val addonSources = prefs.currentAddonChannelSources().filter { it.enabled }
         val addonStale = addonSources.isNotEmpty() && addonSources.any { now - it.lastUpdatedMs > ADDON_REFRESH_MS }
-        if (changed || _channels.value.isEmpty() || addonStale) {
+        if (addonSourcesDropped || changed || _channels.value.isEmpty() || addonStale) {
             outOfTheWay()
             setStatus(loading = true, message = addingMessage(newlyAdded) ?: statusText(R.string.iptv_repository_status_reading_channels))
-            buildChannels(addingMessage(newlyAdded), forceAddon = forcePlaylists || addonStale)
+            buildChannels(addingMessage(newlyAdded), forceAddon = forcePlaylists || addonStale || addonSourcesDropped)
             saveChannels() // so the next start uses it straight away
         }
 
@@ -2196,7 +2197,22 @@ class LiveTvRepository @Inject constructor(
      * and turning one on reads just that one. [fixedMessage]: shown for the whole read instead
      * of naming each playlist, so adding a playlist doesn't look like the others are loading again.
      */
+    /**
+     * Drops Live TV add-on sources whose add-on was uninstalled. Called before a channel rebuild
+     * and on every update check, so the rows disappear on their own instead of staying switched
+     * on with "no longer installed".
+     */
+    private suspend fun dropStaleAddonSources(): Boolean {
+        val stale = addonChannels.staleSources(prefs.currentAddonChannelSources())
+        if (stale.isEmpty()) return false
+        prefs.updateAddonChannelSources { list -> list.filterNot { it.id in stale } }
+        addonChannels.invalidate()
+        LIVE_REPORT.add("Add-on channels: removed ${stale.size} source(s) whose add-on is no longer installed")
+        return true
+    }
+
     private suspend fun buildChannels(fixedMessage: String? = null, forceAddon: Boolean = false) = withContext(BackgroundWork.cpu()) {
+        dropStaleAddonSources()
         val saved = reusable
         reusable = null
         val oldChannels = _channels.value.takeIf { it.isNotEmpty() } ?: saved?.channels.orEmpty()

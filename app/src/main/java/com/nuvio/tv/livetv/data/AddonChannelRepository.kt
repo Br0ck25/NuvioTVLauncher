@@ -133,6 +133,25 @@ class AddonChannelRepository @Inject constructor(
     }
 
     /**
+     * Sources whose add-on is no longer installed. The installed list is only trusted when it
+     * has at least one add-on: the repository's flow starts empty before its first load, and
+     * deleting every selection during that moment would be much worse than leaving a stale row
+     * until the next refresh.
+     */
+    suspend fun staleSources(sources: List<AddonChannelSource>): Set<String> {
+        if (sources.isEmpty()) return emptySet()
+        val installed = addonRepository.getInstalledAddons().first()
+        if (installed.isEmpty()) return emptySet()
+        val bases = installed.mapTo(HashSet()) { it.baseUrl.trimEnd('/') }
+        return sources
+            .filter { source ->
+                val base = source.addonBaseUrl.trimEnd('/')
+                base.isNotBlank() && base !in bases
+            }
+            .mapTo(HashSet()) { it.id }
+    }
+
+    /**
      * The first build stored one entry per addon. The guide now stores one per catalog; turn
      * the old entry into its addon's Live TV catalogs so an existing selection keeps working.
      */
