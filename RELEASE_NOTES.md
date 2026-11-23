@@ -18,10 +18,12 @@
 - **Spotify sync is faster**: changed playlists are fetched in parallel, two tracks are matched at a time, known tracks are matched from your library without a search, and definitive misses are remembered so repeat syncs skip them. A rate-limit response drops the rest of the run back to one search at a time.
 - A track that is already in **Liked Songs** is not added again to a Spotify playlist, and the same recording matched to a different video on another device is not added to Liked Songs twice.
 - **Home rows** can now be arranged from Music Settings. Move a row with Left/Right, hide or show it with OK, pin your own playlists to the top, or reset every row. Each profile keeps its own arrangement.
+- The Nuvio side rail no longer rests over the Music section; open it from the left edge or Back when you need it.
 
 ## Live TV
 
 - **Audio sync** is now in the player's Audio menu for every channel. Use Left/Right to shift the sound against the picture in 50 ms steps, within ±5 seconds.
 - The correction applies immediately, is remembered per profile and per channel, and is restored the next time that channel plays.
+- Live TV add-on source rows for an add-on you have uninstalled are removed on the next refresh instead of staying switched on with an error.
 - A **Sync ±… ms** badge appears in the play bar while a channel has an active correction, and **Reset audio sync** returns it to zero.
 
