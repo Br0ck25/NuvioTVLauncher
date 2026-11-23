@@ -643,32 +643,42 @@ fun MusicScreen(
             }
         }
         musicVideo?.let { request ->
-            MusicVideoPlayerScreen(
-                video = request.video,
-                startPositionMs = request.startPositionMs,
-                minimized = musicVideoMinimized,
-                onMinimize = { musicVideoMinimized = true },
-                onExpand = { musicVideoMinimized = false },
-                onClose = ::closeVideo,
-                onSkip = { skipVideo(it) },
-                onSelectQueue = ::selectVideoQueue,
-                onEnded = { skipVideo(1, auto = true) },
-                modifier = if (musicVideoMinimized) {
-                    Modifier
-                        .align(Alignment.BottomEnd)
-                        .padding(end = 28.dp, bottom = 24.dp)
-                        .width(360.dp)
-                        .height(203.dp)
-                        .clip(RoundedCornerShape(14.dp))
-                        .border(
-                            2.dp,
-                            MusicPalette.accent.copy(alpha = 0.8f),
-                            RoundedCornerShape(14.dp)
-                        )
-                } else {
-                    Modifier
-                }
-            )
+            Box(
+                Modifier.then(
+                    if (musicVideoMinimized) {
+                        Modifier
+                            .align(Alignment.BottomEnd)
+                            .padding(end = 28.dp, bottom = 24.dp)
+                    } else {
+                        Modifier.fillMaxSize()
+                    }
+                )
+            ) {
+                MusicVideoPlayerScreen(
+                    video = request.video,
+                    startPositionMs = request.startPositionMs,
+                    minimized = musicVideoMinimized,
+                    onMinimize = { musicVideoMinimized = true },
+                    onExpand = { musicVideoMinimized = false },
+                    onClose = ::closeVideo,
+                    onSkip = { skipVideo(it) },
+                    onSelectQueue = ::selectVideoQueue,
+                    onEnded = { skipVideo(1, auto = true) },
+                    modifier = if (musicVideoMinimized) {
+                        Modifier
+                            .width(360.dp)
+                            .height(203.dp)
+                            .clip(RoundedCornerShape(14.dp))
+                            .border(
+                                2.dp,
+                                MusicPalette.accent.copy(alpha = 0.8f),
+                                RoundedCornerShape(14.dp)
+                            )
+                    } else {
+                        Modifier
+                    }
+                )
+            }
         }
         }
     }

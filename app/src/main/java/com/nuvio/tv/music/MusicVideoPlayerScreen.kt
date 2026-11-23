@@ -1,6 +1,8 @@
 package com.nuvio.tv.music
 
 import android.graphics.Color as AndroidColor
+import android.content.Context
+import android.view.LayoutInflater
 import androidx.activity.compose.BackHandler
 import androidx.compose.animation.AnimatedVisibility
 import androidx.compose.animation.fadeIn
@@ -355,15 +357,7 @@ internal fun MusicVideoPlayerScreen(
     ) {
         player?.let { exo ->
             AndroidView(
-                factory = { ctx ->
-                    PlayerView(ctx).apply {
-                        useController = false
-                        resizeMode = AspectRatioFrameLayout.RESIZE_MODE_FIT
-                        setShutterBackgroundColor(AndroidColor.TRANSPARENT)
-                        setShowBuffering(PlayerView.SHOW_BUFFERING_NEVER)
-                        this.player = exo
-                    }
-                },
+                factory = { ctx -> musicVideoPlayerView(ctx, exo) },
                 update = { it.player = exo },
                 modifier = Modifier.fillMaxSize()
             )
@@ -715,6 +709,12 @@ internal fun MusicVideoPlayerScreen(
     }
 }
 
+private fun musicVideoPlayerView(context: Context, player: ExoPlayer): PlayerView =
+    (LayoutInflater.from(context).inflate(R.layout.view_music_video_player, null) as PlayerView).apply {
+        setShutterBackgroundColor(AndroidColor.TRANSPARENT)
+        this.player = player
+    }
+
 @Composable
 private fun MiniVideoPlayerSurface(
     modifier: Modifier,
@@ -731,15 +731,7 @@ private fun MiniVideoPlayerSurface(
     Box(modifier.background(Color.Black)) {
         player?.let { exo ->
             AndroidView(
-                factory = { ctx ->
-                    PlayerView(ctx).apply {
-                        useController = false
-                        resizeMode = AspectRatioFrameLayout.RESIZE_MODE_FIT
-                        setShutterBackgroundColor(AndroidColor.TRANSPARENT)
-                        setShowBuffering(PlayerView.SHOW_BUFFERING_NEVER)
-                        this.player = exo
-                    }
-                },
+                factory = { ctx -> musicVideoPlayerView(ctx, exo) },
                 update = { it.player = exo },
                 modifier = Modifier.fillMaxSize()
             )
