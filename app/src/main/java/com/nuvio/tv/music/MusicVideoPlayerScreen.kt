@@ -62,6 +62,7 @@ import androidx.compose.ui.res.stringResource
 import com.nuvio.tv.R
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.focus.FocusRequester
+import androidx.compose.ui.focus.focusProperties
 import androidx.compose.ui.focus.focusRequester
 import androidx.compose.ui.focus.onFocusChanged
 import androidx.compose.ui.graphics.Brush
@@ -114,6 +115,8 @@ internal fun MusicVideoPlayerScreen(
     minimized: Boolean = false,
     onMinimize: () -> Unit = {},
     onExpand: () -> Unit = {},
+    onMiniFocusExit: () -> Unit = {},
+    miniFocusRequester: FocusRequester? = null,
     onClose: (videoPositionMs: Long) -> Unit,
     onSkip: (direction: Int) -> Unit = {},
     onSelectQueue: (index: Int) -> Unit = {},
@@ -139,6 +142,8 @@ internal fun MusicVideoPlayerScreen(
     val playFocus = remember { FocusRequester() }
     val queueFocus = remember { FocusRequester() }
     val rootFocus = remember { FocusRequester() }
+    val backFocus = remember { FocusRequester() }
+    val minimizeFocus = remember { FocusRequester() }
     var controlsVisible by remember { mutableStateOf(true) }
     var controlsTick by remember { mutableIntStateOf(0) }
     val showControls = {
@@ -317,6 +322,8 @@ internal fun MusicVideoPlayerScreen(
             loading = loading,
             error = error,
             isPlaying = isPlaying,
+            focusRequester = miniFocusRequester,
+            onExitFocus = onMiniFocusExit,
             onTogglePlay = {
                 player?.let {
                     when {
@@ -414,6 +421,12 @@ internal fun MusicVideoPlayerScreen(
             VideoCircleButton(
                 icon = Icons.AutoMirrored.Filled.ArrowBack,
                 label = stringResource(R.string.music_video_back_now_playing),
+                modifier = Modifier
+                    .focusRequester(backFocus)
+                    .focusProperties {
+                        left = minimizeFocus
+                        right = minimizeFocus
+                    },
                 onClick = { onClose(positionMs) }
             )
             Column(Modifier.weight(1f)) {
@@ -446,6 +459,12 @@ internal fun MusicVideoPlayerScreen(
             VideoCircleButton(
                 icon = Icons.Default.PictureInPictureAlt,
                 label = stringResource(R.string.music_video_minimize),
+                modifier = Modifier
+                    .focusRequester(minimizeFocus)
+                    .focusProperties {
+                        left = backFocus
+                        right = backFocus
+                    },
                 onClick = onMinimize
             )
         }
@@ -724,16 +743,26 @@ private fun MiniVideoPlayerSurface(
     loading: Boolean,
     error: String?,
     isPlaying: Boolean,
+    focusRequester: FocusRequester?,
+    onExitFocus: () -> Unit,
     onTogglePlay: () -> Unit,
     onExpand: () -> Unit,
     onClose: () -> Unit
 ) {
-    val expandFocus = remember { FocusRequester() }
+    val expandFocus = focusRequester ?: remember { FocusRequester() }
+    var miniHasFocus by remember { mutableStateOf(false) }
     LaunchedEffect(Unit) {
-        withFrameNanos { }
-        runCatching { expandFocus.requestFocus() }
+        repeat(4) {
+            withFrameNanos { }
+            if (runCatching { expandFocus.requestFocus() }.isSuccess) return@LaunchedEffect
+        }
     }
-    Box(modifier.background(Color.Black)) {
+    BackHandler(enabled = miniHasFocus) { onExitFocus() }
+    Box(
+        modifier
+            .background(Color.Black)
+            .onFocusChanged { miniHasFocus = it.hasFocus }
+    ) {
         player?.let { exo ->
             AndroidView(
                 factory = { ctx -> musicVideoPlayerView(ctx, exo) },

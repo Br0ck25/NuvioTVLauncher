@@ -138,6 +138,7 @@ fun MusicScreen(
     var lastAccountKey by remember { mutableStateOf<String?>(null) }
     var openPlaylistId by remember { mutableStateOf<String?>(null) }
     val topNavFocus = remember { FocusRequester() }
+    val miniPlayerFocus = remember { FocusRequester() }
     val openNuvioSidebar = LocalOpenSidebar.current
     val sidebarExpanded = LocalSidebarExpanded.current
     val openPlaylist = playlists.firstOrNull { it.id == openPlaylistId }
@@ -356,7 +357,25 @@ fun MusicScreen(
     }
 
     MusicTextTheme {
-        Box(Modifier.fillMaxSize()) {
+        Box(
+            Modifier
+                .fillMaxSize()
+                .onPreviewKeyEvent { event ->
+                    // Menu (or Info) jumps to the corner video; Back from there returns to
+                    // browsing. This makes the mini player reachable without hunting through
+                    // the whole Home feed.
+                    if (
+                        musicVideoMinimized &&
+                        event.type == KeyEventType.KeyDown &&
+                        (event.key == Key.Menu || event.key == Key.Info)
+                    ) {
+                        runCatching { miniPlayerFocus.requestFocus() }
+                        true
+                    } else {
+                        false
+                    }
+                }
+        ) {
         Column(
             Modifier
                 .fillMaxSize()
@@ -662,6 +681,8 @@ fun MusicScreen(
                     minimized = musicVideoMinimized,
                     onMinimize = { musicVideoMinimized = true },
                     onExpand = { musicVideoMinimized = false },
+                    onMiniFocusExit = { runCatching { topNavFocus.requestFocus() } },
+                    miniFocusRequester = miniPlayerFocus,
                     onClose = ::closeVideo,
                     onSkip = { skipVideo(it) },
                     onSelectQueue = ::selectVideoQueue,
