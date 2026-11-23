@@ -265,6 +265,7 @@ fun LiveTvPlayerScreen(
         showBanner()
     }
     val shiftStartedAt by viewModel.playback.shiftStartedAt.collectAsStateWithLifecycle()
+    val audioSyncMs by viewModel.playback.audioSyncMs.collectAsStateWithLifecycle()
     // A sports addon game that can be paused and skipped through by itself (a replay, or live with a rewind window).
     val ownTimeline by viewModel.playback.ownTimeline.collectAsStateWithLifecycle()
     var captionsOn by remember { mutableStateOf(false) }
@@ -1186,7 +1187,12 @@ fun LiveTvPlayerScreen(
                         "${playback.videoHeight}p" +
                             (if (settings.showFrameRate && shownFps > 0f) " · ${kotlin.math.round(shownFps).toInt()} FPS" else "")
                     } else null,
-                    audioBadge = remember(playback.channelKey, bannerVisible, playback.videoHeight, panelFull) { viewModel.playback.audioBadge() },
+                    audioBadge = remember(playback.channelKey, bannerVisible, playback.videoHeight, panelFull, audioSyncMs) {
+                        listOfNotNull(
+                            viewModel.playback.audioBadge(),
+                            viewModel.playback.audioSyncBadge()
+                        ).joinToString(" · ").takeIf { it.isNotBlank() }
+                    },
                     showNumber = settings.showChannelNumbers,
                     nextTitle = nextUp?.title?.let { titleMarks(it).title },
                     nextTime = nextUp?.let { formatRange(it.startMs, it.stopMs, use24h) },
@@ -1383,6 +1389,9 @@ fun LiveTvPlayerScreen(
                 isFavorite = ch.key in user.favorites,
                 recording = recordings.any { it.channelKey == ch.key && it.isRecording },
                 audioLabel = viewModel.playback.audioLabel(),
+                audioSyncMs = audioSyncMs,
+                onAudioSyncAdjust = viewModel.playback::adjustAudioSync,
+                onAudioSyncReset = viewModel.playback::resetAudioSync,
                 captionsOn = captionsOn,
                 sizeLabel = context.getString(aspectModeOf(settings.aspectMode).labelResId),
                 sizeOptions = com.nuvio.tv.ui.screens.player.AspectMode.entries.map {

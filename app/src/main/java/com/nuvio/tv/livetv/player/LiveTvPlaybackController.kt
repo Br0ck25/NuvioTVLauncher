@@ -22,6 +22,8 @@ import com.nuvio.tv.livetv.stalker.StalkerGateway
 import com.nuvio.tv.livetv.stalker.StalkerMediaPolicy
 import com.nuvio.tv.livetv.stalker.StalkerPlayback
 import com.nuvio.tv.livetv.stalker.StalkerMimeProbe
+import com.nuvio.tv.data.local.AudioDelayRouteDataStore
+import com.nuvio.tv.ui.screens.player.AudioDelayMediaSource
 import com.nuvio.tv.ui.screens.settings.MemoryBudget
 import dagger.hilt.android.qualifiers.ApplicationContext
 import kotlinx.coroutines.CoroutineScope
@@ -69,6 +71,24 @@ data class LiveTrackOption(
     val channels: Int = 0
 )
 
+/** How far a channel's audio can be nudged either way, and by how much each press moves it. */
+object LiveTvAudioSync {
+    const val MIN_MS = -5_000
+    const val MAX_MS = 5_000
+    const val STEP_MS = 50
+
+    fun clamp(ms: Int): Int = ms.coerceIn(MIN_MS, MAX_MS)
+
+    /** Holding the direction button accelerates after a moment, up to ten steps a press. */
+    fun stepForRepeat(repeatCount: Int): Int =
+        STEP_MS * (1 + (repeatCount / 3).coerceIn(0, 9))
+
+    fun format(ms: Int): String = when {
+        ms > 0 -> "+$ms ms"
+        else -> "$ms ms"
+    }
+}
+
 /**
  * One ExoPlayer shared by the guide preview window and the full-screen player, so going
  * full screen (and back) never re-buffers the stream — just like TiviMate.
@@ -79,6 +99,7 @@ class LiveTvPlaybackController @Inject constructor(
     @ApplicationContext private val context: Context,
     private val addonStreamResolver: AddonChannelStreamResolver,
     private val stalker: StalkerGateway,
+    private val audioDelayStore: AudioDelayRouteDataStore,
 ) {
     private val scope = CoroutineScope(SupervisorJob() + Dispatchers.Main.immediate)
 
@@ -87,6 +108,14 @@ class LiveTvPlaybackController @Inject constructor(
 
     private val _state = MutableStateFlow(LivePlaybackState())
     val state: StateFlow<LivePlaybackState> = _state.asStateFlow()
+
+    /** Audio sync correction for the channel on screen: positive = audio later. */
+    private val _audioSyncMs = MutableStateFlow(0)
+    val audioSyncMs: StateFlow<Int> = _audioSyncMs.asStateFlow()
+    private var audioSyncSaveJob: Job? = null
+    private var audioSyncLoadJob: Job? = null
+    /** The channel whose stored correction [audioSyncLoadJob] is loading. */
+    private var audioSyncKey: String? = null
 
     private var currentChannel: LiveChannel? = null
     private var addonResolveJob: Job? = null
@@ -783,6 +812,10 @@ class LiveTvPlaybackController @Inject constructor(
             return
         }
         val previousChannelKey = currentChannel?.key
+        if (previousChannelKey != channel.key) {
+            flushAudioSync(previousChannelKey)
+            loadAudioSync(channel.key)
+        }
         val ref = stalkerStream ?: when {
             catchupTitle == null && overrideUrl?.startsWith("file:") != true && overrideUrl?.contains("127.0.0.1") != true -> channel.stalkerRef
             catchupTitle != null && channel.key == currentChannel?.key && overrideUrl == currentUrl -> activeStalkerRef
@@ -1162,6 +1195,10 @@ class LiveTvPlaybackController @Inject constructor(
         if (_recordingPlayback.value != null) { _recordingPlayback.value = null; shiftJob?.cancel() }
         _player?.stop()
         _player?.clearMediaItems()
+        flushAudioSync(currentChannel?.key)
+        audioSyncLoadJob?.cancel()
+        audioSyncKey = null
+        _audioSyncMs.value = 0
         currentChannel = null
         LiveWatching.sourceId = null
         currentUrl = null
@@ -1595,6 +1632,71 @@ class LiveTvPlaybackController @Inject constructor(
     fun audioLabel(): String = tracksOf(C.TRACK_TYPE_AUDIO).firstOrNull { it.selected }?.label?.take(18) ?: "Audio"
 
     fun audioTracks(): List<LiveTrackOption> = tracksOf(C.TRACK_TYPE_AUDIO)
+
+    // ---------------------------------------------------------------- audio sync
+
+    /**
+     * Shifts the picture against the sound for the channel on screen. Kept per profile and per
+     * channel, so a channel that runs a little out stays corrected the next time it is watched.
+     */
+    fun adjustAudioSync(deltaMs: Int) {
+        audioSyncLoadJob?.cancel()
+        val next = LiveTvAudioSync.clamp(_audioSyncMs.value + deltaMs)
+        if (next == _audioSyncMs.value) return
+        _audioSyncMs.value = next
+        val key = currentChannel?.key ?: audioSyncKey ?: return
+        audioSyncSaveJob?.cancel()
+        audioSyncSaveJob = scope.launch {
+            delay(400)
+            runCatching { audioDelayStore.saveDelayMs(audioSyncStoreKey(key), next) }
+        }
+    }
+
+    fun resetAudioSync() {
+        val key = currentChannel?.key ?: audioSyncKey ?: return
+        audioSyncLoadJob?.cancel()
+        audioSyncSaveJob?.cancel()
+        _audioSyncMs.value = 0
+        audioSyncSaveJob = scope.launch {
+            runCatching { audioDelayStore.saveDelayMs(audioSyncStoreKey(key), null) }
+        }
+    }
+
+    /** "Sync +250 ms" for the info bar, or null when the channel is at zero. */
+    fun audioSyncBadge(): String? {
+        val ms = _audioSyncMs.value
+        if (ms == 0) return null
+        val value = if (ms > 0) "+$ms ms" else "$ms ms"
+        return context.withAppLocale().getString(R.string.iptv_player_audio_sync_badge, value)
+    }
+
+    private fun loadAudioSync(channelKey: String) {
+        audioSyncLoadJob?.cancel()
+        audioSyncKey = channelKey
+        _audioSyncMs.value = 0
+        audioSyncLoadJob = scope.launch {
+            val stored = runCatching {
+                audioDelayStore.loadDelayMs(audioSyncStoreKey(channelKey))
+            }.getOrNull() ?: 0
+            if (audioSyncKey == channelKey) {
+                _audioSyncMs.value = stored.coerceIn(LiveTvAudioSync.MIN_MS, LiveTvAudioSync.MAX_MS)
+            }
+        }
+    }
+
+    /** Writes the channel's current correction before another channel or [stop] replaces it. */
+    private fun flushAudioSync(channelKey: String?) {
+        val key = channelKey ?: return
+        val ms = _audioSyncMs.value
+        audioSyncSaveJob?.cancel()
+        audioSyncSaveJob = null
+        if (ms == 0) return
+        scope.launch {
+            runCatching { audioDelayStore.saveDelayMs(audioSyncStoreKey(key), ms) }
+        }
+    }
+
+    private fun audioSyncStoreKey(channelKey: String): String = "livetv:$channelKey"
 
     /** Saved audio choices: channel key -> "language|label|channels" (kept up to date by Live TV). */
     var channelAudio: Map<String, String> = emptyMap()
@@ -2327,12 +2429,14 @@ class LiveTvPlaybackController @Inject constructor(
     }
 
     private fun buildMediaSource(url: String, headers: Map<String, String>, isLive: Boolean): androidx.media3.exoplayer.source.MediaSource {
-        return com.nuvio.tv.livetv.multiview.LiveTvMediaSourceBuilder(
+        val source = com.nuvio.tv.livetv.multiview.LiveTvMediaSourceBuilder(
             drm = currentChannel?.drm,
             forcedMime = forcedMime,
             bufferSize = bufferSize,
             stalkerPolicy = stalkerMediaPolicy,
         ).build(url, headers, isLive)
+        // Read live, so nudging the audio in the Audio page applies without reloading the stream.
+        return AudioDelayMediaSource(source) { _audioSyncMs.value * 1_000L }
     }
 
     /**
@@ -2368,6 +2472,10 @@ class LiveTvPlaybackController @Inject constructor(
         _player?.removeListener(listener)
         _player?.release()
         _player = null
+        flushAudioSync(currentChannel?.key)
+        audioSyncLoadJob?.cancel()
+        audioSyncKey = null
+        _audioSyncMs.value = 0
         currentChannel = null
         LiveWatching.sourceId = null
         currentUrl = null

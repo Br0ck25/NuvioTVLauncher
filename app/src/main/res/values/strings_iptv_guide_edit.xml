@@ -205,6 +205,7 @@
     <string name="iptv_player_go_live">"Go live"</string>
     <string name="iptv_player_sleep_off">"Sleep timer off"</string>
     <string name="iptv_player_sleep_set">"Sleep timer: %1$d min"</string>
+    <string name="iptv_player_audio_sync_badge">"Sync %1$s"</string>
     <string name="iptv_player_screen_size_toast">"Screen size: %1$s"</string>
     <string name="iptv_player_resolution">"Resolution"</string>
     <string name="iptv_player_shape">"Shape"</string>

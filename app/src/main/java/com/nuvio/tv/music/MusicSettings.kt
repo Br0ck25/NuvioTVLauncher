@@ -71,7 +71,7 @@ object MusicSettings {
     val wifiOnlyDownloads: StateFlow<Boolean> = _wifiOnlyDownloads.asStateFlow()
 
     /** Look for a matching addon recording before playing a YouTube track. */
-    private val _preferAddonSources = MutableStateFlow(false)
+    private val _preferAddonSources = MutableStateFlow(true)
     val preferAddonSources: StateFlow<Boolean> = _preferAddonSources.asStateFlow()
 
     /**
@@ -101,7 +101,7 @@ object MusicSettings {
             MusicAudioQuality.valueOf(store.getString(KEY_DOWNLOAD_QUALITY, null).orEmpty())
         }.getOrDefault(MusicAudioQuality.HIGH)
         _wifiOnlyDownloads.value = store.getBoolean(KEY_WIFI_ONLY_DOWNLOADS, true)
-        _preferAddonSources.value = store.getBoolean(KEY_PREFER_ADDON_SOURCES, false)
+        _preferAddonSources.value = store.getBoolean(KEY_PREFER_ADDON_SOURCES, true)
         _keepPlayingWhileBrowsing.value = store.getBoolean(KEY_KEEP_PLAYING_WHILE_BROWSING, false)
     }
 

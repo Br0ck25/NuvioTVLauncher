@@ -63,6 +63,7 @@ internal fun MusicHomeScreen(
     recentSongs: List<Song> = emptyList(),
     localPlaylists: List<StoredPlaylist> = emptyList(),
     accountPlaylists: List<MusicAccountPlaylist> = emptyList(),
+    gemini: MusicGeminiUiState = MusicGeminiUiState(),
     onPlayCurated: (List<Song>, Int) -> Unit = { _, _ -> },
     onPlayMix: (MusicCuratedMix) -> Unit = {},
     onOpenLocalPlaylist: (StoredPlaylist) -> Unit = {},
@@ -89,6 +90,7 @@ internal fun MusicHomeScreen(
             recentSongs = recentSongs,
             localPlaylists = localPlaylists,
             accountPlaylists = accountPlaylists,
+            gemini = gemini,
             onPlayCurated = onPlayCurated,
             onPlayMix = onPlayMix,
             onOpenLocalPlaylist = onOpenLocalPlaylist,
@@ -107,6 +109,7 @@ private fun MusicHomeFeed(
     recentSongs: List<Song>,
     localPlaylists: List<StoredPlaylist>,
     accountPlaylists: List<MusicAccountPlaylist>,
+    gemini: MusicGeminiUiState,
     onPlayCurated: (List<Song>, Int) -> Unit,
     onPlayMix: (MusicCuratedMix) -> Unit,
     onOpenLocalPlaylist: (StoredPlaylist) -> Unit,
@@ -170,7 +173,12 @@ private fun MusicHomeFeed(
         }
         if (curation.dailyMixes.isNotEmpty()) {
             item(key = "curated-mixes") {
-                MusicCuratedMixesRow(mixes = curation.dailyMixes, onPlay = onPlayMix)
+                MusicCuratedMixesRow(
+                    mixes = curation.dailyMixes,
+                    title = stringResource(R.string.music_home_daily_mixes),
+                    subtitle = stringResource(R.string.music_home_daily_mixes_sub),
+                    onPlay = onPlayMix
+                )
             }
         }
         if (jumpBackSongs.isNotEmpty()) {
@@ -208,6 +216,36 @@ private fun MusicHomeFeed(
                     subtitle = stringResource(R.string.music_home_forgotten_sub),
                     songs = curation.forgotten,
                     onPlay = onPlayCurated
+                )
+            }
+        }
+        if (gemini.tracks.isNotEmpty()) {
+            item(key = "gemini-tracks") {
+                MusicCuratedSongsRow(
+                    title = stringResource(R.string.music_gemini_picks_title),
+                    subtitle = stringResource(R.string.music_gemini_picks_subtitle),
+                    songs = gemini.tracks,
+                    onPlay = onPlayCurated
+                )
+            }
+        }
+        if (gemini.albums.isNotEmpty()) {
+            item(key = "gemini-albums") {
+                MusicCuratedMixesRow(
+                    mixes = gemini.albums,
+                    title = stringResource(R.string.music_gemini_albums_title),
+                    subtitle = null,
+                    onPlay = onPlayMix
+                )
+            }
+        }
+        if (gemini.generating) {
+            item(key = "gemini-building") {
+                Text(
+                    text = stringResource(R.string.music_gemini_generating),
+                    color = MusicPalette.textMuted,
+                    fontSize = 10.5.sp,
+                    modifier = Modifier.padding(horizontal = 26.dp)
                 )
             }
         }
@@ -303,14 +341,13 @@ internal fun MusicCuratedSongsRow(
 @Composable
 private fun MusicCuratedMixesRow(
     mixes: List<MusicCuratedMix>,
+    title: String,
+    subtitle: String?,
     onPlay: (MusicCuratedMix) -> Unit
 ) {
     if (mixes.isEmpty()) return
     Column(Modifier.fillMaxWidth()) {
-        MusicSectionHeader(
-            title = stringResource(R.string.music_home_daily_mixes),
-            subtitle = stringResource(R.string.music_home_daily_mixes_sub)
-        )
+        MusicSectionHeader(title = title, subtitle = subtitle)
         Spacer(Modifier.height(10.dp))
         LazyRow(
             contentPadding = PaddingValues(horizontal = 27.dp),

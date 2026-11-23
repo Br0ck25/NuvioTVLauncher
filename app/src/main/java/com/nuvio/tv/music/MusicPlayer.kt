@@ -770,7 +770,7 @@ object MusicPlayer {
             val addon = scope.async(Dispatchers.IO) {
                 runCatching { MusicAddonRegistry.substitute(song) }.getOrNull()
             }
-            val substitute = withTimeoutOrNull(2_500L) { addon.await() }
+            val substitute = withTimeoutOrNull(6_000L) { addon.await() }
             if (substitute != null) {
                 youtube.cancel()
                 Result.success(

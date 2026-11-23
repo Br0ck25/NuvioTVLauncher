@@ -10,6 +10,7 @@ import com.nuvio.tv.data.local.DebridSettingsDataStore
 import com.nuvio.tv.data.local.MDBListSettingsDataStore
 import com.nuvio.tv.data.remote.supabase.SupabaseProviderCredential
 import com.nuvio.tv.domain.model.AuthState
+import com.nuvio.tv.music.GeminiKeyStore
 import io.github.jan.supabase.postgrest.Postgrest
 import kotlinx.coroutines.CancellationException
 import kotlinx.coroutines.CoroutineScope
@@ -55,7 +56,8 @@ class ProviderCredentialSyncService @Inject constructor(
     private val debridSettingsDataStore: DebridSettingsDataStore,
     private val mdbListSettingsDataStore: MDBListSettingsDataStore,
     private val animeSkipSettingsDataStore: AnimeSkipSettingsDataStore,
-    private val syncClientIdentity: SyncClientIdentity
+    private val syncClientIdentity: SyncClientIdentity,
+    private val geminiKeyStore: GeminiKeyStore
 ) {
     private val scope = CoroutineScope(SupervisorJob() + Dispatchers.IO)
     private val syncMutex = Mutex()
@@ -220,6 +222,13 @@ class ProviderCredentialSyncService @Inject constructor(
                         value = animeSkipClientId
                     )
                 )
+                add(
+                    ProviderCredentialValue(
+                        provider = ProviderCredentialIds.GEMINI,
+                        field = API_KEY_FIELD,
+                        value = geminiKeyStore.read(profileId).orEmpty()
+                    )
+                )
             }
         )
     }
@@ -228,6 +237,9 @@ class ProviderCredentialSyncService @Inject constructor(
         snapshot.values.forEach { credential ->
             check(profileManager.activeProfileId.value == snapshot.profileId)
             when {
+                credential.provider == ProviderCredentialIds.GEMINI -> {
+                    geminiKeyStore.write(snapshot.profileId, credential.value, notify = false)
+                }
                 credential.provider.startsWith("debrid:") -> {
                     val providerId = credential.provider.substringAfter("debrid:")
                     debridSettingsDataStore.setProviderApiKey(providerId, credential.value)
@@ -262,8 +274,9 @@ class ProviderCredentialSyncService @Inject constructor(
                     combine(
                         debridSettingsDataStore.settings,
                         mdbListSettingsDataStore.settings,
-                        animeSkipSettingsDataStore.clientId
-                    ) { debrid, mdbList, animeSkipClientId ->
+                        animeSkipSettingsDataStore.clientId,
+                        geminiKeyStore.revision
+                    ) { debrid, mdbList, animeSkipClientId, _ ->
                         ProviderCredentialSnapshot(
                             profileId = profileId,
                             values = buildList {
@@ -288,6 +301,13 @@ class ProviderCredentialSyncService @Inject constructor(
                                         provider = ProviderCredentialIds.ANIMESKIP,
                                         field = CLIENT_ID_FIELD,
                                         value = animeSkipClientId
+                                    )
+                                )
+                                add(
+                                    ProviderCredentialValue(
+                                        provider = ProviderCredentialIds.GEMINI,
+                                        field = API_KEY_FIELD,
+                                        value = geminiKeyStore.read(profileId).orEmpty()
                                     )
                                 )
                             }

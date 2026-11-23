@@ -116,6 +116,8 @@ fun MusicScreen(
     val spotifySync by MusicSpotifyWebSync.state.collectAsState()
     val party by MusicPartyManager.state.collectAsState()
     val accountViewModel: YouTubeAccountViewModel = hiltViewModel()
+    val geminiViewModel: MusicGeminiViewModel = hiltViewModel()
+    val gemini by geminiViewModel.state.collectAsState()
     // Music keeps its own YouTube profile choice, separate from OneTube's.
     remember(accountViewModel) { accountViewModel.useScope(com.nuvio.tv.youtube.AccountScope.MUSIC) }
     val account by accountViewModel.state.collectAsState()
@@ -475,6 +477,7 @@ fun MusicScreen(
                         recentSongs = recents.map { it.toSong() },
                         localPlaylists = playlists,
                         accountPlaylists = state.accountLibrary.playlists,
+                        gemini = gemini,
                         onPlayCurated = { songs, index -> play(songs, index) },
                         onPlayMix = { mix -> play(mix.tracks, 0) },
                         onOpenLocalPlaylist = { playlist ->
