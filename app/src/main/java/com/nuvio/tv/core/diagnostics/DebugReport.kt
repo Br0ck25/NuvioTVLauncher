@@ -46,7 +46,7 @@ object DebugReportBuilder {
     ): DebugReport = withContext(Dispatchers.IO) {
         val id = UUID.randomUUID().toString().replace("-", "").take(8).uppercase(Locale.US)
         val raw = buildString {
-            appendLine("Nuvio One debug report")
+            appendLine("Nuvio TV Launcher debug report")
             appendLine("ID: $id")
             appendLine("Generated: ${timestamp()}")
 

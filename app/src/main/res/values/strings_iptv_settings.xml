@@ -747,8 +747,8 @@
     <string name="iptv_sync_host_combine">"Combine Both"</string>
     <string name="iptv_sync_host_use_saved">"Use the Saved Setup"</string>
     <string name="iptv_settings_live_tv_badge_help">"Show the Live TV badge on the icon"</string>
-    <string name="iptv_settings_badge_on">"On: the Nuvio One Live TV icon and banner in your chosen color"</string>
-    <string name="iptv_settings_badge_off">"Off: Nuvio One icons, in your chosen color"</string>
+    <string name="iptv_settings_badge_on">"On: the Nuvio TV Launcher icon and banner in your chosen color"</string>
+    <string name="iptv_settings_badge_off">"Off: Nuvio TV Launcher icons, in your chosen color"</string>
     <string name="iptv_settings_playlists_on_this_profile">"Playlists on this profile"</string>
     <string name="iptv_settings_playlists_on_this_profile_sub">"Choose which shared playlists this profile shows. Sources stay shared."</string>
     <string name="iptv_settings_playlists_on_this_profile_hint">"Switch a playlist off to hide its channels and groups on this profile. Other profiles keep their own choices."</string>

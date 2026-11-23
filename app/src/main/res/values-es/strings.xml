@@ -3484,7 +3484,7 @@ Utilizas esta función bajo tu entera responsabilidad. P2P se puede desactivar e
     <string name="update_later">"Más tarde"</string>
     <string name="update_download_now">"Descargar ahora"</string>
     <string name="update_new_version_message">"Una nueva versión está lista. Descárgalo ahora o elige Más tarde."</string>
-    <string name="update_installed_title">"Nuvio One actualizado"</string>
+    <string name="update_installed_title">"Nuvio TV Launcher actualizado"</string>
     <string name="update_installed_message">"Este dispositivo ahora tiene la última versión."</string>
     <string name="profile_insights_title">"Su visionado"</string>
     <string name="profile_insights_subtitle">"Un vistazo a lo que ha visto este perfil."</string>

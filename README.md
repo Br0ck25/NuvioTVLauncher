@@ -1,8 +1,8 @@
 <div align="center">
 
-  <img src="assets/brand/app_logo_wordmark_readme.png" alt="Nuvio Launcher" width="340" />
+  <img src="assets/brand/app_logo_wordmark_readme.png" alt="Nuvio TV Launcher" width="340" />
 
-# Nuvio Launcher
+# Nuvio TV Launcher
 
 **A real Android TV home screen built on [Nuvio One](https://github.com/zoga2o3-ops/Nuvio-One): your apps, your Live TV guide, Sports, Calendar, recordings, YouTube (OneTube) and Music, all in one launcher for Google TV, Android TV and Fire TV. Sign in with your Nuvio account and your setup follows you.**
 
@@ -17,13 +17,13 @@
 
 </div>
 
-**Nuvio Launcher uses Trakt but is not endorsed or certified by Trakt.** See the [privacy page](PRIVACY.md).
+**Nuvio TV Launcher uses Trakt but is not endorsed or certified by Trakt.** See the [privacy page](PRIVACY.md).
 
 ---
 
 ## Built on Nuvio One
 
-Nuvio Launcher is a fork of **[Nuvio One](https://github.com/zoga2o3-ops/Nuvio-One)** by zoga2o3, which is itself built on [Nuvio](https://github.com/NuvioMedia/NuvioTV) and [NuvioPlusIPTV](https://github.com/homelessbrian/NuvioPlusIPTV). From Nuvio One this app gets **OneTube** (YouTube built in), **Music**, the Live TV guide, Sports hub, recordings and On Demand, and Nuvio One's sync and sports data services. On top of that it adds the launcher: it can be your TV's Home screen, with a phone-driven setup, an Apps row and page, remote button mapping and more.
+Nuvio TV Launcher is a fork of **[Nuvio One](https://github.com/zoga2o3-ops/Nuvio-One)** by zoga2o3, which is itself built on [Nuvio](https://github.com/NuvioMedia/NuvioTV) and [NuvioPlusIPTV](https://github.com/homelessbrian/NuvioPlusIPTV). From Nuvio One this app gets **OneTube** (YouTube built in), **Music**, the Live TV guide, Sports hub, recordings and On Demand, and Nuvio One's sync and sports data services. On top of that it adds the launcher: it can be your TV's Home screen, with a phone-driven setup, an Apps row and page, remote button mapping and more.
 
 ---
 
@@ -39,7 +39,7 @@ Nuvio Launcher is a fork of **[Nuvio One](https://github.com/zoga2o3-ops/Nuvio-O
    | Not sure (works everywhere) | `universal` |
 
 3. Install it with a file manager or **Downloader** (by AFTVnews), allowing installs from unknown sources when asked.
-4. Open **Nuvio Launcher**. A short setup walks you through making it your Home screen (see [Use it as your Home screen](#use-it-as-your-home-screen)). Installing does not make it your Home app by itself.
+4. Open **Nuvio TV Launcher**. A short setup walks you through making it your Home screen (see [Use it as your Home screen](#use-it-as-your-home-screen)). Installing does not make it your Home app by itself.
 
 **Install with Downloader (no computer needed):**
 
@@ -49,7 +49,7 @@ Nuvio Launcher is a fork of **[Nuvio One](https://github.com/zoga2o3-ops/Nuvio-O
 4. When the download finishes, select **Install**. If Android says it can't install apps from this source, select **Settings**, turn on **Install unknown apps** for Downloader, go back, and select **Install** again.
 5. Select **Open** when it finishes. You can delete the downloaded APK when Downloader offers to.
 
-Requires **Android 7.0 or newer** (Fire OS 6 or later). It has its own app ID (`com.nuvio.tv.launcher`), so it installs **alongside** the official Nuvio app and *Nuvio + IPTV*. If you already have Nuvio Launcher 1.1.x, this updates it in place (Settings → About, or install over it) and keeps your sign-in.
+Requires **Android 7.0 or newer** (Fire OS 6 or later). It has its own app ID (`com.nuvio.tv.launcher`), so it installs **alongside** the official Nuvio app and *Nuvio + IPTV*. If you already have Nuvio TV Launcher 1.1.x, this updates it in place (Settings → About, or install over it) and keeps your sign-in.
 
 **Updating:** updates appear **inside the app** (Settings → About) from this repository's releases. Stable releases go to everyone. Beta builds are marked **Pre-release** on the releases page and are only offered to people who opted in to betas.
 
@@ -75,7 +75,7 @@ Requires **Android 7.0 or newer** (Fire OS 6 or later). It has its own app ID (`
 
 ## Use it as your Home screen
 
-Nuvio Launcher is a real Android Home app, the same way FLauncher and ArcLauncher are. It is not set as your Home app automatically: the first-run setup (and **Settings → Default launcher**) does it. Once it is your Home app:
+Nuvio TV Launcher is a real Android Home app, the same way FLauncher and ArcLauncher are. It is not set as your Home app automatically: the first-run setup (and **Settings → Default launcher**) does it. Once it is your Home app:
 
 - **Home** goes to the launcher's home page, scrolled to the top, from anywhere (another app, a detail page, the player). Any open panel closes.
 - **Double-tap Home** opens the profile switcher.
@@ -101,11 +101,11 @@ The first-run setup shows the steps, and everything is also in **Settings → De
 | Turn off the stock launcher | FLauncher's `pm disable-user` for Google TV's launcher (optional and risky: with it off, Google TV can show a black screen or loop on a recovery screen, and the remote's YouTube button stops working; Button Mapper can remap it). Asks you to confirm first |
 | Turn the stock launcher on | `pm enable` for Google TV's launcher and its setup service. Use it to undo the button above or if Home shows a black screen |
 
-On **Google TV**, Android usually keeps Google's own launcher as Home even after "Make this the Home app"; the Home button override is what makes Home open Nuvio Launcher there. Turning the stock launcher off is a last resort, only if the override does not work for you; read its warning first. Already paired? Leave the port and code empty. The page also lists every command, with this TV's address filled in (`adb -s IP:PORT shell ...`), for anyone who would rather run them from a computer. Needs Android 11+ Wireless debugging and the `full` build; some TV firmware (many Fire TVs) refuses a different Home app however it is set.
+On **Google TV**, Android usually keeps Google's own launcher as Home even after "Make this the Home app"; the Home button override is what makes Home open Nuvio TV Launcher there. Turning the stock launcher off is a last resort, only if the override does not work for you; read its warning first. Already paired? Leave the port and code empty. The page also lists every command, with this TV's address filled in (`adb -s IP:PORT shell ...`), for anyone who would rather run them from a computer. Needs Android 11+ Wireless debugging and the `full` build; some TV firmware (many Fire TVs) refuses a different Home app however it is set.
 
 ### Install with Tellyscope (no computer needed)
 
-[Tellyscope](https://github.com/man15h/tellyscope) is an ADB-based installer that runs on its own. After installing the release APK with it, open Nuvio Launcher, go to **Settings → Default launcher** and choose **Make this launcher the Home app**, then confirm the system dialog. Installing does not select Nuvio Launcher as Home by itself. Some TV firmware blocks third-party Home apps however they are installed; if the native Home setting works, the accessibility service is optional.
+[Tellyscope](https://github.com/man15h/tellyscope) is an ADB-based installer that runs on its own. After installing the release APK with it, open Nuvio TV Launcher, go to **Settings → Default launcher** and choose **Make this launcher the Home app**, then confirm the system dialog. Installing does not select Nuvio TV Launcher as Home by itself. Some TV firmware blocks third-party Home apps however they are installed; if the native Home setting works, the accessibility service is optional.
 
 ### Fallback: manual ADB from a computer
 
@@ -140,7 +140,7 @@ Before you start:
    ```bash
    ./adb connect IP_ADDRESS:CONNECTION_PORT
    ```
-5. If Android blocks the accessibility switch ("restricted setting"), allow it, then set Nuvio Launcher as Home. Replace `YOUR_DEVICE_STRING` with the identifier from `adb devices`:
+5. If Android blocks the accessibility switch ("restricted setting"), allow it, then set Nuvio TV Launcher as Home. Replace `YOUR_DEVICE_STRING` with the identifier from `adb devices`:
 
    ```bash
    ./adb -s YOUR_DEVICE_STRING shell appops set com.nuvio.tv.launcher ACCESS_RESTRICTED_SETTINGS allow
@@ -179,7 +179,7 @@ Some Fire TV and vendor firmware blocks replacement Home apps. A successful inst
 
 - The accessibility service is `com.nuvio.tv.launcher/com.nuvio.tv.core.launcher.LauncherAccessibilityService`.
 - Prefer turning it on in the TV's UI (**Settings → System → Accessibility**, or **Settings → Default launcher → Home button override**). Don't run `settings put secure enabled_accessibility_services ...` by hand: it replaces the whole enabled list and can switch off TalkBack. The phone setup page merges it safely for you.
-- Test Home from another app and from inside Nuvio Launcher, and double-Home for the profile switcher (some firmware reserves double-Home).
+- Test Home from another app and from inside Nuvio TV Launcher, and double-Home for the profile switcher (some firmware reserves double-Home).
 - To go back, choose the original launcher in the TV's Default apps / Home app settings, or use **Switch back to the original launcher** on the phone setup page, and turn off the override.
 - When finished, disconnect ADB and turn off wireless debugging. Never expose ADB ports to the internet.
 
@@ -646,11 +646,11 @@ Your Live TV setup, in a private app folder in your own Google Drive that only t
 - Sports data through Nuvio One's sports data service, from ESPN's public feed, [TheSportsDB](https://www.thesportsdb.com), [FotMob](https://www.fotmob.com) (unofficial), [WWE.com](https://www.wwe.com), [All Elite Wrestling](https://www.allelitewrestling.com), [TNA Wrestling](https://tnawrestling.com), boxing schedules and sporting-events.org. Show schedules from [TVmaze](https://www.tvmaze.com).
 - Built with Kotlin, Jetpack Compose, TV Material 3 and Media3 / ExoPlayer.
 
-Nuvio Launcher is an unofficial fork and is **not affiliated with or endorsed by Nuvio One, NuvioMedia, homelessbrian, SmartTube, SponsorBlock, DeArrow, TiviMate, Google or YouTube**. YouTube is a trademark of Google LLC. Please report issues here, not to those projects.
+Nuvio TV Launcher is an unofficial fork and is **not affiliated with or endorsed by Nuvio One, NuvioMedia, homelessbrian, SmartTube, SponsorBlock, DeArrow, TiviMate, Google or YouTube**. YouTube is a trademark of Google LLC. Please report issues here, not to those projects.
 
 ## Support the project
 
-Nuvio Launcher: [Ko-fi](https://ko-fi.com/nuviotvlauncher). The app it is a fork of is made by zoga2o3: [Nuvio One on Ko-fi](https://ko-fi.com/zoga2o3).
+Nuvio TV Launcher: [Ko-fi](https://ko-fi.com/nuviotvlauncher). The app it is a fork of is made by zoga2o3: [Nuvio One on Ko-fi](https://ko-fi.com/zoga2o3).
 
 ## Releasing
 

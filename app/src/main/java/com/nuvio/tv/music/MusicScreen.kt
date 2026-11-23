@@ -931,7 +931,7 @@ private fun MusicNavigationPill(
 private fun MusicBrand(modifier: Modifier = Modifier) {
     Row(modifier, verticalAlignment = Alignment.CenterVertically) {
         Image(
-            painter = painterResource(R.drawable.nuvio_one_icon),
+            painter = painterResource(R.drawable.app_logo_mark),
             contentDescription = null,
             modifier = Modifier
                 .size(34.dp)
@@ -939,7 +939,7 @@ private fun MusicBrand(modifier: Modifier = Modifier) {
         )
         Spacer(Modifier.width(9.dp))
         Text(
-            text = "Nuvio One Music",
+            text = "Music",
             color = MusicPalette.text,
             fontSize = 13.sp,
             fontWeight = FontWeight.Bold,

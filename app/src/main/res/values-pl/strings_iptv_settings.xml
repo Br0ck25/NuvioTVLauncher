@@ -728,8 +728,8 @@
     <string name="iptv_sync_host_combine">"Połącz oba"</string>
     <string name="iptv_sync_host_use_saved">"Użyj zapisanej konfiguracji"</string>
     <string name="iptv_settings_live_tv_badge_help">"Pokaż plakietkę Telewizja na żywo na ikonie"</string>
-    <string name="iptv_settings_badge_on">"Włączone: ikona Nuvio One Live TV i baner w wybranym przez Ciebie kolorze"</string>
-    <string name="iptv_settings_badge_off">"Wył.: Ikony Nuvio One w wybranym kolorze"</string>
+    <string name="iptv_settings_badge_on">"Włączone: ikona Nuvio TV Launcher i baner w wybranym przez Ciebie kolorze"</string>
+    <string name="iptv_settings_badge_off">"Wył.: Ikony Nuvio TV Launcher w wybranym kolorze"</string>
     <string name="iptv_settings_stalker_portal_1_s">"Portal prześladowców \&quot;%1$s\&quot;"</string>
     <string name="iptv_settings_1_s_and_its_guide">"%1$s i jego przewodnik"</string>
     <string name="iptv_settings_guide_link_optional">"Link do przewodnika (EPG) (opcjonalnie)"</string>

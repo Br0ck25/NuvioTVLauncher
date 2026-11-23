@@ -728,8 +728,8 @@
     <string name="iptv_sync_host_combine">"Combineer beide"</string>
     <string name="iptv_sync_host_use_saved">"Gebruik de opgeslagen configuratie"</string>
     <string name="iptv_settings_live_tv_badge_help">"Toon de Live TV-badge op het pictogram"</string>
-    <string name="iptv_settings_badge_on">"Aan: het Nuvio One Live TV-pictogram en de banner in de door u gekozen kleur"</string>
-    <string name="iptv_settings_badge_off">"Uit: Nuvio One-pictogrammen, in de door u gekozen kleur"</string>
+    <string name="iptv_settings_badge_on">"Aan: het Nuvio TV Launcher-pictogram en de banner in de door u gekozen kleur"</string>
+    <string name="iptv_settings_badge_off">"Uit: Nuvio TV Launcher-pictogrammen, in de door u gekozen kleur"</string>
     <string name="iptv_settings_stalker_portal_1_s">"Stalkerportaal \&quot;%1$s\&quot;"</string>
     <string name="iptv_settings_1_s_and_its_guide">"%1$s en zijn gids"</string>
     <string name="iptv_settings_guide_link_optional">"Gids (EPG)-link (optioneel)"</string>

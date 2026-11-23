@@ -728,8 +728,8 @@
     <string name="iptv_sync_host_combine">"Kombinieren Sie beides"</string>
     <string name="iptv_sync_host_use_saved">"Verwenden Sie das gespeicherte Setup"</string>
     <string name="iptv_settings_live_tv_badge_help">"Zeigen Sie das Live-TV-Logo auf dem Symbol an"</string>
-    <string name="iptv_settings_badge_on">"Ein: das Nuvio One Live TV-Symbol und das Banner in der von Ihnen gewählten Farbe"</string>
-    <string name="iptv_settings_badge_off">"Aus: Nuvio One-Symbole in der von Ihnen gewählten Farbe"</string>
+    <string name="iptv_settings_badge_on">"Ein: das Nuvio TV Launcher-Symbol und das Banner in der von Ihnen gewählten Farbe"</string>
+    <string name="iptv_settings_badge_off">"Aus: Nuvio TV Launcher-Symbole in der von Ihnen gewählten Farbe"</string>
     <string name="iptv_settings_stalker_portal_1_s">"Stalker-Portal „%1$s“"</string>
     <string name="iptv_settings_1_s_and_its_guide">"%1$s und sein Leitfaden"</string>
     <string name="iptv_settings_guide_link_optional">"Guide-Link (EPG) (optional)"</string>

@@ -3660,7 +3660,7 @@
     <string name="update_later">"Później"</string>
     <string name="update_download_now">"Pobierz teraz"</string>
     <string name="update_new_version_message">"Nowa wersja jest gotowa. Pobierz go teraz lub wybierz opcję Później."</string>
-    <string name="update_installed_title">"Zaktualizowano Nuvio One"</string>
+    <string name="update_installed_title">"Zaktualizowano Nuvio TV Launcher"</string>
     <string name="update_installed_message">"To urządzenie ma teraz najnowszą wersję."</string>
     <string name="profile_insights_title">"Twoje oglądanie"</string>
     <string name="profile_insights_subtitle">"Zobacz, co oglądał ten profil."</string>
