@@ -465,6 +465,24 @@ Have a sports addon installed in Nuvio, like **HighFly** or **StremVerse**? Spor
 
 ---
 
+## Profiles: what is shared and what is yours
+
+The launcher follows Nuvio One here, so profiles work the same way as in Nuvio One.
+
+**Each profile has its own:**
+- Name, picture and PIN
+- Watch history, Continue Watching, library and reminders
+- Nuvio's own settings: theme, layout, player and the Apps row
+- Live TV favorites, recent channels, hidden channels and groups, and group order
+- OneTube and Music use the settings and sign-ins of the whole app
+
+**Shared by every profile:**
+- Live TV playlists, guides, Live TV settings, channel renames and numbers, guide (EPG) choices and parental locks
+
+**Keep profiles the same (optional):** long-press a profile on **Manage Profiles**, choose **Copy Settings**, pick the profile to copy from and switch on **Keep Matched**. A change on one matched profile then changes all of them. Name, picture, PIN, watch history, Continue Watching, library and reminders always stay each profile's own.
+
+---
+
 ## Remote controls
 
 Every button for the guide, full screen, Sports, the Calendar, On Demand and Recordings: see **[CONTROLS.md](CONTROLS.md)**.
