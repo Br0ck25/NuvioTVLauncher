@@ -142,6 +142,7 @@ class LiveTvPreferences @Inject constructor(
         val showFrameRate = booleanPreferencesKey("show_frame_rate")
         val matchFrameRate = booleanPreferencesKey("match_frame_rate")
         val frameRateMode = stringPreferencesKey("frame_rate_mode")
+        val matchResolution = booleanPreferencesKey("match_resolution")
         val onDemandInSidebar = booleanPreferencesKey("on_demand_in_sidebar")
         val onDemandEnabled = booleanPreferencesKey("on_demand_enabled")
         val onDemandHomeRowEnabled = booleanPreferencesKey("on_demand_home_row_enabled")
@@ -641,6 +642,7 @@ class LiveTvPreferences @Inject constructor(
             showFrameRate = p[Keys.showFrameRate] ?: d.showFrameRate,
             // Before the three choices it was on or off; on worked like "On start/stop".
             frameRateMode = p[Keys.frameRateMode] ?: if (p[Keys.matchFrameRate] == true) "START_STOP" else d.frameRateMode,
+            matchResolution = p[Keys.matchResolution] ?: d.matchResolution,
             onDemandInSidebar = p[Keys.onDemandInSidebar] ?: d.onDemandInSidebar,
             // Missing on older setups: On, so "off" from before becomes "Off the menu only" (stream list and Search come back).
             onDemandEnabled = p[Keys.onDemandEnabled] ?: d.onDemandEnabled,
@@ -1004,6 +1006,7 @@ class LiveTvPreferences @Inject constructor(
         p[Keys.showQualityBadges] = s.showQualityBadges
         p[Keys.showFrameRate] = s.showFrameRate
         p[Keys.frameRateMode] = s.frameRateMode
+        p[Keys.matchResolution] = s.matchResolution
         p[Keys.matchFrameRate] = s.matchFrameRate
         p[Keys.onDemandInSidebar] = s.onDemandInSidebar
         p[Keys.onDemandEnabled] = s.onDemandEnabled

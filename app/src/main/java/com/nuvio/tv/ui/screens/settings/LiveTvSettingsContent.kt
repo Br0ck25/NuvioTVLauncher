@@ -1361,6 +1361,12 @@ internal fun LiveTvSettingsContent(
                         value = frameRateModes(context).firstOrNull { it.first == s.frameRateMode }?.second ?: context.getString(R.string.playback_afr_off),
                         onClick = { dialog = LiveDialog.FrameRate }
                     )
+                    if (s.frameRateMode != "OFF") SettingsToggleRow(
+                        context.getString(R.string.playback_resolution_matching),
+                        context.getString(R.string.playback_resolution_matching_sub),
+                        s.matchResolution,
+                        { update { it.copy(matchResolution = !it.matchResolution) } }
+                    )
                     SubHeading(context.getString(R.string.iptv_settings_pause_catch_up))
                     SettingsToggleRow(
                         context.getString(R.string.iptv_settings_pause_and_rewind_live_tv),

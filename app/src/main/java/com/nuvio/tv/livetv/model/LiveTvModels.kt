@@ -522,6 +522,11 @@ data class LiveTvSettings(
      * setting: "OFF", "START" (switch when playback starts) or "START_STOP" (and put it back after).
      */
     val frameRateMode: String = "OFF",
+    /**
+     * With Match frame rate on, also switch the TV's resolution to the channel's picture (the smallest size that fits it,
+     * never below 720p), as Nuvio's own player does. Off by default: every switch makes the TV re-sync for a moment.
+     */
+    val matchResolution: Boolean = false,
     /** Show On Demand in Nuvio's side menu (when there's something to show). */
     val onDemandInSidebar: Boolean = true,
     /**
