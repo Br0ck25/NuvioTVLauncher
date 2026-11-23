@@ -19,7 +19,7 @@ nine reproduces the shipped build's files, except for the differences listed und
 |---|---|---|
 | `opt-per-profile-live-tv` | Live TV, Sports, recordings, calendar picks, playlists and the parental lock kept per profile (also carries `ListChannels.kt`, which these files use) | 18 |
 | `opt-per-profile-music-onetube` | Music and OneTube settings, plus their YouTube and Spotify sign-ins, kept per profile | 17 |
-| `opt-live-tv-my-lists` | Home lists as Live TV channels (My Lists), Sources button, Torbox flags, tests | 15 |
+| `opt-live-tv-my-lists` | Home lists as Live TV channels, Sources button, Torbox flags, tests. The mylistsaddon.com sync inside it was removed from `dev` on 2026-11-23 | 15 |
 | `opt-live-tv-home-row` | Live TV row polish: progress to Next, favorites, artwork, focus | 2 |
 | `opt-google-drive-signin` | Drive sign-in scope check, Google's real error reason, sign-in logging (logs part of the client id) | 2 |
 | `opt-home-tile-sizes` | Tile size for Continue Watching, Upcoming and collections; Upcoming card size | 8 |

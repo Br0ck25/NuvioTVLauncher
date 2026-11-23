@@ -11,10 +11,6 @@ const val LIST_CHANNEL_SCHEME = "nuvio-list://"
 const val LIST_CHANNELS_SOURCE_ID = "lists"
 /** The category list channels are shown in. */
 const val LIST_CHANNELS_GROUP = "List channels"
-/** Prefix of the ids of list channels that come from the viewer's My Lists account (see [MyListsSync]). */
-const val MY_LISTS_CHANNEL_ID_PREFIX = "mylists:"
-/** The category the synced My Lists channels are shown in. */
-const val MY_LISTS_CHANNELS_GROUP = "My Lists"
 /** Where list channels are numbered from, well clear of playlist channel numbers. */
 const val LIST_CHANNEL_NUMBER_BASE = 9000
 
@@ -56,15 +52,7 @@ sealed interface ListRef {
 }
 
 /**
- * Where a synced channel's lineup comes from: the installed My Lists addon at [baseUrl], catalog [catalogId], played
- * in the order the server gives (not shuffled). [logoUrl] is the channel's logo; [order] its place among the synced channels.
- */
-@Immutable
-data class SyncedSource(val baseUrl: String, val catalogId: String, val logoUrl: String?, val order: Int)
-
-/**
- * A channel the viewer made from [refs]. [seed] fixes the order its items are played in. A channel with a [synced]
- * source was made on mylistsaddon.com instead: the server is the only place it is edited, so it is read-only here.
+ * A channel the viewer made from [refs]. [seed] fixes the order its items are played in.
  */
 @Immutable
 data class ListChannel(
@@ -72,10 +60,7 @@ data class ListChannel(
     val name: String,
     val refs: List<ListRef>,
     val seed: Long,
-    val synced: SyncedSource? = null,
-) {
-    val isSynced: Boolean get() = synced != null
-}
+)
 
 /** One scheduled programme of a list channel: what plays between [startMs] and [endMs]. */
 @Immutable
@@ -108,17 +93,17 @@ internal class ListChannelStore(context: Context, profileId: Int) {
         (0 until array.length()).mapNotNull { array.optJSONObject(it)?.toChannel() }
     }.getOrDefault(emptyList())
 
-    /** The channels the viewer made (not the ones the My Lists server keeps), as the JSON Drive and cloud sync carry. */
+    /** The channels the viewer made, as the JSON Drive and cloud sync carry. */
     fun definitionsJson(channels: List<ListChannel>): String {
         val array = JSONArray()
-        channels.filterNot { it.isSynced }.forEach { array.put(it.toJson()) }
+        channels.forEach { array.put(it.toJson()) }
         return array.toString()
     }
 
     /** The channels in [json] from [definitionsJson]; null when it can't be read. */
     fun parseDefinitions(json: String): List<ListChannel>? = runCatching {
         val array = JSONArray(json)
-        (0 until array.length()).mapNotNull { array.optJSONObject(it)?.toChannel() }.filterNot { it.isSynced }
+        (0 until array.length()).mapNotNull { array.optJSONObject(it)?.toChannel() }
     }.getOrNull()
 
     fun saveChannels(channels: List<ListChannel>) {
@@ -155,22 +140,11 @@ internal class ListChannelStore(context: Context, profileId: Int) {
     private fun ListChannel.toJson() = JSONObject()
         .put("id", id).put("name", name).put("seed", seed)
         .put("refs", JSONArray().also { array -> refs.forEach { array.put(it.toJson()) } })
-        .apply {
-            synced?.let { s ->
-                put("synced", JSONObject().put("base", s.baseUrl).put("catalog", s.catalogId).put("order", s.order)
-                    .apply { s.logoUrl?.let { put("logo", it) } })
-            }
-        }
 
     private fun JSONObject.toChannel(): ListChannel? {
         val id = optString("id").ifBlank { return null }
         val refs = optJSONArray("refs")?.let { array -> (0 until array.length()).mapNotNull { array.optJSONObject(it)?.toRef() } }.orEmpty()
-        val synced = optJSONObject("synced")?.let { s ->
-            val base = s.optString("base").ifBlank { return@let null }
-            val catalog = s.optString("catalog").ifBlank { return@let null }
-            SyncedSource(base, catalog, s.optString("logo").ifBlank { null }, s.optInt("order"))
-        }
-        return ListChannel(id, optString("name"), refs, optLong("seed"), synced)
+        return ListChannel(id, optString("name"), refs, optLong("seed"))
     }
 
     private fun ListRef.toJson(): JSONObject = when (this) {

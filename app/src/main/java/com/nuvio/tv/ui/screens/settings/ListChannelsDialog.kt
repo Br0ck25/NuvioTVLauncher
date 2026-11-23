@@ -92,14 +92,11 @@ internal fun ListChannelsDialog(onDismiss: () -> Unit) {
                 )
             }
             items(channels, key = { it.id }) { channel ->
-                // A channel made on mylistsaddon.com is edited there; here it can only be looked at.
                 SettingsActionRow(
                     title = channel.name,
                     subtitle = null,
-                    value = if (channel.isSynced) stringResource(R.string.live_tv_list_channel_synced)
-                    else stringResource(R.string.live_tv_list_channel_summary, channel.refs.size),
-                    onClick = { editing = channel },
-                    enabled = !channel.isSynced
+                    value = stringResource(R.string.live_tv_list_channel_summary, channel.refs.size),
+                    onClick = { editing = channel }
                 )
             }
         }
