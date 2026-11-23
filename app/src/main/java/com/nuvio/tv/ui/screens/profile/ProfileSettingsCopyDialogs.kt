@@ -3,9 +3,12 @@
 package com.nuvio.tv.ui.screens.profile
 
 import androidx.compose.foundation.layout.Arrangement
+import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.heightIn
+import androidx.compose.foundation.rememberScrollState
+import androidx.compose.foundation.verticalScroll
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.items
 import androidx.compose.foundation.lazy.rememberLazyListState
@@ -67,79 +70,86 @@ internal fun ProfileSettingsSourceDialog(
         subtitle = stringResource(R.string.profile_copy_settings_setup_subtitle),
         width = 520.dp
     ) {
-        LazyColumn(
+        Column(
             modifier = Modifier
-                .fillMaxWidth()
-                .heightIn(
-                    max = NuvioTheme.sizes.buttons.defaultHeight * 2 +
-                        NuvioTheme.spacing.sm
-                ),
-            state = listState,
-            verticalArrangement = Arrangement.spacedBy(NuvioTheme.spacing.sm)
+                .weight(1f, fill = false)
+                .verticalScroll(rememberScrollState()),
+            verticalArrangement = Arrangement.spacedBy(NuvioTheme.spacing.lg)
         ) {
-            item(key = "start_fresh") {
+            LazyColumn(
+                modifier = Modifier
+                    .fillMaxWidth()
+                    .heightIn(
+                        max = NuvioTheme.sizes.buttons.defaultHeight * 2 +
+                            NuvioTheme.spacing.sm
+                    ),
+                state = listState,
+                verticalArrangement = Arrangement.spacedBy(NuvioTheme.spacing.sm)
+            ) {
+                item(key = "start_fresh") {
+                    SourceProfileButton(
+                        text = stringResource(R.string.profile_copy_settings_start_fresh),
+                        selected = pendingSourceProfileId == null,
+                        modifier = if (selectedSourceProfileId == null) {
+                            Modifier.focusRequester(focusRequester)
+                        } else {
+                            Modifier
+                        },
+                        onClick = {
+                            pendingSourceProfileId = null
+                            pendingCopyProviderCredentials = false
+                            pendingKeepMatched = false
+                        }
+                    )
+                }
+                items(profiles, key = UserProfile::id) { profile ->
+                    SourceProfileButton(
+                        text = profile.copySourceLabel(),
+                        selected = profile.id == pendingSourceProfileId,
+                        modifier = if (profile.id == selectedSourceProfileId) {
+                            Modifier.focusRequester(focusRequester)
+                        } else {
+                            Modifier
+                        },
+                        onClick = { pendingSourceProfileId = profile.id }
+                    )
+                }
+            }
+            if (pendingSourceProfileId != null) {
                 SourceProfileButton(
-                    text = stringResource(R.string.profile_copy_settings_start_fresh),
-                    selected = pendingSourceProfileId == null,
-                    modifier = if (selectedSourceProfileId == null) {
-                        Modifier.focusRequester(focusRequester)
+                    text = if (pendingCopyProviderCredentials) {
+                        stringResource(R.string.profile_copy_settings_credentials_on)
                     } else {
-                        Modifier
+                        stringResource(R.string.profile_copy_settings_credentials_off)
                     },
+                    selected = pendingCopyProviderCredentials,
                     onClick = {
-                        pendingSourceProfileId = null
-                        pendingCopyProviderCredentials = false
-                        pendingKeepMatched = false
+                        pendingCopyProviderCredentials = !pendingCopyProviderCredentials
                     }
                 )
-            }
-            items(profiles, key = UserProfile::id) { profile ->
                 SourceProfileButton(
-                    text = profile.copySourceLabel(),
-                    selected = profile.id == pendingSourceProfileId,
-                    modifier = if (profile.id == selectedSourceProfileId) {
-                        Modifier.focusRequester(focusRequester)
+                    text = if (pendingKeepMatched) {
+                        stringResource(R.string.profile_keep_matched_on)
                     } else {
-                        Modifier
+                        stringResource(R.string.profile_keep_matched_off)
                     },
-                    onClick = { pendingSourceProfileId = profile.id }
+                    selected = pendingKeepMatched,
+                    onClick = { pendingKeepMatched = !pendingKeepMatched }
                 )
-            }
-        }
-        if (pendingSourceProfileId != null) {
-            SourceProfileButton(
-                text = if (pendingCopyProviderCredentials) {
-                    stringResource(R.string.profile_copy_settings_credentials_on)
-                } else {
-                    stringResource(R.string.profile_copy_settings_credentials_off)
-                },
-                selected = pendingCopyProviderCredentials,
-                onClick = {
-                    pendingCopyProviderCredentials = !pendingCopyProviderCredentials
+                if (pendingKeepMatched) {
+                    Text(
+                        text = stringResource(R.string.profile_keep_matched_details),
+                        color = NuvioTheme.colors.TextTertiary,
+                        style = MaterialTheme.typography.bodySmall
+                    )
                 }
-            )
-            SourceProfileButton(
-                text = if (pendingKeepMatched) {
-                    stringResource(R.string.profile_keep_matched_on)
-                } else {
-                    stringResource(R.string.profile_keep_matched_off)
-                },
-                selected = pendingKeepMatched,
-                onClick = { pendingKeepMatched = !pendingKeepMatched }
-            )
-            if (pendingKeepMatched) {
-                Text(
-                    text = stringResource(R.string.profile_keep_matched_details),
-                    color = NuvioTheme.colors.TextTertiary,
-                    style = MaterialTheme.typography.bodySmall
-                )
             }
+            Text(
+                text = stringResource(R.string.profile_copy_settings_exclusions),
+                color = NuvioTheme.colors.TextTertiary,
+                style = MaterialTheme.typography.bodySmall
+            )
         }
-        Text(
-            text = stringResource(R.string.profile_copy_settings_exclusions),
-            color = NuvioTheme.colors.TextTertiary,
-            style = MaterialTheme.typography.bodySmall
-        )
         Row(
             modifier = Modifier.fillMaxWidth(),
             horizontalArrangement = Arrangement.spacedBy(
@@ -202,88 +212,95 @@ internal fun CopyProfileSettingsDialog(
         subtitle = stringResource(R.string.profile_copy_settings_subtitle),
         width = 560.dp
     ) {
-        Text(
-            text = stringResource(R.string.profile_copy_settings_from),
-            color = NuvioTheme.colors.TextSecondary,
-            fontWeight = FontWeight.SemiBold
-        )
-        LazyColumn(
+        Column(
             modifier = Modifier
-                .fillMaxWidth()
-                .heightIn(
-                    max = NuvioTheme.sizes.buttons.defaultHeight * 2 +
-                        NuvioTheme.spacing.sm
-                ),
-            verticalArrangement = Arrangement.spacedBy(NuvioTheme.spacing.sm)
+                .weight(1f, fill = false)
+                .verticalScroll(rememberScrollState()),
+            verticalArrangement = Arrangement.spacedBy(NuvioTheme.spacing.lg)
         ) {
-            items(sourceProfiles, key = UserProfile::id) { profile ->
-                SourceProfileButton(
-                    text = profile.copySourceLabel(),
-                    selected = profile.id == selectedSourceId,
-                    enabled = !isCopying,
-                    modifier = if (profile.id == defaultSourceId) {
-                        Modifier.focusRequester(focusRequester)
-                    } else {
-                        Modifier
-                    },
-                    onClick = { selectedSourceId = profile.id }
+            Text(
+                text = stringResource(R.string.profile_copy_settings_from),
+                color = NuvioTheme.colors.TextSecondary,
+                fontWeight = FontWeight.SemiBold
+            )
+            LazyColumn(
+                modifier = Modifier
+                    .fillMaxWidth()
+                    .heightIn(
+                        max = NuvioTheme.sizes.buttons.defaultHeight * 2 +
+                            NuvioTheme.spacing.sm
+                    ),
+                verticalArrangement = Arrangement.spacedBy(NuvioTheme.spacing.sm)
+            ) {
+                items(sourceProfiles, key = UserProfile::id) { profile ->
+                    SourceProfileButton(
+                        text = profile.copySourceLabel(),
+                        selected = profile.id == selectedSourceId,
+                        enabled = !isCopying,
+                        modifier = if (profile.id == defaultSourceId) {
+                            Modifier.focusRequester(focusRequester)
+                        } else {
+                            Modifier
+                        },
+                        onClick = { selectedSourceId = profile.id }
+                    )
+                }
+            }
+            SourceProfileButton(
+                text = if (copyProviderCredentials) {
+                    stringResource(R.string.profile_copy_settings_credentials_on)
+                } else {
+                    stringResource(R.string.profile_copy_settings_credentials_off)
+                },
+                selected = copyProviderCredentials,
+                enabled = !isCopying,
+                onClick = { copyProviderCredentials = !copyProviderCredentials }
+            )
+            SourceProfileButton(
+                text = if (copyLiveTv || keepMatched) {
+                    stringResource(R.string.profile_copy_settings_live_tv_on)
+                } else {
+                    stringResource(R.string.profile_copy_settings_live_tv_off)
+                },
+                selected = copyLiveTv || keepMatched,
+                // Matched profiles always share Live TV.
+                enabled = !isCopying && !keepMatched,
+                onClick = { copyLiveTv = !copyLiveTv }
+            )
+            SourceProfileButton(
+                text = if (keepMatched) {
+                    stringResource(R.string.profile_keep_matched_on)
+                } else {
+                    stringResource(R.string.profile_keep_matched_off)
+                },
+                selected = keepMatched,
+                enabled = !isCopying,
+                onClick = { keepMatched = !keepMatched }
+            )
+            if (keepMatched) {
+                Text(
+                    text = stringResource(R.string.profile_keep_matched_details),
+                    color = NuvioTheme.colors.TextTertiary,
+                    style = MaterialTheme.typography.bodySmall
                 )
             }
-        }
-        SourceProfileButton(
-            text = if (copyProviderCredentials) {
-                stringResource(R.string.profile_copy_settings_credentials_on)
-            } else {
-                stringResource(R.string.profile_copy_settings_credentials_off)
-            },
-            selected = copyProviderCredentials,
-            enabled = !isCopying,
-            onClick = { copyProviderCredentials = !copyProviderCredentials }
-        )
-        SourceProfileButton(
-            text = if (copyLiveTv || keepMatched) {
-                stringResource(R.string.profile_copy_settings_live_tv_on)
-            } else {
-                stringResource(R.string.profile_copy_settings_live_tv_off)
-            },
-            selected = copyLiveTv || keepMatched,
-            // Matched profiles always share Live TV.
-            enabled = !isCopying && !keepMatched,
-            onClick = { copyLiveTv = !copyLiveTv }
-        )
-        SourceProfileButton(
-            text = if (keepMatched) {
-                stringResource(R.string.profile_keep_matched_on)
-            } else {
-                stringResource(R.string.profile_keep_matched_off)
-            },
-            selected = keepMatched,
-            enabled = !isCopying,
-            onClick = { keepMatched = !keepMatched }
-        )
-        if (keepMatched) {
             Text(
-                text = stringResource(R.string.profile_keep_matched_details),
+                text = stringResource(R.string.profile_copy_settings_live_tv_details),
                 color = NuvioTheme.colors.TextTertiary,
                 style = MaterialTheme.typography.bodySmall
             )
-        }
-        Text(
-            text = stringResource(R.string.profile_copy_settings_live_tv_details),
-            color = NuvioTheme.colors.TextTertiary,
-            style = MaterialTheme.typography.bodySmall
-        )
-        Text(
-            text = stringResource(R.string.profile_copy_settings_details),
-            color = NuvioTheme.colors.TextTertiary,
-            style = MaterialTheme.typography.bodySmall
-        )
-        if (errorMessage != null) {
             Text(
-                text = errorMessage,
-                color = NuvioTheme.colors.Error,
+                text = stringResource(R.string.profile_copy_settings_details),
+                color = NuvioTheme.colors.TextTertiary,
                 style = MaterialTheme.typography.bodySmall
             )
+            if (errorMessage != null) {
+                Text(
+                    text = errorMessage,
+                    color = NuvioTheme.colors.Error,
+                    style = MaterialTheme.typography.bodySmall
+                )
+            }
         }
         Row(
             modifier = Modifier.fillMaxWidth(),
