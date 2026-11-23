@@ -32,6 +32,9 @@
 <string name="app_menu_icon_packs">Icon packs</string>
     
 <string name="app_menu_icon_system">System icon (ignore the icon pack)</string>
+<string name="app_menu_icon_custom">Choose an image from a file manager</string>
+<string name="app_menu_icon_custom_failed">That file could not be used as an icon. Pick a PNG, JPG or WebP image.</string>
+<string name="app_menu_icon_no_file_manager">No file manager was found on this TV. Install one, or use an icon pack.</string>
     
 <string name="app_menu_no_icon_packs">No icon packs installed on this device.</string>
     

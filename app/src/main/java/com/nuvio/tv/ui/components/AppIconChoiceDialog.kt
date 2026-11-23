@@ -2,6 +2,10 @@
 
 package com.nuvio.tv.ui.components
 
+import android.content.ActivityNotFoundException
+import android.widget.Toast
+import androidx.activity.compose.rememberLauncherForActivityResult
+import androidx.activity.result.contract.ActivityResultContracts
 import androidx.compose.foundation.Image
 import androidx.compose.foundation.background
 import androidx.compose.foundation.layout.Arrangement
@@ -24,6 +28,7 @@ import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
+import androidx.compose.runtime.rememberCoroutineScope
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
@@ -31,6 +36,7 @@ import androidx.compose.ui.draw.clip
 import androidx.compose.ui.focus.FocusRequester
 import androidx.compose.ui.focus.focusRequester
 import androidx.compose.ui.layout.ContentScale
+import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.window.Dialog
@@ -47,16 +53,34 @@ import com.nuvio.tv.core.apps.IconPackEntry
 import com.nuvio.tv.core.apps.IconPackInfo
 import com.nuvio.tv.core.apps.InstalledApp
 import com.nuvio.tv.ui.theme.NuvioTheme
+import kotlinx.coroutines.launch
 
 /**
- * "Change icon" for one app: follow the icon pack, use the app's own icon, or pick any icon from an installed
- * icon pack. From a pack's icons, the whole pack can also be made the pack for every app.
+ * "Change icon" for one app: follow the icon pack, use the app's own icon, pick an image from a file manager, or pick any
+ * icon from an installed icon pack. From a pack's icons, the whole pack can also be made the pack for every app.
  */
 @Composable
 fun AppIconChoiceDialog(app: InstalledApp, chooser: AppIconChooser, onDismiss: () -> Unit) {
     var packs by remember { mutableStateOf<List<IconPackInfo>?>(null) }
     var openPack by remember { mutableStateOf<IconPackInfo?>(null) }
     LaunchedEffect(Unit) { packs = runCatching { chooser.loadPacks() }.getOrDefault(emptyList()) }
+
+    // An image of the user's own, from a file manager.
+    val context = LocalContext.current
+    val scope = rememberCoroutineScope()
+    val picker = rememberLauncherForActivityResult(ActivityResultContracts.GetContent()) { uri ->
+        if (uri != null) scope.launch {
+            if (chooser.chooseImage(uri)) onDismiss()
+            else Toast.makeText(context, R.string.app_menu_icon_custom_failed, Toast.LENGTH_LONG).show()
+        }
+    }
+    val chooseImage = {
+        try {
+            picker.launch("image/*")
+        } catch (_: ActivityNotFoundException) {
+            Toast.makeText(context, R.string.app_menu_icon_no_file_manager, Toast.LENGTH_LONG).show()
+        }
+    }
 
     // The app's own dialog look, like the app's menu this was opened from.
     NuvioDialog(onDismiss = onDismiss, title = app.label, width = 560.dp) {
@@ -67,6 +91,7 @@ fun AppIconChoiceDialog(app: InstalledApp, chooser: AppIconChooser, onDismiss: (
                     packs = packs,
                     onFollowPack = { chooser.choose(null); onDismiss() },
                     onSystemIcon = { chooser.choose(IconChoice.SYSTEM); onDismiss() },
+                    onChooseImage = chooseImage,
                     onOpenPack = { openPack = it },
                     onClose = onDismiss
                 )
@@ -88,6 +113,7 @@ private fun PackList(
     packs: List<IconPackInfo>?,
     onFollowPack: () -> Unit,
     onSystemIcon: () -> Unit,
+    onChooseImage: () -> Unit,
     onOpenPack: (IconPackInfo) -> Unit,
     onClose: () -> Unit
 ) {
@@ -98,6 +124,9 @@ private fun PackList(
     }
     Button(colors = appMenuButtonColors(), onClick = onSystemIcon, modifier = Modifier.fillMaxWidth()) {
         Text(stringResource(R.string.app_menu_icon_system))
+    }
+    Button(colors = appMenuButtonColors(), onClick = onChooseImage, modifier = Modifier.fillMaxWidth()) {
+        Text(stringResource(R.string.app_menu_icon_custom))
     }
     Text(
         stringResource(R.string.app_menu_icon_packs),

@@ -7,6 +7,7 @@ import android.content.Intent
 import android.content.IntentFilter
 import android.content.pm.PackageManager
 import android.graphics.Bitmap
+import android.graphics.BitmapFactory
 import android.net.Uri
 import android.provider.Settings
 import android.util.LruCache
@@ -26,8 +27,13 @@ import kotlinx.coroutines.flow.flowOn
 import kotlinx.coroutines.flow.map
 import kotlinx.coroutines.launch
 import kotlinx.coroutines.withContext
+import java.io.File
 import javax.inject.Inject
 import javax.inject.Singleton
+
+private const val CUSTOM_ICON_DIR = "custom_app_icons"
+/** Longest side of a picked icon image, in pixels. */
+private const val CUSTOM_ICON_MAX_PX = 512
 
 /** One app that can be opened from the launcher. */
 data class InstalledApp(
@@ -158,10 +164,50 @@ class InstalledAppsRepository @Inject constructor(
      * (the app's own, whatever the pack says) or null (follow the icon pack again).
      */
     fun setAppIcon(app: InstalledApp, choice: String?) {
+        val previous = savedIcons.value[app.packageName]
         val updated = if (choice.isNullOrBlank()) savedIcons.value - app.packageName else savedIcons.value + (app.packageName to choice)
         prefs.edit().putString(KEY_ICONS, AppLabels.encode(updated)).apply()
         images.evictAll()
         savedIcons.value = updated
+        // An image the user picked earlier is not needed any more. Only this profile's own files are removed.
+        if (previous != null && previous != choice) {
+            IconChoice.fileName(previous)
+                ?.takeIf { it.startsWith("p${profileManager.activeProfileId.value}_") }
+                ?.let { runCatching { File(customIconDir(), it).delete() } }
+        }
+    }
+
+    private fun customIconDir() = File(context.filesDir, CUSTOM_ICON_DIR)
+
+    /**
+     * Uses the image at [uri] (picked in a file manager) as [app]'s icon, for the active profile. The image is copied into
+     * the app's own storage and scaled down, so it keeps working if the original is moved or deleted. False when the
+     * file is not an image the device can read.
+     */
+    suspend fun setCustomIcon(app: InstalledApp, uri: Uri): Boolean = withContext(Dispatchers.IO) {
+        runCatching {
+            val resolver = context.contentResolver
+            val bounds = BitmapFactory.Options().apply { inJustDecodeBounds = true }
+            resolver.openInputStream(uri)?.use { BitmapFactory.decodeStream(it, null, bounds) }
+            if (bounds.outWidth <= 0 || bounds.outHeight <= 0) return@runCatching false
+            var sample = 1
+            while (maxOf(bounds.outWidth, bounds.outHeight) / (sample * 2) >= CUSTOM_ICON_MAX_PX) sample *= 2
+            val decoded = resolver.openInputStream(uri)?.use {
+                BitmapFactory.decodeStream(it, null, BitmapFactory.Options().apply { inSampleSize = sample })
+            } ?: return@runCatching false
+            val longest = maxOf(decoded.width, decoded.height)
+            val bitmap = if (longest > CUSTOM_ICON_MAX_PX) {
+                val scale = CUSTOM_ICON_MAX_PX.toFloat() / longest
+                Bitmap.createScaledBitmap(
+                    decoded, (decoded.width * scale).toInt().coerceAtLeast(1), (decoded.height * scale).toInt().coerceAtLeast(1), true
+                )
+            } else decoded
+            val dir = customIconDir().apply { mkdirs() }
+            val name = "p${profileManager.activeProfileId.value}_${app.packageName}_${System.currentTimeMillis()}.png"
+            File(dir, name).outputStream().use { bitmap.compress(Bitmap.CompressFormat.PNG, 100, it) }
+            setAppIcon(app, IconChoice.fromFile(name))
+            true
+        }.getOrDefault(false)
     }
 
     /** The icon pack chosen for this app alone, or null when it follows the global pack. */
@@ -243,6 +289,14 @@ class InstalledAppsRepository @Inject constructor(
         return withContext(Dispatchers.IO) {
             val choice = savedIcons.value[app.packageName]
             val pack = savedPack.value
+            // An image the user picked from a file manager.
+            IconChoice.fileName(choice)?.let { name ->
+                val custom = runCatching { BitmapFactory.decodeFile(File(customIconDir(), name).path) }.getOrNull()
+                if (custom != null) {
+                    images.put(cacheKey, custom)
+                    return@withContext custom
+                }
+            }
             val fromPack = runCatching {
                 when {
                     choice == IconChoice.SYSTEM -> null
@@ -292,6 +346,15 @@ object IconChoice {
     /** This app shows its own icon, whatever icon pack is selected. */
     const val SYSTEM = "system"
     private const val PREFIX = "iconpack:"
+    private const val FILE_PREFIX = "file:"
+
+    /** An image the user picked from a file manager, saved in the app's own storage under [name]. */
+    fun fromFile(name: String) = "$FILE_PREFIX$name"
+
+    /** The saved file name of an image choice; null for anything else. */
+    fun fileName(choice: String?): String? =
+        choice?.takeIf { it.startsWith(FILE_PREFIX) }?.removePrefix(FILE_PREFIX)
+            ?.takeIf { it.isNotBlank() && '/' !in it && '\\' !in it }
 
     fun fromPack(packPackage: String, drawable: String) = "$PREFIX$packPackage:$drawable"
 

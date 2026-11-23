@@ -49,6 +49,7 @@ class InstalledAppsViewModel @Inject constructor(
         loadPacks = { iconPackManager.getInstalledIconPacks() },
         loadIcons = { iconPackManager.loadIconsForPack(it) },
         choose = { repository.setAppIcon(app, it) },
+        chooseImage = { repository.setCustomIcon(app, it) },
         setGlobalPack = { repository.setIconPack(it) }
     )
 }
@@ -61,6 +62,8 @@ class AppIconChooser(
     val loadIcons: suspend (packPackage: String) -> List<IconPackEntry>,
     /** An [IconChoice] for this app, or null to follow the icon pack again. */
     val choose: (String?) -> Unit,
+    /** Use the image at this address (picked in a file manager) as this app's icon. False when it can't be used. */
+    val chooseImage: suspend (android.net.Uri) -> Boolean,
     /** Use this icon pack for every app. */
     val setGlobalPack: (String?) -> Unit
 )
