@@ -7,7 +7,10 @@ import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.items
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
+import androidx.compose.runtime.getValue
+import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
+import androidx.compose.runtime.setValue
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.focus.FocusRequester
 import androidx.compose.ui.focus.focusRequester
@@ -32,12 +35,13 @@ internal fun GroupTagsDialog(
     selected: Set<String>,
     scanning: Boolean,
     channelCount: Int,
-    onScan: () -> Unit,
+    onScan: (Boolean) -> Unit,
     onToggle: (String, Boolean) -> Unit,
     onClear: () -> Unit,
     onDismiss: () -> Unit
 ) {
     val first = remember { FocusRequester() }
+    var countriesOnly by remember { mutableStateOf(true) }
     LaunchedEffect(Unit) {
         delay(80)
         runCatching { first.requestFocus() }
@@ -55,11 +59,27 @@ internal fun GroupTagsDialog(
             color = NuvioTheme.colors.TextSecondary
         )
 
+        SettingsToggleRow(
+            title = stringResource(R.string.iptv_settings_group_tags_countries_only),
+            subtitle = stringResource(R.string.iptv_settings_group_tags_countries_only_desc),
+            checked = countriesOnly,
+            onToggle = {
+                countriesOnly = !countriesOnly
+                onScan(countriesOnly)
+            }
+        )
+
         SettingsActionRow(
             title = when {
                 scanning -> stringResource(R.string.iptv_settings_group_tags_scanning)
-                tags.isEmpty() -> stringResource(R.string.iptv_settings_group_tags_scan)
-                else -> stringResource(R.string.iptv_settings_group_tags_scan_again)
+                tags.isEmpty() -> stringResource(
+                    if (countriesOnly) R.string.iptv_settings_group_tags_scan_countries
+                    else R.string.iptv_settings_group_tags_scan
+                )
+                else -> stringResource(
+                    if (countriesOnly) R.string.iptv_settings_group_tags_scan_countries_again
+                    else R.string.iptv_settings_group_tags_scan_again
+                )
             },
             subtitle = if (channelCount == 0) {
                 stringResource(R.string.iptv_settings_group_tags_no_channels)
@@ -69,7 +89,7 @@ internal fun GroupTagsDialog(
             value = selected.size.takeIf { it > 0 }?.let {
                 stringResource(R.string.iptv_settings_group_tags_selected, it)
             },
-            onClick = onScan,
+            onClick = { onScan(countriesOnly) },
             modifier = Modifier.focusRequester(first),
             enabled = !scanning && channelCount > 0
         )
@@ -97,7 +117,10 @@ internal fun GroupTagsDialog(
             }
         } else if (!scanning) {
             Text(
-                text = stringResource(R.string.iptv_settings_group_tags_empty),
+                text = stringResource(
+                    if (countriesOnly) R.string.iptv_settings_group_tags_empty_countries
+                    else R.string.iptv_settings_group_tags_empty
+                ),
                 style = MaterialTheme.typography.bodyMedium,
                 color = NuvioTheme.colors.TextSecondary
             )

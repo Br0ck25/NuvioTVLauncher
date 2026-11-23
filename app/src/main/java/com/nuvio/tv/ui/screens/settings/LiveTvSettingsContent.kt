@@ -2294,7 +2294,7 @@ internal fun LiveTvSettingsContent(
             selected = user.groupTagFilters,
             scanning = scanningGroupTags,
             channelCount = groupTagChannelCount,
-            onScan = viewModel::scanGroupTags,
+            onScan = { countriesOnly -> viewModel.scanGroupTags(countriesOnly) },
             onToggle = viewModel::setGroupTagFilter,
             onClear = viewModel::clearGroupTagFilters,
             onDismiss = close

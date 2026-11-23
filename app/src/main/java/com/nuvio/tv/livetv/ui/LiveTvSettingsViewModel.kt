@@ -231,13 +231,18 @@ class LiveTvSettingsViewModel @Inject constructor(
     fun setPlaylistVisible(id: String, visible: Boolean) =
         viewModelScope.launch { prefs.setPlaylistHidden(id, !visible) }
 
-    /** Manual scan: reads the loaded channel groups and lists the tags they use. */
-    fun scanGroupTags() {
+    /**
+     * Manual scan: reads the loaded channel groups and lists the tags they use.
+     * [countriesOnly] lists country names/codes from the groups instead of every word.
+     */
+    fun scanGroupTags(countriesOnly: Boolean = true) {
         if (_scanningGroupTags.value) return
         _scanningGroupTags.value = true
         viewModelScope.launch {
             val channels = repository.channels.value
-            _groupTags.value = withContext(Dispatchers.Default) { LiveTvGroupTags.scan(channels) }
+            _groupTags.value = withContext(Dispatchers.Default) {
+                LiveTvGroupTags.scan(channels, countriesOnly = countriesOnly)
+            }
             _scanningGroupTags.value = false
         }
     }
