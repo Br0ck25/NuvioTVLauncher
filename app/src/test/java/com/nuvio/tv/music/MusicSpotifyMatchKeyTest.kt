@@ -61,4 +61,15 @@ class MusicSpotifyMatchKeyTest {
             MusicSpotifyWebSync.localIndexKey("Song Two", "Artist")
         )
     }
+
+    @Test
+    fun `live and remix versions are not collapsed into the studio track`() {
+        val studio = MusicSpotifyWebSync.localIndexKey("Song", "Artist")
+        assertNotEquals(studio, MusicSpotifyWebSync.localIndexKey("Song (Live)", "Artist"))
+        assertNotEquals(studio, MusicSpotifyWebSync.localIndexKey("Song - Remix", "Artist"))
+        assertNotEquals(
+            MusicSpotifyWebSync.localIndexKey("Song (Live)", "Artist"),
+            MusicSpotifyWebSync.localIndexKey("Song - Remix", "Artist")
+        )
+    }
 }

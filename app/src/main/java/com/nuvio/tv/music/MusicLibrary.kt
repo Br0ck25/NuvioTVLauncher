@@ -114,14 +114,26 @@ object MusicLibrary {
     /**
      * Adds Spotify-liked songs to this device's Liked Songs. Existing likes are kept and
      * duplicates are skipped; the returned count is how many were added.
+     *
+     * A song is also considered a duplicate when the same title/artist is already liked under a
+     * different YouTube video id. That happens when two devices match the same Spotify track to
+     * different uploads, and without this check every sync would add the recording again.
      */
     @Synchronized
     fun addLikedSongs(songs: List<Song>): Int {
         if (songs.isEmpty()) return 0
         val current = _liked.value
-        val existing = current.mapTo(HashSet()) { it.videoId }
+        val existingIds = current.mapTo(HashSet()) { it.videoId }
+        fun keyOf(title: String, artist: String): String? =
+            if (title.isBlank() || artist.isBlank()) null
+            else MusicMatchKeys.song(title, artist)
+        val existingKeys = current.mapNotNullTo(HashSet()) { keyOf(it.title, it.artist) }
         val additions = songs
-            .filter { it.videoId.isNotBlank() && existing.add(it.videoId) }
+            .filter { song ->
+                if (song.videoId.isBlank() || !existingIds.add(song.videoId)) return@filter false
+                val key = keyOf(song.title, song.artist) ?: return@filter true
+                existingKeys.add(key)
+            }
             .map { it.toStored() }
         if (additions.isEmpty()) return 0
         val next = current + additions

@@ -116,6 +116,24 @@ object MusicSpotifyWebSync {
                 matchConcurrency = MATCH_CONCURRENCY
                 minPaceMs = MATCH_PAUSE_MS
                 paceMs = minPaceMs
+                // Liked Songs are the shared "already have it" set for the whole run. A track
+                // in it is not added again to a Spotify playlist, and a match to a different
+                // upload of the same recording is still treated as the same liked song.
+                val likedIds = MusicLibrary.liked.value.mapTo(mutableSetOf()) { it.videoId }
+                fun identityOf(title: String, artist: String): String? =
+                    if (title.isBlank() || artist.isBlank()) null
+                    else MusicMatchKeys.song(title, artist)
+                val likedKeys = MusicLibrary.liked.value
+                    .mapNotNullTo(mutableSetOf()) { identityOf(it.title, it.artist) }
+                fun noteLiked(song: Song) {
+                    likedIds += song.videoId
+                    identityOf(song.title, song.artist)?.let { likedKeys += it }
+                }
+                fun isAlreadyLiked(song: Song): Boolean {
+                    if (song.videoId in likedIds) return true
+                    val key = identityOf(song.title, song.artist) ?: return false
+                    return key in likedKeys
+                }
                 val client = SpotifyWebClient.connect(cookie, requireSignedIn = true).getOrThrow()
                 val account = client.account().getOrThrow()
                 val accountKey = account.name.ifBlank { "spotify" }
@@ -190,6 +208,7 @@ object MusicSpotifyWebSync {
                                     MusicLibrary.addLikedSongs(old.songs.map { it.toSong() })
                                     MusicLibrary.deletePlaylist(old.id)
                                 }
+                                old.songs.forEach { noteLiked(it.toSong()) }
                                 playlistMap.remove(sourceKey)
                                 store.edit()
                                     .putString(KEY_PLAYLIST_MAP, JSONObject(playlistMap).toString())
@@ -229,9 +248,7 @@ object MusicSpotifyWebSync {
                     }
 
                     val existing = if (isLiked) {
-                        withContext(Dispatchers.Main) {
-                            MusicLibrary.liked.value.mapTo(mutableSetOf()) { it.videoId }
-                        }
+                        likedIds
                     } else {
                         withContext(Dispatchers.Main) {
                             MusicLibrary.playlists.value
@@ -265,9 +282,14 @@ object MusicSpotifyWebSync {
                         val localSong = localIndex[indexKey]
                         if (localSong != null) {
                             known[key] = localSong.videoId
+                            if (isAlreadyLiked(localSong)) {
+                                handled++
+                                return@forEach
+                            }
                             if (existing.add(localSong.videoId)) {
                                 if (isLiked) {
                                     likedBatch += localSong
+                                    noteLiked(localSong)
                                 } else {
                                     withContext(Dispatchers.Main) {
                                         MusicLibrary.addToPlaylist(localId, localSong)
@@ -324,9 +346,12 @@ object MusicSpotifyWebSync {
                             if (song != null) {
                                 missCache.remove(item.trackKey)
                                 queryHits[item.trackKey] = song
+                                known[item.trackKey] = song.videoId
+                                if (isAlreadyLiked(song)) return@forEach
                                 if (existing.add(song.videoId)) {
                                     if (isLiked) {
                                         likedBatch += song
+                                        noteLiked(song)
                                     } else {
                                         withContext(Dispatchers.Main) {
                                             MusicLibrary.addToPlaylist(localId, song)
@@ -334,13 +359,12 @@ object MusicSpotifyWebSync {
                                     }
                                     addedHere++
                                 }
-                                known[item.trackKey] = song.videoId
                             } else if (match.definitive) {
                                 missCache[item.trackKey] = System.currentTimeMillis()
                             }
                         }
                         if (isLiked && likedBatch.isNotEmpty()) {
-                            withContext(Dispatchers.Main) {
+                            likedAdded += withContext(Dispatchers.Main) {
                                 MusicLibrary.addLikedSongs(likedBatch)
                             }
                             likedBatch.clear()
@@ -362,14 +386,12 @@ object MusicSpotifyWebSync {
                         delay(paceMs)
                     }
                     if (isLiked && likedBatch.isNotEmpty()) {
-                        withContext(Dispatchers.Main) {
+                        likedAdded += withContext(Dispatchers.Main) {
                             MusicLibrary.addLikedSongs(likedBatch)
                         }
                     }
 
-                    if (isLiked) {
-                        likedAdded += addedHere
-                    } else {
+                    if (!isLiked) {
                         tracksAdded += addedHere
                         playlistsSynced++
                     }
@@ -519,35 +541,11 @@ object MusicSpotifyWebSync {
     }
 
     internal fun localIndexKey(title: String, artist: String): String =
-        "${normalizeMatchTitle(title)}|${normalizeMatchArtist(artist)}"
+        MusicMatchKeys.song(title, artist)
 
-    /**
-     * Spotify and YouTube spell the same recording differently: "(Official Audio)", "Remastered
-     * 2011", "feat. ..." and punctuation are common on one and absent on the other. The index key
-     * drops those so an already-known track does not need a search.
-     */
-    internal fun normalizeMatchTitle(value: String): String {
-        var text = value.lowercase().trim()
-        text = text.replace("'", "").replace("\u2019", "")
-        text = text.replace(Regex("\\([^)]*\\)|\\[[^]]*\\]"), " ")
-        text = text.replace(
-            Regex(
-                "\\s+-\\s+((\\d{4}\\s+)?remaster(ed)?|official[^-]*|audio|video|lyrics|live|" +
-                    "radio edit|single version)(\\s+\\d{4})?\\s*$"
-            ),
-            " "
-        )
-        text = text.replace(Regex("\\b(feat\\.?|ft\\.?|featuring)\\b.*$"), " ")
-        return text.replace(Regex("[^\\p{L}\\p{N}]+"), " ").trim()
-    }
+    internal fun normalizeMatchTitle(value: String): String = MusicMatchKeys.titleKey(value)
 
-    internal fun normalizeMatchArtist(value: String): String {
-        var text = value.lowercase().trim()
-        text = text.replace("'", "").replace("\u2019", "")
-        text = text.substringBefore(",").substringBefore(" & ")
-        text = text.substringBefore(" feat").substringBefore(" ft.")
-        return text.replace(Regex("[^\\p{L}\\p{N}]+"), " ").trim()
-    }
+    internal fun normalizeMatchArtist(value: String): String = MusicMatchKeys.artistKey(value)
 
     private fun loadStringMap(raw: String?): MutableMap<String, String> {
         val result = mutableMapOf<String, String>()
