@@ -60,31 +60,49 @@ internal fun SectionScalingSettingsCard(
         title = stringResource(R.string.appearance_section_scaling),
         subtitle = stringResource(R.string.appearance_section_scaling_subtitle)
     ) {
-        SettingsActionRow(
-            title = stringResource(R.string.appearance_scaling_section),
-            subtitle = stringResource(R.string.appearance_scaling_section_subtitle),
-            value = sectionLabel(selectedSection),
-            onClick = { showSectionPicker = true }
-        )
-        SliderSettingsItem(
-            title = stringResource(R.string.appearance_scaling_text),
-            values = SectionScales.PERCENT_STEPS,
-            selected = scale.textPercent,
-            valueText = "${scale.textPercent}%",
-            onValueChange = { percent -> viewModel.setTextScale(selectedSection, percent) }
-        )
-        SliderSettingsItem(
-            title = stringResource(R.string.appearance_scaling_interface),
-            values = SectionScales.PERCENT_STEPS,
-            selected = scale.uiPercent,
-            valueText = "${scale.uiPercent}%",
-            onValueChange = { percent -> viewModel.setUiScale(selectedSection, percent) }
-        )
-        SectionScalingPreview(selectedSection, scale)
-        SettingsResetButton(
-            text = stringResource(R.string.appearance_scaling_reset),
-            onClick = { viewModel.resetAll() }
-        )
+        // Controls on the left, sample on the right: the preview stays in view while the
+        // sliders are being adjusted, instead of sitting below them off screen.
+        Row(
+            modifier = Modifier.fillMaxWidth(),
+            horizontalArrangement = Arrangement.spacedBy(16.dp),
+            verticalAlignment = Alignment.Top
+        ) {
+            Column(
+                modifier = Modifier.weight(1f),
+                verticalArrangement = Arrangement.spacedBy(6.dp)
+            ) {
+                SettingsActionRow(
+                    title = stringResource(R.string.appearance_scaling_section),
+                    subtitle = stringResource(R.string.appearance_scaling_section_subtitle),
+                    value = sectionLabel(selectedSection),
+                    onClick = { showSectionPicker = true }
+                )
+                SliderSettingsItem(
+                    title = stringResource(R.string.appearance_scaling_text),
+                    values = SectionScales.PERCENT_STEPS,
+                    selected = scale.textPercent,
+                    valueText = "${scale.textPercent}%",
+                    onValueChange = { percent -> viewModel.setTextScale(selectedSection, percent) }
+                )
+                SliderSettingsItem(
+                    title = stringResource(R.string.appearance_scaling_interface),
+                    values = SectionScales.PERCENT_STEPS,
+                    selected = scale.uiPercent,
+                    valueText = "${scale.uiPercent}%",
+                    onValueChange = { percent -> viewModel.setUiScale(selectedSection, percent) }
+                )
+                SettingsResetButton(
+                    text = stringResource(R.string.appearance_scaling_reset),
+                    onClick = { viewModel.resetAll() }
+                )
+            }
+            Column(
+                modifier = Modifier.weight(1f),
+                verticalArrangement = Arrangement.spacedBy(6.dp)
+            ) {
+                SectionScalingPreview(selectedSection, scale)
+            }
+        }
     }
 
     if (showSectionPicker) {
@@ -129,34 +147,29 @@ private fun sectionLabel(section: String): String = when (section) {
  */
 @Composable
 private fun SectionScalingPreview(section: String, scale: SectionScale) {
-    Spacer(Modifier.height(10.dp))
     Text(
         text = stringResource(R.string.appearance_scaling_preview),
         style = MaterialTheme.typography.labelLarge,
         color = NuvioTheme.colors.TextSecondary
     )
-    Spacer(Modifier.height(6.dp))
-    Row(
-        modifier = Modifier.fillMaxWidth(),
-        horizontalArrangement = Arrangement.spacedBy(12.dp)
-    ) {
-        ScalingPreviewPanel(
-            title = stringResource(R.string.appearance_scaling_normal),
-            detail = stringResource(R.string.appearance_scaling_normal_detail),
-            scale = SectionScale(),
-            modifier = Modifier.weight(1f)
-        )
-        ScalingPreviewPanel(
-            title = sectionLabel(section),
-            detail = stringResource(
-                R.string.appearance_scaling_preview_detail,
-                scale.textPercent,
-                scale.uiPercent
-            ),
-            scale = scale,
-            modifier = Modifier.weight(1f)
-        )
-    }
+    Spacer(Modifier.height(4.dp))
+    ScalingPreviewPanel(
+        title = stringResource(R.string.appearance_scaling_normal),
+        detail = stringResource(R.string.appearance_scaling_normal_detail),
+        scale = SectionScale(),
+        modifier = Modifier.fillMaxWidth()
+    )
+    Spacer(Modifier.height(8.dp))
+    ScalingPreviewPanel(
+        title = sectionLabel(section),
+        detail = stringResource(
+            R.string.appearance_scaling_preview_detail,
+            scale.textPercent,
+            scale.uiPercent
+        ),
+        scale = scale,
+        modifier = Modifier.fillMaxWidth()
+    )
 }
 
 @Composable
@@ -193,7 +206,7 @@ private fun ScalingPreviewPanel(
         Box(
             modifier = Modifier
                 .fillMaxWidth()
-                .height(150.dp)
+                .height(116.dp)
                 .clip(RoundedCornerShape(10.dp))
                 .background(NuvioTheme.colors.BackgroundCard)
                 .border(

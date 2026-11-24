@@ -3,7 +3,7 @@
 ## Home & Player
 
 - **One shared Home tile size** now drives Continue Watching, collection folders, Upcoming and the Live TV row, so the rows line up. **Layout → Tile Size** picks the size (104–140); it follows Poster Width until you choose one.
-- **Per-section text and interface scaling** is under **Appearance → Section scaling**. Each section keeps its own text size and whole-page size, with a side-by-side Normal/Your size preview. Settings itself is never scaled.
+- **Per-section text and interface scaling** is under **Appearance → Section scaling**. Each section keeps its own text size and whole-page size, with a compact Normal/Your size preview beside the controls. Settings itself is never scaled.
 - **Repeat** is now a player button for movies and episodes. It loops the current video until turned off; live streams and OneTube keep their own behavior.
 - The **side menu no longer stays on screen** in any section. It opens with Left, Menu or Back and disappears after choosing a page.
 - Selecting an **unaired episode** in Upcoming opens its details instead of trying to play it.
