@@ -28,7 +28,7 @@
 - **Spotify sync is faster**: changed playlists are fetched in parallel, two tracks are matched at a time, known tracks are matched from your library without a search, and definitive misses are remembered so repeat syncs skip them. A rate-limit response drops the rest of the run back to one search at a time.
 - A track that is already in **Liked Songs** is not added again to a Spotify playlist, and the same recording matched to a different video on another device is not added to Liked Songs twice.
 - **Home rows** can now be arranged from Music Settings. Move a row with Left/Right, hide or show it with OK, pin your own playlists to the top, or reset every row. Each profile keeps its own arrangement.
-- The Nuvio side rail no longer rests over any section; open it from the left edge, Menu or Back when you need it, and it hides after a selection.
+- The Nuvio side rail no longer rests over any section. Open it with Back anywhere, or Left outside Live TV, and it hides after a selection.
 - Music videos can be **minimized to an in-app mini player** while you keep browsing Music. The mini player keeps the same video playing and gives you expand, play/pause and close buttons.
 
 ## Live TV
@@ -38,5 +38,5 @@
 - Live TV add-on source rows for an add-on you have uninstalled are removed on the next refresh instead of staying switched on with an error.
 - Automatic EPG matching now considers **dummy/event guide channels with no listings in the kept window**. They match at a lower priority than channels with real listings, so providers with hundreds of placeholder channels no longer need manual assignment.
 - A **Sync ±… ms** badge appears in the play bar while a channel has an active correction, and **Reset audio sync** returns it to zero.
-- The guide's left column now has a separate collapsible **Playlists** section. Picking a playlist limits the group list and All channels to it; Favorites and Recently watched still pull from every playlist.
+- The guide now has a separate **Playlists** column to the left of the groups. Press Left from the groups to open it and pick All playlists or one playlist; the group list and All channels then narrow to it, while Favorites and Recently watched still pull from every playlist. Right returns to the groups.
 

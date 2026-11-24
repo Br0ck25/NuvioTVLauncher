@@ -2136,18 +2136,6 @@ private fun LegacySidebarScaffold(
             modifier = Modifier
                 .fillMaxSize()
                 .onPreviewKeyEvent { keyEvent ->
-                    // The host rail is hidden until opened; the remote's Menu key opens it
-                    // reliably even when Left is used by the row under the highlight.
-                    if (
-                        showSidebar &&
-                        drawerState.currentValue == DrawerValue.Closed &&
-                        keyEvent.type == KeyEventType.KeyDown &&
-                        keyEvent.key == Key.Menu
-                    ) {
-                        pendingSidebarFocusRequest = true
-                        drawerState.setValue(DrawerValue.Open)
-                        return@onPreviewKeyEvent true
-                    }
                     // Long-press Back on a root route directly opens the sidebar,
                     // bypassing the "scroll row to start" BackHandler in home content.
                     if (keyEvent.key == Key.Back) {
@@ -2184,7 +2172,16 @@ private fun LegacySidebarScaffold(
                         keyEvent.type == KeyEventType.KeyDown &&
                         keyEvent.key == openKey
                     ) {
-                        if (focusManager.moveFocus(if (isRtl) FocusDirection.Right else FocusDirection.Left)) {
+                        // Live TV's guide uses Left for its own columns (channels → groups
+                        // → playlists). Back opens the menu there instead.
+                        if (currentRoute == Screen.LiveTv.route) {
+                            false
+                        } else if (hideSidebarRail) {
+                            // No permanent rail to move onto: open the menu directly.
+                            pendingSidebarFocusRequest = true
+                            drawerState.setValue(DrawerValue.Open)
+                            true
+                        } else if (focusManager.moveFocus(if (isRtl) FocusDirection.Right else FocusDirection.Left)) {
                             true
                         } else {
                             pendingSidebarFocusRequest = true
@@ -2644,19 +2641,6 @@ private fun ModernSidebarScaffold(
                     else Modifier
                 )
                 .onPreviewKeyEvent { keyEvent ->
-                    // The host rail is hidden until opened; the remote's Menu key opens it.
-                    if (
-                        showSidebar &&
-                        !isSidebarExpanded &&
-                        !sidebarCollapsePending &&
-                        keyEvent.type == KeyEventType.KeyDown &&
-                        keyEvent.key == Key.Menu
-                    ) {
-                        isSidebarExpanded = true
-                        sidebarCollapsePending = false
-                        pendingSidebarFocusRequest = true
-                        return@onPreviewKeyEvent true
-                    }
                     // Long-press Back on a root route directly opens the sidebar,
                     // bypassing the "scroll row to start" BackHandler in home content.
                     if (keyEvent.key == Key.Back) {
@@ -2711,7 +2695,18 @@ private fun ModernSidebarScaffold(
                         }
                         val openKey = if (isRtl) Key.DirectionRight else Key.DirectionLeft
                         if (keyEvent.key == openKey) {
-                            if (focusManager.moveFocus(if (isRtl) FocusDirection.Right else FocusDirection.Left)) {
+                            // Live TV's guide uses Left for its own columns (channels → groups
+                            // → playlists). Back opens the menu there instead.
+                            if (currentRoute == Screen.LiveTv.route) {
+                                false
+                            } else if (hideSidebarRail) {
+                                // No permanent rail to move onto: open the menu directly and
+                                // put the highlight in it. Left at a row's edge reaches here.
+                                isSidebarExpanded = true
+                                sidebarCollapsePending = false
+                                pendingSidebarFocusRequest = true
+                                true
+                            } else if (focusManager.moveFocus(if (isRtl) FocusDirection.Right else FocusDirection.Left)) {
                                 true
                             } else {
                                 isSidebarExpanded = true
