@@ -2136,6 +2136,18 @@ private fun LegacySidebarScaffold(
             modifier = Modifier
                 .fillMaxSize()
                 .onPreviewKeyEvent { keyEvent ->
+                    // The host rail is hidden until opened; the remote's Menu key opens it
+                    // reliably even when Left is used by the row under the highlight.
+                    if (
+                        showSidebar &&
+                        drawerState.currentValue == DrawerValue.Closed &&
+                        keyEvent.type == KeyEventType.KeyDown &&
+                        keyEvent.key == Key.Menu
+                    ) {
+                        pendingSidebarFocusRequest = true
+                        drawerState.setValue(DrawerValue.Open)
+                        return@onPreviewKeyEvent true
+                    }
                     // Long-press Back on a root route directly opens the sidebar,
                     // bypassing the "scroll row to start" BackHandler in home content.
                     if (keyEvent.key == Key.Back) {
@@ -2632,6 +2644,19 @@ private fun ModernSidebarScaffold(
                     else Modifier
                 )
                 .onPreviewKeyEvent { keyEvent ->
+                    // The host rail is hidden until opened; the remote's Menu key opens it.
+                    if (
+                        showSidebar &&
+                        !isSidebarExpanded &&
+                        !sidebarCollapsePending &&
+                        keyEvent.type == KeyEventType.KeyDown &&
+                        keyEvent.key == Key.Menu
+                    ) {
+                        isSidebarExpanded = true
+                        sidebarCollapsePending = false
+                        pendingSidebarFocusRequest = true
+                        return@onPreviewKeyEvent true
+                    }
                     // Long-press Back on a root route directly opens the sidebar,
                     // bypassing the "scroll row to start" BackHandler in home content.
                     if (keyEvent.key == Key.Back) {

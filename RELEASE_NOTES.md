@@ -38,4 +38,5 @@
 - Live TV add-on source rows for an add-on you have uninstalled are removed on the next refresh instead of staying switched on with an error.
 - Automatic EPG matching now considers **dummy/event guide channels with no listings in the kept window**. They match at a lower priority than channels with real listings, so providers with hundreds of placeholder channels no longer need manual assignment.
 - A **Sync ±… ms** badge appears in the play bar while a channel has an active correction, and **Reset audio sync** returns it to zero.
+- The guide's left column now has a separate collapsible **Playlists** section. Picking a playlist limits the group list and All channels to it; Favorites and Recently watched still pull from every playlist.
 

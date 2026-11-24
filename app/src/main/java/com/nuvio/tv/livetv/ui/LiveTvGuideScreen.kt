@@ -27,6 +27,8 @@ import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.heightIn
+import androidx.compose.foundation.rememberScrollState
+import androidx.compose.foundation.verticalScroll
 import androidx.compose.foundation.layout.offset
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
@@ -71,6 +73,7 @@ import androidx.compose.runtime.mutableIntStateOf
 import androidx.compose.runtime.mutableLongStateOf
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
+import androidx.compose.runtime.saveable.rememberSaveable
 import androidx.compose.runtime.rememberCoroutineScope
 import androidx.compose.runtime.rememberUpdatedState
 import androidx.compose.runtime.setValue
@@ -461,6 +464,8 @@ private fun LiveTvGuideScreenBody(
     var pinRemovesLock by remember { mutableStateOf(false) }
     val playlistNames by viewModel.playlistNames.collectAsStateWithLifecycle()
     val collapsedPlaylists by viewModel.collapsedPlaylists.collectAsStateWithLifecycle()
+    val selectedPlaylistId by viewModel.selectedPlaylistId.collectAsStateWithLifecycle()
+    var playlistsExpanded by rememberSaveable { mutableStateOf(true) }
     var savedMovedKey by remember { mutableStateOf<String?>(null) }
     var visibilityChannels by remember { mutableStateOf<List<LiveChannel>>(emptyList()) }
     var pendingHidden by remember { mutableStateOf<Set<String>>(emptySet()) }
@@ -506,6 +511,23 @@ private fun LiveTvGuideScreenBody(
 
     // "Unassigned channels" (from the Assign EPG panel): only channels with no guide data.
     var epgUnassignedOnly by remember { mutableStateOf(false) }
+    // The separate Playlists section: the playlists shown in the group list, and the groups it
+    // narrows to. Favorites and Recently watched stay global (all playlists).
+    val playlistChoices = remember(ui.groups, playlistNames) {
+        ui.groups.mapNotNull { it.sourceId }.distinct()
+            .map { id -> id to (playlistNames[id] ?: id) }
+            .filter { it.second.isNotBlank() }
+            .sortedBy { it.second.lowercase() }
+    }
+    val guideGroups = remember(ui.groups, selectedPlaylistId, ui.allVisibleChannels) {
+        if (selectedPlaylistId == null) ui.groups
+        else {
+            val scopedCount = ui.allVisibleChannels.count { c -> c.sourceId == selectedPlaylistId }
+            ui.groups
+                .filter { g -> g.sourceId == null || g.sourceId == selectedPlaylistId }
+                .map { g -> if (g.id == ChannelGroup.ALL) g.copy(count = scopedCount) else g }
+        }
+    }
     val channels = when {
         visibilityMode -> visibilityChannels
         favoritesMode -> favoritesChannels
@@ -513,6 +535,16 @@ private fun LiveTvGuideScreenBody(
         savedOrder != null -> savedOrder!!
         epgUnassignedOnly -> ui.channels.filter { programs[it.key].isNullOrEmpty() }
         else -> ui.channels
+    }.let { list ->
+        // A picked playlist scopes All channels and Search. Favorites and Recently watched
+        // deliberately keep pulling from every playlist.
+        if (selectedPlaylistId != null && !visibilityMode && !favoritesMode && !reorderActive &&
+            savedOrder == null && ui.selectedGroupId in setOf(ChannelGroup.ALL, ChannelGroup.SEARCH)
+        ) {
+            list.filter { it.sourceId == selectedPlaylistId }
+        } else {
+            list
+        }
     }
     fun finishChannelVisibility() {
         val all = visibilityChannels
@@ -639,7 +671,7 @@ private fun LiveTvGuideScreenBody(
             // somewhere else: on a second playlist the group was never scrolled into view, and
             // Left from the channels (or from full screen) couldn't reach the groups at all.
             val idx = groupListIndex(
-                ui.groups, ui.selectedGroupId, settings.groupPlaylistHeadings, viewModel.collapsedPlaylists.value
+                guideGroups, ui.selectedGroupId, false, emptySet()
             ).coerceAtLeast(0)
             // Only a tile that is wholly on screen is left where it is: one that is partly cut off
             // would be scrolled into view by a fraction of a row, out of line with the channels.
@@ -1246,13 +1278,14 @@ private fun LiveTvGuideScreenBody(
                 val groupsDensity = androidx.compose.ui.platform.LocalDensity.current
                 val groupsFitWidth = remember(ui.groups, groupsFullWidth, settings.showGroupCounts, playlistNames) {
                     val fontSize = (14f * guideScale(settings)).sp
-                    val longest = ui.groups.map { it.title }.plus("Search").maxOfOrNull { t ->
-                        groupsTextMeasurer.measure(
-                            text = t,
-                            style = androidx.compose.ui.text.TextStyle(fontSize = fontSize, fontWeight = FontWeight.SemiBold),
-                            maxLines = 1
-                        ).size.width
-                    } ?: 0
+                    val longest = (ui.groups.map { it.title } + playlistNames.values + listOf("Search", "Playlists", "All playlists"))
+                        .maxOfOrNull { t ->
+                            groupsTextMeasurer.measure(
+                                text = t,
+                                style = androidx.compose.ui.text.TextStyle(fontSize = fontSize, fontWeight = FontWeight.SemiBold),
+                                maxLines = 1
+                            ).size.width
+                        } ?: 0
                     // Left gap 12 + right gap 10 + the list's own right gap 8, room for a count or
                     // icon (about 40), and a little slack.
                     val extra = 12.dp + 10.dp + 8.dp + 40.dp + 8.dp
@@ -1272,7 +1305,22 @@ private fun LiveTvGuideScreenBody(
                         groupReorderMode -> ui.groups.filter { it.special } + groupWorking.map { g ->
                             if (g.id in groupTicked) g.copy(title = "✓  " + g.title) else g
                         }
-                        else -> ui.groups
+                        else -> guideGroups
+                    },
+                    playlists = playlistChoices,
+                    selectedPlaylistId = selectedPlaylistId,
+                    playlistsExpanded = playlistsExpanded,
+                    onTogglePlaylists = { playlistsExpanded = !playlistsExpanded },
+                    onSelectPlaylist = { id ->
+                        viewModel.selectPlaylist(id)
+                        column = GuideColumn.CHANNEL
+                        row = 0
+                        val target = if (ui.groups.any { it.id == ChannelGroup.ALL }) {
+                            ChannelGroup.ALL
+                        } else {
+                            ui.groups.firstOrNull { g -> g.sourceId == id }?.id ?: ChannelGroup.ALL
+                        }
+                        viewModel.selectGroup(target)
                     },
                     hiddenPending = if (groupVisibilityList != null) groupHiddenPending else null,
                     onToggleGroupVisible = { id ->
@@ -1285,7 +1333,7 @@ private fun LiveTvGuideScreenBody(
                     visibilityFirstRowFocus = groupVisibilityFirstRowFocus,
                     visibilityLastRowFocus = groupVisibilityLastRowFocus,
                     playlistNames = playlistNames,
-                    showPlaylistHeadings = settings.groupPlaylistHeadings,
+                    showPlaylistHeadings = false,
                     holdJumpMs = settings.groupHoldJumpMs.toLong(),
                     collapsed = collapsedPlaylists,
                     onToggleCollapse = { viewModel.togglePlaylistCollapsed(it) },
@@ -3390,6 +3438,12 @@ private fun GroupColumn(
     /** Lets the info bar's buttons send Down to the Search button. */
     searchFocusRequester: FocusRequester? = null,
     playlistNames: Map<String, String> = emptyMap(),
+    /** The guide's separate Playlists section (id, name), above the groups. */
+    playlists: List<Pair<String, String>> = emptyList(),
+    selectedPlaylistId: String? = null,
+    playlistsExpanded: Boolean = true,
+    onTogglePlaylists: () -> Unit = {},
+    onSelectPlaylist: (String?) -> Unit = {},
     collapsed: Set<String> = emptySet(),
     onToggleCollapse: (String) -> Unit = {},
     reorderingId: String? = null,
@@ -3423,6 +3477,8 @@ private fun GroupColumn(
     // The row (group id, or "header:<playlist>") that has focus, and whether Search has it.
     var focusedKey by remember { mutableStateOf<String?>(null) }
     var searchFocused by remember { mutableStateOf(false) }
+    // Focus is in the separate Playlists section: Up/Down are left to normal focus movement.
+    var playlistSectionFocused by remember { mutableStateOf(false) }
     val stepping = remember { BooleanArray(1) }
     val stepScope = rememberCoroutineScope()
     val focusManager = androidx.compose.ui.platform.LocalFocusManager.current
@@ -3557,6 +3613,10 @@ private fun GroupColumn(
                 if (e.type == KeyEventType.KeyDown && e.key == Key.DirectionRight) {
                     onRight(); true
                 } else if (e.key == Key.DirectionUp || e.key == Key.DirectionDown) {
+                    if (playlistSectionFocused) {
+                        // The playlists are a normal focus column: Down reaches Search, Up leaves it.
+                        return@onPreviewKeyEvent false
+                    }
                     if (searchFocused) {
                         stepGroup(e)
                     } else if (e.type == KeyEventType.KeyDown) {
@@ -3599,11 +3659,25 @@ private fun GroupColumn(
                 } else false
             }
     ) {
+        // The playlist picker sits above the groups, in its own collapsible section.
+        if (hiddenPending == null && !reorderMode) {
+            PlaylistsSection(
+                playlists = playlists,
+                selectedPlaylistId = selectedPlaylistId,
+                expanded = playlistsExpanded,
+                onToggle = onTogglePlaylists,
+                onSelect = onSelectPlaylist,
+                onFocused = { playlistSectionFocused = true }
+            )
+        }
         // Search sits above the groups (it opens Nuvio's search), in the row beside the timeline.
         groups.firstOrNull { it.id == ChannelGroup.SEARCH }?.let { searchGroup ->
             GroupSearchButton(
                 modifier = Modifier.padding(bottom = 4.dp).then(if (searchFocusRequester != null) Modifier.focusRequester(searchFocusRequester) else Modifier),
-                onFocusChange = { searchFocused = it },
+                onFocusChange = {
+                    searchFocused = it
+                    if (it) playlistSectionFocused = false
+                },
                 onClick = { onSelect(searchGroup) }
             )
         }
@@ -3620,7 +3694,9 @@ private fun GroupColumn(
         ) {
         LazyColumn(
             state = listState,
-            modifier = Modifier.fillMaxSize(),
+            modifier = Modifier
+                .weight(1f)
+                .fillMaxWidth(),
             // Each channel row has 2dp above its tile: the same here, so the lines run straight across.
             verticalArrangement = Arrangement.spacedBy(4.dp),
             // Room for one more row at the end, so the list can always line up with the channels.
@@ -3653,6 +3729,7 @@ private fun GroupColumn(
                         onFocused = {
                             focusedGroupId = g.id
                             focusedKey = g.id
+                            playlistSectionFocused = false
                             if (!reorderMode && hiddenPending == null) onFocusGroup(g)
                         },
                         onClick = { if (hiddenPending != null) onToggleGroupVisible(g.id) else onSelect(g) },
@@ -3791,6 +3868,94 @@ private fun GroupSearchButton(modifier: Modifier, onFocusChange: (Boolean) -> Un
 }
 
 @OptIn(androidx.compose.foundation.ExperimentalFoundationApi::class)
+/**
+ * The guide's separate playlist picker: a foldable header, "All playlists", then one row per
+ * playlist. Picking a row narrows the group list below; Favorites and Recently watched stay global.
+ */
+@Composable
+private fun PlaylistsSection(
+    playlists: List<Pair<String, String>>,
+    selectedPlaylistId: String?,
+    expanded: Boolean,
+    onToggle: () -> Unit,
+    onSelect: (String?) -> Unit,
+    onFocused: () -> Unit
+) {
+    if (playlists.isEmpty()) return
+    val active = if (expanded) "▾" else "▸"
+    Column(modifier = Modifier.fillMaxWidth().padding(bottom = 4.dp)) {
+        LiveFocusRow(
+            selected = false,
+            onClick = onToggle,
+            onFocused = onFocused,
+            horizontalPadding = 12.dp,
+            verticalPadding = 6.dp
+        ) { focused ->
+            LiveText(
+                stringResource(R.string.iptv_guide_playlists_section),
+                color = if (focused) NuvioTheme.colors.TextPrimary else NuvioTheme.colors.TextSecondary,
+                size = gsp(12f),
+                weight = FontWeight.Bold,
+                modifier = Modifier.weight(1f)
+            )
+            LiveText(
+                active,
+                color = if (focused) NuvioTheme.colors.TextPrimary else NuvioTheme.colors.TextSecondary,
+                size = gsp(12f)
+            )
+        }
+        if (expanded) {
+            Column(
+                modifier = Modifier
+                    .fillMaxWidth()
+                    .heightIn(max = 220.dp)
+                    .verticalScroll(rememberScrollState())
+            ) {
+                LiveFocusRow(
+                    selected = selectedPlaylistId == null,
+                    onClick = { onSelect(null) },
+                    onFocused = onFocused,
+                    horizontalPadding = 12.dp,
+                    verticalPadding = 5.dp
+                ) { focused ->
+                    LiveText(
+                        stringResource(R.string.iptv_guide_all_playlists),
+                        color = if (focused || selectedPlaylistId == null) {
+                            NuvioTheme.colors.TextPrimary
+                        } else {
+                            NuvioTheme.colors.TextSecondary
+                        },
+                        size = gsp(13f),
+                        weight = FontWeight.SemiBold,
+                        modifier = Modifier.weight(1f)
+                    )
+                }
+                playlists.forEach { (id, name) ->
+                    LiveFocusRow(
+                        selected = selectedPlaylistId == id,
+                        onClick = { onSelect(id) },
+                        onFocused = onFocused,
+                        horizontalPadding = 12.dp,
+                        verticalPadding = 5.dp
+                    ) { focused ->
+                        LiveText(
+                            name,
+                            color = if (focused || selectedPlaylistId == id) {
+                                NuvioTheme.colors.TextPrimary
+                            } else {
+                                NuvioTheme.colors.TextSecondary
+                            },
+                            size = gsp(13f),
+                            modifier = Modifier.weight(1f),
+                            marquee = focused
+                        )
+                    }
+                }
+            }
+        }
+    }
+}
+
 @Composable
 private fun GroupItem(
     tileHeight: Dp = 32.dp,
