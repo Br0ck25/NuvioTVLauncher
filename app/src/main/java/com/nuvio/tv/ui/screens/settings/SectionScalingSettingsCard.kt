@@ -1,7 +1,11 @@
+@file:OptIn(androidx.media3.common.util.UnstableApi::class)
+
 package com.nuvio.tv.ui.screens.settings
 
 import androidx.compose.foundation.background
 import androidx.compose.foundation.border
+import androidx.compose.material.icons.Icons
+import androidx.compose.material.icons.filled.Warning
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
@@ -33,6 +37,7 @@ import androidx.hilt.navigation.compose.hiltViewModel
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import androidx.tv.material3.MaterialTheme
 import androidx.tv.material3.Text
+import androidx.tv.material3.Icon
 import com.nuvio.tv.R
 import com.nuvio.tv.domain.model.SectionScale
 import com.nuvio.tv.domain.model.SectionScales
@@ -60,6 +65,10 @@ internal fun SectionScalingSettingsCard(
         title = stringResource(R.string.appearance_section_scaling),
         subtitle = stringResource(R.string.appearance_section_scaling_subtitle)
     ) {
+        if (MemoryBudget.isLowRamTier) {
+            LowRamScalingWarning()
+            Spacer(Modifier.height(8.dp))
+        }
         // Controls on the left, sample on the right: the preview stays in view while the
         // sliders are being adjusted, instead of sitting below them off screen.
         Row(
@@ -120,6 +129,33 @@ internal fun SectionScalingSettingsCard(
             onDismiss = { showSectionPicker = false },
             width = 400.dp,
             maxHeight = 360.dp
+        )
+    }
+}
+
+@Composable
+private fun LowRamScalingWarning() {
+    Row(
+        modifier = Modifier
+            .fillMaxWidth()
+            .clip(RoundedCornerShape(8.dp))
+            .background(NuvioTheme.colors.BackgroundCard.copy(alpha = 0.65f))
+            .padding(10.dp),
+        verticalAlignment = Alignment.CenterVertically
+    ) {
+        Icon(
+            imageVector = Icons.Default.Warning,
+            contentDescription = null,
+            tint = Color(0xFFF5A623),
+            modifier = Modifier
+                .width(18.dp)
+                .height(18.dp)
+        )
+        Spacer(Modifier.width(8.dp))
+        Text(
+            text = stringResource(R.string.appearance_scaling_low_ram_warning),
+            style = MaterialTheme.typography.bodySmall,
+            color = NuvioTheme.colors.TextSecondary
         )
     }
 }

@@ -1110,6 +1110,7 @@
     <string name="appearance_scaling_text">Text size</string>
     <string name="appearance_scaling_interface">Interface size</string>
     <string name="appearance_scaling_reset">Reset all sections</string>
+    <string name="appearance_scaling_low_ram_warning">This device has limited memory. Very small or very large interface sizes can use more memory; keep the size near 100% if the app feels slow.</string>
     <string name="appearance_scaling_preview">Preview</string>
     <string name="appearance_scaling_normal">Normal</string>
     <string name="appearance_scaling_normal_detail" formatted="false">100% text · 100% interface</string>
