@@ -26,6 +26,7 @@ import androidx.compose.foundation.layout.PaddingValues
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.fillMaxWidth
+import androidx.compose.foundation.layout.fillMaxHeight
 import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.width
@@ -344,7 +345,10 @@ private fun LiveTvHomeRowContent(
             LazyRow(
                 state = listState,
                 contentPadding = PaddingValues(start = startPadding, end = maxOf(startPadding, 24.dp)),
-                horizontalArrangement = Arrangement.spacedBy(10.dp)
+                // The same gap as Upcoming and Continue Watching, so the cards line up.
+                horizontalArrangement = Arrangement.spacedBy(
+                    com.nuvio.tv.ui.components.rememberHomeTile()?.gap ?: 10.dp
+                )
             ) {
                 itemsIndexed(entries, key = { _, it -> it.channel.key }) { index, e ->
                     val requester = cardFocus.getOrPut(e.channel.key) { androidx.compose.ui.focus.FocusRequester() }
@@ -402,20 +406,22 @@ private fun HomeCard(
     onClick: () -> Unit
 ) {
     var focused by remember { mutableStateOf(false) }
-    val colors = liveCellColors(focused = focused, idle = NuvioTheme.colors.BackgroundElevated)
     val shape = RoundedCornerShape(com.nuvio.tv.livetv.ui.liveCorner())
     val p = entry.now
+    val next = entry.next
+    val cardHeight = if (compact) 64.dp else 88.dp
+    // Two tiles wide, like the Upcoming cards; the height stays 88.
+    val homeTile = com.nuvio.tv.ui.components.rememberHomeTile()
+    val cardWidth = if (compact) (homeTile?.width ?: 260.dp) else (homeTile?.wideWidth ?: 330.dp)
     Row(
         modifier = modifier
-            .width(if (compact) 180.dp else 230.dp)
-            .height(if (compact) 54.dp else 72.dp)
+            .width(cardWidth)
+            .height(cardHeight)
             .clip(shape)
-            .background(colors.background)
-            // A light white outline so cards stand out from the background; the highlight color
-            // takes over when a card is highlighted.
+            .background(NuvioTheme.colors.BackgroundCard.copy(alpha = 0.92f))
             .border(
                 if (focused) 2.dp else 1.dp,
-                if (focused) colors.border else Color.White.copy(alpha = 0.22f),
+                if (focused) NuvioTheme.colors.FocusRing else Color.White.copy(alpha = 0.12f),
                 shape
             )
             .onFocusChanged { focused = it.isFocused; if (it.isFocused) onFocused() }
@@ -424,44 +430,88 @@ private fun HomeCard(
                 indication = null,
                 onClick = onClick
             )
-            .padding(horizontal = 10.dp, vertical = 6.dp),
+            .padding(8.dp),
         verticalAlignment = Alignment.CenterVertically
     ) {
-        Box(modifier = Modifier.width(if (compact) 40.dp else 48.dp), contentAlignment = Alignment.Center) {
-            ChannelLogo(entry.channel.logo, if (compact) 34.dp else 42.dp)
+        // Where an Upcoming card has its poster: the channel logo on a dark tile.
+        Box(
+            modifier = Modifier
+                .width(if (compact) 80.dp else 112.dp)
+                .fillMaxHeight()
+                .clip(RoundedCornerShape(6.dp))
+                .background(Color.Black.copy(alpha = 0.35f)),
+            contentAlignment = Alignment.Center
+        ) {
+            ChannelLogo(entry.channel.logo, if (compact) 36.dp else 50.dp)
         }
-        Spacer(Modifier.width(8.dp))
-        Column(modifier = Modifier.weight(1f)) {
+        Column(
+            modifier = Modifier
+                .weight(1f)
+                .fillMaxHeight()
+                .padding(start = 12.dp, end = 6.dp),
+            verticalArrangement = Arrangement.spacedBy(3.dp, Alignment.CenterVertically)
+        ) {
             Row(verticalAlignment = Alignment.CenterVertically) {
-                if (playing) {
-                    LiveText("● ", color = NuvioTheme.colors.Error, size = 10.sp)
-                }
-                LiveText(
-                    p?.title ?: entry.channel.name,
-                    color = colors.text, size = 13.sp, weight = FontWeight.SemiBold, marquee = focused
-                )
-            }
-            if (!compact) {
-                if (p != null) {
-                    Spacer(Modifier.height(4.dp))
+                if (!compact) {
+                    val pill = if (p != null) "LIVE" to Color(0xFF0284C7) else "CH ${entry.channel.number}" to Color(0xFF334155)
                     Box(
-                        modifier = Modifier.fillMaxWidth().height(3.dp).clip(RoundedCornerShape(2.dp))
-                            .background(Color.White.copy(alpha = 0.18f))
+                        modifier = Modifier
+                            .clip(RoundedCornerShape(4.dp))
+                            .background(pill.second)
+                            .padding(horizontal = 7.dp, vertical = 2.dp)
                     ) {
-                        Box(
-                            modifier = Modifier.fillMaxWidth(p.progress(now)).height(3.dp)
-                                .background(if (focused) colors.text else NuvioTheme.colors.Secondary)
+                        LiveText(
+                            pill.first,
+                            color = Color.White,
+                            size = 10.sp,
+                            weight = FontWeight.SemiBold
                         )
                     }
-                    Spacer(Modifier.height(3.dp))
+                    Spacer(Modifier.width(8.dp))
                 }
-                val sub = if (showNext && entry.next != null) {
-                    "Next: ${formatClock(entry.next.startMs, use24h)} ${entry.next.title}"
-                } else {
-                    listOfNotNull("${entry.channel.number}  ${entry.channel.name}", p?.let { minutesLeftLabel(it.stopMs, now) })
-                        .joinToString(" · ")
+                if (playing) LiveText("● ", color = NuvioTheme.colors.Error, size = 12.sp)
+                LiveText(
+                    p?.title ?: entry.channel.name,
+                    modifier = Modifier.weight(1f),
+                    color = NuvioTheme.colors.TextPrimary,
+                    size = if (compact) 14.sp else 16.sp,
+                    weight = FontWeight.SemiBold,
+                    marquee = focused
+                )
+            }
+            val sub = if (p != null || entry.channel.number != 0) {
+                listOfNotNull(
+                    "${entry.channel.number}  ${entry.channel.name}",
+                    p?.let { minutesLeftLabel(it.stopMs, now) }
+                ).joinToString(" · ")
+            } else {
+                entry.channel.name
+            }
+            LiveText(sub, color = NuvioTheme.colors.TextSecondary, size = 12.sp, marquee = focused)
+            // How far through the show it is: between what's playing and what's next.
+            if (!compact && p != null) {
+                Box(
+                    modifier = Modifier
+                        .fillMaxWidth()
+                        .height(3.dp)
+                        .clip(RoundedCornerShape(2.dp))
+                        .background(Color.White.copy(alpha = 0.18f))
+                ) {
+                    Box(
+                        modifier = Modifier
+                            .fillMaxWidth(p.progress(now))
+                            .height(3.dp)
+                            .background(NuvioTheme.colors.Secondary)
+                    )
                 }
-                LiveText(sub, color = if (focused) colors.text else NuvioTheme.colors.TextSecondary, size = 10.sp, marquee = focused)
+            }
+            if (!compact && showNext && next != null) {
+                LiveText(
+                    "Next: ${formatClock(next.startMs, use24h)} ${next.title}",
+                    color = NuvioTheme.colors.TextSecondary,
+                    size = 12.sp,
+                    marquee = focused
+                )
             }
         }
     }

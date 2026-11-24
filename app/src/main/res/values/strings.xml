@@ -1102,6 +1102,20 @@
     <string name="layout_modern_desc">Fixed hero with a single active row for faster browsing</string>
     <string name="layout_section_home">Home Layout</string>
     <string name="layout_section_home_desc">Choose structure and hero source.</string>
+    <string name="layout_tile_size">Tile Size</string>
+    <string name="appearance_section_scaling">Section scaling</string>
+    <string name="appearance_section_scaling_subtitle">Text and interface size for each section.</string>
+    <string name="appearance_scaling_section">Section</string>
+    <string name="appearance_scaling_section_subtitle">Choose the section to adjust.</string>
+    <string name="appearance_scaling_text">Text size</string>
+    <string name="appearance_scaling_interface">Interface size</string>
+    <string name="appearance_scaling_reset">Reset all sections</string>
+    <string name="appearance_scaling_preview">Preview</string>
+    <string name="appearance_scaling_normal">Normal</string>
+    <string name="appearance_scaling_normal_detail" formatted="false">100% text · 100% interface</string>
+    <string name="appearance_scaling_preview_detail">%1$d%% text · %2$d%% interface</string>
+    <string name="cd_repeat_video">Repeat this video</string>
+    <string name="cd_repeat_video_stop">Stop repeating</string>
     <string name="layout_landscape_posters">Landscape Poster Mode</string>
     <string name="layout_landscape_posters_sub">Use landscape cards everywhere.</string>
     <string name="layout_preview_row">Show Preview Row</string>

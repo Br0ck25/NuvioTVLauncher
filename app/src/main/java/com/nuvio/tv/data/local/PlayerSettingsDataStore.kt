@@ -512,6 +512,7 @@ enum class StreamAutoPlayMode {
 /** Buttons in the player's control row that can be turned off in Playback settings. */
 enum class PlayerControlButton {
     NEXT_EPISODE,
+    REPEAT,
     SUBTITLES,
     SPEED,
     QUALITY,

@@ -549,6 +549,8 @@ data class LiveTvSettings(
     val sideMenuFit: Boolean = true,
     /** Calendar: your shows' next episodes in Home's Upcoming row. */
     val calendarUpcomingRow: Boolean = true,
+    /** Live TV fork: wide schedule cards and every airing show in the Upcoming row. */
+    val calendarUpcomingNewRow: Boolean = true,
     /** Calendar: a "new episode" card in Continue Watching for shows you rang the bell on. */
     val calendarNewEpisodeCards: Boolean = true,
     /** The Live TV options button under the buttons on a show or movie page. */
@@ -630,7 +632,7 @@ data class LiveTvSettings(
     /** OK opens the guide on the channel instead of playing it full screen. */
     val homeRowOpensGuide: Boolean = false,
     /** A "Next: 9:00 The News" line on each card. */
-    val homeRowShowNext: Boolean = false,
+    val homeRowShowNext: Boolean = true,
     /** Compact cards: logo and show name only. */
     val homeRowCompact: Boolean = false,
     /** Live TV buffer: "none" (the least the player can run on), "small" (fast channel changes), "normal", "large", "xlarge". */

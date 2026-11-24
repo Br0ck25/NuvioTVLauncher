@@ -3559,6 +3559,22 @@ private fun PlayerControlsOverlay(
                         onFocused = onResetHideTimer
                     )
 
+                    // Live TV fork: loop the current movie or episode. Hidden for live streams and
+                    // for OneTube, which has its own loop button in its action row.
+                    if (!showYouTubeButton && !isLivePlayback && PlayerControlButton.REPEAT !in hiddenControls) {
+                        ControlButton(
+                            icon = if (uiState.repeatOne) Icons.Default.RepeatOne else Icons.Default.Repeat,
+                            contentDescription = stringResource(
+                                if (uiState.repeatOne) R.string.cd_repeat_video_stop else R.string.cd_repeat_video
+                            ),
+                            onClick = { viewModel.controller.toggleRepeatOne() },
+                            upFocusRequester = progressUpTarget,
+                            onDownKey = onMainDown,
+                            onFocused = onResetHideTimer,
+                            contentColor = if (uiState.repeatOne) Color(0xFFFF4D6A) else Color.White
+                        )
+                    }
+
                     if (showNextEpisodeButton && PlayerControlButton.NEXT_EPISODE !in hiddenControls) {
                         ControlButton(
                             icon = Icons.Default.SkipNext,

@@ -42,6 +42,7 @@ import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.State
 import androidx.compose.runtime.derivedStateOf
 import androidx.compose.runtime.getValue
+import androidx.compose.runtime.collectAsState
 import androidx.compose.runtime.mutableIntStateOf
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.key
@@ -175,6 +176,7 @@ private fun ModernContinueWatchingRowItem(
     onFocused: () -> Unit,
     onContinueWatchingClick: (ContinueWatchingItem) -> Unit,
     onShowOptions: (ContinueWatchingItem) -> Unit,
+    isUpcomingCard: Boolean = false,
     modifier: Modifier = Modifier
 ) {
     val item = payload.item
@@ -213,6 +215,7 @@ private fun ModernContinueWatchingRowItem(
         cardStyle = continueWatchingCardStyle,
         cornerRadius = continueWatchingCornerRadius,
         isFocused = isCardFocused,
+        isUpcomingCard = isUpcomingCard,
         modifier = modifier
             .focusRequester(requester)
             .onFocusChanged {
@@ -495,6 +498,7 @@ internal fun ModernRowSection(
     @Suppress("NAME_SHADOWING") val loadMoreRequestedTotals = loadMoreRequestedTotals.value
     @Suppress("NAME_SHADOWING") val itemFocusRequesters = itemFocusRequesters.value
     val rowKey = row.key
+    val newUpcomingRow by com.nuvio.tv.livetv.calendar.CalendarHomeFeed.newUpcomingRowFlow.collectAsState()
 
     // Per-row derived state: only invalidates when THIS row's focused index
     // changes, not when any other row's index changes in the shared map.
@@ -671,16 +675,22 @@ internal fun ModernRowSection(
             continueWatchingCardWidth,
             continueWatchingCardHeight,
             useEpisodeThumbnails,
-            blurUnwatchedEpisodes
+            blurUnwatchedEpisodes,
+            newUpcomingRow
         ) {
             if (!isActiveRow() || isVerticalRowsScrollingState.value) return@LaunchedEffect
             delay(150) // Wait before spamming image requests to survive rapid vertical D-pad scrolls!
+            val isUpcomingRow = row.key == MODERN_UPCOMING_ROW_KEY && newUpcomingRow
             val cwWidthPx = with(density) {
                 continueWatchingArtworkWidth(
-                    continueWatchingCardStyle, continueWatchingCardWidth, continueWatchingCardHeight
+                    continueWatchingCardStyle, continueWatchingCardWidth, continueWatchingCardHeight, isUpcomingRow
                 ).roundToPx()
             }
-            val cwHeightPx = with(density) { continueWatchingCardHeight.roundToPx() }
+            val cwHeightPx = with(density) {
+                com.nuvio.tv.ui.components.continueWatchingArtworkHeight(
+                    continueWatchingCardHeight, isUpcomingRow
+                ).roundToPx()
+            }
             fun imageUrlAndKey(item: ModernCarouselItem): Pair<String, MemoryCache.Key>? {
                 return when (val payload = item.payload) {
                     is ModernPayload.Catalog -> {
@@ -979,11 +989,16 @@ internal fun ModernRowSection(
 
                     when (val payload = item.payload) {
                         is ModernPayload.ContinueWatching -> {
+                            val isUpcoming = row.key == MODERN_UPCOMING_ROW_KEY && newUpcomingRow
                             ModernContinueWatchingRowItem(
                                 payload = payload,
                                 requester = requester,
                                 isTargetItem = isTargetItem,
-                                cardWidth = continueWatchingCardWidth,
+                                cardWidth = if (isUpcoming) {
+                                    com.nuvio.tv.ui.components.UPCOMING_SCHEDULE_CARD_WIDTH
+                                } else {
+                                    continueWatchingCardWidth
+                                },
                                 imageHeight = continueWatchingCardHeight,
                                 blurUnwatchedEpisodes = blurUnwatchedEpisodes,
                                 useEpisodeThumbnails = useEpisodeThumbnails,
@@ -991,7 +1006,8 @@ internal fun ModernRowSection(
                                 continueWatchingCornerRadius = continueWatchingCornerRadius,
                                 onFocused = onFocused,
                                 onContinueWatchingClick = onContinueWatchingClick,
-                                onShowOptions = onShowOptionsForRow
+                                onShowOptions = onShowOptionsForRow,
+                                isUpcomingCard = isUpcoming
                             )
                         }
 

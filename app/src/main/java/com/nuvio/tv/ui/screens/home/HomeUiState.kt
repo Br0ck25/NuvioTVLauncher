@@ -126,7 +126,8 @@ val ContinueWatchingItem.shuffleFocusKey: String?
     }
 
 fun ContinueWatchingClickAction.opensDetails(item: ContinueWatchingItem): Boolean = when (this) {
-    ContinueWatchingClickAction.STREAM -> false
+    // An episode that has not aired cannot play; open its details instead.
+    ContinueWatchingClickAction.STREAM -> item is ContinueWatchingItem.NextUp && !item.info.hasAired
     ContinueWatchingClickAction.DETAILS -> true
     ContinueWatchingClickAction.DETAILS_FOR_UPCOMING -> item is ContinueWatchingItem.NextUp && !item.info.hasAired
 }

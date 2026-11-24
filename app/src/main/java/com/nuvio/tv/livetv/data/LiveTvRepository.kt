@@ -3985,8 +3985,8 @@ class LiveTvRepository @Inject constructor(
     companion object {
         private const val TAG = "LiveTvRepository"
         private const val HOUR = 60L * 60L * 1000L
-        /** How far below a guide channel with listings an empty guide channel scores. */
-        private const val EMPTY_GUIDE_CHANNEL_PENALTY = 500_000L
+        /** How far below any guide channel with listings an empty guide channel scores. */
+        private const val EMPTY_GUIDE_CHANNEL_PENALTY = 4_000_000L
         /** A server time zone lookup that failed is tried again after this long. */
         private const val ZONE_RETRY_MS = 2L * 60L * 1000L
         /** A worked-out time zone (fixed offset) is looked up again after this long, in the background. */

@@ -1025,6 +1025,15 @@ private fun PlayerRuntimeController.isShortPlaceholderStream(): Boolean {
  * watched or trigger auto-play next.
  */
 internal fun PlayerRuntimeController.handleNaturalPlaybackEnded() {
+    if (repeatOneRequested && !_playbackTimeline.value.isLive) {
+        // Engines with their own loop (ExoPlayer, mpv) never reach this. VLC and any
+        // fallback engine restart the video here instead of finishing it.
+        Log.i(PlayerRuntimeController.TAG, "REPEAT: restarting the current video")
+        _uiState.update { it.copy(playbackEnded = false, postPlayMode = null) }
+        seekPlaybackTo(0L, androidx.media3.exoplayer.SeekParameters.EXACT, exact = true)
+        setPlaybackPaused(false)
+        return
+    }
     val position = currentPlaybackPositionMs() ?: 0L
     val duration = getEffectiveDuration(position)
     val hasFatalError = !_uiState.value.error.isNullOrBlank()

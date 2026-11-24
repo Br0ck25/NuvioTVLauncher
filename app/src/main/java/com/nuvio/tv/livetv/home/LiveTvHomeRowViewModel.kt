@@ -81,7 +81,9 @@ class LiveTvHomeRowViewModel @Inject constructor(
             val nxt = l.firstOrNull { it.startMs >= (cur?.stopMs ?: at) }
             LiveTvViewModel.HomeRowEntry(ch, moved(cur), moved(nxt))
         }
-        if (s.homeRowHidePlaceholders) {
+        // Favorites are the viewer's own picks: a favorite whose guide has nothing listed right
+        // now must not drop out of the row. Only the other sources hide empty channels.
+        if (s.homeRowHidePlaceholders && homeRowGroup(s) != com.nuvio.tv.livetv.model.ChannelGroup.FAVORITES) {
             entries = entries.filter { e -> e.now != null && !LiveTvRepository.isPlaceholderTitle(e.now.title) }
         }
         entries = when (s.homeRowSort) {

@@ -82,12 +82,12 @@ import com.music.bitchord.data.model.Song
 import com.nuvio.tv.youtube.YouTubeAccountViewModel
 import com.nuvio.tv.LocalOpenSidebar
 import com.nuvio.tv.LocalSidebarExpanded
+import com.nuvio.tv.domain.model.SectionScale
+import com.nuvio.tv.domain.model.SectionScales
+import com.nuvio.tv.ui.scale.LocalSectionScales
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.launch
 import kotlinx.coroutines.withContext
-
-/** One density scale for the whole Music section. */
-private const val MUSIC_UI_SCALE = 0.88f
 
 private data class MusicVideoRequest(val video: Song, val startPositionMs: Long)
 
@@ -772,17 +772,28 @@ fun MusicScreen(
 }
 
 @Composable
-private fun MusicTextTheme(content: @Composable () -> Unit) {
+private fun MusicTextTheme(
+    scale: SectionScale? = null,
+    content: @Composable () -> Unit
+) {
     val base = LocalTextStyle.current
     val density = LocalDensity.current
+    // Music is a dense, editorial section. The main screen is scaled by the Music section
+    // setting above the NavHost; dialogs open in their own window and lose that density, so
+    // MusicOverlayDialog passes the same section scale in here.
+    val scaledDensity = if (scale == null || (scale.textPercent == 100 && scale.uiPercent == 100)) {
+        density
+    } else {
+        remember(density, scale) {
+            Density(
+                density = density.density * scale.uiFactor,
+                fontScale = density.fontScale * scale.textFactor
+            )
+        }
+    }
     CompositionLocalProvider(
         LocalTextStyle provides base.copy(fontFamily = MusicSans),
-        // Music is a dense, editorial section; the TV UI reads better slightly tighter than
-        // the host shell. One scale here keeps every screen, row and overlay consistent.
-        LocalDensity provides Density(
-            density = density.density * MUSIC_UI_SCALE,
-            fontScale = density.fontScale
-        )
+        LocalDensity provides scaledDensity
     ) {
         content()
     }
@@ -793,6 +804,9 @@ private fun MusicOverlayDialog(
     onDismiss: () -> Unit,
     content: @Composable () -> Unit
 ) {
+    // Captured before the dialog opens: the dialog's own window does not inherit the
+    // section's density, so the dialog has to apply it itself.
+    val musicScale = LocalSectionScales.current[SectionScales.MUSIC]
     Dialog(
         onDismissRequest = onDismiss,
         properties = DialogProperties(
@@ -802,7 +816,7 @@ private fun MusicOverlayDialog(
             dismissOnClickOutside = false
         )
     ) {
-        MusicTextTheme {
+        MusicTextTheme(musicScale) {
             Box(Modifier.fillMaxSize()) {
                 content()
             }

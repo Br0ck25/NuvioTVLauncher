@@ -68,6 +68,8 @@ import androidx.compose.material.icons.filled.Search
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.CompositionLocalProvider
 import androidx.compose.runtime.LaunchedEffect
+import androidx.compose.runtime.DisposableEffect
+import androidx.compose.runtime.SideEffect
 import androidx.compose.runtime.collectAsState
 import androidx.compose.runtime.compositionLocalOf
 import androidx.compose.runtime.derivedStateOf
@@ -986,7 +988,9 @@ open class MainActivity : ComponentActivity() {
                     val modernSidebarEnabled = mainUiPrefs.modernSidebarEnabled
                     val modernSidebarBlurEnabled =
                         mainUiPrefs.modernSidebarBlurPref && android.os.Build.VERSION.SDK_INT >= android.os.Build.VERSION_CODES.S
-                    val hideBuiltInHeadersForFloatingPill = modernSidebarEnabled && !sidebarCollapsed
+                    // Live TV fork: the modern sidebar is hidden until opened now, and there is no
+                    // floating pill, so keep the built-in page headers (they were hidden for the pill).
+                    val hideBuiltInHeadersForFloatingPill = false
 
                     // Live TV fork: "Open the App On": that page is the first screen, in place of
                     // Home (read once, so the first screen never changes underneath).
@@ -1351,6 +1355,21 @@ open class MainActivity : ComponentActivity() {
 
                     val handleExitApp: () -> Unit = { this@MainActivity.handleAppExit() }
 
+                    // Live TV fork: Back with the side menu open goes to Home first, then the
+                    // usual exit prompt once Home is showing. dispatchKeyEvent uses this while
+                    // the drawer owns the key.
+                    val handleSidebarBack: () -> Unit = remember(currentRoute, navController) {
+                        {
+                            if (currentRoute == Screen.Home.route) {
+                                handleExitApp()
+                            } else {
+                                navigateToDrawerRoute(navController, currentRoute, Screen.Home.route)
+                            }
+                        }
+                    }
+                    SideEffect { sidebarBackToHome = handleSidebarBack }
+                    DisposableEffect(Unit) { onDispose { sidebarBackToHome = null } }
+
                     val updateViewModel: UpdateViewModel = hiltViewModel(this@MainActivity)
                     val updateState by updateViewModel.uiState.collectAsState()
                     val updateBannerState = updateState.copy(
@@ -1597,6 +1616,8 @@ open class MainActivity : ComponentActivity() {
 
     /** Sidebar state for the Activity-level Back handler, kept in step by the scaffolds. */
     @Volatile private var sidebarOpenForBack = false
+    /** Back with the side menu open: Home first, then the usual exit prompt. Set by the UI. */
+    @Volatile private var sidebarBackToHome: (() -> Unit)? = null
     private var confirmExitPressedOnce = false
     private val confirmExitHandler = android.os.Handler(android.os.Looper.getMainLooper())
     private val confirmExitReset = Runnable { confirmExitPressedOnce = false }
@@ -1648,11 +1669,13 @@ open class MainActivity : ComponentActivity() {
                 }
                 return true
             }
-            // While the menu is open, Back is the exit prompt. Handling it here keeps the
-            // drawer's own Back handler from closing the sidebar first.
+            // While the menu is open, Back goes Home first (or shows the exit prompt when Home
+            // is already showing). Handling it here keeps the drawer's own Back handler from
+            // closing the sidebar first.
             if (sidebarOpenForBack) {
                 if (event.action == KeyEvent.ACTION_DOWN && event.repeatCount == 0) {
-                    handleAppExit()
+                    val backToHome = sidebarBackToHome
+                    if (backToHome != null) backToHome() else handleAppExit()
                 }
                 return true
             }
@@ -1764,7 +1787,9 @@ private fun LegacySidebarScaffold(
         !com.nuvio.tv.livetv.ui.LiveTvFullscreen.pending
     // Music is a full-bleed page: its rail only appears when the menu is opened, not as a
     // permanently visible collapsed strip along the left edge.
-    val hideSidebarRail = currentRoute == Screen.Music.route
+    // Live TV fork: no permanent collapsed strip or pill in any section. The menu opens with
+    // Left/Menu/Back and hides again after a selection, as it already did in Music.
+    val hideSidebarRail = true
 
     val sidebarTokens = NuvioComponents.tokens.sidebar
     val closedDrawerWidth = if (sidebarCollapsed || hideSidebarRail) NuvioTheme.spacing.none else sidebarTokens.legacyCollapsedWidth
@@ -1784,6 +1809,12 @@ private fun LegacySidebarScaffold(
     LaunchedEffect(currentRoute) {
         longPressBackHeld.value = false
         drawerState.setValue(DrawerValue.Closed)
+    }
+
+    // Live TV fork: Back with the menu open returns Home; once Home is showing it is the exit prompt.
+    val backFromMenu: () -> Unit = {
+        if (currentRoute == Screen.Home.route) onExitApp()
+        else navigateToDrawerRoute(navController, currentRoute, Screen.Home.route)
     }
 
     BackHandler(
@@ -1808,7 +1839,7 @@ private fun LegacySidebarScaffold(
 
     BackHandler(enabled = currentRoute in rootRoutes && drawerState.currentValue == DrawerValue.Open) {
         if (longPressBackHeld.value) return@BackHandler
-        onExitApp()
+        backFromMenu()
     }
 
     // Live TV fork: back from the menu to Home, the Live TV row gets the highlight back only if
@@ -1897,11 +1928,9 @@ private fun LegacySidebarScaffold(
                                     if (drawerValue == DrawerValue.Open) return@onPreviewKeyEvent true
                                 }
                                 if (keyEvent.type == KeyEventType.KeyDown && drawerValue == DrawerValue.Open) {
-                                    // The menu is open: Back belongs to the exit confirmation, not
-                                    // to closing the drawer. Closing here made the second Back land
-                                    // on the startup page again.
+                                    // The menu is open: Back goes Home first, then the exit prompt.
                                     if (!longPressBackHeld.value) {
-                                        if (liveTvListShowing) onToggleLiveTvGroup() else onExitApp()
+                                        if (liveTvListShowing) onToggleLiveTvGroup() else backFromMenu()
                                     }
                                     return@onPreviewKeyEvent true
                                 }
@@ -2344,7 +2373,8 @@ private fun ModernSidebarScaffold(
     val showSidebar = currentRoute in rootRoutes && !liveTvFullscreen &&
         !com.nuvio.tv.livetv.ui.LiveTvFullscreen.pending
     // Music is full-bleed: no permanent collapsed strip or pill until the menu is opened.
-    val hideSidebarRail = currentRoute == Screen.Music.route
+    // Live TV fork: the whole app now behaves that way; Left/Menu/Back opens the menu.
+    val hideSidebarRail = true
     val sidebarTokens = NuvioComponents.tokens.sidebar
     val collapsedSidebarWidth = if (sidebarCollapsed || hideSidebarRail) NuvioTheme.spacing.none else sidebarTokens.collapsedWidth
     val openSidebarWidth = sidebarTokens.expandedWidth
@@ -2400,6 +2430,12 @@ private fun ModernSidebarScaffold(
         }
     }
 
+    // Live TV fork: Back with the menu open returns Home; once Home is showing it is the exit prompt.
+    val backFromMenu: () -> Unit = {
+        if (currentRoute == Screen.Home.route) onExitApp()
+        else navigateToDrawerRoute(navController, currentRoute, Screen.Home.route)
+    }
+
     BackHandler(
         enabled = currentRoute in rootRoutes &&
             currentRoute != Screen.Music.route &&
@@ -2424,7 +2460,7 @@ private fun ModernSidebarScaffold(
 
     BackHandler(enabled = currentRoute in rootRoutes && isSidebarExpanded && !sidebarCollapsePending) {
         if (longPressBackHeld.value) return@BackHandler
-        onExitApp()
+        backFromMenu()
     }
 
     LaunchedEffect(sidebarCollapsePending, isSidebarExpanded, showSidebar) {
@@ -2581,7 +2617,7 @@ private fun ModernSidebarScaffold(
                     // still sees it and closes the menu after the prompt is shown.
                     if (keyEvent.type == KeyEventType.KeyUp) return@onPreviewKeyEvent true
                     if (keyEvent.type == KeyEventType.KeyDown) {
-                        if (liveTvListShowing) onToggleLiveTvGroup() else onExitApp()
+                        if (liveTvListShowing) onToggleLiveTvGroup() else backFromMenu()
                         return@onPreviewKeyEvent true
                     }
                 }

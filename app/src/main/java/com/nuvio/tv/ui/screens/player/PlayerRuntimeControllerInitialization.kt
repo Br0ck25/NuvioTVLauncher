@@ -1203,6 +1203,9 @@ internal fun PlayerRuntimeController.initializePlayer(
                     .build()
                 setAudioAttributes(audioAttributes, true)
                 setPlaybackSpeed(_uiState.value.playbackSpeed)
+                repeatMode =
+                    if (repeatOneRequested) androidx.media3.common.Player.REPEAT_MODE_ONE
+                    else androidx.media3.common.Player.REPEAT_MODE_OFF
                 if (applyPcmFallbackOnStartup) {
                     pendingAudioPcmFallbackRebuild = false
                     hasTriedAudioPcmFallback = true

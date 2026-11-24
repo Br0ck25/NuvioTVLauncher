@@ -338,6 +338,7 @@ internal fun PlayerButtonsDialog(
 
 private fun playerControlLabel(control: PlayerControlButton): String = when (control) {
     PlayerControlButton.NEXT_EPISODE -> "Next Episode Button"
+    PlayerControlButton.REPEAT -> "Repeat Button"
     PlayerControlButton.SUBTITLES -> "Subtitles Button"
     PlayerControlButton.SPEED -> "Speed Button"
     PlayerControlButton.QUALITY -> "Quality Button"
@@ -352,6 +353,7 @@ private fun playerControlLabel(control: PlayerControlButton): String = when (con
 
 private fun playerControlDescription(control: PlayerControlButton): String = when (control) {
     PlayerControlButton.NEXT_EPISODE -> "The next-episode shortcut in the control row. Auto-play is unaffected."
+    PlayerControlButton.REPEAT -> "The repeat shortcut for movies and episodes. It loops the current video until you turn it off."
     PlayerControlButton.SUBTITLES -> "The subtitles shortcut. Subtitles keep working."
     PlayerControlButton.SPEED -> "The speed shortcut. Playback speed is unchanged."
     PlayerControlButton.QUALITY -> "The quality shortcut. The current quality is unchanged."

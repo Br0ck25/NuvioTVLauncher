@@ -1,5 +1,15 @@
 # Nuvio One 1.2.0-beta.3.6
 
+## Home & Player
+
+- **One shared Home tile size** now drives Continue Watching, collection folders, Upcoming and the Live TV row, so the rows line up. **Layout → Tile Size** picks the size (104–140); it follows Poster Width until you choose one.
+- **Per-section text and interface scaling** is under **Appearance → Section scaling**. Each section keeps its own text size and whole-page size, with a side-by-side Normal/Your size preview. Settings itself is never scaled.
+- **Repeat** is now a player button for movies and episodes. It loops the current video until turned off; live streams and OneTube keep their own behavior.
+- The **side menu no longer stays on screen** in any section. It opens with Left, Menu or Back and disappears after choosing a page.
+- Selecting an **unaired episode** in Upcoming opens its details instead of trying to play it.
+- The **Upcoming row** now gives every show with an episode in the next 7 days a card, even when Continue Watching already has that show. Its new wide schedule cards can be turned off in **Settings → Menu & Features → Calendar → New Upcoming Row**.
+- The **Live TV Home row** shows the progress bar between the current programme and Next, keeps favorites with nothing listed right now, and has Next on by default.
+
 ## Live TV group filters
 
 - Group-tag scanning can now list **countries only** — US, UK, AR, United States and similar — instead of every word in every group name, so the filter list stays short and useful.
@@ -18,7 +28,7 @@
 - **Spotify sync is faster**: changed playlists are fetched in parallel, two tracks are matched at a time, known tracks are matched from your library without a search, and definitive misses are remembered so repeat syncs skip them. A rate-limit response drops the rest of the run back to one search at a time.
 - A track that is already in **Liked Songs** is not added again to a Spotify playlist, and the same recording matched to a different video on another device is not added to Liked Songs twice.
 - **Home rows** can now be arranged from Music Settings. Move a row with Left/Right, hide or show it with OK, pin your own playlists to the top, or reset every row. Each profile keeps its own arrangement.
-- The Nuvio side rail no longer rests over the Music section; open it from the left edge or Back when you need it.
+- The Nuvio side rail no longer rests over any section; open it from the left edge, Menu or Back when you need it, and it hides after a selection.
 - Music videos can be **minimized to an in-app mini player** while you keep browsing Music. The mini player keeps the same video playing and gives you expand, play/pause and close buttons.
 
 ## Live TV

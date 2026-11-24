@@ -162,7 +162,7 @@ class CalendarRepository @Inject constructor(
             hiddenShows.drop(1).debounce(300).collect { build(fetch = false) }
         }
         scope.launch {
-            settings.map { listOf(it.calendarHideSpoilers, it.calendarCountry, it.calendarUpcomingRow, it.calendarNewEpisodeCards,
+            settings.map { listOf(it.calendarHideSpoilers, it.calendarCountry, it.calendarUpcomingRow, it.calendarUpcomingNewRow, it.calendarNewEpisodeCards,
                 SideMenuPages.CALENDAR in SideMenuPages.hidden(it.sideMenuHidden)) }
                 .distinctUntilChanged().drop(1).collect { build(fetch = false); refresh(force = false) }
         }
@@ -1541,6 +1541,7 @@ class CalendarRepository @Inject constructor(
         val released = if (!s.calendarNewEpisodeCards) emptyList() else entries
             .filter { it.followed && !it.watched && whenOf(it) <= now && !it.day.isBefore(today.minusDays(7)) }
             .groupBy { it.contentId }.map { (_, l) -> l.maxBy { whenOf(it) } }
+        CalendarHomeFeed.setNewUpcomingRow(s.calendarUpcomingNewRow)
         val upcoming = if (!s.calendarUpcomingRow) emptyList() else entries
             .filter { whenOf(it) > now && !it.day.isAfter(today.plusDays(7)) }
             .groupBy { it.contentId }.map { (_, l) -> l.minBy { whenOf(it) } }

@@ -151,6 +151,7 @@ class LiveTvPreferences @Inject constructor(
         val sideMenuLine = booleanPreferencesKey("side_menu_line")
         val sideMenuFit = booleanPreferencesKey("side_menu_fit")
         val calendarUpcomingRow = booleanPreferencesKey("calendar_upcoming_row")
+        val calendarUpcomingNewRow = booleanPreferencesKey("calendar_upcoming_new_row")
         val calendarNewEpisodeCards = booleanPreferencesKey("calendar_new_episode_cards")
         val pageLiveTvOptions = booleanPreferencesKey("page_live_tv_options")
         val calendarHideSpoilers = booleanPreferencesKey("calendar_hide_spoilers")
@@ -204,7 +205,7 @@ class LiveTvPreferences @Inject constructor(
         val homeRowLimit = intPreferencesKey("home_row_limit")
         val homeRowHidePlaceholders = booleanPreferencesKey("home_row_hide_placeholders")
         val homeRowOpensGuide = booleanPreferencesKey("home_row_opens_guide")
-        val homeRowShowNext = booleanPreferencesKey("home_row_show_next")
+        val homeRowShowNext = booleanPreferencesKey("home_row_show_next_v2") // v2: default is now on
         val homeRowCompact = booleanPreferencesKey("home_row_compact")
         val bufferSize = stringPreferencesKey("buffer_size")
         val groupSort = stringPreferencesKey("group_sort")
@@ -651,6 +652,7 @@ class LiveTvPreferences @Inject constructor(
             sideMenuLine = p[Keys.sideMenuLine] ?: d.sideMenuLine,
             sideMenuFit = p[Keys.sideMenuFit] ?: d.sideMenuFit,
             calendarUpcomingRow = p[Keys.calendarUpcomingRow] ?: d.calendarUpcomingRow,
+            calendarUpcomingNewRow = p[Keys.calendarUpcomingNewRow] ?: d.calendarUpcomingNewRow,
             calendarNewEpisodeCards = p[Keys.calendarNewEpisodeCards] ?: d.calendarNewEpisodeCards,
             pageLiveTvOptions = p[Keys.pageLiveTvOptions] ?: d.pageLiveTvOptions,
             calendarHideSpoilers = p[Keys.calendarHideSpoilers] ?: d.calendarHideSpoilers,
@@ -1006,6 +1008,7 @@ class LiveTvPreferences @Inject constructor(
         p[Keys.sideMenuLine] = s.sideMenuLine
         p[Keys.sideMenuFit] = s.sideMenuFit
         p[Keys.calendarUpcomingRow] = s.calendarUpcomingRow
+        p[Keys.calendarUpcomingNewRow] = s.calendarUpcomingNewRow
         p[Keys.calendarNewEpisodeCards] = s.calendarNewEpisodeCards
         p[Keys.pageLiveTvOptions] = s.pageLiveTvOptions
         p[Keys.calendarHideSpoilers] = s.calendarHideSpoilers

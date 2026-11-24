@@ -330,6 +330,8 @@ class PlayerRuntimeController(
     internal var currentSeason: Int? = initialSeason
     internal var currentEpisode: Int? = initialEpisode
     internal var currentEpisodeTitle: String? = initialEpisodeTitle
+    /** Live TV fork: loop the current movie/episode; mirrors [PlayerUiState.repeatOne]. */
+    internal var repeatOneRequested: Boolean = false
 
     internal val _uiState = MutableStateFlow(
         PlayerUiState(

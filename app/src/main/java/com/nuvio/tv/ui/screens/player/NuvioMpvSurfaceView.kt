@@ -312,6 +312,12 @@ class NuvioMpvSurfaceView @JvmOverloads constructor(
         mpv.setPropertyDouble("speed", speed.toDouble())
     }
 
+    /** Live TV fork: loop the current movie/episode instead of stopping at the end. */
+    fun setRepeatFile(enabled: Boolean) {
+        if (!initialized) return
+        runCatching { mpv.setPropertyString("loop-file", if (enabled) "inf" else "no") }
+    }
+
     fun applyAudioAmplificationDb(db: Int) {
         if (!initialized) return
         val clampedDb = db.coerceIn(AUDIO_GAIN_MIN_DB, AUDIO_GAIN_MAX_DB)

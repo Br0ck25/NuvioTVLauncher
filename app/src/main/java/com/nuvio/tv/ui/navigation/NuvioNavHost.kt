@@ -43,6 +43,10 @@ import androidx.navigation.navArgument
 import com.nuvio.tv.core.build.AppFeaturePolicy
 import com.nuvio.tv.core.party.PartyMedia
 import com.nuvio.tv.domain.model.ExperienceMode
+import com.nuvio.tv.domain.model.SectionScales
+import com.nuvio.tv.ui.scale.LocalSectionScales
+import com.nuvio.tv.ui.scale.SectionScaleHost
+import com.nuvio.tv.ui.scale.SectionScalingViewModel
 import com.nuvio.tv.data.mediaserver.ServerCatalog
 import com.nuvio.tv.ui.screens.CatalogSeeAllScreen
 import com.nuvio.tv.ui.screens.ExperienceModeSelectionScreen
@@ -106,17 +110,23 @@ fun NuvioNavHost(
     hideBuiltInHeaders: Boolean = false,
     discoverIsRoot: Boolean = false
 ) {
-    PlaybackAvailabilityProvider {
-        // The NavController keeps its back stack ViewModels in the store of the owner it is
-        // composed under, so use the session store when MainActivity provides one.
-        val navViewModelStoreOwner = LocalNavViewModelStoreOwner.current
-            ?: checkNotNull(LocalViewModelStoreOwner.current)
-        CompositionLocalProvider(LocalViewModelStoreOwner provides navViewModelStoreOwner) {
-            Box(modifier = Modifier.fillMaxSize()) {
-                LocalBackgroundTrailerController.current?.let { controller ->
-                    BackgroundTrailerLayer(controller = controller)
+    val sectionScaling: SectionScalingViewModel =
+        androidx.hilt.navigation.compose.hiltViewModel()
+    val sectionScales by sectionScaling.scales.collectAsStateWithLifecycle()
+
+    CompositionLocalProvider(LocalSectionScales provides sectionScales) {
+        PlaybackAvailabilityProvider {
+            // The NavController keeps its back stack ViewModels in the store of the owner it is
+            // composed under, so use the session store when MainActivity provides one.
+            val navViewModelStoreOwner = LocalNavViewModelStoreOwner.current
+                ?: checkNotNull(LocalViewModelStoreOwner.current)
+            CompositionLocalProvider(LocalViewModelStoreOwner provides navViewModelStoreOwner) {
+                Box(modifier = Modifier.fillMaxSize()) {
+                    LocalBackgroundTrailerController.current?.let { controller ->
+                        BackgroundTrailerLayer(controller = controller)
+                    }
+                    PlaybackNavHost(navController, startDestination, hideBuiltInHeaders, discoverIsRoot)
                 }
-                PlaybackNavHost(navController, startDestination, hideBuiltInHeaders, discoverIsRoot)
             }
         }
     }
@@ -132,6 +142,22 @@ fun NuvioNavHost(
     com.nuvio.tv.livetv.sports.SportsPinsHost(navController)
 }
 
+/** The per-section size a menu page belongs to; pages not listed here keep the normal size. */
+private fun sectionKeyForRoute(route: String): String? = when (route) {
+    Screen.Home.route -> SectionScales.HOME
+    Screen.Discover.route -> SectionScales.DISCOVER
+    Screen.Search.route -> SectionScales.SEARCH
+    Screen.Library.route -> SectionScales.LIBRARY
+    Screen.Calendar.route -> SectionScales.CALENDAR
+    Screen.LiveTv.route -> SectionScales.LIVE_TV
+    Screen.Sports.route -> SectionScales.SPORTS
+    Screen.OnDemand.route -> SectionScales.ON_DEMAND
+    Screen.Recordings.route -> SectionScales.RECORDINGS
+    Screen.YouTube.route -> SectionScales.YOUTUBE
+    Screen.Music.route -> SectionScales.MUSIC
+    else -> null
+}
+
 // Root destinations carry the legacy sidebar inset themselves so the NavHost container
 // keeps a constant width while navigating between root and non-root routes.
 private fun NavGraphBuilder.rootComposable(
@@ -142,7 +168,9 @@ private fun NavGraphBuilder.rootComposable(
     composable(route) { backStackEntry ->
         val inset = if (withInset) LocalRootContentInset.current else 0.dp
         Box(modifier = Modifier.padding(start = inset)) {
-            content(backStackEntry)
+            SectionScaleHost(sectionKeyForRoute(route)) {
+                content(backStackEntry)
+            }
         }
     }
 }
@@ -164,7 +192,9 @@ private fun NavGraphBuilder.forkPageComposable(
         // Full screen must fill its first frame, without waiting for the sidebar inset animation.
         val inset = if (liveTvFullscreen) 0.dp else com.nuvio.tv.LocalForkPageInset.current
         Box(modifier = Modifier.padding(start = inset)) {
-            content(backStackEntry)
+            SectionScaleHost(sectionKeyForRoute(route)) {
+                content(backStackEntry)
+            }
         }
     }
 }
@@ -1948,21 +1978,25 @@ private fun PlaybackNavHost(
 
         composable(Screen.YouTube.route) {
             // YouTube fork: browse and search, played in Nuvio's own player.
-            com.nuvio.tv.youtube.YouTubeScreen(
-                onOpenSettings = {
-                    // The gear goes straight to the YouTube section, not the top of Settings.
-                    com.nuvio.tv.ui.screens.settings.SettingsLaunch.pendingCategory =
-                        com.nuvio.tv.ui.screens.settings.SettingsCategory.YOUTUBE
-                    navController.navigate(Screen.Settings.route) { launchSingleTop = true }
-                },
-                onPlay = { v -> navController.navigate(youtubePlayerRoute(v)) }
-            )
+            SectionScaleHost(sectionKeyForRoute(Screen.YouTube.route)) {
+                com.nuvio.tv.youtube.YouTubeScreen(
+                    onOpenSettings = {
+                        // The gear goes straight to the YouTube section, not the top of Settings.
+                        com.nuvio.tv.ui.screens.settings.SettingsLaunch.pendingCategory =
+                            com.nuvio.tv.ui.screens.settings.SettingsCategory.YOUTUBE
+                        navController.navigate(Screen.Settings.route) { launchSingleTop = true }
+                    },
+                    onPlay = { v -> navController.navigate(youtubePlayerRoute(v)) }
+                )
+            }
         }
 
         composable(Screen.Music.route) {
             // Music fork: YouTube Music browsing and the audio-first player. The host rail is
             // hidden behind Music's own rail, and Left opens Nuvio's menu over it.
-            com.nuvio.tv.music.MusicScreen()
+            SectionScaleHost(sectionKeyForRoute(Screen.Music.route)) {
+                com.nuvio.tv.music.MusicScreen()
+            }
         }
 
         forkPageComposable(Screen.Calendar.route) {

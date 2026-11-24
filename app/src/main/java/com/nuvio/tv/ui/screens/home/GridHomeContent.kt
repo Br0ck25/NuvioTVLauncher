@@ -33,6 +33,7 @@ import androidx.compose.runtime.DisposableEffect
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.derivedStateOf
 import androidx.compose.runtime.getValue
+import androidx.compose.runtime.collectAsState
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.mutableIntStateOf
 import androidx.compose.runtime.remember
@@ -126,6 +127,14 @@ fun GridHomeContent(
 ) {
     // Live TV fork: where the Live TV row goes (null = hidden).
     val liveTvRowAbove = com.nuvio.tv.livetv.home.rememberLiveTvHomeRowPosition()
+    val newUpcomingRow by com.nuvio.tv.livetv.calendar.CalendarHomeFeed.newUpcomingRowFlow.collectAsState()
+    // Grid's Continue Watching is a fixed size, so the other rows keep lining up with it.
+    androidx.compose.runtime.SideEffect {
+        com.nuvio.tv.ui.components.HomeTiles.publish(
+            com.nuvio.tv.ui.components.HomeTile(220.dp, 124.dp, NuvioTheme.spacing.md),
+            scalable = false
+        )
+    }
     val gridState = rememberLazyGridState(
         initialFirstVisibleItemIndex = gridFocusState.verticalScrollIndex,
         initialFirstVisibleItemScrollOffset = gridFocusState.verticalScrollOffset
@@ -751,7 +760,8 @@ fun GridHomeContent(
                         cardStyle = uiState.continueWatchingCardStyle,
                         cornerRadius = posterCardStyle.cornerRadius,
                         posterCardWidth = posterCardStyle.width,
-                        posterCardHeight = posterCardStyle.height
+                        posterCardHeight = posterCardStyle.height,
+                        isUpcomingSection = newUpcomingRow
                     )
                 }
             }
