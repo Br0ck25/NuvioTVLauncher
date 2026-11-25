@@ -795,6 +795,14 @@
     <string name="playback_visible_buttons_value">%1$d of %2$d</string>
     <string name="playback_buttons_dialog_title">Player Buttons</string>
     <string name="playback_buttons_dialog_sub">Choose the buttons to show. Play always stays visible.</string>
+    <string name="vod_download_title">Download video</string>
+    <string name="vod_download_supported">Choose where to save this direct video file. Downloads are limited to non-DRM file streams; adaptive playlists and protected sources are not supported.</string>
+    <string name="vod_download_unsupported">This source is not a supported direct video file. Adaptive playlists, DRM-protected sources, and restricted playback routes cannot be saved here.</string>
+    <string name="vod_download_permission_prompt">Confirm this source permits offline saving</string>
+    <string name="vod_download_permission_confirmed">✓ I confirm offline saving is permitted</string>
+    <string name="vod_download_smb_setup_required">Set up first</string>
+    <string name="vod_download_smb_setup_hint">Set it up in Settings → Live TV → Playback → Recordings → Set up SMB share.</string>
+    <string name="vod_download_action">Download</string>
     <string name="playback_skip_intro">Skip Intro</string>
     <string name="playback_skip_intro_sub">Use introdb.app to detect intros and recaps.</string>
     <string name="playback_parental_guide">Content Warnings</string>
@@ -1125,6 +1133,9 @@
     <string name="layout_hero_catalogs_sub">Select one or more catalogs for hero content.</string>
     <string name="layout_section_content">Home Content</string>
     <string name="layout_section_content_desc">Control what appears on home and search.</string>
+    <string name="layout_section_home_rows">Home Rows</string>
+    <string name="layout_section_home_rows_desc">Manage Live TV, Sports and On Demand rows.</string>
+    <string name="home_rows_settings_intro">Add and configure the Live TV, Sports and On Demand rows shown on Home. Change their position in Reorder Home Catalogs.</string>
     <string name="layout_section_sidebar">Sidebar &amp; Navigation</string>
     <string name="layout_section_sidebar_desc">Sidebar style and where Discover appears.</string>
     <string name="layout_section_card_depth_desc">Edge light and sheen on image cards.</string>
@@ -3616,4 +3627,17 @@
     <string name="youtube_continue_unavailable">Couldn\'t open this YouTube video right now.</string>
     <string name="youtube_settings_continue_watching_on_home">Continue watching on Home</string>
     <string name="youtube_settings_continue_watching_on_home_desc">Show videos you started on the YouTube page in their own row on Nuvio\'s Home screen.</string>
+    <string name="iptv_transfer_generate_title">Move this profile to another Nuvio account</string>
+    <string name="iptv_transfer_generate_desc">Create a one-time code to move this profile\'s Live TV setup. The code expires after 15 minutes.</string>
+    <string name="iptv_transfer_generate_action">Generate code</string>
+    <string name="iptv_transfer_redeem_title">Move Live TV setup to this account</string>
+    <string name="iptv_transfer_redeem_desc">Enter a one-time code from a secondary profile on another Nuvio account.</string>
+    <string name="iptv_transfer_redeem_action">Redeem code</string>
+    <string name="iptv_transfer_code_title">One-time transfer code</string>
+    <string name="iptv_transfer_code_display">%1$s\n\nEnter this code on the receiving account within 15 minutes. It moves only Live TV setup.</string>
+    <string name="iptv_transfer_code_hint">XXXX-XXXX-XXXX</string>
+    <string name="iptv_transfer_success_title">Live TV setup moved</string>
+    <string name="iptv_transfer_success_desc">The transferred setup is now part of this account\'s primary profile.</string>
+    <string name="iptv_transfer_failed_title">Transfer not completed</string>
+    <string name="iptv_transfer_failed_desc">Could not complete the Live TV transfer. Try again.</string>
 </resources>

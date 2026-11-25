@@ -92,6 +92,7 @@ class HomeViewModel @Inject constructor(
     // Live TV fork: On Demand's own Continue Watching row on Home.
     internal val onDemandRepository: com.nuvio.tv.livetv.ondemand.OnDemandRepository,
     internal val liveTvPreferences: com.nuvio.tv.livetv.data.LiveTvPreferences,
+    internal val homeLiveRows: com.nuvio.tv.livetv.home.HomeLiveRows,
     internal val trailerPlayerPool: com.nuvio.tv.core.player.TrailerPlayerPool,
     internal val backgroundTrailerController: com.nuvio.tv.core.player.BackgroundTrailerController,
     internal val metaPreviewEnricher: MetaPreviewEnricher = MetaPreviewEnricher(
@@ -236,6 +237,11 @@ class HomeViewModel @Inject constructor(
     internal val catalogOrder = mutableListOf<String>()
     internal var addonsCache: List<Addon> = emptyList()
     internal var collectionsCache: List<Collection> = emptyList()
+    /** Live TV, Sports, and On Demand Home rows, keyed for insertion into catalog order. */
+    internal var liveRowsCache: List<Pair<String, String>> = emptyList()
+    internal var vodRowsCache: Map<String, CatalogRow> = emptyMap()
+    internal var vodRowKeys: Set<String> = emptySet()
+    internal var emptyLiveRowKeys: Set<String> = emptySet()
     internal var homeCatalogOrderKeys: List<String> = emptyList()
     internal var disabledHomeCatalogKeys: Set<String> = emptySet()
     internal var followAddonsOrderEnabled: Boolean = false
@@ -895,7 +901,10 @@ class HomeViewModel @Inject constructor(
         }
     }
 
-    private fun observeCollections() = observeCollectionsPipeline()
+    private fun observeCollections() {
+        observeCollectionsPipeline()
+        observeLiveRowsPipeline()
+    }
 
     private fun observeInstalledAddons() = observeInstalledAddonsPipeline()
 

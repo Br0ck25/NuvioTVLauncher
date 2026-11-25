@@ -30,7 +30,7 @@ class BitrateAwareLoadControl(
     retainBackBufferFromKeyframe: Boolean,
     /** Memory ceiling in bytes. */
     private val budgetBytes: Long,
-    allocator: DefaultAllocator = DefaultAllocator(/* trimOnReset= */ true, C.DEFAULT_BUFFER_SEGMENT_SIZE, 64)
+    private val allocator: DefaultAllocator = DefaultAllocator(/* trimOnReset= */ true, C.DEFAULT_BUFFER_SEGMENT_SIZE, 64)
 ) : DefaultLoadControl(
     allocator,
     minBufferMs,
@@ -42,6 +42,9 @@ class BitrateAwareLoadControl(
     backBufferDurationMs,
     retainBackBufferFromKeyframe
 ) {
+
+    val bufferAllocator: DefaultAllocator get() = allocator
+    val configuredBudgetBytes: Long get() = budgetBytes
 
     // Effective back buffer (µs) when >= 0, else the constructed value.
     @Volatile
@@ -66,6 +69,9 @@ class BitrateAwareLoadControl(
     // Effective byte budget when >= 0, else the constructed budget.
     @Volatile
     private var budgetBytesOverride: Long = -1L
+
+    @Volatile
+    private var memoryPressureCapBytes: Long = -1L
 
     /**
      * Set the byte budget at runtime; negative restores the constructed budget.
@@ -99,9 +105,23 @@ class BitrateAwareLoadControl(
     }
 
     private fun currentTargetBufferBytes(): Int {
-        val effectiveBudget = if (budgetBytesOverride >= 0L) budgetBytesOverride else budgetBytes
+        val budgetOverride = if (budgetBytesOverride >= 0L) budgetBytesOverride else budgetBytes
+        val effectiveBudget = if (memoryPressureCapBytes >= 0L) {
+            minOf(budgetOverride, memoryPressureCapBytes)
+        } else {
+            budgetOverride
+        }
         return effectiveBudget.coerceAtMost(Int.MAX_VALUE.toLong()).toInt()
     }
+
+    /** Applies or clears a temporary memory-pressure ceiling without changing the saved setting. */
+    fun setMemoryPressureCapBytes(bytes: Long) {
+        memoryPressureCapBytes = if (bytes < 0L) -1L else bytes
+        applyBudgetToActiveLoadingStates()
+    }
+
+    /** The current allocator target after all runtime ceilings have been applied. */
+    fun allocatorTargetBytes(): Int = currentTargetBufferBytes()
 
     private fun applyBudgetToActiveLoadingStates() {
         runCatching {

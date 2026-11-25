@@ -330,6 +330,28 @@ class NuvioMpvSurfaceView @JvmOverloads constructor(
         }
     }
 
+    /** Apply Nuvio's shared seven-band profile as a named libavfilter equalizer chain. */
+    fun applySevenBandEqualizer(profile: com.nuvio.tv.core.audio.SevenBandEqualizerProfile) {
+        if (!initialized) return
+        runCatching {
+            mpv.command("af", "remove", "@nuvio-seven-band-eq")
+        }
+        if (!profile.isEnabled) return
+
+        val bands = com.nuvio.tv.core.audio.SevenBandEqualizerSettings.frequenciesHz
+            .zip(profile.gainsDb)
+            .filter { (_, gain) -> gain != 0 }
+        if (bands.isEmpty()) return
+        val filters = bands.joinToString(",") { (frequency, gain) ->
+            "equalizer=f=$frequency:t=q:w=1:g=$gain"
+        }
+        runCatching {
+            mpv.command("af", "add", "@nuvio-seven-band-eq:lavfi=[$filters]")
+        }.onFailure {
+            Log.w(TAG, "Failed to apply seven-band equalizer on mpv: ${it.message}")
+        }
+    }
+
     fun applyAudioLanguagePreferences(languages: List<String>) {
         if (!initialized) return
         val normalized = languages

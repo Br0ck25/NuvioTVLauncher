@@ -18,7 +18,8 @@ import androidx.media3.exoplayer.audio.ForwardingAudioSink
 internal class PlaybackSpeedAwareAudioSink(
     sink: AudioSink,
     initialForcePcm: Boolean = false,
-    forcePcmForBluetooth: Boolean = false
+    forcePcmForBluetooth: Boolean = false,
+    private val forcePcmForEqualizer: () -> Boolean = { false }
 ) : ForwardingAudioSink(sink) {
 
     // Set when the sink is built with forcePcm (error recovery). Don't clear on speed reset.
@@ -120,6 +121,10 @@ internal class PlaybackSpeedAwareAudioSink(
         }
         // Bluetooth: always decode to PCM (Media3 DEFAULT_AUDIO_CAPABILITIES policy).
         if (bluetoothForcePcm || forcePcmForCurrentSession) {
+            return true
+        }
+        // A software EQ cannot operate on a compressed passthrough bitstream.
+        if (forcePcmForEqualizer()) {
             return true
         }
         // Non-1x speed cannot be applied to bitstream passthrough tracks.

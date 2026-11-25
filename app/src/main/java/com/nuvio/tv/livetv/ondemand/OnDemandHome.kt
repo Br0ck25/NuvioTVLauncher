@@ -31,9 +31,21 @@ data class VodGroupEntry(
 object VodHomeIds {
     const val ADDON_ID = "nuvio-iptv-on-demand"
     private const val PREFIX = "nuviovod:"
+    private const val CONTINUE_MARK = "#cw"
 
     fun metaId(uid: String) = PREFIX + uid
-    fun uidOf(metaId: String): String? = metaId.takeIf { it.startsWith(PREFIX) }?.removePrefix(PREFIX)
+    fun continueMetaId(uid: String) = PREFIX + uid + CONTINUE_MARK
+    fun isContinue(metaId: String) = metaId.startsWith(PREFIX) && metaId.endsWith(CONTINUE_MARK)
+    fun uidOf(metaId: String): String? = metaId.takeIf { it.startsWith(PREFIX) }?.removePrefix(PREFIX)?.removeSuffix(CONTINUE_MARK)
+
+    class HomeHooks(val focused: (String) -> Unit, val loadMore: (String) -> Unit)
+    @Volatile var homeHooks: HomeHooks? = null
+    fun focused(metaId: String) { homeHooks?.focused?.invoke(metaId) }
+    fun loadMore(catalogId: String): Boolean {
+        val hooks = homeHooks ?: return false
+        hooks.loadMore(catalogId)
+        return true
+    }
 
     /** Whether a watch-progress content id belongs to an On Demand title. */
     fun isOnDemandContentId(contentId: String?): Boolean = contentId?.startsWith(PREFIX) == true

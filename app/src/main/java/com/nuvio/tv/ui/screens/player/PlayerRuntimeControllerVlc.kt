@@ -65,6 +65,11 @@ internal fun PlayerRuntimeController.attachVlcView(view: NuvioVlcSurfaceView?) {
         vlcTracksSignature = 0
         vlcAudioTrackCount = 0
         vlcSubtitleTrackCount = 0
+        view.setSevenBandEqualizerProfile(
+            com.nuvio.tv.core.audio.SevenBandEqualizerSettings.current(
+                com.nuvio.tv.core.audio.EqualizerOwner.PLAYBACK
+            )
+        )
         val startPosition = resolvePendingInitialResumePosition().takeIf { it > 0L } ?: 0L
         view.setMedia(
             currentStreamUrl,
@@ -234,7 +239,10 @@ private fun PlayerRuntimeController.vlcMediaConfig(): NuvioVlcSurfaceView.MediaC
         networkCachingMs = cacheMs,
         liveCachingMs = liveCacheMs,
         hardwareDecoding = settings.decoderPriority != 2,
-        passthrough = settings.forceOpticalPassthrough && settings.decoderPriority != 0,
+        passthrough = settings.forceOpticalPassthrough && settings.decoderPriority != 0 &&
+            !com.nuvio.tv.core.audio.SevenBandEqualizerSettings.current(
+                com.nuvio.tv.core.audio.EqualizerOwner.PLAYBACK
+            ).isEnabled,
         audioChannels = if (settings.effectiveDownmixEnabled) {
             settings.audioOutputChannels.channelCount
         } else {

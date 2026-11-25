@@ -210,7 +210,10 @@ internal fun MusicVideoPlayerScreen(
                 "Mozilla/5.0 (Linux; Android 13; Android TV) AppleWebKit/537.36 " +
                     "(KHTML, like Gecko) Chrome/140.0.0.0 Safari/537.36"
             )
+        MusicSettings.init(context)
+        MusicEqualizer.apply()
         val exo = ExoPlayer.Builder(context)
+            .setRenderersFactory(MusicEqualizerRenderersFactory(context, MusicEqualizer.videoAudioProcessor))
             .setTrackSelector(selector)
             .setMediaSourceFactory(DefaultMediaSourceFactory(httpFactory))
             .build()

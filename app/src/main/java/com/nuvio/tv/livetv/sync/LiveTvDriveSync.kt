@@ -488,12 +488,18 @@ class LiveTvDriveSync @Inject constructor(
             // playlists only the other TVs had.
             val (first, second) = if (localWinsWithoutBase) local to remote else remote to local
             val out = JSONObject(first.toString())
-            for (k in SOURCE_LISTS) {
+            for (k in (first.keys().asSequence() + second.keys().asSequence()).filter(::isSourceListKey).distinct()) {
                 val a = first.optJSONObject(k)
                 val b = second.optJSONObject(k)
                 if (b == null) continue
-                if (a == null) { out.put(k, JSONObject(b.toString())); continue }
-                runCatching { unionSources(a.optString("v"), b.optString("v"), removedHere) }.getOrNull()
+                if (a == null) {
+                    val merged = runCatching {
+                        unionSources("[]", b.optString("v"), removedForKey(k, removedHere))
+                    }.getOrNull()
+                    out.put(k, JSONObject(b.toString()).put("v", merged ?: b.optString("v")))
+                    continue
+                }
+                runCatching { unionSources(a.optString("v"), b.optString("v"), removedForKey(k, removedHere)) }.getOrNull()
                     ?.let { out.put(k, JSONObject(a.toString()).put("v", it)) }
             }
             return out
@@ -512,13 +518,13 @@ class LiveTvDriveSync @Inject constructor(
                 // playlist switched off, the server's time zone learned) threw away the other
                 // TV's edits, like a provider's new server address, and then sent the old one back.
                 // A list missing on one side counts as empty (never "remove everything").
-                val listMerged = if (k in SOURCE_LISTS && (local.has(k) || remote.has(k))) {
+                val listMerged = if (isSourceListKey(k) && (local.has(k) || remote.has(k))) {
                     runCatching {
                         mergeSources(
                             base.optJSONObject(k)?.optString("v"),
                             local.optJSONObject(k)?.optString("v") ?: "[]",
                             remote.optJSONObject(k)?.optString("v") ?: "[]",
-                            removedHere
+                            removedForKey(k, removedHere)
                         )
                     }.getOrNull()
                 } else null
@@ -537,6 +543,21 @@ class LiveTvDriveSync @Inject constructor(
             }
         }
         return out
+    }
+
+    private fun isSourceListKey(key: String): Boolean = key.replace(PROFILE_SUFFIX, "") in SOURCE_LISTS
+
+    /** New tombstones are profile-scoped; old unscoped ids only apply to profile 1. */
+    private fun removedForKey(key: String, removed: Set<String>): Set<String> {
+        val profileId = key.substringAfterLast("_p", "1").toIntOrNull() ?: 1
+        return removed.mapNotNullTo(HashSet()) { value ->
+            val delimiter = value.indexOf('|')
+            if (delimiter < 0) {
+                value.takeIf { profileId == 1 }
+            } else {
+                value.substring(delimiter + 1).takeIf { value.substring(0, delimiter).toIntOrNull() == profileId }
+            }
+        }
     }
 
     /**

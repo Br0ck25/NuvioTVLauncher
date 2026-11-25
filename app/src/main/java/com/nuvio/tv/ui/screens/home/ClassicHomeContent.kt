@@ -310,11 +310,12 @@ fun ClassicHomeContent(
             uiState.catalogRows.filter { it.items.isNotEmpty() }.map { HomeRow.Catalog(it) }
         }
     }
-    val visibleRowKeys = remember(visibleHomeRows) {
-        visibleHomeRows.mapTo(mutableSetOf()) { row ->
+    val visibleRowKeys: Set<String> = remember(visibleHomeRows) {
+        visibleHomeRows.mapTo(mutableSetOf<String>()) { row ->
             when (row) {
                 is HomeRow.Catalog -> row.row.stableKey()
                 is HomeRow.CollectionRow -> "collection_${row.collection.id}"
+                is HomeRow.LiveRow -> row.key
                 is HomeRow.PlaceholderCatalog -> row.stableCatalogKey
             }
         }
@@ -911,6 +912,7 @@ fun ClassicHomeContent(
                         "${r.stableKey()}_$index"
                     }
                     is HomeRow.CollectionRow -> "collection_${item.collection.id}"
+                    is HomeRow.LiveRow -> item.key
                     is HomeRow.PlaceholderCatalog -> "${item.stableCatalogKey}_$index"
                 }
             },
@@ -918,6 +920,7 @@ fun ClassicHomeContent(
                 when (item) {
                     is HomeRow.Catalog -> "catalog_row"
                     is HomeRow.CollectionRow -> "collection_row"
+                    is HomeRow.LiveRow -> "live_row"
                     is HomeRow.PlaceholderCatalog -> "catalog_row"
                 }
             }
@@ -1054,6 +1057,25 @@ fun ClassicHomeContent(
                                     ?.toClassicFocusArtwork(uiState.focusedPosterBackdropExpandEnabled)
                             }
                         }
+                    )
+                }
+
+                is HomeRow.LiveRow -> {
+                    val tile = com.nuvio.tv.ui.components.rememberHomeTile()
+                        ?: classicHomeTile
+                    com.nuvio.tv.livetv.home.HomeLiveRowSection(
+                        rowKey = homeRow.key,
+                        style = com.nuvio.tv.livetv.home.HomeLiveRowStyle(
+                            landscape = globalLandscape,
+                            portraitWidth = tile.width,
+                            portraitHeight = tile.height,
+                            landscapeWidth = tile.width,
+                            landscapeHeight = tile.height,
+                            startPadding = NuvioTheme.spacing.xxxl,
+                            cornerRadius = classicCatalogPosterCardStyle.cornerRadius,
+                            cardSpacing = tile.gap,
+                            titleStyle = MaterialTheme.typography.headlineMedium
+                        )
                     )
                 }
 

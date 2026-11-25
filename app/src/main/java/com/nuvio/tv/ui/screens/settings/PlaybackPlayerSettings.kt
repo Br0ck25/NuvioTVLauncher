@@ -347,6 +347,7 @@ private fun playerControlLabel(control: PlayerControlButton): String = when (con
     PlayerControlButton.SOURCES -> "Sources Button"
     PlayerControlButton.EPISODES -> "Episodes Button"
     PlayerControlButton.PARTY -> "Watch Party Button"
+    PlayerControlButton.DOWNLOAD -> "Download Button"
     PlayerControlButton.STREAM_INFO -> "Info Button"
     PlayerControlButton.MORE -> "More Menu"
 }
@@ -362,6 +363,7 @@ private fun playerControlDescription(control: PlayerControlButton): String = whe
     PlayerControlButton.SOURCES -> "The sources shortcut. Automatic fallback still works."
     PlayerControlButton.EPISODES -> "The episode-list shortcut. Auto-play is unaffected."
     PlayerControlButton.PARTY -> "The Watch Party shortcut. An active party is unchanged."
+    PlayerControlButton.DOWNLOAD -> "Save a permitted, non-DRM direct video file to device, USB, or SMB storage."
     PlayerControlButton.STREAM_INFO -> "The stream-info shortcut in the More menu. The remote INFO key still opens it."
     PlayerControlButton.MORE -> "Aspect ratio, stream info, engine switch and reports. Turning this off hides the whole menu."
 }

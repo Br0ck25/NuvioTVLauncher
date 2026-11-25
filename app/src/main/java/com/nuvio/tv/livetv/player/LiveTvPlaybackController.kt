@@ -1818,10 +1818,10 @@ class LiveTvPlaybackController @Inject constructor(
      * 1 GB box that reports a 512 MB "large" heap it can't back, that is half the reported heap,
      * so the download-ahead is about 75 MB there instead of about 150 MB.
      */
-    private fun playerBufferBytes(): Int {
-        val heapMb = MemoryBudget.heapMb.takeIf { it > 0 } ?: 512L
-        return ((heapMb shl 20) * 3 / 10).coerceIn(32L shl 20, 160L shl 20).toInt()
-    }
+    private fun playerBufferPolicy() = LiveTvBufferPolicy.forDevice(
+        MemoryBudget.heapMb,
+        com.nuvio.tv.ui.screens.player.NuvioExoPlayerPerformanceHelper.getDevicePhysicalRamBytes(context)
+    )
 
     private fun buildPlayer(): ExoPlayer {
         val passthrough = audioPassthrough
@@ -1854,16 +1854,17 @@ class LiveTvPlaybackController @Inject constructor(
             "xlarge" -> listOf(60_000, 150_000, 5_000, 10_000)
             else -> listOf(25_000, 60_000, 2_000, 4_000)
         }
+        val bufferPolicy = playerBufferPolicy()
         val loadControl = DefaultLoadControl.Builder()
             .setBufferDurationsMs(minMs, maxMs, startMs, rebufferMs)
-            .setPrioritizeTimeOverSizeThresholds(true)
+            .setPrioritizeTimeOverSizeThresholds(bufferPolicy.prioritizeTimeOverSize)
             // The download-ahead lives in the app's memory. The player's own cap (about 130 MB
             // for video) is more than half of what a cheap stick gives an app, which made the
             // whole app stutter as memory ran short. Capped to about 30% of the memory the app can
             // really use (see playerBufferBytes):
             // the same on boxes with plenty, smaller on low-memory ones. The minimum buffer
             // time is always kept, so channels are just as steady.
-            .setTargetBufferBytes(playerBufferBytes())
+            .setTargetBufferBytes(bufferPolicy.targetBytes)
             .build()
         return ExoPlayer.Builder(context, renderers)
             .setLoadControl(loadControl)

@@ -296,6 +296,7 @@ class ProfileSelectionViewModel @Inject constructor(
     fun deleteProfile(id: Int) {
         viewModelScope.launch {
             runCatching { liveTvPreferences.stopMatching(id, keepCopy = false) }
+            liveTvPreferences.removeProfileData(id)
             profileManager.deleteProfile(id)
             profileSyncService.deleteProfileData(id)
             profileSyncService.pushToRemote()

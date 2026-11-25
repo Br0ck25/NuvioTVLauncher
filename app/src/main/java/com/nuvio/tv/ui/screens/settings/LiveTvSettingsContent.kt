@@ -261,6 +261,7 @@ private sealed interface LiveDialog {
     data object HomeRowSource : LiveDialog
     data object HomeRowTitle : LiveDialog
     data object SmbShare : LiveDialog
+    data object RedeemProfileTransfer : LiveDialog
     data class ConfirmDeletePlaylist(val source: PlaylistSource) : LiveDialog
     data class ConfirmDeleteEpg(val source: EpgSource) : LiveDialog
     /** "Are you sure?" before a reset, clear or similar. */
@@ -390,6 +391,7 @@ internal fun LiveTvSettingsContent(
     val groupTagChannelCount by viewModel.groupTagChannelCount.collectAsStateWithLifecycle()
     val status by viewModel.status.collectAsStateWithLifecycle()
     val accounts by viewModel.accounts.collectAsStateWithLifecycle()
+    val isPrimaryProfileActive by viewModel.isPrimaryProfileActive.collectAsStateWithLifecycle()
     var dialog by remember { mutableStateOf<LiveDialog?>(null) }
     var recoverState by remember { mutableStateOf<PlaylistRecoveryState?>(null) }
     var dnsChoice by remember { mutableStateOf(com.nuvio.tv.livetv.data.ForkDns.choice) }
@@ -458,7 +460,7 @@ internal fun LiveTvSettingsContent(
             verticalArrangement = Arrangement.spacedBy(NuvioTheme.spacing.md)
         ) {
             // ------------------------------------------------------------ Setup Sync
-            if (show(LiveTvPage.MAIN) && cloud.available) item(key = "cloud") {
+            if (show(LiveTvPage.MAIN) && isPrimaryProfileActive && cloud.available) item(key = "cloud") {
                 CloudSyncCard(
                     modifier = if (firstRequester != null) Modifier.focusRequester(firstRequester) else Modifier,
                     state = cloud,
@@ -512,7 +514,7 @@ internal fun LiveTvSettingsContent(
             }
 
             // ------------------------------------------------------------ Backup & Sync
-            if (show(LiveTvPage.MAIN)) item(key = "drive") {
+            if (show(LiveTvPage.MAIN) && isPrimaryProfileActive) item(key = "drive") {
                 DriveSyncCard(
                     modifier = if (firstRequester != null && !cloud.available) Modifier.focusRequester(firstRequester) else Modifier,
                     state = drive,
@@ -537,6 +539,36 @@ internal fun LiveTvSettingsContent(
                         ) { viewModel.driveSync.disconnect() }
                     }
                 )
+            }
+
+            if (show(LiveTvPage.MAIN) && cloud.available) item(key = "profile-transfer") {
+                SettingsGroupCard {
+                    SettingsActionRow(
+                        title = context.getString(if (isPrimaryProfileActive) R.string.iptv_transfer_redeem_title else R.string.iptv_transfer_generate_title),
+                        subtitle = context.getString(if (isPrimaryProfileActive) R.string.iptv_transfer_redeem_desc else R.string.iptv_transfer_generate_desc),
+                        value = context.getString(if (isPrimaryProfileActive) R.string.iptv_transfer_redeem_action else R.string.iptv_transfer_generate_action),
+                        onClick = {
+                            if (isPrimaryProfileActive) {
+                                dialog = LiveDialog.RedeemProfileTransfer
+                            } else {
+                                pageScope.launch {
+                                    viewModel.cloudSync.createProfileTransferCode().fold(
+                                        onSuccess = { (code, _) ->
+                                            dialog = LiveDialog.Confirm(
+                                                context.getString(R.string.iptv_transfer_code_title),
+                                                context.getString(R.string.iptv_transfer_code_display, code),
+                                                context.getString(R.string.action_close)
+                                            ) {}
+                                        },
+                                        onFailure = { error ->
+                                            dialog = LiveDialog.Confirm(context.getString(R.string.iptv_transfer_failed_title), error.message ?: context.getString(R.string.iptv_transfer_failed_desc), context.getString(R.string.action_close)) {}
+                                        }
+                                    )
+                                }
+                            }
+                        }
+                    )
+                }
             }
 
             // ------------------------------------------------------------ Playlists & Guides
@@ -581,15 +613,11 @@ internal fun LiveTvSettingsContent(
                     }
                     if (playlists.isNotEmpty()) {
                         SettingsActionRow(
-                            title = context.getString(R.string.iptv_settings_playlists_on_this_profile),
-                            subtitle = context.getString(R.string.iptv_settings_playlists_on_this_profile_sub),
-                            value = context.getString(
-                                R.string.iptv_settings_playlists_visible_count,
-                                playlists.count { it.id !in user.hiddenPlaylists },
-                                playlists.size
-                            ),
+                            title = context.getString(R.string.iptv_settings_each_profile_has_its_own_playlists),
+                            subtitle = context.getString(R.string.iptv_settings_deleting_one_here_only_removes_it),
+                            value = playlists.size.toString(),
                             leadingIcon = Icons.Default.Visibility,
-                            onClick = { dialog = LiveDialog.PlaylistVisibility }
+                            onClick = {}
                         )
                     }
                     SettingsActionRow(
@@ -1671,6 +1699,12 @@ internal fun LiveTvSettingsContent(
                         color = NuvioTheme.colors.TextSecondary,
                         modifier = Modifier.padding(horizontal = NuvioTheme.spacing.lg, vertical = NuvioTheme.spacing.sm)
                     )
+                    Text(
+                        text = context.getString(R.string.iptv_settings_parental_controls_per_profile),
+                        style = MaterialTheme.typography.bodySmall,
+                        color = NuvioTheme.colors.TextSecondary,
+                        modifier = Modifier.padding(horizontal = NuvioTheme.spacing.lg, vertical = NuvioTheme.spacing.sm)
+                    )
                     SettingsActionRow(
                         if (hasPin) context.getString(R.string.iptv_settings_change_pin) else context.getString(R.string.iptv_settings_set_a_pin),
                         if (hasPin) context.getString(R.string.iptv_settings_parental_controls_are_on) else context.getString(R.string.iptv_settings_turns_parental_controls_on),
@@ -2166,6 +2200,26 @@ internal fun LiveTvSettingsContent(
                 }
             )
         }
+        LiveDialog.RedeemProfileTransfer -> TextInputDialog(
+            title = context.getString(R.string.iptv_transfer_redeem_title),
+            initial = "",
+            hint = context.getString(R.string.iptv_transfer_code_hint),
+            confirmLabel = context.getString(R.string.iptv_transfer_redeem_action),
+            onDismiss = close,
+            onConfirm = { code ->
+                close()
+                pageScope.launch {
+                    viewModel.cloudSync.claimProfileTransferCode(code).fold(
+                        onSuccess = {
+                            dialog = LiveDialog.Confirm(context.getString(R.string.iptv_transfer_success_title), context.getString(R.string.iptv_transfer_success_desc), context.getString(R.string.action_close)) {}
+                        },
+                        onFailure = { error ->
+                            dialog = LiveDialog.Confirm(context.getString(R.string.iptv_transfer_failed_title), error.message ?: context.getString(R.string.iptv_transfer_failed_desc), context.getString(R.string.action_close)) {}
+                        }
+                    )
+                }
+            }
+        )
         LiveDialog.ButtonTester -> com.nuvio.tv.livetv.ui.RemoteButtonTester(onClose = close)
         LiveDialog.LoadReport -> com.nuvio.tv.livetv.ui.LoadReportDialog(onDismiss = close)
         LiveDialog.PosterTest -> {

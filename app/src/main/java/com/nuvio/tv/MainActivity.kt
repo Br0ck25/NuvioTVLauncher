@@ -2172,16 +2172,13 @@ private fun LegacySidebarScaffold(
                         keyEvent.type == KeyEventType.KeyDown &&
                         keyEvent.key == openKey
                     ) {
-                        // Live TV's guide uses Left for its own columns (channels → groups
-                        // → playlists). Back opens the menu there instead.
-                        if (currentRoute == Screen.LiveTv.route) {
+                        // Live TV and Music use Left for their own navigation/focus. Back opens
+                        // the Nuvio menu from those sections instead.
+                        if (currentRoute == Screen.LiveTv.route || currentRoute == Screen.Music.route) {
                             false
-                        } else if (hideSidebarRail) {
-                            // No permanent rail to move onto: open the menu directly.
-                            pendingSidebarFocusRequest = true
-                            drawerState.setValue(DrawerValue.Open)
-                            true
                         } else if (focusManager.moveFocus(if (isRtl) FocusDirection.Right else FocusDirection.Left)) {
+                            // Move across the current content row first. With the rail hidden,
+                            // Left opens the menu only after there is no in-content target.
                             true
                         } else {
                             pendingSidebarFocusRequest = true
@@ -2695,18 +2692,13 @@ private fun ModernSidebarScaffold(
                         }
                         val openKey = if (isRtl) Key.DirectionRight else Key.DirectionLeft
                         if (keyEvent.key == openKey) {
-                            // Live TV's guide uses Left for its own columns (channels → groups
-                            // → playlists). Back opens the menu there instead.
-                            if (currentRoute == Screen.LiveTv.route) {
+                            // Live TV and Music use Left for their own navigation/focus. Back opens
+                            // the Nuvio menu from those sections instead.
+                            if (currentRoute == Screen.LiveTv.route || currentRoute == Screen.Music.route) {
                                 false
-                            } else if (hideSidebarRail) {
-                                // No permanent rail to move onto: open the menu directly and
-                                // put the highlight in it. Left at a row's edge reaches here.
-                                isSidebarExpanded = true
-                                sidebarCollapsePending = false
-                                pendingSidebarFocusRequest = true
-                                true
                             } else if (focusManager.moveFocus(if (isRtl) FocusDirection.Right else FocusDirection.Left)) {
+                                // Preserve leftward row navigation even though the sidebar rail
+                                // is hidden; open the menu only when content has no left target.
                                 true
                             } else {
                                 isSidebarExpanded = true

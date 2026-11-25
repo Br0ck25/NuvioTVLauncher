@@ -1,6 +1,17 @@
 package com.nuvio.tv.ui.screens.settings
 
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.LaunchedEffect
+import androidx.compose.runtime.getValue
+import androidx.compose.runtime.mutableStateOf
+import androidx.compose.runtime.remember
+import androidx.compose.runtime.setValue
+import androidx.compose.runtime.collectAsState
+import androidx.compose.ui.focus.FocusRequester
+import androidx.compose.ui.focus.focusRequester
+import androidx.compose.ui.Modifier
+import androidx.compose.ui.platform.LocalContext
+import androidx.compose.ui.platform.LocalConfiguration
 import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.unit.dp
 import com.nuvio.tv.R
@@ -12,6 +23,13 @@ import com.nuvio.tv.data.local.NightMode
 import com.nuvio.tv.data.local.PlayerPreference
 import com.nuvio.tv.data.local.PlayerSettings
 import com.nuvio.tv.data.local.displayName
+import com.nuvio.tv.core.audio.EqualizerOwner
+import com.nuvio.tv.core.audio.SevenBandEqualizerSettings
+import com.nuvio.tv.core.audio.SevenBandPreset
+import com.nuvio.tv.ui.components.SevenBandEqualizerFaders
+import com.nuvio.tv.ui.components.NuvioDialog
+import com.nuvio.tv.ui.theme.NuvioTheme
+import kotlinx.coroutines.delay
 
 @Composable
 internal fun PlaybackAudioSection(
@@ -63,6 +81,10 @@ internal fun PlaybackAudioSection(
         onToggle = { onUpdate { setRememberAudioDelayPerDevice(!settings.rememberAudioDelayPerDevice) } },
         enabled = enabled
     )
+
+    if (!enabled) return
+
+    SevenBandEqualizerRows()
 
     if (!isExoEngine) return
 
@@ -120,6 +142,89 @@ internal fun PlaybackAudioSection(
         onToggle = { onUpdate { setForceOpticalPassthrough(!settings.forceOpticalPassthrough) } },
         enabled = enabled && settings.decoderPriority != 0
     )
+}
+
+@Composable
+private fun SevenBandEqualizerRows() {
+    val context = LocalContext.current
+    LaunchedEffect(context) { SevenBandEqualizerSettings.init(context) }
+    val profile by SevenBandEqualizerSettings.profile(EqualizerOwner.PLAYBACK).collectAsState()
+    var showEditor by remember { mutableStateOf(false) }
+    var showPresetPicker by remember { mutableStateOf(false) }
+
+    SettingsActionRow(
+        title = "Seven-band equalizer",
+        subtitle = "Choose a preset and adjust the seven frequency bands.",
+        value = profile.preset.label,
+        onClick = { showEditor = true }
+    )
+
+    if (showEditor) {
+        val presetFocusRequester = remember { FocusRequester() }
+        val configuration = LocalConfiguration.current
+        val dialogWidth = (configuration.screenWidthDp.dp - 64.dp).coerceAtLeast(320.dp).coerceAtMost(1000.dp)
+        val faderTrackHeight = when {
+            configuration.screenHeightDp < 560 -> 112.dp
+            configuration.screenHeightDp < 720 -> 140.dp
+            else -> 174.dp
+        }
+        LaunchedEffect(showEditor) {
+            if (showEditor) {
+                delay(80)
+                runCatching { presetFocusRequester.requestFocus() }
+            }
+        }
+        NuvioDialog(
+            onDismiss = { showEditor = false },
+            title = "Seven-band equalizer",
+            subtitle = "Applies to decoded audio in built-in ExoPlayer, MPV, and VLC. Enabling it uses PCM audio, so bitstream passthrough is unavailable.",
+            width = dialogWidth,
+            scrollContent = true
+        ) {
+            SettingsActionRow(
+                title = "Preset",
+                subtitle = "Choose a starting curve, then tune individual bands.",
+                value = profile.preset.label,
+                modifier = Modifier.focusRequester(presetFocusRequester),
+                onClick = { showPresetPicker = true }
+            )
+            if (profile.preset != SevenBandPreset.OFF) {
+                SevenBandEqualizerFaders(
+                    gainsDb = profile.gainsDb,
+                    onBandChange = { index, gain ->
+                        SevenBandEqualizerSettings.setBand(EqualizerOwner.PLAYBACK, index, gain)
+                    },
+                    accent = NuvioTheme.colors.Secondary,
+                    text = NuvioTheme.colors.TextPrimary,
+                    muted = NuvioTheme.colors.TextSecondary,
+                    trackHeight = faderTrackHeight,
+                    onMenuPressed = { runCatching { presetFocusRequester.requestFocus() } }
+                )
+            }
+            SettingsDialogActionRow {
+                SettingsDialogActionButton(
+                    text = stringResource(R.string.action_close),
+                    onClick = { showEditor = false },
+                    primary = true
+                )
+            }
+        }
+    }
+
+    if (showPresetPicker) {
+        SettingsSingleChoiceDialog(
+            title = "Equalizer preset",
+            options = SevenBandPreset.selectable.map { SettingsPickerOption(it, it.label) },
+            selectedValue = profile.preset.takeIf { it != SevenBandPreset.CUSTOM } ?: SevenBandPreset.FLAT,
+            onOptionSelected = {
+                SevenBandEqualizerSettings.selectPreset(EqualizerOwner.PLAYBACK, it)
+                showPresetPicker = false
+            },
+            onDismiss = { showPresetPicker = false },
+            width = 420.dp,
+            maxHeight = 480.dp
+        )
+    }
 }
 
 @Composable

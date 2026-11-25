@@ -182,6 +182,9 @@ jobs:
           chmod +x gradlew
           ./gradlew :app:assembleFullRelease --stacktrace
 
+      - name: Package OpenVPN 2 corresponding source
+        run: python3 vpn-android/ci/package-openvpn2-sources.py --output vpn-android/build/openvpn2-corresponding-source.tar.gz
+
       - name: Collect APKs
         run: |
           mkdir -p out
@@ -189,6 +192,7 @@ jobs:
             name=$(basename "$f" .apk)
             cp "$f" "out/NuvioOne-$TAG-${name#app-full-}.apk"
           done
+          cp vpn-android/build/openvpn2-corresponding-source.tar.gz out/
           ls -la out
 
       - name: Publish release
@@ -198,7 +202,7 @@ jobs:
           target_commitish: ${{ steps.merge.outputs.sha }}
           name: Nuvio + IPTV ${{ env.TAG }}
           prerelease: ${{ needs.check.outputs.prerelease == 'true' }}
-          files: out/*.apk
+          files: out/*
           body: |
             Nuvio + IPTV, based on Nuvio ${{ env.TAG }}: everything in Nuvio, plus Live TV with a TiviMate-style guide and On Demand from your IPTV provider.
 

@@ -1,6 +1,10 @@
 package com.nuvio.tv.youtube
 
 import android.content.Context
+import java.util.Locale
+
+/** Country codes are identifiers; don't let the device's language rules rewrite them. */
+internal fun normalizeYouTubeContentRegion(region: String): String = region.trim().uppercase(Locale.ROOT)
 
 /** Your YouTube choices, kept on this device. */
 object YouTubeSettings {
@@ -61,7 +65,7 @@ object YouTubeSettings {
     /** The country whose videos show in News and Live; blank follows the device region. */
     fun contentRegion(context: Context): String = prefs(context).getString(KEY_CONTENT_REGION, "") ?: ""
     fun setContentRegion(context: Context, region: String) =
-        prefs(context).edit().putString(KEY_CONTENT_REGION, region.trim().uppercase()).apply()
+        prefs(context).edit().putString(KEY_CONTENT_REGION, normalizeYouTubeContentRegion(region)).apply()
 
     /** How many posters fit across a row in the YouTube grids (3 to 5). */
     fun posterColumns(context: Context): Int =

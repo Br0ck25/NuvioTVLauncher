@@ -1,5 +1,7 @@
 package com.nuvio.tv.ui.screens.home
 
+import com.nuvio.tv.livetv.home.mockHomeLiveRows
+
 import androidx.lifecycle.viewModelScope
 import com.nuvio.tv.core.network.NetworkResult
 import com.nuvio.tv.domain.model.CatalogRow
@@ -469,6 +471,7 @@ class HomeEnrichmentRetryTest {
             serverCatalog = mockk(relaxed = true),
             onDemandRepository = mockk(relaxed = true),
             liveTvPreferences = mockk(relaxed = true),
+            homeLiveRows = mockHomeLiveRows(),
             trailerPlayerPool = mockk(relaxed = true),
             backgroundTrailerController = mockk(relaxed = true)
         )

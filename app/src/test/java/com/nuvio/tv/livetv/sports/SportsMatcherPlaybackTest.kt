@@ -1,5 +1,6 @@
 package com.nuvio.tv.livetv.sports
 
+import android.app.Application
 import com.nuvio.tv.livetv.data.EpgDatabase
 import com.nuvio.tv.livetv.model.LiveChannel
 import org.junit.After
@@ -15,7 +16,7 @@ import org.robolectric.annotation.Config
 import org.robolectric.annotation.SQLiteMode
 
 @RunWith(RobolectricTestRunner::class)
-@Config(manifest = Config.NONE, sdk = [34])
+@Config(application = Application::class, manifest = Config.NONE, sdk = [34])
 @SQLiteMode(SQLiteMode.Mode.NATIVE)
 class SportsMatcherPlaybackTest {
     private val now = 1_800_000_000_000L

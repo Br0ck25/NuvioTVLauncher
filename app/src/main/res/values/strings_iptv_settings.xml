@@ -65,6 +65,8 @@
     <string name="iptv_settings_disconnect">"Disconnect"</string>
     <string name="iptv_settings_playlists_guides">"Playlists &amp; Guides"</string>
     <string name="iptv_settings_playlists">"Playlists"</string>
+    <string name="iptv_settings_each_profile_has_its_own_playlists">"Each profile has its own playlists"</string>
+    <string name="iptv_settings_deleting_one_here_only_removes_it">"Deleting one here only removes it from this profile. Other profiles keep their copies."</string>
     <string name="iptv_settings_add_from_your_phone">"Add From Your Phone"</string>
     <string name="iptv_settings_scan_a_qr_code_then_paste_your_playlist">"Scan a QR code, then paste your playlist link, Xtream login or EPG link on your phone instead of typing it with the remote"</string>
     <string name="iptv_settings_stalker">" (Stalker)"</string>
@@ -410,6 +412,7 @@
     <string name="iptv_settings_parental_controls">"Parental Controls"</string>
     <string name="iptv_settings_on_1_s_locked">"On · %1$s locked"</string>
     <string name="iptv_settings_locked_groups_and_categories_need_the_pin_to">"Locked groups and categories need the PIN to open, and stay out of All Channels and search until unlocked."</string>
+    <string name="iptv_settings_parental_controls_per_profile">"Each profile has its own PIN and locked groups."</string>
     <string name="iptv_settings_change_pin">"Change PIN"</string>
     <string name="iptv_settings_set_a_pin">"Set a PIN"</string>
     <string name="iptv_settings_parental_controls_are_on">"Parental controls are on"</string>

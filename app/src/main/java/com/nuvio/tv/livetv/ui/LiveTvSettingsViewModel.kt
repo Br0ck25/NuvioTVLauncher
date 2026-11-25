@@ -6,6 +6,7 @@ import android.widget.Toast
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
 import com.nuvio.tv.R
+import com.nuvio.tv.core.profile.ProfileManager
 import com.nuvio.tv.core.util.withAppLocale
 import com.nuvio.tv.livetv.data.LiveTvPreferences
 import com.nuvio.tv.livetv.data.LiveTvRepository
@@ -35,6 +36,7 @@ import javax.inject.Inject
 @HiltViewModel
 class LiveTvSettingsViewModel @Inject constructor(
     @ApplicationContext private val context: Context,
+    private val profileManager: ProfileManager,
     private val repository: LiveTvRepository,
     private val prefs: LiveTvPreferences,
     val driveSync: com.nuvio.tv.livetv.sync.LiveTvDriveSync,
@@ -44,6 +46,10 @@ class LiveTvSettingsViewModel @Inject constructor(
     private val matcher247: com.nuvio.tv.livetv.data.LiveTv247Matcher,
     private val addonRepository: com.nuvio.tv.domain.repository.AddonRepository
 ) : ViewModel() {
+
+    val isPrimaryProfileActive: StateFlow<Boolean> = profileManager.activeProfileId
+        .map { it == 1 }
+        .stateIn(viewModelScope, SharingStarted.Eagerly, true)
 
     val playlists: StateFlow<List<PlaylistSource>> =
         prefs.playlists.stateIn(viewModelScope, SharingStarted.Eagerly, emptyList())

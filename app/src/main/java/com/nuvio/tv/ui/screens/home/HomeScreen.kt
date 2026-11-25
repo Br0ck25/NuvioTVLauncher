@@ -96,6 +96,7 @@ fun HomeScreen(
     onNavigateToFolderDetail: (String, String) -> Unit = { _, _ -> }
 ) {
     val uiState by viewModel.uiState.collectAsStateWithLifecycle()
+    val homeVodActions = com.nuvio.tv.livetv.home.LocalHomeVodActions.current
 
     // Home was the only major screen without a lifecycle observer, so nothing ever told it to
     // look at its catalogs again.
@@ -151,17 +152,23 @@ fun HomeScreen(
     val isCatalogItemWatched: (MetaPreview) -> Boolean = remember {
         { item: MetaPreview -> latestMovieWatchedStatus.value[homeItemStatusKey(item.id, item.apiType)] == true }
     }
-    val onCatalogItemLongPress: (MetaPreview, String) -> Unit = remember {
+    val onCatalogItemLongPress: (MetaPreview, String) -> Unit = remember(homeVodActions) {
         { item, addonBaseUrl ->
-            posterOptionsTarget = HomePosterOptionsTarget(item, addonBaseUrl)
-            viewModel.refreshPosterLibraryStatus(item)
+            val handled = homeVodActions.longPress(item) { matched, base ->
+                posterOptionsTarget = HomePosterOptionsTarget(matched, base)
+                viewModel.refreshPosterLibraryStatus(matched)
+            }
+            if (!handled) {
+                posterOptionsTarget = HomePosterOptionsTarget(item, addonBaseUrl)
+                viewModel.refreshPosterLibraryStatus(item)
+            }
         }
     }
 
-    val onNavigateToDetailStable = remember(onNavigateToDetail, viewModel) {
+    val onNavigateToDetailStable = remember(onNavigateToDetail, viewModel, homeVodActions) {
         { itemId: String, itemType: String, addonBaseUrl: String ->
             viewModel.beginTrailerHandoff(itemId)
-            onNavigateToDetail(itemId, itemType, addonBaseUrl)
+            if (!homeVodActions.open(itemId)) onNavigateToDetail(itemId, itemType, addonBaseUrl)
         }
     }
     val latestContinueWatchingClickAction = androidx.compose.runtime.rememberUpdatedState(uiState.continueWatchingClickAction)
@@ -186,7 +193,11 @@ fun HomeScreen(
     }
     val onContinueWatchingStartFromBeginningStable = remember(onContinueWatchingStartFromBeginning) { onContinueWatchingStartFromBeginning }
     val onContinueWatchingPlayManuallyStable = remember(onContinueWatchingPlayManually) { onContinueWatchingPlayManually }
-    val onNavigateToCatalogSeeAllStable = remember(onNavigateToCatalogSeeAll) { onNavigateToCatalogSeeAll }
+    val onNavigateToCatalogSeeAllStable = remember(onNavigateToCatalogSeeAll, homeVodActions) {
+        { catalogId: String, addonId: String, type: String ->
+            if (!homeVodActions.seeAll(addonId)) onNavigateToCatalogSeeAll(catalogId, addonId, type)
+        }
+    }
     val onNavigateToFolderDetailStable = remember(onNavigateToFolderDetail) { onNavigateToFolderDetail }
     val onRemoveContinueWatchingStable = remember(viewModel) {
         { contentId: String, season: Int?, episode: Int?, isNextUp: Boolean ->
@@ -584,6 +595,7 @@ private fun ClassicHomeRoute(
             viewModel.requestTrailerPreview(item)
         },
         onItemFocus = { item ->
+            com.nuvio.tv.livetv.ondemand.VodHomeIds.focused(item.id)
             viewModel.onItemFocus(item)
         },
         onSaveFocusState = { vi, vo, rk, ikm, m, ma, ri, ii ->
@@ -688,7 +700,9 @@ private fun ModernHomeRoute(
     }
     val loadMoreCatalog = remember(viewModel) {
         { catalogId: String, addonId: String, type: String ->
-            viewModel.onEvent(HomeEvent.OnLoadMoreCatalog(catalogId, addonId, type))
+            if (addonId != com.nuvio.tv.livetv.ondemand.VodHomeIds.ADDON_ID ||
+                !com.nuvio.tv.livetv.ondemand.VodHomeIds.loadMore(catalogId)
+            ) viewModel.onEvent(HomeEvent.OnLoadMoreCatalog(catalogId, addonId, type))
         }
     }
     val removeContinueWatching = remember(viewModel) {
@@ -736,7 +750,10 @@ private fun ModernHomeRoute(
         onCatalogItemLongPress = onCatalogItemLongPress,
         onNavigateToFolderDetail = onNavigateToFolderDetail,
         onItemFocus = remember(viewModel) {
-            { item -> viewModel.onItemFocus(item) }
+            { item ->
+                com.nuvio.tv.livetv.ondemand.VodHomeIds.focused(item.id)
+                viewModel.onItemFocus(item)
+            }
         },
         onPreloadAdjacentItem = preloadAdjacentItem,
         onSaveFocusState = saveModernFocusState,

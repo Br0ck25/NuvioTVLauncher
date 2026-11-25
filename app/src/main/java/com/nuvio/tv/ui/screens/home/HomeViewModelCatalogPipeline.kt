@@ -59,6 +59,44 @@ internal fun HomeViewModel.observeCollectionsPipeline() {
     }
 }
 
+private data class LiveRowsInput(
+    val rows: List<Pair<String, String>>,
+    val vodKeys: Set<String>,
+    val empty: Set<String>,
+    val vod: Map<String, CatalogRow>
+)
+
+/** Watches row configuration and refreshes the ordered Home model. */
+@OptIn(FlowPreview::class)
+internal fun HomeViewModel.observeLiveRowsPipeline() {
+    homeLiveRows.keepPlaces()
+    viewModelScope.launch {
+        combine(homeLiveRows.shownRows, homeLiveRows.names, homeLiveRows.emptyRowIds, homeLiveRows.vodRows) {
+                rows, names, empty, vod ->
+            LiveRowsInput(
+                rows = rows.map { it.key to (names[it.id] ?: it.title) },
+                vodKeys = rows.filter { it.kind == com.nuvio.tv.livetv.home.HomeLiveRow.KIND_VOD }
+                    .mapTo(HashSet()) { it.key },
+                empty = rows.filter { it.id in empty }.mapTo(HashSet()) { it.key },
+                vod = rows.mapNotNull { row ->
+                    vod[row.id]?.let { row.key to it.copy(catalogName = names[row.id] ?: it.catalogName) }
+                }.toMap()
+            )
+        }
+            .distinctUntilChanged()
+            .debounce(300)
+            .collectLatest { input ->
+                val orderChanged = input.rows.map { it.first } != liveRowsCache.map { it.first }
+                liveRowsCache = input.rows
+                vodRowKeys = input.vodKeys
+                emptyLiveRowKeys = input.empty
+                vodRowsCache = input.vod
+                if (orderChanged) rebuildCatalogOrder(addonsCache)
+                scheduleUpdateCatalogRows()
+            }
+    }
+}
+
 internal fun HomeViewModel.loadHomeCatalogOrderPreferencePipeline() {
     viewModelScope.launch {
         layoutPreferenceDataStore.homeCatalogOrderKeys.collectLatest { keys ->
@@ -742,14 +780,27 @@ internal suspend fun HomeViewModel.updateCatalogRowsPipeline() {
                 placeholderDescriptors.associateBy { it.catalogKey }
             }
             val addedCollectionIds = mutableSetOf<String>()
+            val liveTitles = liveRowsCache.toMap()
+            val liveVodKeys = vodRowKeys
+            val emptyLiveKeys = emptyLiveRowKeys
+            val liveVodCatalogs = vodRowsCache
             collectionsCache.forEach { collection ->
                 val key = "collection_${collection.id}"
             if (collection.pinToTop && key !in disabledHomeCatalogKeys && addedCollectionIds.add(collection.id)) {
                 add(HomeRow.CollectionRow(collection))
             }
-        }
-        for (key in orderedKeys) {
+            }
+            for (key in orderedKeys) {
             if (key in disabledHomeCatalogKeys) continue
+            val liveTitle = liveTitles[key]
+            if (liveTitle != null) {
+                if (key in liveVodKeys) {
+                    liveVodCatalogs[key]?.takeIf { it.items.isNotEmpty() }?.let { add(HomeRow.Catalog(it)) }
+                } else if (key !in emptyLiveKeys) {
+                    add(HomeRow.LiveRow(key, liveTitle))
+                }
+                continue
+            }
             val collectionEntry = collectionsSnapshot[key]
             if (collectionEntry != null) {
                 if (!collectionEntry.pinToTop && addedCollectionIds.add(collectionEntry.id)) {
@@ -880,6 +931,7 @@ internal suspend fun HomeViewModel.updateCatalogRowsPipeline() {
                             ))
                         }
                     }
+                    is HomeRow.LiveRow -> add(GridItem.LiveRow(homeRow.key, homeRow.title))
                     is HomeRow.PlaceholderCatalog -> {
                         // Grid layout: skip placeholders (grid loads all at once)
                     }

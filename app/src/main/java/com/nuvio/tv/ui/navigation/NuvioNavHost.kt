@@ -517,8 +517,50 @@ private fun PlaybackNavHost(
                         openLiveTv()
                         navController.navigate(Screen.LiveTvPlayer.route) { launchSingleTop = true }
                     },
-                    openGuide = { openLiveTv() }
+                    openGuide = { openLiveTv() },
+                    openGame = { id ->
+                        com.nuvio.tv.livetv.sports.SportsLaunch.openEvent(
+                            id, com.nuvio.tv.livetv.sports.SportsLaunch.Origin(Screen.Home.route, "Home")
+                        )
+                        navController.navigate(Screen.Sports.route) {
+                            popUpTo(navController.graph.startDestinationId) { saveState = true }
+                            launchSingleTop = true
+                            restoreState = true
+                        }
+                    }
                 )
+            ) {
+            com.nuvio.tv.livetv.home.HomeVodRowsHost(
+                onOpenDetail = { itemId, itemType, addonBaseUrl, _ ->
+                    navController.navigate(
+                        Screen.Detail.createRoute(
+                            itemId = itemId,
+                            itemType = itemType,
+                            addonBaseUrl = addonBaseUrl,
+                            returnToHomeOnBack = true,
+                            heroBackdropUrl = HeroBackdropState.consumeAndClear()
+                        )
+                    )
+                },
+                onPlay = { url, title, type, poster, contentId, contentName, season, episode, episodeName ->
+                    navController.navigate(
+                        Screen.Player.createRoute(
+                            streamUrl = url,
+                            title = title,
+                            contentId = contentId,
+                            contentType = type,
+                            contentName = contentName,
+                            poster = poster,
+                            season = season,
+                            episode = episode,
+                            episodeTitle = episodeName,
+                            returnToHomeOnBack = true
+                        )
+                    )
+                },
+                onOpenOnDemand = {
+                    navController.navigate(Screen.OnDemand.route) { launchSingleTop = true }
+                }
             ) {
             HomeScreen(
                 onNavigateToDetail = { itemId, itemType, addonBaseUrl ->
@@ -590,6 +632,7 @@ private fun PlaybackNavHost(
                     navController.navigate(Screen.FolderDetail.createRoute(collectionId, folderId))
                 }
             )
+            }
             }
         }
 

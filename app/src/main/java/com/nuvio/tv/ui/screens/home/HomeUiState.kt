@@ -175,6 +175,10 @@ sealed class HomeRow {
     @Immutable
     data class CollectionRow(val collection: Collection) : HomeRow()
 
+    /** Live TV, Sports, or On Demand row configured independently from addon catalogs. */
+    @Immutable
+    data class LiveRow(val key: String, val title: String) : HomeRow()
+
     /**
      * Placeholder for a catalog row whose data hasn't been fetched yet.
      * Rendered as a shimmer/skeleton row until the user scrolls near it
@@ -222,6 +226,9 @@ sealed class GridItem {
         val addonBaseUrl: String,
         val type: String
     ) : GridItem()
+    /** A full-width Live TV or Sports row embedded in the poster grid. */
+    @Immutable
+    data class LiveRow(val key: String, val title: String) : GridItem()
     @Immutable
     data class CollectionHeader(
         val collectionId: String,

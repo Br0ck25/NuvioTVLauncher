@@ -191,6 +191,39 @@ class M3uParserTest {
     }
 
     @Test
+    fun `malformed percent escapes in stream and drm headers are preserved literally`() {
+        val playlist = parse(
+            """
+            #EXTM3U
+            #KODIPROP:inputstream.adaptive.license_type=com.widevine.alpha
+            #KODIPROP:inputstream.adaptive.license_key=https://license.test|Authorization=Bearer%ZZ
+            #EXTINF:-1,Channel
+            https://stream.test/live|Referer=https%ZZ
+            """
+        )
+
+        assertEquals("https%ZZ", playlist.entries.single().headers["Referer"])
+        assertEquals("Bearer%ZZ", playlist.entries.single().drm?.licenseHeaders?.get("Authorization"))
+    }
+
+    @Test
+    fun `streaming reader emits same entries and guide urls as list parser`() {
+        val text = """
+            #EXTM3U url-tvg="https://guide.example/a.xml,https://guide.example/b.xml"
+            #EXTINF:-1 tvg-id="one",One
+            https://stream.example/one.m3u8
+            #EXTINF:-1 tvg-id="two",Two
+            https://stream.example/two.m3u8
+        """.trimIndent()
+        val expected = M3uParser.parse(text.reader().buffered())
+        val emitted = mutableListOf<M3uEntry>()
+        val guides = M3uParser.read(text.reader().buffered(), onEntry = emitted::add)
+
+        assertEquals(expected.entries, emitted)
+        assertEquals(expected.epgUrls, guides)
+    }
+
+    @Test
     fun `an entry with no name gets a fallback name`() {
         val playlist = parse(
             """

@@ -90,6 +90,7 @@ object MusicPlayer {
     private var player: ExoPlayer? = null
     private var session: MediaSession? = null
     private var trackSelector: DefaultTrackSelector? = null
+    private var musicEqualizerRenderersFactory: MusicEqualizerRenderersFactory? = null
     private var audioSessionId: Int = C.AUDIO_SESSION_ID_UNSET
     private var resolutionJob: Job? = null
     private var prefetchJob: Job? = null
@@ -179,7 +180,11 @@ object MusicPlayer {
             }
         }
 
+        MusicEqualizer.apply()
+        val renderersFactory = MusicEqualizerRenderersFactory(app, MusicEqualizer.audioProcessor)
+        musicEqualizerRenderersFactory = renderersFactory
         val exoPlayer = ExoPlayer.Builder(app)
+            .setRenderersFactory(renderersFactory)
             .setTrackSelector(selector)
             .setMediaSourceFactory(
                 DefaultMediaSourceFactory(
@@ -209,8 +214,6 @@ object MusicPlayer {
         session = MediaSession.Builder(app, exoPlayer)
             .setCallback(mediaSessionCallback)
             .build()
-        MusicEqualizer.attach(audioSessionId)
-        MusicEqualizer.apply(MusicSettings.equalizerPreset.value)
         ensureTicker()
     }
 
@@ -502,9 +505,21 @@ object MusicPlayer {
         player?.volume = 1f
     }
 
-    fun setEqualizerPreset(preset: MusicEqualizerPreset) {
+    fun setEqualizerPreset(preset: com.nuvio.tv.core.audio.SevenBandPreset) {
+        val wasEnabled = MusicEqualizer.audioProcessor.isEqualizerEnabled()
         MusicSettings.setEqualizerPreset(preset)
-        MusicEqualizer.apply(preset)
+        refreshEqualizerActivation(wasEnabled)
+    }
+
+    fun setEqualizerBand(index: Int, gainDb: Int) {
+        val wasEnabled = MusicEqualizer.audioProcessor.isEqualizerEnabled()
+        MusicSettings.setEqualizerBand(index, gainDb)
+        refreshEqualizerActivation(wasEnabled)
+    }
+
+    private fun refreshEqualizerActivation(wasEnabled: Boolean) {
+        if (wasEnabled == MusicEqualizer.audioProcessor.isEqualizerEnabled()) return
+        musicEqualizerRenderersFactory?.notifyEqualizerRequirementChanged()
     }
 
     /** [minutes] null or zero clears the timer; otherwise playback pauses when it expires. */
@@ -626,6 +641,7 @@ object MusicPlayer {
         runCatching { player?.release() }
         player = null
         trackSelector = null
+        musicEqualizerRenderersFactory = null
         audioSessionId = C.AUDIO_SESSION_ID_UNSET
         _state.value = State()
     }
@@ -883,7 +899,7 @@ object MusicPlayer {
             when (playbackState) {
                 Player.STATE_BUFFERING -> _state.update { it.copy(isBuffering = true) }
                 Player.STATE_READY -> {
-                    player?.audioSessionId?.takeIf { it > 0 }?.let { MusicEqualizer.attach(it) }
+                    MusicEqualizer.apply()
                     val duration = player?.duration?.takeIf { it > 0L }
                         ?: _state.value.song?.durationMillis()
                         ?: 0L

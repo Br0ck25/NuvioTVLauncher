@@ -1,5 +1,6 @@
 package com.nuvio.tv.core.image
 
+import android.app.Application
 import android.graphics.Bitmap
 import coil3.asImage
 import coil3.memory.MemoryCache
@@ -12,7 +13,7 @@ import org.robolectric.RobolectricTestRunner
 import org.robolectric.annotation.Config
 
 @RunWith(RobolectricTestRunner::class)
-@Config(manifest = Config.NONE, sdk = [34])
+@Config(application = Application::class, manifest = Config.NONE, sdk = [34])
 class PlaybackImageCacheTest {
     private fun cache(mebibytes: Long) = MemoryCache.Builder()
         .maxSizeBytes(mebibytes * MIB)

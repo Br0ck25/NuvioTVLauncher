@@ -77,6 +77,8 @@ class LiveTvPreferences @Inject constructor(
     private object Keys {
         val playlists = stringPreferencesKey("playlists")
         val epgs = stringPreferencesKey("epg_sources")
+        /** Set once the playlist and EPG lists were split per profile (see [migrateSourcesPerProfile]). */
+        val sourcesPerProfile = booleanPreferencesKey("sources_per_profile")
         val addonChannels = stringPreferencesKey("addon_channels")
 
         val showInSidebar = booleanPreferencesKey("show_in_sidebar")
@@ -270,12 +272,14 @@ class LiveTvPreferences @Inject constructor(
         val sports = stringPreferencesKey("sports")
         /** Sports: the teams, leagues and names you follow, and game reminders (per profile), as JSON. */
         val sportsMine = stringPreferencesKey("sports_mine")
+        /** Configurable Home rows (per profile), as JSON. */
+        val homeRows = stringPreferencesKey("home_live_rows")
     }
 
     // ---------- Nuvio profiles ----------
-    // Favorites, recents, hidden and arranged groups/channels, reminders and On Demand's hidden
-    // categories and order are kept per Nuvio profile. Playlists, guides, settings, renames,
-    // channel numbers, EPG choices and parental locks stay shared by every profile.
+    // Favorites, recents, hidden and arranged groups/channels, reminders, On Demand's hidden
+    // categories and order, playlists, guides and parental controls are kept per Nuvio profile.
+    // Other settings, renames, channel numbers and EPG choices stay shared by every profile.
     // The first profile uses the original keys (so nothing moves for it); the others use the same
     // names with "_p<id>" on the end, the same way Nuvio names its own per-profile files.
 
@@ -284,7 +288,7 @@ class LiveTvPreferences @Inject constructor(
     private val personalStringKeys: List<Preferences.Key<String>> = listOf(
         Keys.favorites, Keys.recent, Keys.recentGroups, Keys.lastChannel, Keys.previousChannel, Keys.lastGroup,
         Keys.groupOrder, Keys.customGroups, Keys.channelOrder, Keys.channelCopies, Keys.reminders,
-        Keys.vodGroupOrder, Keys.vodSorts, Keys.sportsMine
+        Keys.vodGroupOrder, Keys.vodSorts, Keys.sportsMine, Keys.homeRows
     )
     private val personalSetKeys: List<Preferences.Key<Set<String>>> = listOf(
         Keys.hiddenChannels, Keys.hiddenGroups, Keys.hiddenPlaylists, Keys.groupTagFilters,
@@ -383,7 +387,7 @@ class LiveTvPreferences @Inject constructor(
     /** What "Copy Settings" carries from one profile to another (history and reminders stay). */
     private val copiedStringKeys: List<Preferences.Key<String>> = listOf(
         Keys.favorites, Keys.groupOrder, Keys.customGroups, Keys.channelOrder, Keys.channelCopies,
-        Keys.vodGroupOrder, Keys.vodSorts, Keys.sportsMine
+        Keys.vodGroupOrder, Keys.vodSorts, Keys.sportsMine, Keys.homeRows
     )
     private val copiedCalendarKeys: List<Preferences.Key<String>> = listOf(
         Keys.calendarFollows, Keys.calendarHiddenShows
@@ -498,11 +502,44 @@ class LiveTvPreferences @Inject constructor(
             runCatching { turnOnPlaylistGroupsOnce() }
         }
         CoroutineScope(Dispatchers.IO + SupervisorJob()).launch {
+            runCatching { migrateSourcesPerProfile() }
+        }
+        CoroutineScope(Dispatchers.IO + SupervisorJob()).launch {
             profileManager.activeProfileId.collect { id -> runCatching { seedProfile(id) } }
         }
         // Keeps the matched-profiles list current (it also arrives with a cloud restore).
         CoroutineScope(Dispatchers.IO + SupervisorJob()).launch {
             runCatching { store.data.collect { groupsOf(it) } }
+        }
+    }
+
+    /**
+     * Playlists and guides used to be one list for the whole TV. Now each profile has its own. Every
+     * profile that already exists keeps a copy of the list it had, with the same sources (so the
+     * channel and guide files are shared, not downloaded again). A playlist that profile had switched
+     * off is copied as off. Profiles created later start with nothing. Runs once.
+     */
+    private suspend fun migrateSourcesPerProfile() {
+        if (store.data.first()[Keys.sourcesPerProfile] == true) return
+        // Nothing to go on until the profile list has loaded: try again on the next start.
+        val known = profileManager.knownProfileIds()
+        if (known.isEmpty()) return
+        val ids = (known + 1).distinct()
+        store.edit { p ->
+            val hiddenBy = ids.associateWith { id -> profileView(p, id)[Keys.hiddenPlaylists].orEmpty() }
+            val basePl = decodePlaylists(p[Keys.playlists])
+            val baseEpg = p[Keys.epgs]
+            for (id in ids) {
+                val hidden = hiddenBy[id].orEmpty()
+                val pl = basePl.map { if (it.id in hidden) it.copy(enabled = false) else it }
+                if (id <= 1) {
+                    if (basePl.isNotEmpty()) p[Keys.playlists] = encodePlaylists(pl)
+                } else {
+                    if (basePl.isNotEmpty() && p[own(Keys.playlists, id)] == null) p[own(Keys.playlists, id)] = encodePlaylists(pl)
+                    if (baseEpg != null && p[own(Keys.epgs, id)] == null) p[own(Keys.epgs, id)] = baseEpg
+                }
+            }
+            p[Keys.sourcesPerProfile] = true
         }
     }
 
@@ -546,13 +583,18 @@ class LiveTvPreferences @Inject constructor(
     private val settingsMemo = SnapshotMemo<LiveTvSettings>()
     private val userStateMemo = SnapshotMemo<LiveUserState>()
 
-    val playlists: Flow<List<PlaylistSource>> = store.data
-        .map { p -> playlistsMemo.get(p, null, 0) { decodePlaylists(p[Keys.playlists]) } }
-        .distinctUntilChanged()
+    /** The active profile's id, each time it changes. */
+    val profileChanges: Flow<Int> get() = profileManager.activeProfileId
 
-    val epgSources: Flow<List<EpgSource>> = store.data
-        .map { p -> epgsMemo.get(p, null, 0) { decodeEpgs(p[Keys.epgs]) } }
-        .distinctUntilChanged()
+    /** The playlists of the active profile. Each profile has its own list. */
+    val playlists: Flow<List<PlaylistSource>> = kotlinx.coroutines.flow.combine(store.data, profileManager.activeProfileId) { p, id ->
+        playlistsMemo.get(p, null, id) { decodePlaylists(p[own(Keys.playlists, id)]) }
+    }.distinctUntilChanged()
+
+    /** The guide (EPG) sources of the active profile. Each profile has its own list. */
+    val epgSources: Flow<List<EpgSource>> = kotlinx.coroutines.flow.combine(store.data, profileManager.activeProfileId) { p, id ->
+        epgsMemo.get(p, null, id) { decodeEpgs(p[own(Keys.epgs, id)]) }
+    }.distinctUntilChanged()
 
     val addonChannelSources: Flow<List<AddonChannelSource>> = store.data
         .map { decodeAddonChannels(it[Keys.addonChannels]) }
@@ -572,8 +614,29 @@ class LiveTvPreferences @Inject constructor(
         return m
     }
 
+    /**
+     * Parental controls belong to one profile, even when profiles are matched. The original keys
+     * are profile 1's; another profile with no saved controls starts with no PIN and no locked
+     * groups instead of inheriting profile 1's.
+     */
+    private fun withMyParentalControls(p: Preferences, id: Int): Preferences {
+        if (id <= 1) return p
+        val m = p.toMutablePreferences()
+        m.remove(Keys.parentalPin)
+        m.remove(Keys.lockAdultContent)
+        m.remove(Keys.lockedGroups)
+        p[own(Keys.parentalPin, id)]?.let { m[Keys.parentalPin] = it }
+        p[own(Keys.lockedGroups, id)]?.let { m[Keys.lockedGroups] = it }
+        val adultKey = booleanPreferencesKey("${Keys.lockAdultContent.name}_p$id")
+        p[adultKey]?.let { m[Keys.lockAdultContent] = it }
+        return m
+    }
+
+    private fun settingsFor(p: Preferences, id: Int): LiveTvSettings =
+        buildSettings(withMyMenu(withMyParentalControls(p, id), id))
+
     val settings: Flow<LiveTvSettings> = kotlinx.coroutines.flow.combine(store.data, profileManager.activeProfileId) { p0, id ->
-        settingsMemo.get(p0, null, id) { buildSettings(withMyMenu(p0, id)) }
+        settingsMemo.get(p0, null, id) { settingsFor(p0, id) }
     }.distinctUntilChanged()
 
     private fun buildSettings(p: Preferences): LiveTvSettings {
@@ -757,7 +820,7 @@ class LiveTvPreferences @Inject constructor(
     suspend fun currentHiddenEverywhere(): HiddenEverywhere = hiddenEverywhere.first()
 
     val userState: Flow<LiveUserState> = kotlinx.coroutines.flow.combine(store.data, deviceStore.data, profileManager.activeProfileId) { p0, d, id ->
-        userStateMemo.get(p0, d, id) { buildUserState(profileView(p0, id), d) }
+        userStateMemo.get(p0, d, id) { buildUserState(withMyParentalControls(profileView(p0, id), id), d) }
     // Read off the main thread: this runs on every settings change, and on a slow box with
     // memory nearly full it used to hold up the screen until Android closed the app.
     }.flowOn(Dispatchers.Default).distinctUntilChanged()
@@ -800,20 +863,36 @@ class LiveTvPreferences @Inject constructor(
     suspend fun currentPlaylists(): List<PlaylistSource> = playlists.first()
     suspend fun currentEpgSources(): List<EpgSource> = epgSources.first()
     suspend fun currentAddonChannelSources(): List<AddonChannelSource> = addonChannelSources.first()
-    suspend fun currentSettings(): LiveTvSettings = settings.first()
+    val activeProfileId: Int get() = currentProfile
+    fun playlistsSyncKey(profileId: Int): String = own(Keys.playlists, profileId).name
+    suspend fun currentSettings(profileId: Int = currentProfile): LiveTvSettings {
+        val p = store.data.first()
+        return settingsMemo.get(p, null, profileId) { settingsFor(p, profileId) }
+    }
 
     // ---------- sources ----------
 
     suspend fun updatePlaylists(transform: (List<PlaylistSource>) -> List<PlaylistSource>) = sourceMutations.withLock {
         var removed = emptySet<String>()
+        val key = own(Keys.playlists, currentProfile)
         store.edit { p ->
-            val before = decodePlaylists(p[Keys.playlists])
+            val before = decodePlaylists(p[key])
             val after = transform(before)
             removed = before.map { it.id }.toSet() - after.map { it.id }.toSet()
-            p[Keys.playlists] = encodePlaylists(after)
+            p[key] = encodePlaylists(after)
         }
         noteRemovedSources(removed)
     }
+
+    /** Every profile's playlists, with the same id once per profile that has it. */
+    suspend fun allProfilePlaylists(): List<PlaylistSource> =
+        store.data.first().asMap().filterKeys { it.name == Keys.playlists.name || it.name.startsWith("${Keys.playlists.name}_p") }
+            .values.flatMap { decodePlaylists(it as? String) }
+
+    /** Every profile's guide sources, with the same id once per profile that has it. */
+    suspend fun allProfileEpgSources(): List<EpgSource> =
+        store.data.first().asMap().filterKeys { it.name == Keys.epgs.name || it.name.startsWith("${Keys.epgs.name}_p") }
+            .values.flatMap { decodeEpgs(it as? String) }
 
     suspend fun updateAddonChannelSources(transform: (List<AddonChannelSource>) -> List<AddonChannelSource>) {
         store.edit { p ->
@@ -823,11 +902,12 @@ class LiveTvPreferences @Inject constructor(
 
     suspend fun updateEpgSources(transform: (List<EpgSource>) -> List<EpgSource>) {
         var removed = emptySet<String>()
+        val key = own(Keys.epgs, currentProfile)
         store.edit { p ->
-            val before = decodeEpgs(p[Keys.epgs])
+            val before = decodeEpgs(p[key])
             val after = transform(before)
             removed = before.map { it.id }.toSet() - after.map { it.id }.toSet()
-            p[Keys.epgs] = encodeEpgs(after)
+            p[key] = encodeEpgs(after)
         }
         noteRemovedSources(removed)
     }
@@ -849,18 +929,18 @@ class LiveTvPreferences @Inject constructor(
         val guide = p[Keys.epgOffset] ?: 0
         val catchup = p[Keys.catchupShift] ?: 0
         if (guide == 0 && catchup == 0) return false
-        val playlists = decodePlaylists(p[Keys.playlists])
+        val playlists = decodePlaylists(p[own(Keys.playlists, currentProfile)])
         if (playlists.isNotEmpty()) {
-            p[Keys.playlists] = encodePlaylists(playlists.map {
+            p[own(Keys.playlists, currentProfile)] = encodePlaylists(playlists.map {
                 it.copy(
                     guideShiftMinutes = if (it.guideShiftMinutes == 0) guide else it.guideShiftMinutes,
                     catchupShiftMinutes = if (it.catchupShiftMinutes == 0) catchup else it.catchupShiftMinutes
                 )
             })
         }
-        val epgs = decodeEpgs(p[Keys.epgs])
+        val epgs = decodeEpgs(p[own(Keys.epgs, currentProfile)])
         if (epgs.isNotEmpty() && guide != 0) {
-            p[Keys.epgs] = encodeEpgs(epgs.map { if (it.shiftMinutes == 0) it.copy(shiftMinutes = guide) else it })
+            p[own(Keys.epgs, currentProfile)] = encodeEpgs(epgs.map { if (it.shiftMinutes == 0) it.copy(shiftMinutes = guide) else it })
         }
         p[Keys.epgOffset] = 0
         p[Keys.catchupShift] = 0
@@ -873,7 +953,9 @@ class LiveTvPreferences @Inject constructor(
     private suspend fun noteRemovedSources(ids: Set<String>) {
         val clean = ids.filter { it.isNotBlank() }
         if (clean.isEmpty()) return
-        deviceStore.edit { it[Keys.removedSources] = (it[Keys.removedSources] ?: emptySet()) + clean }
+        val profile = currentProfile
+        val scoped = clean.mapTo(HashSet()) { "$profile|$it" }
+        deviceStore.edit { it[Keys.removedSources] = (it[Keys.removedSources] ?: emptySet()) + scoped }
     }
 
     suspend fun removedSourceIds(): Set<String> = deviceStore.data.first()[Keys.removedSources] ?: emptySet()
@@ -881,6 +963,37 @@ class LiveTvPreferences @Inject constructor(
     suspend fun forgetRemovedSources(ids: Set<String>) {
         if (ids.isEmpty()) return
         deviceStore.edit { it[Keys.removedSources] = (it[Keys.removedSources] ?: emptySet()) - ids }
+    }
+
+    /** Clears this profile's Live TV setup when the profile is deleted. */
+    suspend fun removeProfileData(profileId: Int) = sourceMutations.withLock {
+        if (profileId <= 1) return@withLock
+        val before = store.data.first()
+        val removedIds = decodePlaylists(before[own(Keys.playlists, profileId)]).map { it.id } +
+            decodeEpgs(before[own(Keys.epgs, profileId)]).map { it.id }
+        val suffix = "_p$profileId"
+
+        store.edit { p ->
+            p.asMap().keys.filter { it.name.endsWith(suffix) }.forEach { key ->
+                @Suppress("UNCHECKED_CAST")
+                p.remove(key as Preferences.Key<Any>)
+            }
+            val groups = groupsOf(p.toPreferences())
+            p[Keys.profileMatch] = encodeMatch(
+                groups.groups.map { it - profileId }.filter { it.size >= 2 }
+            )
+        }
+
+        val scopedTombstones = removedIds.filter(String::isNotBlank).mapTo(HashSet()) { "$profileId|$it" }
+        deviceStore.edit { p ->
+            p.asMap().keys.filter { it.name.endsWith(suffix) }.forEach { key ->
+                @Suppress("UNCHECKED_CAST")
+                p.remove(key as Preferences.Key<Any>)
+            }
+            if (scopedTombstones.isNotEmpty()) {
+                p[Keys.removedSources] = (p[Keys.removedSources] ?: emptySet()) + scopedTombstones
+            }
+        }
     }
 
     // ---------- calendar (synced with the rest of Live TV's settings) ----------
@@ -926,11 +1039,16 @@ class LiveTvPreferences @Inject constructor(
     // ---------- settings ----------
 
     suspend fun updateSettings(transform: (LiveTvSettings) -> LiveTvSettings) {
-        val next = transform(currentSettings())
-        store.edit { p -> writeSettings(p, next) }
+        val id = currentProfile
+        val before = currentSettings(id)
+        val next = transform(before)
+        if (next.parentalPin != before.parentalPin) {
+            com.nuvio.tv.livetv.parental.ParentalControls.clearUnlocked(id)
+        }
+        store.edit { p -> writeSettings(p, next, id) }
     }
 
-    private fun writeSettings(p: MutablePreferences, s: LiveTvSettings) {
+    private fun writeSettings(p: MutablePreferences, s: LiveTvSettings, profileId: Int) {
         p[Keys.showInSidebar] = s.showInSidebar
         p[Keys.showNames] = s.showChannelNames
         p[Keys.twoLineNames] = s.twoLineChannelNames
@@ -986,8 +1104,8 @@ class LiveTvPreferences @Inject constructor(
         p[Keys.logoSourcesOff] = s.logoSourcesOff
         p[Keys.catchupPreferHls] = s.catchupPreferHls
         p[Keys.catchupShift] = s.catchupShiftMinutes
-        p[Keys.parentalPin] = s.parentalPin
-        p[Keys.lockAdultContent] = s.lockAdultContent
+        p[own(Keys.parentalPin, profileId)] = s.parentalPin
+        p[if (profileId <= 1) Keys.lockAdultContent else booleanPreferencesKey("${Keys.lockAdultContent.name}_p$profileId")] = s.lockAdultContent
         p[Keys.showQualityBadges] = s.showQualityBadges
         p[Keys.showFrameRate] = s.showFrameRate
         p[Keys.frameRateMode] = s.frameRateMode
@@ -1217,6 +1335,18 @@ class LiveTvPreferences @Inject constructor(
         }
     }
 
+    /** This profile's configurable Live TV, Sports, and On Demand Home rows (JSON). */
+    val homeRowsJson: Flow<String?> =
+        kotlinx.coroutines.flow.combine(store.data, profileManager.activeProfileId) { p, id -> profileView(p, id)[Keys.homeRows] }
+            .distinctUntilChanged()
+
+    suspend fun editHomeRows(transform: (String?) -> String) {
+        store.edit { p ->
+            val id = currentProfile
+            p[my(Keys.homeRows, id)] = transform(profileView(p, id)[Keys.homeRows])
+        }
+    }
+
     suspend fun setPictureShape(key: String, shape: com.nuvio.tv.livetv.player.PictureShape) {
         store.edit { p ->
             val m = decodeStringMap(p[Keys.pictureShapes]).toMutableMap()
@@ -1232,9 +1362,11 @@ class LiveTvPreferences @Inject constructor(
     // ---------- parental controls, reminders, quality, On Demand ----------
 
     suspend fun setGroupLocked(groupId: String, locked: Boolean) {
+        val id = currentProfile
         store.edit { p ->
-            val cur = p[Keys.lockedGroups] ?: emptySet()
-            p[Keys.lockedGroups] = if (locked) cur + groupId else cur - groupId
+            val key = own(Keys.lockedGroups, id)
+            val cur = p[key] ?: emptySet()
+            p[key] = if (locked) cur + groupId else cur - groupId
         }
     }
 
@@ -1796,7 +1928,8 @@ class LiveTvPreferences @Inject constructor(
                 is Long -> JSONObject().put("t", "l").put("v", value)
                 is Set<*> -> JSONObject().put("t", "s").put("v", JSONArray(value.map { it.toString() }))
                 is String -> {
-                    val v = when (name) {
+                    val sourceKey = name.replace(PROFILE_SUFFIX, "")
+                    val v = when (sourceKey) {
                         // Download status and what this TV learned about the server (its time zone,
                         // whether HLS catch-up works) stay per TV: they differ between boxes, and
                         // syncing them made each TV look changed to the other, so both reloaded.
@@ -1828,9 +1961,16 @@ class LiveTvPreferences @Inject constructor(
     fun syncHasSources(data: JSONObject?): Boolean {
         if (data == null) return false
         fun raw(key: String) = data.optJSONObject(key)?.optString("v")
+        val hasSources = data.keys().asSequence().any { name ->
+            val sourceKey = name.replace(PROFILE_SUFFIX, "")
+            when (sourceKey) {
+                Keys.playlists.name -> runCatching { decodePlaylists(raw(name)).isNotEmpty() }.getOrDefault(false)
+                Keys.epgs.name -> runCatching { decodeEpgs(raw(name)).isNotEmpty() }.getOrDefault(false)
+                else -> false
+            }
+        }
         return runCatching { (JSONObject(raw(com.nuvio.vpn.android.VpnBackup.KEY).orEmpty()).optJSONArray("profiles")?.length() ?: 0) > 0 }.getOrDefault(false) ||
-            runCatching { decodePlaylists(raw(Keys.playlists.name)).isNotEmpty() }.getOrDefault(false) ||
-            runCatching { decodeEpgs(raw(Keys.epgs.name)).isNotEmpty() }.getOrDefault(false) ||
+            hasSources ||
             runCatching { decodeAddonChannels(raw(Keys.addonChannels.name)).isNotEmpty() }.getOrDefault(false)
 
     }
@@ -1843,8 +1983,6 @@ class LiveTvPreferences @Inject constructor(
         // Playlists whose address or login changed: they need downloading again.
         val changed = HashSet<String>()
         store.edit { p ->
-            val localPlaylists = decodePlaylists(p[Keys.playlists]).associateBy { it.id }
-            val localEpgs = decodeEpgs(p[Keys.epgs]).associateBy { it.id }
             val localAddons = decodeAddonChannels(p[Keys.addonChannels]).associateBy { it.id }
             // Remove synced keys the other TV doesn't have, then write everything it does.
             p.asMap().keys.filter { it.name !in SYNC_EXCLUDED && !data.has(it.name) }.forEach {
@@ -1865,7 +2003,9 @@ class LiveTvPreferences @Inject constructor(
                     "str" -> {
                         var v = e.optString("v")
                         // Keep this TV's download status for sources it already had.
-                        if (name == Keys.playlists.name) {
+                        val sourceKey = name.replace(PROFILE_SUFFIX, "")
+                        if (sourceKey == Keys.playlists.name) {
+                            val localPlaylists = decodePlaylists(p[stringPreferencesKey(name)]).associateBy { it.id }
                             v = encodePlaylists(decodePlaylists(v).map { r ->
                                 localPlaylists[r.id]?.let { l ->
                                     if (l.url != r.url || l.xtreamServer != r.xtreamServer || l.xtreamUsername != r.xtreamUsername ||
@@ -1878,7 +2018,8 @@ class LiveTvPreferences @Inject constructor(
                                     )
                                 } ?: r
                             })
-                        } else if (name == Keys.epgs.name) {
+                        } else if (sourceKey == Keys.epgs.name) {
+                            val localEpgs = decodeEpgs(p[stringPreferencesKey(name)]).associateBy { it.id }
                             v = encodeEpgs(decodeEpgs(v).map { r ->
                                 localEpgs[r.id]?.let { l ->
                                     r.copy(lastUpdatedMs = l.lastUpdatedMs, lastError = l.lastError, programCount = l.programCount)

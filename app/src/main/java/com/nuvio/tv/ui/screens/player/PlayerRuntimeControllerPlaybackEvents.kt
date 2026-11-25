@@ -1903,7 +1903,7 @@ fun PlayerRuntimeController.onEvent(
                     showSubtitleStylePanel = false,
                     showSubtitleTimingDialog = false,
                     showSubtitleDelayOverlay = false,
-                    showControls = true
+                    showControls = false
                 )
             }
         }

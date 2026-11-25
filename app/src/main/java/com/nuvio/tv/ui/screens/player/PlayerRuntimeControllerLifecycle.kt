@@ -115,6 +115,8 @@ internal fun PlayerRuntimeController.releasePlayer(
     _exoPlayer = null
     activeAssVideoEffect = null
     _loadControl = null
+    playbackBufferMemoryGuard?.detach()
+    playbackBufferMemoryGuard = null
     currentBitrateAwareLoadControl = null
     currentParallelChunkOverheadMb = 0
     ffmpegAudioRenderer = null

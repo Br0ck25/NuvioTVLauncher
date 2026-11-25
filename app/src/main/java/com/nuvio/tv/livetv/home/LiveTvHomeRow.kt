@@ -70,7 +70,9 @@ data class LiveTvHomeActions(
     /** The channel is now playing in Live TV: open it full screen. */
     val openFullscreen: () -> Unit = {},
     /** Open the Live TV guide. */
-    val openGuide: () -> Unit = {}
+    val openGuide: () -> Unit = {},
+    /** Open a game in the Sports page. */
+    val openGame: (String) -> Unit = {}
 )
 
 val LocalLiveTvHomeActions = compositionLocalOf { LiveTvHomeActions() }

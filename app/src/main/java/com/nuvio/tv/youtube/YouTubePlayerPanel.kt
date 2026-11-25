@@ -72,6 +72,8 @@ private class PanelEntry(
     val title: String,
     val detail: String?,
     val titleLines: Int = 2,
+    val thumbnail: String? = null,
+    val extraDetail: String? = null,
     /** Holding OK on the row, when it has something to do for that. */
     val onLongClick: (() -> Unit)? = null,
     val onClick: () -> Unit = {}
@@ -263,7 +265,9 @@ fun BoxScope.YouTubePlayerPanel(
                     state.related.forEach { item ->
                         add(PanelEntry(
                             title = item.title,
-                            detail = listOfNotNull(item.author, item.badge).joinToString("  ·  "),
+                            detail = item.author,
+                            extraDetail = listOfNotNull(item.meta, item.postTime, item.badge).distinct().joinToString("  ·  ").takeIf { it.isNotBlank() },
+                            thumbnail = item.thumbnail,
                             onClick = { onPlayVideo(item) }
                         ))
                     }
@@ -328,8 +332,10 @@ fun BoxScope.YouTubePlayerPanel(
                 PanelMode.RELATED -> state.related.map { item ->
                     PanelEntry(
                         title = item.title,
-                        detail = listOfNotNull(item.author, item.badge).joinToString("  ·  "),
+                        detail = item.author,
+                        extraDetail = listOfNotNull(item.meta, item.postTime, item.badge).distinct().joinToString("  ·  ").takeIf { it.isNotBlank() },
                         titleLines = 2,
+                        thumbnail = item.thumbnail,
                         onClick = {
                             if (item.kind == YtKind.CHANNEL) {
                                 item.channelId?.let { onOpenChannel(it, item.title) }
@@ -759,17 +765,40 @@ private fun NavigableList(
         ) {
             itemsIndexed(entries) { index, entry ->
                 val isSelected = index == selected && !onHeader
-                Column(
+                Row(
                     Modifier
                         .fillMaxWidth()
                         .clip(RoundedCornerShape(10.dp))
                         .background(if (isSelected) Color(0xFF2A2A2E) else RowBg)
                         .border(2.dp, if (isSelected) Color.White else Color.Transparent, RoundedCornerShape(10.dp))
-                        .padding(horizontal = 14.dp, vertical = 11.dp)
+                        .padding(8.dp),
+                    horizontalArrangement = Arrangement.spacedBy(10.dp),
+                    verticalAlignment = Alignment.CenterVertically
                 ) {
-                    Text(entry.title, color = Color.White, fontSize = 15.sp, maxLines = entry.titleLines, overflow = TextOverflow.Ellipsis)
-                    if (!entry.detail.isNullOrBlank()) {
-                        Text(entry.detail, color = Color.Gray, fontSize = 12.sp, maxLines = 1, overflow = TextOverflow.Ellipsis)
+                    if (!entry.thumbnail.isNullOrBlank()) {
+                        AsyncImage(
+                            model = entry.thumbnail,
+                            contentDescription = null,
+                            contentScale = ContentScale.Crop,
+                            modifier = Modifier
+                                .width(124.dp)
+                                .height(70.dp)
+                                .clip(RoundedCornerShape(6.dp))
+                                .background(Color(0xFF303034))
+                        )
+                    }
+                    Column(
+                        Modifier
+                            .weight(1f)
+                            .padding(horizontal = if (entry.thumbnail.isNullOrBlank()) 6.dp else 0.dp, vertical = 3.dp)
+                    ) {
+                        Text(entry.title, color = Color.White, fontSize = 15.sp, maxLines = entry.titleLines, overflow = TextOverflow.Ellipsis)
+                        if (!entry.detail.isNullOrBlank()) {
+                            Text(entry.detail, color = Color.Gray, fontSize = 12.sp, maxLines = 1, overflow = TextOverflow.Ellipsis)
+                        }
+                        if (!entry.extraDetail.isNullOrBlank()) {
+                            Text(entry.extraDetail, color = Color.Gray, fontSize = 11.sp, maxLines = 1, overflow = TextOverflow.Ellipsis)
+                        }
                     }
                 }
             }

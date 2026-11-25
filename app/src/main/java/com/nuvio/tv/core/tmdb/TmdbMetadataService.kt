@@ -4,6 +4,7 @@ import android.util.Log
 import com.nuvio.tv.BuildConfig
 import com.nuvio.tv.data.remote.api.TmdbAggregateCreditsResponse
 import com.nuvio.tv.data.remote.api.TmdbApi
+import com.nuvio.tv.core.cache.BoundedMemoryCache
 import com.nuvio.tv.data.remote.api.TmdbCastMember
 import com.nuvio.tv.data.remote.api.TmdbCollectionPart
 import com.nuvio.tv.data.remote.api.TmdbCreditsResponse
@@ -56,20 +57,20 @@ class TmdbMetadataService(
     constructor(tmdbApi: TmdbApi) : this(tmdbApi, Dispatchers.IO)
 
     // In-memory caches
-    private val enrichmentCache = ConcurrentHashMap<String, TmdbEnrichment>()
-    private val episodeCache = ConcurrentHashMap<String, Map<Pair<Int, Int>, TmdbEpisodeEnrichment>>()
+    private val enrichmentCache = BoundedMemoryCache<String, TmdbEnrichment>(512)
+    private val episodeCache = BoundedMemoryCache<String, Map<Pair<Int, Int>, TmdbEpisodeEnrichment>>(256)
     private val enrichmentInFlight = ConcurrentHashMap<String, CompletableDeferred<TmdbEnrichment?>>()
     private val episodeInFlight = ConcurrentHashMap<String, CompletableDeferred<Map<Pair<Int, Int>, TmdbEpisodeEnrichment>>>()
-    private val personCache = ConcurrentHashMap<String, PersonDetail>()
-    private val moreLikeThisCache = ConcurrentHashMap<String, List<MetaPreview>>()
-    private val entityHeaderCache = ConcurrentHashMap<String, TmdbEntityHeader>()
-    private val entityRailCache = ConcurrentHashMap<String, List<MetaPreview>>()
-    private val entityBrowseCache = ConcurrentHashMap<String, TmdbEntityBrowseData>()
+    private val personCache = BoundedMemoryCache<String, PersonDetail>(256)
+    private val moreLikeThisCache = BoundedMemoryCache<String, List<MetaPreview>>(128)
+    private val entityHeaderCache = BoundedMemoryCache<String, TmdbEntityHeader>(256)
+    private val entityRailCache = BoundedMemoryCache<String, List<MetaPreview>>(128)
+    private val entityBrowseCache = BoundedMemoryCache<String, TmdbEntityBrowseData>(128)
 
     /** The original title from an enrichment that is already in memory; TMDB is not asked. */
     fun cachedOriginalTitle(tmdbId: String, contentType: ContentType): String? {
         val prefix = "$tmdbId:${contentType.name}:"
-        return enrichmentCache.entries.firstOrNull { it.key.startsWith(prefix) }?.value?.originalTitle
+        return enrichmentCache.snapshotEntries().firstOrNull { it.first.startsWith(prefix) }?.second?.originalTitle
     }
 
     suspend fun fetchEnrichment(
@@ -786,7 +787,7 @@ class TmdbMetadataService(
         }
     }
 
-    private val collectionCache = ConcurrentHashMap<String, TmdbMovieCollection>()
+    private val collectionCache = BoundedMemoryCache<String, TmdbMovieCollection>(128)
 
     suspend fun fetchMovieCollection(
         collectionId: Int,

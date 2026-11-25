@@ -1,5 +1,6 @@
 package com.nuvio.tv.livetv.data
 
+import android.app.Application
 import kotlinx.coroutines.CoroutineStart
 import kotlinx.coroutines.async
 import kotlinx.coroutines.runBlocking
@@ -17,7 +18,7 @@ import org.robolectric.RuntimeEnvironment
 import org.robolectric.annotation.Config
 
 @RunWith(RobolectricTestRunner::class)
-@Config(manifest = Config.NONE, sdk = [34])
+@Config(application = Application::class, manifest = Config.NONE, sdk = [34])
 class EpgBrowsingPlaybackTest {
     private lateinit var database: EpgDatabase
 

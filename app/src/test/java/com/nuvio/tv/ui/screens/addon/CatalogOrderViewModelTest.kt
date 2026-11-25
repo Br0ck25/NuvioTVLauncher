@@ -102,7 +102,8 @@ class CatalogOrderViewModelTest {
             collectionsDataStore = collectionsStore,
             layoutPreferenceDataStore = layoutPrefs,
             homeCatalogSettingsSyncService = syncService,
-            serverCatalog = serverCatalog
+            serverCatalog = serverCatalog,
+            homeLiveRows = com.nuvio.tv.livetv.home.mockHomeLiveRows()
         )
         return Harness(vm, layoutPrefs, syncService, diskOrderFlow, followFlow)
     }

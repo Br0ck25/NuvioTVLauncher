@@ -94,6 +94,12 @@ data class PlaylistSource(
     val isXtream: Boolean get() = !isStalker && xtreamServer.isNotBlank()
     val hasCatalog: Boolean get() = isXtream || isStalker
 
+    /** True when both entries can safely point at the same cached Xtream catalogue. */
+    fun sameXtreamAccount(other: PlaylistSource): Boolean =
+        isXtream && other.isXtream &&
+            cleanXtreamServer(xtreamServer).equals(cleanXtreamServer(other.xtreamServer), ignoreCase = true) &&
+            xtreamUsername == other.xtreamUsername && xtreamPassword == other.xtreamPassword
+
     /**
      * An M3U playlist that is really an Xtream login: the server, username and password, from
      * the link itself (".../get.php?username=a&password=b") or else from its channel links

@@ -15,8 +15,29 @@ import java.util.TimeZone
 /** One team stat, side by side ("TOTAL YARDS 214 · 331"). Values for the bars when they're numbers. */
 data class StatLine(val label: String, val away: String, val home: String, val awayValue: Double?, val homeValue: Double?)
 
-/** A game's leader: "PASSING · Patrick Mahomes · 22/31, 236 YDS, 1 TD". [teamId]: whose (for the dot's colour). */
-data class Performer(val category: String, val name: String, val line: String, val teamId: String?)
+/** A game's leader, with optional ESPN athlete metadata for the Top Players panel. */
+data class Performer(
+    val category: String,
+    val name: String,
+    val line: String,
+    val teamId: String?,
+    val athleteId: String? = null,
+    val photo: String? = null,
+    val jersey: String? = null,
+    val position: String? = null,
+    val value: Double? = null
+)
+
+/** A player who stood out in the box score, beyond the feed's named leaders. */
+data class Standout(
+    val name: String,
+    val line: String,
+    val teamId: String?,
+    val athleteId: String?,
+    val photo: String?,
+    val jersey: String?,
+    val position: String?
+)
 
 /** A team's last results, newest last ("W", "L", "D"). */
 data class FormRow(val teamId: String?, val team: String, val results: List<String>)
@@ -33,6 +54,7 @@ data class Lineup(val team: String, val teamId: String?, val formation: String?,
 data class GameExtras(
     val stats: List<StatLine> = emptyList(),
     val performers: List<Performer> = emptyList(),
+    val standouts: List<Standout> = emptyList(),
     val form: List<FormRow> = emptyList(),
     val meetings: List<Meeting> = emptyList(),
     val tableTitle: String? = null,
@@ -86,6 +108,7 @@ internal object SportsExtras {
         return GameExtras(
             stats = runCatching { stats(root, sport, homeId) }.getOrDefault(emptyList()),
             performers = runCatching { performers(root) }.getOrDefault(emptyList()),
+            standouts = runCatching { standouts(root) }.getOrDefault(emptyList()),
             form = runCatching { form(root, ::nameOf) }.getOrDefault(emptyList()),
             meetings = runCatching { meetings(root, ::nameOf) }.getOrDefault(emptyList()),
             lineups = runCatching { lineups(root, ::nameOf) }.getOrDefault(emptyList())
@@ -131,23 +154,67 @@ internal object SportsExtras {
     private fun performers(root: JSONObject): List<Performer> {
         val perTeam = root.optJSONArray("leaders").objs()
         if (perTeam.isEmpty()) return emptyList()
-        // [{team, leaders: [{displayName, leaders: [{displayValue, athlete}]}]}], one per team.
+        // [{team, leaders: [{displayName, leaders: [{displayValue, value, athlete}]}]}], one per team.
         val byTeam = perTeam.map { t ->
             val teamId = t.optJSONObject("team")?.s("id")
             t.optJSONArray("leaders").objs().mapNotNull { cat ->
                 val top = cat.optJSONArray("leaders").objs().firstOrNull() ?: return@mapNotNull null
-                val name = top.optJSONObject("athlete")?.let { it.s("displayName") ?: it.s("shortName") } ?: return@mapNotNull null
+                val athlete = top.optJSONObject("athlete")
+                val name = athlete?.let { it.s("displayName") ?: it.s("shortName") } ?: return@mapNotNull null
+                val shown = top.s("displayValue") ?: ""
                 Performer(
-                    (cat.s("shortDisplayName") ?: cat.s("displayName") ?: cat.s("name") ?: "").uppercase(Locale.ROOT)
+                    category = (cat.s("shortDisplayName") ?: cat.s("displayName") ?: cat.s("name") ?: "").uppercase(Locale.ROOT)
                         .replace(" YARDS", "").replace("YARDS", "").trim(),
-                    name, top.s("displayValue") ?: "", teamId
+                    name = name,
+                    line = shown,
+                    teamId = teamId,
+                    athleteId = athlete.s("id"),
+                    photo = athlete.optJSONObject("headshot")?.s("href"),
+                    jersey = athlete.s("jersey"),
+                    position = athlete.optJSONObject("position")?.let { it.s("abbreviation") ?: it.s("displayName") },
+                    value = top.optDouble("value").takeIf { !it.isNaN() } ?: num(shown)
+                )
+            }.distinctBy { it.category }.take(5)
+        }
+        // Every kind both teams have, each team's leader in turn.
+        val out = ArrayList<Performer>()
+        for (i in 0 until 5) for (list in byTeam) list.getOrNull(i)?.let { out += it }
+        return out.distinctBy { it.name + it.category }
+    }
+
+    private fun standouts(root: JSONObject): List<Standout> {
+        data class Row(val player: Standout, val points: Double)
+        val rows = root.optJSONObject("boxscore")?.optJSONArray("players").objs().flatMap { team ->
+            val teamId = team.optJSONObject("team")?.s("id")
+            val group = team.optJSONArray("statistics").objs().firstOrNull() ?: return@flatMap emptyList()
+            val labels = (group.optJSONArray("labels") ?: group.optJSONArray("names"))
+                ?.let { a -> (0 until a.length()).map { a.optString(it).uppercase(Locale.ROOT) } }.orEmpty()
+            val pointsIndex = labels.indexOf("PTS").takeIf { it >= 0 } ?: return@flatMap emptyList()
+            val shown = listOf("PTS", "REB", "AST").map { it to labels.indexOf(it) }.filter { it.second >= 0 }
+            group.optJSONArray("athletes").objs().mapNotNull { row ->
+                if (row.optBoolean("didNotPlay", false)) return@mapNotNull null
+                val stats = row.optJSONArray("stats") ?: return@mapNotNull null
+                val athlete = row.optJSONObject("athlete") ?: return@mapNotNull null
+                val name = athlete.s("displayName") ?: athlete.s("shortName") ?: return@mapNotNull null
+                val points = num(stats.optString(pointsIndex)) ?: return@mapNotNull null
+                val line = shown.mapNotNull { (label, index) ->
+                    stats.optString(index).takeIf { it.isNotBlank() && it != "--" }?.let { "$it $label" }
+                }.joinToString(" · ")
+                Row(
+                    Standout(
+                        name = name,
+                        line = line,
+                        teamId = teamId,
+                        athleteId = athlete.s("id"),
+                        photo = athlete.optJSONObject("headshot")?.s("href"),
+                        jersey = athlete.s("jersey"),
+                        position = athlete.optJSONObject("position")?.let { it.s("abbreviation") ?: it.s("displayName") }
+                    ),
+                    points
                 )
             }
         }
-        // Both teams' first two kinds (passing, then rushing…), each team's leader in turn.
-        val out = ArrayList<Performer>()
-        for (i in 0 until 3) for (list in byTeam) list.getOrNull(i)?.let { out += it }
-        return out.distinctBy { it.name + it.category }.take(4)
+        return rows.sortedByDescending { it.points }.map { it.player }.take(8)
     }
 
     // ---- last five

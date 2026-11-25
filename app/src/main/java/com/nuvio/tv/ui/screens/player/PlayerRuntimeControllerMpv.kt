@@ -27,6 +27,11 @@ internal fun PlayerRuntimeController.attachMpvView(view: NuvioMpvSurfaceView?) {
         view.applyVpnProxy(nativeVpnProxy?.address())
         view.applyHi10pGnextSoftwareFallback(shouldUseMpvHi10pGnextSoftwareFallback())
         view.applyHardwareDecodeMode(mpvHardwareDecodeModeSetting)
+        view.applySevenBandEqualizer(
+            com.nuvio.tv.core.audio.SevenBandEqualizerSettings.current(
+                com.nuvio.tv.core.audio.EqualizerOwner.PLAYBACK
+            )
+        )
         registerMpvEventRelay(view)
         view.setMedia(currentStreamUrl, currentHeaders)
         view.setRepeatFile(repeatOneRequested)

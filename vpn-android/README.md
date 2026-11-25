@@ -1,68 +1,73 @@
 # Android playback VPN
 
-Nuvio One ships a built-in WireGuard VPN for playback. Open **Settings > VPN** to import a
-profile, choose what it protects, and connect. No OpenVPN engine is built in this fork.
+TV and Mobile open the same settings page from **Settings > VPN profiles**. Matching playback waits for authentication and a tunneled HTTPS probe. Media requests, redirects, byte ranges, subtitles and preloads follow the selected mode.
 
-- **Off** uses the ordinary connection.
+- **Off** uses the ordinary playback connection.
 - **HTTP streams only** protects remote HTTP media. HTTPS stays direct.
 - **HTTP + HTTPS streams** protects both playback protocols. HTTPS keeps its original TLS session.
-- **Full app** uses Android VPN consent and restricts the VPN interface to the Nuvio package.
+- **Full app** uses Android VPN consent and restricts the VPN interface to the host package.
 
-Matching playback waits for authentication and a tunneled HTTPS probe. Media requests,
-redirects, byte ranges, subtitles and preloads follow the selected mode. Full app protection
-starts while Nuvio is visible, and resumes on foreground startup after the active Nuvio profile
-is known. An explicit VPN settings change may request Android consent. Passive startup and
-resume only connect with consent already granted. This is foreground activation, not Android
-always-on VPN.
+## Profiles and sync
 
-## Profiles
+Import a WireGuard configuration or a self-contained OpenVPN TUN profile. OpenVPN supports UDP and TCP, inline CA and certificate material, and service credentials. Importing a profile with a bare `auth-user-pass` directive prompts for credentials. Use **OpenVPN service credentials** to update a previously imported profile. Desktop scripts, external credential files, interactive authentication challenges and external PKI are outside the supported profile format.
 
-Import any standard WireGuard `.conf`, including NordVPN's manual WireGuard configuration files.
-There are two ways to add one:
+OpenVPN's `client` directive and its equivalent `tls-client` plus `pull` form are both accepted. OpenVPN 3 remains the default. A supported UDP profile containing `fragment` selects the separate OpenVPN 2.7.9 compatibility process and keeps fragmentation enabled. The app does not switch engines after authentication, certificate or connection failures. Compatibility profiles receive additional option and native-engine validation; unsupported options, interactive authentication and tunnel settings are rejected. Keep the provider's fragmentation requirement in the profile.
 
-1. **Add from phone** (recommended): Settings > VPN > Add from phone shows a QR code and a
-   one-time address on the home network. Scan it with a phone on the same Wi-Fi, choose the
-   `.conf` file and tap **Send to TV**. The private key is never placed in the QR code.
-2. **WireGuard .conf file**: choose a file already on the TV with the system file picker.
+Self-contained OpenVPN profiles may keep provider fallback servers in connection blocks and revocation lists in inline crl-verify blocks. Unsupported or oversized connection blocks are rejected rather than silently dropping their settings.
 
-The TV validates the profile, encrypts it with the Android Keystore and stores it on the device.
-Imported profiles are not selected or connected automatically.
+OpenVPN also accepts a provider ZIP containing exactly one `.ovpn` and its referenced UTF-8 CA, certificate, private key, TLS key or certificate revocation list files (`.crt`, `.cer`, `.pem`, `.key`, `.crl`). References must use relative archive paths within the configuration's folder; parent paths, ambiguous names and files outside the ZIP are rejected. The archive is limited to 32 entries and 1 MiB compressed, decompressed and after conversion. Only referenced material is inlined in memory before the ordinary profile and engine validation; the saved and synced profile stays self-contained. ZIP scripts, credential files and binary PKCS#12 files are unsupported.
 
-Setup Sync can carry VPN profiles to another TV. The portable backup contains the configurations,
-the selected profile and the protection scope; the destination validates and re-encrypts them with
-its own key. Older backups without a VPN entry keep the local setup.
+WireGuard profiles require interface addresses, DNS servers and one peer with an endpoint. An IPv6 DNS server needs a `::/0` route. Include a default route for every IP family configured in the interface or peer routes. A provider export with only IPv4 interface addresses and DNS can use `0.0.0.0/0`; a dual-stack export also needs `::/0`. An IPv4-only export can retain `::/0` as a blocking route. DNS search domains require Full app mode.
 
-## Integration
+**Apply VPN settings to** defaults to **All profiles**. The selected VPN and protection mode apply to current and future Nuvio profiles. **Only this profile** starts a separate choice for the active Nuvio profile. Switching back to **All profiles** uses the current shared settings again. Setup Sync restores both the shared choice and individual overrides.
 
-- `PlaybackVpn.kt` gates player startup and wraps the player's HTTP data sources.
-- Live TV, Multiview and Stalker paths use `VpnHttpClient` / `VpnDataSources` so HTTP-only mode
-  covers channel zapping, HLS pieces and portal playback.
-- `VpnProfilePhoneServer.kt` serves the one-time phone page while the QR dialog is open. Nothing
-  leaves the home network.
-- Native HTTP/HTTPS players receive the local proxy through `applyVpnProxy`.
+Profiles are encrypted with the device’s Android Keystore. HomelessBrian’s Setup Sync carries a portable `vpn_profiles_v1` entry with the configurations, selected profile and scope. Exported backups contain private VPN configuration, including saved OpenVPN service credentials. The destination validates and re-encrypts the profiles with its own key. Older backups without a VPN entry preserve the local setup.
 
-## Building
+## Integration and verification
 
-Use JDK 21, Go 1.27.3, NDK `29.0.14206865` and SDK CMake 3.22.1. Set `NUVIO_GO` when Go is not
-on `PATH`:
+Keep `vpn-core` and `vpn-android` source in sync across the two repositories. The Java core owns route selection, profile preflight, encryption envelopes and versioned settings. Android owns the Keystore, playback gate, settings UI, private playback proxy and app-scoped VPN service. Host adapters connect these to the players and Setup Sync.
 
-```bash
-NUVIO_GO=/path/to/go ./gradlew :app:assembleFullDebug
+Use JDK 21, Go 1.27.3, NDK 29.0.14206865 and SDK CMake 3.22.1. `NUVIO_GO` selects a non-default Go executable. The Go module pins WireGuard and its private IP stack. CMake builds OpenVPN 3 Core 3.11.8 with pinned mbed TLS, Asio and LZ4 sources. The OpenVPN 2 compatibility process is built separately from pinned OpenVPN, OpenSSL, LZO and LZ4 sources. Its management socket carries protected transport and app-owned TUN descriptors; profiles and service credentials are passed in memory. It must authenticate and pass the same tunneled HTTPS probe before playback is ready. Refused socket protection, unsupported pushed DNS requirements and unknown tunnel requests stop the connection. Dependency notices ship in the APK. Build the standalone module and its host sequentially within each checkout.
+
+```sh
+./gradlew -p vpn-android :lintDebug :testDebugUnitTest :vpn-core:check :checkHttpTunnel
+./gradlew -p vpn-android :device-tests:assembleDebug :device-tests:assembleDebugAndroidTest
 ```
 
-The Go module pins WireGuard and its private IP stack and produces
-`libnuvio-http-vpn.so` for each ABI. The WireGuard tunnel AAR supplies `libwg-go.so`. Dependency
-notices ship in the APK.
+Install the two device-test APKs on an emulator and run:
 
-## Verification
-
-```bash
-./gradlew :vpn-core:check
-cd vpn-android/native && go test ./...
-bash vpn-android/ci/check-profiles.sh
+```sh
+adb shell am instrument -w com.nuvio.vpn.android.test.test/androidx.test.runner.AndroidJUnitRunner
 ```
 
-The profile check downloads the pinned WireGuard parser, exercises the real production parser
-and does not need a live VPN. Runtime checks still need a real WireGuard endpoint: import a
-profile, connect in HTTP-only and Full app modes, and confirm the tunneled probe succeeds before
-playback starts.
+The harness uses a separate application package and Keystore. Its optional OpenVPN test expects a synthetic profile in the harness’s private `files/acceptance.ovpn` and a server reachable through the tunnel. For a profile that prompts for credentials, configure the test server to accept `fixture-user` and `fixture-password`. Serve HTTP 206 with bytes 31 through 158 containing those byte values, or pass the base64 SHA-256 of the expected 128 bytes as `openvpnReference`.
+
+Run the default-engine test with both UDP and TCP configurations. To require the fragmentation compatibility engine, use a synthetic UDP profile containing `fragment` and pass `-e openvpnEngine OPENVPN2`. `openvpnScope` accepts `HTTP_ONLY`, `HTTP_HTTPS` and `APP_WIDE`. Grant the **test package** VPN consent on the emulator for the Full app case.
+
+```sh
+adb shell am instrument -w -e class com.nuvio.vpn.android.VpnDeviceTest#openVpnAuthenticatedPlaybackRange \
+  -e openvpnScope HTTP_HTTPS -e openvpnRangeUrl http://TEST_SERVER/movie \
+  com.nuvio.vpn.android.test.test/androidx.test.runner.AndroidJUnitRunner
+```
+
+Host builds use `:app:assembleFullDebug` and `:app:assembleFullRelease` on TV and `:androidApp:assembleFullDebug` and `:androidApp:assembleFullRelease` on Mobile. Check actual playback, HTTPS bypass in HTTP-only mode, a seek, next-episode handoff and fresh-login restore on a device.
+
+Run `bash vpn-android/ci/check-profiles.sh` to exercise profile validation with the pinned WireGuard parser. The check uses fail-fast Android storage placeholders; it does not validate a live VPN or Android storage.
+
+`native/internal/netstack` contains the local copy of the pinned WireGuard IP stack, its license and the changes needed by the playback tunnel. Native build inputs include its nested Go sources so an incremental build cannot reuse a binary from before a stack fix.
+
+Run `(cd vpn-android/native && go test -race -count=1 -timeout 60s ./...)` for the stream tunnel and packet-ownership regressions.
+
+The separate OpenVPN 2 executable is licensed under GPL-2.0 with its upstream linking exceptions. After building, run `python3 vpn-android/ci/package-openvpn2-sources.py --output out/openvpn2-corresponding-source.tar.gz`. Release workflows attach this complete corresponding-source archive beside the APK, including the mutable Downloader download. Keep the matching archive available to recipients when distributing APKs through another download service. No production signing keys, profiles, account credentials or app build settings belong in that archive.
+
+Rootless Linux engine checks use a separate host build with system OpenSSL, not an Android device or provider account. After fetching the pinned native sources, run:
+
+```sh
+python3 vpn-android/ci/build-openvpn2-host.py \
+  --source vpn-android/build/openvpn2-sources/openvpn2-7b60c2aa34992639691e3a2d651fe27301e2e9d5 \
+  --work /tmp/nuvio-openvpn2-host --overlays vpn-android/openvpn2/patch-engine.cmake
+python3 vpn-android/ci/check-openvpn2.py --binaries /tmp/nuvio-openvpn2-host \
+  --report /tmp/nuvio-openvpn2-host/results.json
+```
+
+These checks generate temporary synthetic certificates, exercise real TLS and fragmented packets through datagram TUN descriptors, and reject unsupported protection settings. They do not establish Android routing, actual provider compatibility or protection across Android revocation/process death. The Android instrumentation class `OpenVpnFallbackDeviceTest` separately checks installed executable packaging and native options validation.

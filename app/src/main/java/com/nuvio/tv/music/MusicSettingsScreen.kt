@@ -52,6 +52,8 @@ import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.unit.dp
 import com.nuvio.tv.R
+import com.nuvio.tv.ui.components.SevenBandEqualizerFaders
+import com.nuvio.tv.core.audio.SevenBandPreset
 import androidx.compose.ui.unit.sp
 import androidx.tv.material3.Icon
 import androidx.tv.material3.Text
@@ -66,7 +68,7 @@ internal fun MusicSettingsScreen(onClose: () -> Unit) {
     val playbackSpeed by MusicSettings.playbackSpeed.collectAsState()
     val keepPlayingWhileBrowsing by MusicSettings.keepPlayingWhileBrowsing.collectAsState()
     val fadeSeconds by MusicSettings.fadeSeconds.collectAsState()
-    val equalizerPreset by MusicSettings.equalizerPreset.collectAsState()
+    val equalizerProfile by MusicSettings.equalizerProfile.collectAsState()
     val equalizerAvailable by MusicEqualizer.available.collectAsState()
     val downloadQuality by MusicSettings.downloadQuality.collectAsState()
     val wifiOnlyDownloads by MusicSettings.wifiOnlyDownloads.collectAsState()
@@ -203,15 +205,31 @@ internal fun MusicSettingsScreen(onClose: () -> Unit) {
                 item(key = "equalizer") {
                     SettingsSelector(
                         title = stringResource(R.string.music_settings_equalizer),
-                        detail = if (equalizerAvailable) {
-                            stringResource(R.string.music_settings_applied)
-                        } else {
-                            stringResource(R.string.music_settings_unsupported)
-                        },
-                        options = MusicEqualizerPreset.entries.map { it.label },
-                        selectedIndex = MusicEqualizerPreset.entries.indexOf(equalizerPreset),
-                        onSelect = { MusicPlayer.setEqualizerPreset(MusicEqualizerPreset.entries[it]) }
+                        detail = if (equalizerAvailable) "Seven-band EQ · Music profile" else stringResource(R.string.music_settings_unsupported),
+                        options = SevenBandPreset.selectable.map { it.label },
+                        selectedIndex = SevenBandPreset.selectable.indexOf(equalizerProfile.preset).coerceAtLeast(0),
+                        onSelect = { MusicPlayer.setEqualizerPreset(SevenBandPreset.selectable[it]) }
                     )
+                }
+                if (equalizerProfile.preset != SevenBandPreset.OFF) {
+                    item(key = "music-equalizer-faders") {
+                        SevenBandEqualizerFaders(
+                            gainsDb = equalizerProfile.gainsDb,
+                            onBandChange = MusicPlayer::setEqualizerBand,
+                            accent = MusicPalette.accent,
+                            text = MusicPalette.text,
+                            muted = MusicPalette.textMuted,
+                            modifier = Modifier.padding(horizontal = 4.dp, vertical = 12.dp)
+                        )
+                    }
+                    item(key = "music-equalizer-hint") {
+                        Text(
+                            text = "Focus a band and press Up/Down to adjust it · OK resets that band",
+                            color = MusicPalette.textMuted,
+                            fontSize = 11.sp,
+                            modifier = Modifier.padding(start = 8.dp, bottom = 8.dp)
+                        )
+                    }
                 }
 
                 item(key = "downloads-label") { SettingsSection("Downloads") }

@@ -11,6 +11,7 @@ import androidx.media3.exoplayer.ScrubbingModeParameters
 import androidx.media3.exoplayer.upstream.DefaultAllocator
 import androidx.media3.exoplayer.upstream.DefaultBandwidthMeter
 import com.nuvio.tv.data.local.PlayerSettings
+import com.nuvio.tv.core.player.BitrateAwareLoadControl
 import com.nuvio.tv.ui.screens.settings.MemoryBudget
 
 /**
@@ -270,7 +271,11 @@ object NuvioExoPlayerPerformanceHelper {
      * Builds a [DefaultLoadControl] tuned for Nuvio performance when enabled,
      * or a standard ExoPlayer [DefaultLoadControl] when disabled.
      */
-    fun buildLoadControl(context: Context? = null, chunkOverheadMb: Int = 0): DefaultLoadControl {
+    fun buildLoadControl(
+        context: Context? = null,
+        chunkOverheadMb: Int = 0,
+        bufferForPlaybackMsOverride: Int? = null,
+    ): DefaultLoadControl {
         return if (enabled) {
             val effectiveTargetBufferMb = (targetBufferSizeMb - chunkOverheadMb)
                 .coerceAtLeast(MemoryBudget.MIN_BUFFER_MB)
@@ -293,20 +298,19 @@ object NuvioExoPlayerPerformanceHelper {
                 "ExoPerformance",
                 "buildLoadControl: targetBufferSizeMb=$targetBufferSizeMb, chunkOverheadMb=$chunkOverheadMb, effectiveTargetBufferMb=$effectiveTargetBufferMb, targetBytes=$targetBufferBytes, backBufferMs=$resolvedBackBufferMs"
             )
-            DefaultLoadControl.Builder()
-                .setAllocator(allocator)
-                .setTargetBufferBytes(targetBufferBytes)
-                .setBufferDurationsMs(
-                    minBufferMs,
-                    maxBufferMs,
-                    bufferForPlaybackMs,
-                    bufferForPlaybackAfterRebufferMs
-                )
-                // The byte target has to gate everything the allocator holds, or the back buffer
-                // is charged on top of it and the configured size is not a limit at all.
-                .setPrioritizeTimeOverSizeThresholds(false)
-                .setBackBuffer(resolvedBackBufferMs, true)
-                .build()
+            // Use the same runtime-adjustable control as the custom buffer engine so pressure
+            // handling also covers performance-mode allocations. Settings and byte limits stay the same.
+            BitrateAwareLoadControl(
+                minBufferMs = minBufferMs,
+                maxBufferMs = maxBufferMs,
+                bufferForPlaybackMs = bufferForPlaybackMsOverride ?: bufferForPlaybackMs,
+                bufferForPlaybackAfterRebufferMs = bufferForPlaybackAfterRebufferMs,
+                prioritizeTimeOverSizeThresholds = false,
+                backBufferDurationMs = resolvedBackBufferMs,
+                retainBackBufferFromKeyframe = true,
+                budgetBytes = targetBufferBytes.toLong(),
+                allocator = allocator,
+            )
         } else {
             DefaultLoadControl.Builder()
                 .setTargetBufferBytes(100 * 1024 * 1024)

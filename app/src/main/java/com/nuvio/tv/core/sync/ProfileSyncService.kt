@@ -9,6 +9,7 @@ import com.nuvio.tv.data.remote.supabase.SupabaseProfile
 import com.nuvio.tv.data.remote.supabase.SupabaseProfilePinVerifyResult
 import com.nuvio.tv.domain.model.UserProfile
 import com.nuvio.tv.domain.model.AuthState
+import com.nuvio.tv.livetv.data.LiveTvPreferences
 import io.github.jan.supabase.postgrest.Postgrest
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.withContext
@@ -47,6 +48,7 @@ class ProfileSyncService @Inject constructor(
     private val authManager: AuthManager,
     private val postgrest: Postgrest,
     private val profileManager: ProfileManager,
+    private val liveTvPreferences: LiveTvPreferences,
     private val syncClientIdentity: SyncClientIdentity
 ) {
     private val pullMutex = Mutex()
@@ -127,6 +129,9 @@ class ProfileSyncService @Inject constructor(
                 }
 
                 if (profiles.isNotEmpty()) {
+                    val previousIds = profileManager.knownProfileIds().toSet()
+                    val remoteIds = profiles.mapTo(HashSet()) { it.id }
+                    (previousIds - remoteIds).forEach { id -> liveTvPreferences.removeProfileData(id) }
                     profileManager.replaceAllProfiles(profiles)
                     Log.d(TAG, "Merged ${profiles.size} remote profiles into local store")
                 }
