@@ -48,6 +48,16 @@ class MusicPlaybackService : Service() {
         var running = false
             private set
 
+        /**
+         * Stops playback and forgets what was playing: the current song, the queue and the saved
+         * queue are cleared, and the service (with its notification) is shut down.
+         */
+        fun stopAndClear(context: Context) {
+            MusicPlayer.stop()
+            val app = context.applicationContext
+            runCatching { app.stopService(Intent(app, MusicPlaybackService::class.java)) }
+        }
+
         /** Starts the playback service. Safe to call before the first track plays. */
         fun start(context: Context) {
             if (running) return // the service already exists and follows the player state

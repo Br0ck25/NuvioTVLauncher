@@ -5,6 +5,7 @@ import androidx.compose.foundation.Image
 import androidx.compose.foundation.background
 import androidx.compose.foundation.border
 import androidx.compose.foundation.clickable
+import androidx.compose.foundation.combinedClickable
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
@@ -1021,12 +1022,15 @@ private fun MusicTopNavItem(
     }
 }
 
+/** Click opens Now Playing; a long press stops playback and clears what was playing. */
+@OptIn(androidx.compose.foundation.ExperimentalFoundationApi::class)
 @Composable
 private fun NowPlayingChip(
     playback: MusicPlayer.State,
     onClick: () -> Unit,
     modifier: Modifier = Modifier
 ) {
+    val context = LocalContext.current
     var focused by remember { mutableStateOf(false) }
     Row(
         modifier
@@ -1040,7 +1044,10 @@ private fun NowPlayingChip(
                 RoundedCornerShape(50)
             )
             .onFocusChanged { focused = it.isFocused }
-            .clickable(onClick = onClick)
+            .combinedClickable(
+                onClick = onClick,
+                onLongClick = { MusicPlaybackService.stopAndClear(context) }
+            )
             .padding(start = 5.dp, end = 11.dp),
         verticalAlignment = Alignment.CenterVertically
     ) {
