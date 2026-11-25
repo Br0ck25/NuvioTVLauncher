@@ -317,7 +317,7 @@ class LiveTvRecordingScheduler @Inject constructor(
             "Every day", "Weekdays", "Weekends" -> d.lowercase()
             else -> "on $d"
         }
-        val time = java.text.SimpleDateFormat("h:mm a", java.util.Locale.getDefault()).format(java.util.Date(startMs))
+        val time = com.nuvio.tv.livetv.ui.formatClock(startMs, com.nuvio.tv.livetv.ui.LiveClock.use24h)
         return "Recording \"$title\" $daysText at $time"
     }
 
@@ -932,7 +932,8 @@ class LiveTvRecordingScheduler @Inject constructor(
 
     private fun timeLabel(ms: Long): String {
         val sameDay = java.text.SimpleDateFormat("yyyyMMdd", java.util.Locale.US).let { it.format(java.util.Date(ms)) == it.format(java.util.Date()) }
-        val fmt = if (sameDay) "h:mm a" else "EEE h:mm a"
+        val clock = com.nuvio.tv.livetv.ui.LiveClock.timePattern()
+        val fmt = if (sameDay) clock else "EEE $clock"
         return java.text.SimpleDateFormat(fmt, java.util.Locale.getDefault()).format(java.util.Date(ms))
     }
 

@@ -4,12 +4,23 @@ package com.nuvio.tv.ui.screens.home
 
 import android.content.Context
 import android.content.Intent
+import android.media.tv.TvContract
+import android.media.tv.TvInputInfo
+import android.media.tv.TvInputManager
 import android.text.format.DateFormat
 import android.widget.Toast
 import androidx.compose.foundation.BorderStroke
 import androidx.compose.foundation.background
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
+import androidx.compose.foundation.layout.Column
+import androidx.compose.foundation.layout.fillMaxWidth
+import androidx.compose.runtime.LaunchedEffect
+import androidx.compose.runtime.mutableStateOf
+import androidx.compose.runtime.setValue
+import androidx.compose.ui.focus.FocusRequester
+import androidx.compose.ui.focus.focusRequester
+import androidx.compose.ui.window.Dialog
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.defaultMinSize
@@ -54,6 +65,18 @@ import java.util.Date
 import java.util.Locale
 import kotlinx.coroutines.delay
 
+/** HDMI/CEC-style inputs only; tuner and app-provided inputs can't be switched to this way. */
+private fun loadPassthroughInputs(context: Context): List<TvInputInfo> = runCatching {
+    val manager = context.getSystemService(Context.TV_INPUT_SERVICE) as? TvInputManager
+    manager?.tvInputList.orEmpty().filter { it.isPassthroughInput }
+}.getOrDefault(emptyList())
+
+private fun launchPassthroughInput(context: Context, inputId: String): Boolean = runCatching {
+    val uri = TvContract.buildChannelUriForPassthroughInput(inputId)
+    context.startActivity(Intent(Intent.ACTION_VIEW, uri).addFlags(Intent.FLAG_ACTIVITY_NEW_TASK))
+    true
+}.getOrDefault(false)
+
 @Composable
 fun HomeTopBarHeader(
     onNotificationsClick: () -> Unit,
@@ -64,15 +87,53 @@ fun HomeTopBarHeader(
     val notifications by LauncherNotificationListenerService.notifications.collectAsStateWithLifecycle()
     val notificationCount = notifications.size
 
-    val hasTvInputs = remember {
-        val candidateIntents = listOf(
-            Intent("com.android.tv.action.VIEW_INPUTS"),
-            Intent("com.google.android.tv.action.VIEW_INPUTS"),
-            Intent("android.settings.TV_INPUTS"),
-            Intent("android.settings.TV_INPUT_SETTINGS"),
-            Intent("android.media.tv.action.VIEW_INPUTS")
-        )
-        candidateIntents.any { context.packageManager.resolveActivity(it, 0) != null }
+    // Only real HDMI/CEC inputs get a button; boxes without any (e.g. a Shield) show none.
+    val tvInputs = remember { loadPassthroughInputs(context) }
+    val hasTvInputs = tvInputs.isNotEmpty()
+    var showInputPicker by remember { mutableStateOf(false) }
+
+    if (showInputPicker) {
+        Dialog(onDismissRequest = { showInputPicker = false }) {
+            Column(
+                modifier = Modifier
+                    .clip(RoundedCornerShape(16.dp))
+                    .background(Color(0xFF1E1E1E))
+                    .padding(20.dp),
+                verticalArrangement = Arrangement.spacedBy(8.dp)
+            ) {
+                Text(
+                    text = stringResource(R.string.profile_tv_inputs_label),
+                    color = Color.White,
+                    fontWeight = FontWeight.SemiBold
+                )
+                val firstFocus = remember { FocusRequester() }
+                LaunchedEffect(Unit) { runCatching { firstFocus.requestFocus() } }
+                tvInputs.forEachIndexed { index, input ->
+                    Surface(
+                        onClick = {
+                            showInputPicker = false
+                            if (!launchPassthroughInput(context, input.id)) {
+                                Toast.makeText(context, R.string.profile_tv_inputs_unavailable, Toast.LENGTH_SHORT).show()
+                            }
+                        },
+                        modifier = Modifier
+                            .fillMaxWidth()
+                            .then(if (index == 0) Modifier.focusRequester(firstFocus) else Modifier),
+                        shape = ClickableSurfaceDefaults.shape(RoundedCornerShape(10.dp)),
+                        colors = ClickableSurfaceDefaults.colors(
+                            containerColor = Color.White.copy(alpha = 0.08f),
+                            focusedContainerColor = NuvioTheme.colors.FocusBackground
+                        )
+                    ) {
+                        Text(
+                            text = input.loadLabel(context)?.toString().orEmpty().ifBlank { input.id },
+                            color = Color.White,
+                            modifier = Modifier.padding(horizontal = 16.dp, vertical = 10.dp)
+                        )
+                    }
+                }
+            }
+        }
     }
 
     Row(
@@ -85,30 +146,12 @@ fun HomeTopBarHeader(
         if (hasTvInputs) {
             Surface(
                 onClick = {
-                    val intents = listOf(
-                        Intent("com.android.tv.action.VIEW_INPUTS"),
-                        Intent("com.google.android.tv.action.VIEW_INPUTS"),
-                        Intent("android.settings.TV_INPUTS"),
-                        Intent("android.settings.TV_INPUT_SETTINGS"),
-                        Intent("android.media.tv.action.VIEW_INPUTS")
-                    )
-                    var launched = false
-                    for (intent in intents) {
-                        try {
-                            intent.addFlags(Intent.FLAG_ACTIVITY_NEW_TASK)
-                            if (context.packageManager.resolveActivity(intent, 0) != null) {
-                                context.startActivity(intent)
-                                launched = true
-                                break
-                            }
-                        } catch (_: Exception) {}
-                    }
-                    if (!launched) {
-                        try {
-                            context.startActivity(Intent("com.android.tv.action.VIEW_INPUTS").addFlags(Intent.FLAG_ACTIVITY_NEW_TASK))
-                        } catch (_: Exception) {
+                    if (tvInputs.size == 1) {
+                        if (!launchPassthroughInput(context, tvInputs[0].id)) {
                             Toast.makeText(context, R.string.profile_tv_inputs_unavailable, Toast.LENGTH_SHORT).show()
                         }
+                    } else {
+                        showInputPicker = true
                     }
                 },
                 modifier = Modifier.size(36.dp),

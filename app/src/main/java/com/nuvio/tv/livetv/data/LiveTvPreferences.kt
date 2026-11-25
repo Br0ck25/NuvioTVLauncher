@@ -604,7 +604,9 @@ class LiveTvPreferences @Inject constructor(
             epgRefreshHours = p[Keys.epgRefresh] ?: d.epgRefreshHours,
             epgPastHours = p[Keys.epgPast] ?: d.epgPastHours,
             epgFutureDays = p[Keys.epgFuture] ?: d.epgFutureDays,
-            use24HourClock = p[Keys.clock24] ?: d.use24HourClock,
+            // Until a choice is made in settings, follow the TV's own 12/24-hour setting.
+            use24HourClock = (p[Keys.clock24] ?: android.text.format.DateFormat.is24HourFormat(context))
+                .also { com.nuvio.tv.livetv.ui.LiveClock.use24h = it },
             autoReconnect = p[Keys.autoReconnect] ?: d.autoReconnect,
             autoBackupChannel = p[Keys.autoBackupChannel] ?: d.autoBackupChannel,
             hideStrayEntries = p[Keys.hideStrayEntries] ?: d.hideStrayEntries,

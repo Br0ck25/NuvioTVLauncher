@@ -295,7 +295,7 @@ private fun describe(e: CalendarEntry): String {
         else -> e.day.format(DateTimeFormatter.ofPattern(if (e.day.year == today.year) "EEE MMM d" else "EEE MMM d, yyyy"))
     }
     val time = e.airMs?.takeIf { !e.streaming }?.let {
-        DateTimeFormatter.ofPattern("h:mm a").format(Instant.ofEpochMilli(it).atZone(ZoneId.systemDefault()))
+        DateTimeFormatter.ofPattern(com.nuvio.tv.livetv.ui.LiveClock.timePattern()).format(Instant.ofEpochMilli(it).atZone(ZoneId.systemDefault()))
     }
     val lead = when {
         CalendarTag.SERIES_PREMIERE in e.tags -> "Series premiere"

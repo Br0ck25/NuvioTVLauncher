@@ -1251,6 +1251,9 @@ internal fun PlayerRuntimeController.loadEpisodesIfNeeded() {
     val id = contentId
     if (type.isNullOrBlank() || id.isNullOrBlank()) return
     if (type !in listOf("series", "tv")) return
+    // On Demand ids exist only in the provider; no metadata addon can resolve them, so asking
+    // just surfaced a confusing addon error. The panel shows "No episodes available" instead.
+    if (com.nuvio.tv.livetv.ondemand.VodHomeIds.isOnDemandContentId(id)) return
     if (_uiState.value.episodesAll.isNotEmpty() || _uiState.value.isLoadingEpisodes) return
 
     scope.launch {

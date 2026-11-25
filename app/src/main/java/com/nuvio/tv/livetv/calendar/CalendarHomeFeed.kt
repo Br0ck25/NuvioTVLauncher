@@ -109,7 +109,7 @@ object CalendarHomeFeed {
         val episode = e.episode ?: return null
         val at = e.airMs ?: e.day.atStartOfDay(ZoneId.systemDefault()).toInstant().toEpochMilli()
         val label = if (e.airMs != null) {
-            DateTimeFormatter.ofPattern("EEE h:mm a").format(Instant.ofEpochMilli(e.airMs).atZone(ZoneId.systemDefault()))
+            DateTimeFormatter.ofPattern("EEE " + com.nuvio.tv.livetv.ui.LiveClock.timePattern()).format(Instant.ofEpochMilli(e.airMs).atZone(ZoneId.systemDefault()))
         } else DateTimeFormatter.ofPattern("EEE MMM d").format(e.day)
         return ContinueWatchingItem.NextUp(
             info = NextUpInfo(
@@ -146,7 +146,7 @@ object CalendarHomeFeed {
             now in g.startMs until g.stopMs -> "On ${g.channelName} now"
             aired -> null
             g.startMs > now -> "On ${g.channelName} " +
-                DateTimeFormatter.ofPattern("h:mm a").format(Instant.ofEpochMilli(g.startMs).atZone(ZoneId.systemDefault()))
+                DateTimeFormatter.ofPattern(com.nuvio.tv.livetv.ui.LiveClock.timePattern()).format(Instant.ofEpochMilli(g.startMs).atZone(ZoneId.systemDefault()))
             else -> null
         }
     }
