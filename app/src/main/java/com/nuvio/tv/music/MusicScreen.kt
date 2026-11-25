@@ -83,12 +83,12 @@ import com.music.bitchord.data.model.Song
 import com.nuvio.tv.youtube.YouTubeAccountViewModel
 import com.nuvio.tv.LocalOpenSidebar
 import com.nuvio.tv.LocalSidebarExpanded
+import com.nuvio.tv.domain.model.SectionScale
+import com.nuvio.tv.domain.model.SectionScales
+import com.nuvio.tv.ui.scale.LocalSectionScales
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.launch
 import kotlinx.coroutines.withContext
-
-/** One density scale for the whole Music section. */
-private const val MUSIC_UI_SCALE = 0.88f
 
 private data class MusicVideoRequest(val video: Song, val startPositionMs: Long)
 
@@ -114,9 +114,12 @@ fun MusicScreen(
     val liked by MusicLibrary.liked.collectAsState()
     val recents by MusicLibrary.recents.collectAsState()
     val playlists by MusicLibrary.playlists.collectAsState()
+    val homeRows by MusicHomeRows.config.collectAsState()
     val spotifySync by MusicSpotifyWebSync.state.collectAsState()
     val party by MusicPartyManager.state.collectAsState()
     val accountViewModel: YouTubeAccountViewModel = hiltViewModel()
+    val geminiViewModel: MusicGeminiViewModel = hiltViewModel()
+    val gemini by geminiViewModel.state.collectAsState()
     // Music keeps its own YouTube profile choice, separate from OneTube's.
     remember(accountViewModel) { accountViewModel.useScope(com.nuvio.tv.youtube.AccountScope.MUSIC) }
     val account by accountViewModel.state.collectAsState()
@@ -124,6 +127,7 @@ fun MusicScreen(
     val scope = rememberCoroutineScope()
     var showNowPlaying by remember { mutableStateOf(false) }
     var musicVideo by remember { mutableStateOf<MusicVideoRequest?>(null) }
+    var musicVideoMinimized by remember { mutableStateOf(false) }
     var showSettings by remember { mutableStateOf(false) }
     var showDownloads by remember { mutableStateOf(false) }
     var showParty by remember { mutableStateOf(false) }
@@ -135,6 +139,7 @@ fun MusicScreen(
     var lastAccountKey by remember { mutableStateOf<String?>(null) }
     var openPlaylistId by remember { mutableStateOf<String?>(null) }
     val topNavFocus = remember { FocusRequester() }
+    val miniPlayerFocus = remember { FocusRequester() }
     val openNuvioSidebar = LocalOpenSidebar.current
     val sidebarExpanded = LocalSidebarExpanded.current
     val openPlaylist = playlists.firstOrNull { it.id == openPlaylistId }
@@ -244,17 +249,19 @@ fun MusicScreen(
         }
     }
 
-    fun showVideoFor(song: Song, startMs: Long) {
+    fun showVideoFor(song: Song, startMs: Long, keepMini: Boolean = false) {
         // A local track has no YouTube video; leave the video screen and let its audio play.
         if (!song.hasMusicVideo()) {
             musicVideo = null
-            showNowPlaying = true
+            musicVideoMinimized = false
+            if (!keepMini) showNowPlaying = true
             return
         }
         scope.launch {
             val video = if (song.isVideo) song else withContext(Dispatchers.IO) {
                 YtMusicRepository.resolveVideo(song) ?: song
             }
+            musicVideoMinimized = keepMini
             musicVideo = MusicVideoRequest(video, startMs)
         }
     }
@@ -275,7 +282,8 @@ fun MusicScreen(
             if (auto && direction > 0) {
                 MusicPlayer.next(auto = true)
                 musicVideo = null
-                showNowPlaying = true
+                if (!musicVideoMinimized) showNowPlaying = true
+                musicVideoMinimized = false
             }
             return
         }
@@ -283,7 +291,7 @@ fun MusicScreen(
         // A local track has no video to open: start its audio and let showVideoFor
         // hand the screen back to Now Playing.
         MusicPlayer.jumpTo(target, play = !next.hasMusicVideo())
-        MusicPlayer.state.value.song?.let { showVideoFor(it, 0L) }
+        MusicPlayer.state.value.song?.let { showVideoFor(it, 0L, keepMini = musicVideoMinimized) }
     }
 
     fun selectVideoQueue(index: Int) {
@@ -296,6 +304,7 @@ fun MusicScreen(
         val request = musicVideo ?: return
         val mapped = MusicPlayer.audioPositionForVideo(request.video.videoId, videoPositionMs)
         musicVideo = null
+        musicVideoMinimized = false
         showNowPlaying = true
         MusicPlayer.jumpTo(MusicPlayer.state.value.index, mapped, play = true)
     }
@@ -316,13 +325,14 @@ fun MusicScreen(
     val musicOverlayOpen = showNowPlaying || state.detail.open ||
         state.explore.selected != null || openPlaylistId != null ||
         showSettings || showDownloads || showParty || showWebDav ||
-        showIntegrations || showSources || showNavidrome || showAccount || musicVideo != null
+        showIntegrations || showSources || showNavidrome || showAccount ||
+        (musicVideo != null && !musicVideoMinimized)
 
     // Re-anchor focus to the selected top tab whenever the tab changes or an overlay closes.
     // Without this, tapping a tab (which does not move focus) or closing Integrations leaves
     // the remote with no focused control, and the next D-pad press lands somewhere random.
-    LaunchedEffect(state.tab, musicOverlayOpen) {
-        if (!musicOverlayOpen) {
+    LaunchedEffect(state.tab, musicOverlayOpen, musicVideoMinimized) {
+        if (!musicOverlayOpen && !musicVideoMinimized) {
             kotlinx.coroutines.delay(250)
             runCatching { topNavFocus.requestFocus() }
         }
@@ -348,12 +358,29 @@ fun MusicScreen(
     }
 
     MusicTextTheme {
+        Box(
+            Modifier
+                .fillMaxSize()
+                .onPreviewKeyEvent { event ->
+                    // Menu (or Info) jumps to the corner video; Back from there returns to
+                    // browsing. This makes the mini player reachable without hunting through
+                    // the whole Home feed.
+                    if (
+                        musicVideoMinimized &&
+                        event.type == KeyEventType.KeyDown &&
+                        (event.key == Key.Menu || event.key == Key.Info)
+                    ) {
+                        runCatching { miniPlayerFocus.requestFocus() }
+                        true
+                    } else {
+                        false
+                    }
+                }
+        ) {
         Column(
             Modifier
                 .fillMaxSize()
                 .background(MusicPalette.background)
-                // Clear Nuvio's collapsed side menu, which overlays the page's left edge.
-                .padding(start = 64.dp)
         ) {
             MusicTopNavigation(
                 selectedTab = state.tab,
@@ -476,6 +503,8 @@ fun MusicScreen(
                         recentSongs = recents.map { it.toSong() },
                         localPlaylists = playlists,
                         accountPlaylists = state.accountLibrary.playlists,
+                        homeRows = homeRows,
+                        gemini = gemini,
                         onPlayCurated = { songs, index -> play(songs, index) },
                         onPlayMix = { mix -> play(mix.tracks, 0) },
                         onOpenLocalPlaylist = { playlist ->
@@ -635,6 +664,47 @@ fun MusicScreen(
                 }
             }
         }
+        musicVideo?.let { request ->
+            Box(
+                Modifier.then(
+                    if (musicVideoMinimized) {
+                        Modifier
+                            .align(Alignment.BottomEnd)
+                            .padding(end = 28.dp, bottom = 24.dp)
+                    } else {
+                        Modifier.fillMaxSize()
+                    }
+                )
+            ) {
+                MusicVideoPlayerScreen(
+                    video = request.video,
+                    startPositionMs = request.startPositionMs,
+                    minimized = musicVideoMinimized,
+                    onMinimize = { musicVideoMinimized = true },
+                    onExpand = { musicVideoMinimized = false },
+                    onMiniFocusExit = { runCatching { topNavFocus.requestFocus() } },
+                    miniFocusRequester = miniPlayerFocus,
+                    onClose = ::closeVideo,
+                    onSkip = { skipVideo(it) },
+                    onSelectQueue = ::selectVideoQueue,
+                    onEnded = { skipVideo(1, auto = true) },
+                    modifier = if (musicVideoMinimized) {
+                        Modifier
+                            .width(360.dp)
+                            .height(203.dp)
+                            .clip(RoundedCornerShape(14.dp))
+                            .border(
+                                2.dp,
+                                MusicPalette.accent.copy(alpha = 0.8f),
+                                RoundedCornerShape(14.dp)
+                            )
+                    } else {
+                        Modifier
+                    }
+                )
+            }
+        }
+        }
     }
 
     if (showNowPlaying) {
@@ -644,6 +714,7 @@ fun MusicScreen(
                 onOpenSettings = { showSettings = true },
                 onOpenMusicVideo = { video, startPositionMs ->
                     MusicPlayer.pause()
+                    musicVideoMinimized = false
                     musicVideo = MusicVideoRequest(video, startPositionMs)
                     showNowPlaying = false
                 },
@@ -653,23 +724,6 @@ fun MusicScreen(
                 onOpenAlbum = { song ->
                     viewModel.openAlbum(song) { showNowPlaying = false }
                 }
-            )
-        }
-    }
-
-    musicVideo?.let { request ->
-        MusicOverlayDialog(onDismiss = {
-            musicVideo = null
-            showNowPlaying = true
-            if (!MusicPlayer.state.value.isPlaying) MusicPlayer.toggle()
-        }) {
-            MusicVideoPlayerScreen(
-                video = request.video,
-                startPositionMs = request.startPositionMs,
-                onClose = ::closeVideo,
-                onSkip = { skipVideo(it) },
-                onSelectQueue = ::selectVideoQueue,
-                onEnded = { skipVideo(1, auto = true) }
             )
         }
     }
@@ -719,17 +773,28 @@ fun MusicScreen(
 }
 
 @Composable
-private fun MusicTextTheme(content: @Composable () -> Unit) {
+private fun MusicTextTheme(
+    scale: SectionScale? = null,
+    content: @Composable () -> Unit
+) {
     val base = LocalTextStyle.current
     val density = LocalDensity.current
+    // Music is a dense, editorial section. The main screen is scaled by the Music section
+    // setting above the NavHost; dialogs open in their own window and lose that density, so
+    // MusicOverlayDialog passes the same section scale in here.
+    val scaledDensity = if (scale == null || (scale.textPercent == 100 && scale.uiPercent == 100)) {
+        density
+    } else {
+        remember(density, scale) {
+            Density(
+                density = density.density * scale.uiFactor,
+                fontScale = density.fontScale * scale.textFactor
+            )
+        }
+    }
     CompositionLocalProvider(
         LocalTextStyle provides base.copy(fontFamily = MusicSans),
-        // Music is a dense, editorial section; the TV UI reads better slightly tighter than
-        // the host shell. One scale here keeps every screen, row and overlay consistent.
-        LocalDensity provides Density(
-            density = density.density * MUSIC_UI_SCALE,
-            fontScale = density.fontScale
-        )
+        LocalDensity provides scaledDensity
     ) {
         content()
     }
@@ -740,6 +805,9 @@ private fun MusicOverlayDialog(
     onDismiss: () -> Unit,
     content: @Composable () -> Unit
 ) {
+    // Captured before the dialog opens: the dialog's own window does not inherit the
+    // section's density, so the dialog has to apply it itself.
+    val musicScale = LocalSectionScales.current[SectionScales.MUSIC]
     Dialog(
         onDismissRequest = onDismiss,
         properties = DialogProperties(
@@ -749,7 +817,7 @@ private fun MusicOverlayDialog(
             dismissOnClickOutside = false
         )
     ) {
-        MusicTextTheme {
+        MusicTextTheme(musicScale) {
             Box(Modifier.fillMaxSize()) {
                 content()
             }

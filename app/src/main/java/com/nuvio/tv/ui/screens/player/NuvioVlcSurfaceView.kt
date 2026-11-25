@@ -7,6 +7,9 @@ import android.os.SystemClock
 import android.util.Log
 import android.view.ViewGroup
 import android.widget.FrameLayout
+import com.nuvio.tv.core.audio.EqualizerOwner
+import com.nuvio.tv.core.audio.SevenBandEqualizerProfile
+import com.nuvio.tv.core.audio.SevenBandEqualizerSettings
 import com.nuvio.tv.data.local.AVAILABLE_SUBTITLE_LANGUAGES
 import org.videolan.libvlc.LibVLC
 import org.videolan.libvlc.Media
@@ -84,6 +87,9 @@ class NuvioVlcSurfaceView @JvmOverloads constructor(
 
     private var libVlc: LibVLC? = null
     private var mediaPlayer: MediaPlayer? = null
+    @Volatile
+    private var equalizerProfile = SevenBandEqualizerSettings.current(EqualizerOwner.PLAYBACK)
+    private var activeEqualizer: MediaPlayer.Equalizer? = null
     private var initialized = false
     private var viewsAttached = false
     private var aspectMode: AspectMode = AspectMode.ORIGINAL
@@ -175,6 +181,7 @@ class NuvioVlcSurfaceView @JvmOverloads constructor(
         val audioOutputSet = player.setAudioOutput(audioOutput)
         Log.i(TAG, "audio output $audioOutput=$audioOutputSet")
         mediaPlayer = player
+        applyEqualizerProfile(player, equalizerProfile)
         runCatching {
             // attachViews(layout, displayManager, subtitles, textureView). A TextureView renders
             // inside the Compose hierarchy; subtitles need libVLC's separate subtitle surface.
@@ -344,6 +351,45 @@ class NuvioVlcSurfaceView @JvmOverloads constructor(
             }
         }
         update { it.copy(isPlaying = !paused) }
+    }
+
+    fun setSevenBandEqualizerProfile(profile: SevenBandEqualizerProfile) {
+        equalizerProfile = profile
+        mediaPlayer?.let { applyEqualizerProfile(it, profile) }
+    }
+
+    private fun applyEqualizerProfile(player: MediaPlayer, profile: SevenBandEqualizerProfile) {
+        if (!profile.isEnabled) {
+            runCatching { player.setEqualizer(null) }
+            activeEqualizer = null
+            return
+        }
+        runCatching {
+            val equalizer = MediaPlayer.Equalizer.create() ?: return
+            val frequencies = (0 until MediaPlayer.Equalizer.getBandCount()).map {
+                MediaPlayer.Equalizer.getBandFrequency(it).toDouble()
+            }
+            val anchors = SevenBandEqualizerSettings.frequenciesHz.zip(profile.gainsDb)
+            frequencies.forEachIndexed { bandIndex, frequency ->
+                equalizer.setAmp(bandIndex, interpolatedGainDb(frequency, anchors).toFloat())
+            }
+            equalizer.setPreAmp(-(profile.gainsDb.maxOrNull() ?: 0).coerceAtLeast(0).toFloat())
+            if (player.setEqualizer(equalizer)) activeEqualizer = equalizer
+        }.onFailure {
+            Log.w(TAG, "Failed to apply seven-band equalizer in VLC: ${it.message}", it)
+        }
+    }
+
+    private fun interpolatedGainDb(frequency: Double, anchors: List<Pair<Int, Int>>): Double {
+        if (anchors.isEmpty()) return 0.0
+        if (frequency <= anchors.first().first) return anchors.first().second.toDouble()
+        if (frequency >= anchors.last().first) return anchors.last().second.toDouble()
+        val upper = anchors.indexOfFirst { frequency <= it.first }.coerceAtLeast(1)
+        val (lowerHz, lowerGain) = anchors[upper - 1]
+        val (upperHz, upperGain) = anchors[upper]
+        val fraction = (kotlin.math.ln(frequency) - kotlin.math.ln(lowerHz.toDouble())) /
+            (kotlin.math.ln(upperHz.toDouble()) - kotlin.math.ln(lowerHz.toDouble()))
+        return lowerGain + (upperGain - lowerGain) * fraction
     }
 
     fun isPlayingNow(): Boolean = mediaPlayer?.isPlaying == true || state.isPlaying

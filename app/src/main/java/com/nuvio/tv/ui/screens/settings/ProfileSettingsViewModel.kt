@@ -5,6 +5,7 @@ import androidx.lifecycle.viewModelScope
 import com.nuvio.tv.core.profile.ProfileManager
 import com.nuvio.tv.core.sync.ProfileSyncService
 import com.nuvio.tv.domain.model.UserProfile
+import com.nuvio.tv.livetv.data.LiveTvPreferences
 import dagger.hilt.android.lifecycle.HiltViewModel
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.SharingStarted
@@ -18,7 +19,8 @@ import javax.inject.Inject
 @HiltViewModel
 class ProfileSettingsViewModel @Inject constructor(
     private val profileManager: ProfileManager,
-    private val profileSyncService: ProfileSyncService
+    private val profileSyncService: ProfileSyncService,
+    private val liveTvPreferences: LiveTvPreferences
 ) : ViewModel() {
 
     val profiles: StateFlow<List<UserProfile>> = profileManager.profiles
@@ -72,6 +74,7 @@ class ProfileSettingsViewModel @Inject constructor(
 
     fun deleteProfile(id: Int) {
         viewModelScope.launch {
+            liveTvPreferences.removeProfileData(id)
             profileManager.deleteProfile(id)
             profileSyncService.deleteProfileData(id)
             profileSyncService.pushToRemote()

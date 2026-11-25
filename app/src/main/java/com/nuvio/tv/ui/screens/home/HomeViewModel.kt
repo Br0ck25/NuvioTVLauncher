@@ -898,7 +898,10 @@ class HomeViewModel @Inject constructor(
         }
     }
 
-    private fun observeCollections() = observeCollectionsPipeline()
+    private fun observeCollections() {
+        observeCollectionsPipeline()
+        observeLiveRowsPipeline()
+    }
 
     private fun observeInstalledAddons() = observeInstalledAddonsPipeline()
 

@@ -78,7 +78,8 @@ internal fun gameExtrasPanels(
     x: GameExtras?,
     settings: SportsSettings,
     /** OK on the Table panel: the league's whole table (see SportsTables). */
-    onTable: (() -> Unit)? = null
+    onTable: (() -> Unit)? = null,
+    viewModel: SportsViewModel? = null
 ): List<ExtrasPanel> {
     if (x == null) return emptyList()
     val sport = SportsCatalog.league(ev.leagueId)?.sport ?: Sport.OTHER
@@ -96,7 +97,9 @@ internal fun gameExtrasPanels(
     } else {
         if (x.stats.isNotEmpty()) out += ExtrasPanel("stats") { StatsPanel(x, sides, awayColor, homeColor) }
         when {
-            x.performers.isNotEmpty() -> out += ExtrasPanel("leaders") { LeadersPanel(x, ev, awayColor, homeColor) }
+            x.performers.isNotEmpty() -> out += ExtrasPanel("leaders") {
+                TopPlayersPanel(x, ev, sides, awayColor, homeColor, viewModel)
+            }
             x.lineups.isNotEmpty() -> out += ExtrasPanel("lineups") { LineupsPanel(x) }
         }
         if (x.winHistory.size >= 2 || x.hasOdds) out += ExtrasPanel("chance") { ChancePanel(ev, x, awayColor, homeColor) }

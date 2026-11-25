@@ -43,6 +43,8 @@ import androidx.compose.ui.input.key.onPreviewKeyEvent
 import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextOverflow
+import androidx.compose.ui.text.font.FontWeight
+import androidx.compose.ui.unit.sp
 import com.nuvio.tv.R
 import com.nuvio.tv.domain.model.CardDepthSurface
 import androidx.compose.ui.unit.Dp
@@ -97,6 +99,8 @@ import androidx.compose.ui.graphics.painter.Painter
 import androidx.compose.ui.text.TextStyle
 import com.nuvio.tv.domain.model.CardDepthStyle
 import kotlinx.coroutines.delay
+import java.time.LocalDate
+import java.time.ZoneId
 
 /** Whether the cards show the "# EP left" badge. Provided by the Home screen from Layout settings. */
 internal val LocalShowContinueWatchingEpisodeCount = androidx.compose.runtime.compositionLocalOf { true }
@@ -138,6 +142,17 @@ internal fun upcomingScheduleThumbHeight(imageHeight: Dp): Dp =
 internal fun upcomingScheduleThumbWidth(imageHeight: Dp): Dp = UPCOMING_SCHEDULE_THUMB_WIDTH
 
 // The wide card fills its strip with poster art, so the strip width follows the card height and the poster is never cropped.
+internal val UPCOMING_SCHEDULE_CARD_WIDTH = 330.dp
+internal val UPCOMING_SCHEDULE_CARD_HEIGHT = 88.dp
+internal val UPCOMING_SCHEDULE_THUMB_WIDTH = 112.dp
+
+internal fun upcomingScheduleCardHeight(imageHeight: Dp): Dp = UPCOMING_SCHEDULE_CARD_HEIGHT
+
+internal fun upcomingScheduleThumbHeight(imageHeight: Dp): Dp =
+    (UPCOMING_SCHEDULE_CARD_HEIGHT - 16.dp).coerceAtLeast(64.dp)
+
+internal fun upcomingScheduleThumbWidth(imageHeight: Dp): Dp = UPCOMING_SCHEDULE_THUMB_WIDTH
+
 internal fun continueWatchingArtworkWidth(
     cardStyle: ContinueWatchingCardStyle,
     cardWidth: Dp,

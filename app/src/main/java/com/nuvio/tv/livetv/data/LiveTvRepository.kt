@@ -33,6 +33,7 @@ import kotlinx.coroutines.flow.combine
 import kotlinx.coroutines.flow.first
 import kotlinx.coroutines.flow.stateIn
 import kotlinx.coroutines.flow.collectLatest
+import kotlinx.coroutines.flow.drop
 import kotlinx.coroutines.async
 import kotlinx.coroutines.delay
 import kotlinx.coroutines.ensureActive
@@ -62,7 +63,9 @@ data class LiveTvStatus(
     /** Busy, but nothing worth announcing (reading the saved channels at start-up). */
     val quiet: Boolean = false,
     /** A routine update (scheduled check, start-up): no "working on it" pill; failures still get their own. */
-    val silent: Boolean = false
+    val silent: Boolean = false,
+    /** Profile whose background work owns this progress. */
+    val profileId: Int = 1
 )
 
 @Singleton
@@ -160,6 +163,13 @@ class LiveTvRepository @Inject constructor(
     fun ensureLoaded(updateCheckDelayMs: Long = 0L) {
         if (initialized) return
         initialized = true
+        // Another profile's playlists and guides: load this profile's own, then rebuild the guide.
+        scope.launch {
+            prefs.profileChanges.drop(1).collect {
+                runCatching { refreshInternal(forcePlaylists = false, forceEpg = false, forceIds = emptySet()) }
+                runCatching { rebuild() }
+            }
+        }
         scope.launch {
             // The guides' channel lists used to be saved in a file of their own; they're in the
             // stored guide now.
@@ -170,7 +180,7 @@ class LiveTvRepository @Inject constructor(
             // on another TV and synced here). Not with no playlists at all: a fresh install or a
             // restore still on its way.
             runCatching {
-                val ids = prefs.currentPlaylists().mapTo(HashSet()) { it.id }
+                val ids = prefs.allProfilePlaylists().mapTo(HashSet()) { it.id }
                 if (ids.isNotEmpty()) {
                     val n = prefs.forgetDeletedPlaylists(ids)
                     if (n > 0) LIVE_REPORT.add("Took out $n saved settings for channels and groups of deleted playlists")
@@ -238,7 +248,12 @@ class LiveTvRepository @Inject constructor(
     // ---------------------------------------------------------------- sources CRUD
 
     suspend fun addPlaylist(name: String, url: String, userAgent: String = "", epgUrl: String = ""): String {
-        val id = UUID.randomUUID().toString()
+        val id = sharedPlaylistId(
+            prefs.allProfilePlaylists().filter {
+                it.url.trim() == url.trim() && it.effectiveUserAgent == userAgent.trim()
+            },
+            prefs.currentPlaylists().map { it.id }
+        ) ?: UUID.randomUUID().toString()
         prefs.updatePlaylists { it + PlaylistSource(id = id, name = name.ifBlank { "Playlist" }, url = url.trim(), userAgent = userAgent.trim()) }
         val guideId = addGuideForNewPlaylist(id, name.ifBlank { "Playlist" }, epgUrl)
         scope.launch { refreshInternal(forcePlaylists = false, forceEpg = false, forceIds = setOfNotNull(id, guideId)) }
@@ -299,15 +314,28 @@ class LiveTvRepository @Inject constructor(
         importLive: Boolean = true,
         epgUrl: String = ""
     ): String {
-        val id = UUID.randomUUID().toString()
         // Accept a pasted full link: keep just the server, and take the login from it if needed.
         val fromLink = PlaylistSource.credentialsFromLink(server)
         val user = username.trim().ifBlank { fromLink?.first.orEmpty() }
         val pass = password.trim().ifBlank { fromLink?.second.orEmpty() }
+        val cleanServer = PlaylistSource.cleanXtreamServer(server)
+        val mine = prefs.currentPlaylists().map { it.id }
+        // Same account on another profile: reuse its playlist id so the downloaded catalogue is
+        // shared. Include the password in the identity to avoid sharing a stale cache after a
+        // provider changes credentials for an otherwise identical server/user pair.
+        val id = sharedPlaylistId(
+            prefs.allProfilePlaylists().filter {
+                it.sameXtreamAccount(
+                    PlaylistSource(id = "", name = "", url = "", xtreamServer = cleanServer,
+                        xtreamUsername = user, xtreamPassword = pass)
+                )
+            },
+            mine
+        ) ?: UUID.randomUUID().toString()
         prefs.updatePlaylists {
             it + PlaylistSource(
                 id = id, name = name.ifBlank { "Xtream" }, url = "",
-                xtreamServer = PlaylistSource.cleanXtreamServer(server),
+                xtreamServer = cleanServer,
                 xtreamUsername = user, xtreamPassword = pass,
                 importVod = importVod,
                 importLive = importLive
@@ -356,13 +384,16 @@ class LiveTvRepository @Inject constructor(
     suspend fun removePlaylist(id: String) {
         prefs.updatePlaylists { list -> list.filterNot { it.id == id } }
         stalker.invalidate(id)
-        File(playlistDir, "$id.m3u").delete()
-        groupOrderFile(id).delete()
-        embeddedEpgUrls.remove(id)
+        // Other profiles may have the same playlist: its saved channels go only when none of them keep it.
+        if (prefs.allProfilePlaylists().none { it.id == id }) {
+            File(playlistDir, "$id.m3u").delete()
+            groupOrderFile(id).delete()
+            embeddedEpgUrls.remove(id)
+        }
         dropPlaylistNow(id)
         // Its hidden groups, favorites, custom groups' channels, reminders and so on go with it.
         runCatching {
-            val n = prefs.forgetDeletedPlaylists(prefs.currentPlaylists().mapTo(HashSet()) { it.id })
+            val n = prefs.forgetDeletedPlaylists(prefs.allProfilePlaylists().mapTo(HashSet()) { it.id })
             if (n > 0) LIVE_REPORT.add("Playlist deleted: took out $n saved settings for its channels and groups")
         }.onFailure { Log.w(TAG, "Clean-up of deleted playlist failed", it) }
         scope.launch { rebuild() }
@@ -417,7 +448,7 @@ class LiveTvRepository @Inject constructor(
     }
 
     suspend fun addEpg(name: String, url: String): String {
-        val id = UUID.randomUUID().toString()
+        val id = sharedEpgId(prefs.allProfileEpgSources().filter { it.url.trim() == url.trim() }, prefs.currentEpgSources().map { it.id }) ?: UUID.randomUUID().toString()
         prefs.updateEpgSources { it + EpgSource(id = id, name = name.ifBlank { "EPG" }, url = url.trim()) }
         scope.launch { refreshInternal(forcePlaylists = false, forceEpg = false, forceIds = setOf(id)) }
         return id
@@ -428,9 +459,19 @@ class LiveTvRepository @Inject constructor(
         scope.launch { refreshInternal(forcePlaylists = false, forceEpg = false, forceIds = setOf(source.id)) }
     }
 
+    /**
+     * The id of a source another profile already has (same URL), so both profiles use one downloaded
+     * file. Not an id this profile already has: that would be the same source listed twice.
+     */
+    private fun sharedPlaylistId(others: List<PlaylistSource>, mine: List<String>): String? =
+        others.map { it.id }.firstOrNull { it !in mine }
+
+    private fun sharedEpgId(others: List<EpgSource>, mine: List<String>): String? =
+        others.map { it.id }.firstOrNull { it !in mine }
+
     suspend fun removeEpg(id: String) {
         prefs.updateEpgSources { list -> list.filterNot { it.id == id } }
-        File(epgDir, "$id.xml").delete()
+        if (prefs.allProfileEpgSources().none { it.id == id }) File(epgDir, "$id.xml").delete()
         scope.launch { rebuild() }
     }
 
@@ -638,6 +679,7 @@ class LiveTvRepository @Inject constructor(
         automatic: Boolean,
         quiet: Boolean = false
     ) {
+        beginStatusForActiveProfile()
         if (!automatic) manualQueued.value = false
         val t0Update = System.currentTimeMillis()
         LIVE_REPORT.add(if (automatic) "Update check started" else "Update started")
@@ -664,8 +706,8 @@ class LiveTvRepository @Inject constructor(
         val now = System.currentTimeMillis()
         val oldEnough = now - 14L * 24 * HOUR
         val guideIds = collectEpgTargets().mapTo(HashSet()) { it.fileId }
-        prefs.currentEpgSources().forEach { guideIds += it.id }
-        val playlistIds = prefs.currentPlaylists().mapTo(HashSet()) { it.id }
+        prefs.allProfileEpgSources().forEach { guideIds += it.id }
+        val playlistIds = prefs.allProfilePlaylists().mapTo(HashSet()) { it.id }
         var freed = 0L
         var count = 0
         fun sweep(dir: File, idOf: (String) -> String, keep: Set<String>) {
@@ -753,12 +795,13 @@ class LiveTvRepository @Inject constructor(
         }
 
         // Build channels first so EPG matching knows which channels exist.
+        val addonSourcesDropped = dropStaleAddonSources()
         val addonSources = prefs.currentAddonChannelSources().filter { it.enabled }
         val addonStale = addonSources.isNotEmpty() && addonSources.any { now - it.lastUpdatedMs > ADDON_REFRESH_MS }
-        if (changed || _channels.value.isEmpty() || addonStale) {
+        if (addonSourcesDropped || changed || _channels.value.isEmpty() || addonStale) {
             outOfTheWay()
             setStatus(loading = true, message = addingMessage(newlyAdded) ?: statusText(R.string.iptv_repository_status_reading_channels))
-            buildChannels(addingMessage(newlyAdded), forceAddon = forcePlaylists || addonStale)
+            buildChannels(addingMessage(newlyAdded), forceAddon = forcePlaylists || addonStale || addonSourcesDropped)
             saveChannels() // so the next start uses it straight away
         }
 
@@ -824,6 +867,7 @@ class LiveTvRepository @Inject constructor(
     }
 
     private suspend fun rebuildLocked() {
+        beginStatusForActiveProfile()
         // Reading the saved channels and guide takes a second or two and changes nothing, so no
         // "Loading channels…" bubble for it (people took it for a full reload every time). The
         // bubble only shows if the playlists really have to be read again.
@@ -1995,7 +2039,22 @@ class LiveTvRepository @Inject constructor(
     @Volatile private var routineRun = false
 
     private fun setStatus(loading: Boolean, message: String?, quiet: Boolean = false, loud: Boolean = false) {
-        _status.value = _status.value.copy(loading = loading, message = message, quiet = quiet, silent = routineRun && !loud)
+        val current = _status.value
+        // Keep progress attached to the profile that started the work even if the active profile
+        // changes while a guide is still being read or matched in the background.
+        val profileId = if (loading && current.loading) current.profileId else prefs.activeProfileId
+        _status.value = current.copy(
+            loading = loading,
+            message = message,
+            quiet = quiet,
+            silent = routineRun && !loud,
+            profileId = profileId
+        )
+    }
+
+    /** Each serialized operation owns its progress, even if a previous run left stale status. */
+    private fun beginStatusForActiveProfile() {
+        _status.value = _status.value.copy(profileId = prefs.activeProfileId)
     }
 
     /** Resolve UI text at emission, against the app setting rather than the system locale. */
@@ -2205,7 +2264,24 @@ class LiveTvRepository @Inject constructor(
      * and turning one on reads just that one. [fixedMessage]: shown for the whole read instead
      * of naming each playlist, so adding a playlist doesn't look like the others are loading again.
      */
+    /**
+     * Drops Live TV add-on sources whose add-on was uninstalled. Called before a channel rebuild
+     * and on every update check, so the rows disappear on their own instead of staying switched
+     * on with "no longer installed".
+     */
+    private suspend fun dropStaleAddonSources(): Boolean {
+        val stale = addonChannels.staleSources(prefs.currentAddonChannelSources())
+        if (stale.isEmpty()) return false
+        prefs.updateAddonChannelSources { list -> list.filterNot { it.id in stale } }
+        addonChannels.invalidate()
+        LIVE_REPORT.add("Add-on channels: removed ${stale.size} source(s) whose add-on is no longer installed")
+        return true
+    }
+
+    private class ChannelEntryFailure(cause: Throwable) : RuntimeException(cause)
+
     private suspend fun buildChannels(fixedMessage: String? = null, forceAddon: Boolean = false) = withContext(BackgroundWork.cpu()) {
+        dropStaleAddonSources()
         val saved = reusable
         reusable = null
         val oldChannels = _channels.value.takeIf { it.isNotEmpty() } ?: saved?.channels.orEmpty()
@@ -2215,7 +2291,25 @@ class LiveTvRepository @Inject constructor(
         // What can be reused: channels by playlist, with the fingerprint part they were read with.
         val (reuseFrom, reuseSegments) = if (_channels.value.isNotEmpty()) _channels.value to builtSegments
         else (saved?.channels.orEmpty()) to (saved?.segments.orEmpty())
-        val oldBySource = reuseFrom.groupBy { it.sourceId }
+        // A saved channel list is written in playlist order, so source channels are contiguous.
+        // Keep list views for those ranges instead of groupBy's extra per-channel reference lists.
+        val oldBySource = HashMap<String, List<LiveChannel>>()
+        var sourceStart = 0
+        while (sourceStart < reuseFrom.size) {
+            val sourceId = reuseFrom[sourceStart].sourceId
+            var sourceEnd = sourceStart + 1
+            while (sourceEnd < reuseFrom.size && reuseFrom[sourceEnd].sourceId == sourceId) sourceEnd++
+            val range = reuseFrom.subList(sourceStart, sourceEnd)
+            val previousRange = oldBySource[sourceId]
+            if (previousRange != null) {
+                // Be defensive if an older/noncanonical saved list has a source in multiple runs.
+                oldBySource[sourceId] = ArrayList<LiveChannel>(previousRange.size + range.size).apply {
+                    addAll(previousRange)
+                    addAll(range)
+                }
+            } else oldBySource[sourceId] = range
+            sourceStart = sourceEnd
+        }
         val playlists = prefs.currentPlaylists().filter { it.liveEnabled }
         val multi = playlists.size > 1
         val out = ArrayList<LiveChannel>()
@@ -2254,63 +2348,90 @@ class LiveTvRepository @Inject constructor(
             }
             read++
             if (fixedMessage == null) setStatus(loading = true, message = readingChannelsMessage(pl.name, read, toRead))
-            // Movies and episodes are left out while reading (see the check below), counted for
-            // the stray-entry check.
+            val firstNumber = counter
+            val tail = PlaylistChannelTail(out, usedKeys, firstNumber)
             var vodLinks = 0
             val skipVod: ((String) -> Boolean)? = if (pl.isStalker) null else { url -> isVodEntry(url).also { if (it) vodLinks++ } }
-            val parsed = runCatching { openMaybeGzip(file).reader(Charsets.UTF_8).buffered(64 * 1024).use { M3uParser.parse(it, skipVod) } }
-                .onFailure { Log.w(TAG, "Parse ${pl.name} failed", it) }
-                .getOrNull() ?: continue
-            embeddedEpgUrls[pl.id] = parsed.epgUrls
-            // The playlist's own User-Agent: one shared copy for every channel with no headers of its own.
             val playlistAgent = pl.effectiveUserAgent
             val agentOnly = if (playlistAgent.isNotBlank()) mapOf("User-Agent" to playlistAgent) else emptyMap()
-            val hideStrays = !pl.isStalker && prefs.currentSettings().hideStrayEntries &&
-                isMarkedPlaylist(parsed.entries.count { LIVE_PATH.containsMatchIn(it.url) } + vodLinks, parsed.entries.count { !LIVE_PATH.containsMatchIn(it.url) })
-            var strays = 0
-            for (e in parsed.entries) {
-                if (hideStrays && isStrayEntry(e)) { strays++; continue }
-                // Many providers' M3U links ("m3u_plus") also list every movie and episode,
-                // often 100,000+ entries. Those aren't TV channels, and loading them all into the
-                // guide used enough memory to crash Live TV on some devices.
-                if (!pl.isStalker && isVodEntry(e.url)) continue
-                val portalRef = if (pl.isStalker) decodeStalkerEntry(e.url) ?: continue else null
-                val groupTitle = if (portalRef != null && e.group?.startsWith("stalker-group:") == true) {
-                    runCatching { String(android.util.Base64.decode(e.group.removePrefix("stalker-group:"), android.util.Base64.NO_WRAP), Charsets.UTF_8) }.getOrDefault("Uncategorized")
-                } else e.group?.ifBlank { null } ?: "Uncategorized"
-                val baseKey = if (portalRef != null) "${pl.id}|stalker|${portalRef.providerId.encodeURLParameter()}" else "${pl.id}|${e.tvgId ?: ""}|${e.name}"
-                var key = baseKey
-                var n = 2
-                while (!usedKeys.add(key)) { key = "$baseKey#${n++}" }
-                val number = e.chno ?: counter
-                counter = maxOf(counter, number) + 1
-                val headers = if (playlistAgent.isNotBlank() && "User-Agent" !in e.headers) {
-                    if (e.headers.isEmpty()) agentOnly else e.headers + ("User-Agent" to playlistAgent)
-                } else e.headers
-                out += LiveChannel(
-                    key = key,
-                    sourceId = pl.id,
-                    sourceName = pl.name,
-                    name = e.name,
-                    tvgId = portalRef?.providerId ?: e.tvgId,
-                    tvgName = if (portalRef != null) e.name else e.tvgName,
-                    logo = e.logo,
-                    groupId = if (multi) "${pl.id}::$groupTitle" else groupTitle,
-                    // Names stay exactly as the playlist has them (the playlist is shown, if you want
-                    // it, with "Group by playlist").
-                    group = groupTitle,
-                    number = number,
-                    url = if (portalRef != null) "stalker:${pl.id}:${portalRef.providerId}" else pl.m3uStreamLink(e.url),
-                    headers = headers,
-                    catchup = e.catchup,
-                    drm = e.drm,
-                    tvgShiftMinutes = e.tvgShiftMinutes,
-                    autoNumber = e.chno == null,
-                    stalkerRef = portalRef
-                )
+            var parsedEntries = 0
+            var liveLinks = 0
+            var unmarkedLinks = 0
+            val parsed = runCatching {
+                openMaybeGzip(file).reader(Charsets.UTF_8).buffered(64 * 1024).use { reader ->
+                    M3uParser.read(reader, skipVod) { e ->
+                        try {
+                            parsedEntries++
+                            if (!pl.isStalker) {
+                                if (LIVE_PATH.containsMatchIn(e.url)) liveLinks++ else {
+                                    unmarkedLinks++
+                                    tail.unmarkedEntry()
+                                }
+                            }
+                            val portalRef = if (pl.isStalker) decodeStalkerEntry(e.url) ?: return@read else null
+                            val groupTitle = if (portalRef != null && e.group?.startsWith("stalker-group:") == true) {
+                                runCatching { String(android.util.Base64.decode(e.group.removePrefix("stalker-group:"), android.util.Base64.NO_WRAP), Charsets.UTF_8) }.getOrDefault("Uncategorized")
+                            } else e.group?.ifBlank { null } ?: "Uncategorized"
+                            val baseKey = if (portalRef != null) "${pl.id}|stalker|${portalRef.providerId.encodeURLParameter()}" else "${pl.id}|${e.tvgId ?: ""}|${e.name}"
+                            var key = baseKey
+                            var n = 2
+                            while (!usedKeys.add(key)) { key = "$baseKey#${n++}" }
+                            val number = e.chno ?: counter
+                            counter = maxOf(counter, number) + 1
+                            val headers = if (playlistAgent.isNotBlank() && "User-Agent" !in e.headers) {
+                                if (e.headers.isEmpty()) agentOnly else e.headers + ("User-Agent" to playlistAgent)
+                            } else e.headers
+                            out += LiveChannel(
+                                key = key,
+                                sourceId = pl.id,
+                                sourceName = pl.name,
+                                name = e.name,
+                                tvgId = portalRef?.providerId ?: e.tvgId,
+                                tvgName = if (portalRef != null) e.name else e.tvgName,
+                                logo = e.logo,
+                                groupId = if (multi) "${pl.id}::$groupTitle" else groupTitle,
+                                group = groupTitle,
+                                number = number,
+                                url = if (portalRef != null) "stalker:${pl.id}:${portalRef.providerId}" else pl.m3uStreamLink(e.url),
+                                headers = headers,
+                                catchup = e.catchup,
+                                drm = e.drm,
+                                tvgShiftMinutes = e.tvgShiftMinutes,
+                                autoNumber = e.chno == null,
+                                stalkerRef = portalRef
+                            )
+                        } catch (failure: Throwable) {
+                            // Keep channel-conversion failures visible; only malformed playlist parsing is recoverable.
+                            throw ChannelEntryFailure(failure)
+                        }
+                    }
+                }
             }
+            parsed.exceptionOrNull()?.let { failure ->
+                if (failure is ChannelEntryFailure) throw failure.cause!!
+                Log.w(TAG, "Parse ${pl.name} failed", failure)
+            }
+            if (parsed.isFailure) {
+                tail.rollback()
+                // Keep the last successfully parsed channels visible when a refresh/cache read is
+                // temporarily truncated or malformed. Re-number automatic entries against the
+                // current playlist order, just as for a successfully reused playlist.
+                old?.forEach { c ->
+                    val number = if (c.autoNumber) counter else c.number
+                    counter = maxOf(counter, number) + 1
+                    usedKeys += c.key
+                    val groupId = if (multi) "${pl.id}::${c.group}" else c.group
+                    out += if (number == c.number && groupId == c.groupId) c else c.copy(number = number, groupId = groupId)
+                }
+                continue
+            }
+            embeddedEpgUrls[pl.id] = parsed.getOrThrow()
+            val hideStrays = !pl.isStalker && prefs.currentSettings().hideStrayEntries &&
+                isMarkedPlaylist(liveLinks + vodLinks, unmarkedLinks)
+            if (hideStrays) counter = tail.removeStrays(counter) { EPISODE_NAME.containsMatchIn(it) }
+            val strays = tail.removed
             if (strays > 0) LIVE_REPORT.add("${pl.name}: left out $strays stray entr${if (strays == 1) "y" else "ies"} (episode-named, no live/movie/series link)")
-            prefs.updatePlaylists { list -> list.map { if (it.id == pl.id) it.copy(channelCount = parsed.entries.size - strays) else it } }
+            prefs.updatePlaylists { list -> list.map { if (it.id == pl.id) it.copy(channelCount = parsedEntries - strays) else it } }
         }
 
         // Live TV catalogs from Stremio addons. Their stream links are looked up only when a
@@ -2752,11 +2873,17 @@ class LiveTvRepository @Inject constructor(
             val best = HashMap<String, Candidate>()
             for (read in reads.values) {
                 fun offer(xmlId: String, chans: Set<LiveChannel>, idMatch: Boolean) {
-                    val m = read.meta[xmlId] ?: return
-                    if (m.count <= 0) return
-                    val real = m.placeholders * 10 < m.count * 8
+                    val m = read.meta[xmlId]
+                    // A guide channel can exist in the guide's <channel> list but have no kept
+                    // listings: an event/dummy channel whose shows are outside the window, or a
+                    // provider's placeholder channel. Manual Assign EPG lists it, so automatic
+                    // matching must consider it too; it just scores below any channel that does
+                    // have listings.
+                    if (m != null && m.count <= 0) return
+                    val real = m != null && m.placeholders * 10 < m.count * 8
                     // Higher is better; then more days ahead, then the guide's position.
-                    val score = guideRank(real, idMatch, m.lastStop, read.order)
+                    val score = guideRank(real, idMatch, m?.lastStop ?: 0L, read.order) -
+                        if (m == null) EMPTY_GUIDE_CHANNEL_PENALTY else 0L
                     chans.forEach { c ->
                         if (!guideFor(read.target.fileId, c.sourceId)) return@forEach // switched off for its playlist
                         val cur = best[c.key]
@@ -3974,6 +4101,8 @@ class LiveTvRepository @Inject constructor(
     companion object {
         private const val TAG = "LiveTvRepository"
         private const val HOUR = 60L * 60L * 1000L
+        /** How far below any guide channel with listings an empty guide channel scores. */
+        private const val EMPTY_GUIDE_CHANNEL_PENALTY = 4_000_000L
         /** A server time zone lookup that failed is tried again after this long. */
         private const val ZONE_RETRY_MS = 2L * 60L * 1000L
         /** A worked-out time zone (fixed offset) is looked up again after this long, in the background. */

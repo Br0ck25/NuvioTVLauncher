@@ -27,8 +27,14 @@ internal fun PlayerRuntimeController.attachMpvView(view: NuvioMpvSurfaceView?) {
         view.applyVpnProxy(nativeVpnProxy?.address())
         view.applyHi10pGnextSoftwareFallback(shouldUseMpvHi10pGnextSoftwareFallback())
         view.applyHardwareDecodeMode(mpvHardwareDecodeModeSetting)
+        view.applySevenBandEqualizer(
+            com.nuvio.tv.core.audio.SevenBandEqualizerSettings.current(
+                com.nuvio.tv.core.audio.EqualizerOwner.PLAYBACK
+            )
+        )
         registerMpvEventRelay(view)
         view.setMedia(currentStreamUrl, currentHeaders)
+        view.setRepeatFile(repeatOneRequested)
         view.setPlaybackSpeed(_uiState.value.playbackSpeed)
         view.applyAudioAmplificationDb(effectiveAudioGainDb(_uiState.value.audioAmplificationDb))
         view.applyAudioLanguagePreferences(mpvPreferredAudioLanguages)
@@ -137,6 +143,7 @@ internal fun PlayerRuntimeController.initializeMpvPlayer(
             ?: (_uiState.value.pendingSeekPosition?.coerceAtLeast(0L) ?: 0L)
         playbackAnalyticsDiagnostics.setStartupStartPosition(initialResumePosition)
         view.setMedia(url, headers, initialResumePosition)
+        view.setRepeatFile(repeatOneRequested)
         playbackAnalyticsDiagnostics.recordRawEventLine(
             "PLAYER_INIT: engine=MPV host=${url.safeMpvTraceHost()} " +
                 "playbackSpeed=${_uiState.value.playbackSpeed} resumePositionMs=$initialResumePosition"

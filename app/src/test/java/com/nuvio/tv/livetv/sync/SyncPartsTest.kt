@@ -13,7 +13,7 @@ class SyncPartsTest {
 
     @Test
     fun `playlist and guide keys keep their existing part`() {
-        listOf("playlists", "epg_sources", "playlist_accounts", "epg_overrides").forEach { key ->
+        listOf("playlists", "playlists_p2", "epg_sources", "epg_sources_p3", "playlist_accounts", "epg_overrides").forEach { key ->
             assertEquals(SyncPart.LOGINS, SyncParts.partOf(key))
         }
     }

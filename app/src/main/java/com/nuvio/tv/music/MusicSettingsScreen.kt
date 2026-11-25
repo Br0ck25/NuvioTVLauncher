@@ -52,6 +52,8 @@ import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.unit.dp
 import com.nuvio.tv.R
+import com.nuvio.tv.ui.components.SevenBandEqualizerFaders
+import com.nuvio.tv.core.audio.SevenBandPreset
 import androidx.compose.ui.unit.sp
 import androidx.tv.material3.Icon
 import androidx.tv.material3.Text
@@ -66,16 +68,18 @@ internal fun MusicSettingsScreen(onClose: () -> Unit) {
     val playbackSpeed by MusicSettings.playbackSpeed.collectAsState()
     val keepPlayingWhileBrowsing by MusicSettings.keepPlayingWhileBrowsing.collectAsState()
     val fadeSeconds by MusicSettings.fadeSeconds.collectAsState()
-    val equalizerPreset by MusicSettings.equalizerPreset.collectAsState()
+    val equalizerProfile by MusicSettings.equalizerProfile.collectAsState()
     val equalizerAvailable by MusicEqualizer.available.collectAsState()
     val downloadQuality by MusicSettings.downloadQuality.collectAsState()
     val wifiOnlyDownloads by MusicSettings.wifiOnlyDownloads.collectAsState()
+    val homeRows by MusicHomeRows.config.collectAsState()
     val playback by MusicPlayer.state.collectAsState()
     val firstFocus = remember { FocusRequester() }
     val windowInfo = LocalWindowInfo.current
 
     LaunchedEffect(Unit) {
         MusicSettings.init(context)
+        MusicHomeRows.init(context)
     }
     LaunchedEffect(windowInfo) {
         snapshotFlow { windowInfo.isWindowFocused }.collect { focused ->
@@ -201,15 +205,31 @@ internal fun MusicSettingsScreen(onClose: () -> Unit) {
                 item(key = "equalizer") {
                     SettingsSelector(
                         title = stringResource(R.string.music_settings_equalizer),
-                        detail = if (equalizerAvailable) {
-                            stringResource(R.string.music_settings_applied)
-                        } else {
-                            stringResource(R.string.music_settings_unsupported)
-                        },
-                        options = MusicEqualizerPreset.entries.map { it.label },
-                        selectedIndex = MusicEqualizerPreset.entries.indexOf(equalizerPreset),
-                        onSelect = { MusicPlayer.setEqualizerPreset(MusicEqualizerPreset.entries[it]) }
+                        detail = if (equalizerAvailable) "Seven-band EQ · Music profile" else stringResource(R.string.music_settings_unsupported),
+                        options = SevenBandPreset.selectable.map { it.label },
+                        selectedIndex = SevenBandPreset.selectable.indexOf(equalizerProfile.preset).coerceAtLeast(0),
+                        onSelect = { MusicPlayer.setEqualizerPreset(SevenBandPreset.selectable[it]) }
                     )
+                }
+                if (equalizerProfile.preset != SevenBandPreset.OFF) {
+                    item(key = "music-equalizer-faders") {
+                        SevenBandEqualizerFaders(
+                            gainsDb = equalizerProfile.gainsDb,
+                            onBandChange = MusicPlayer::setEqualizerBand,
+                            accent = MusicPalette.accent,
+                            text = MusicPalette.text,
+                            muted = MusicPalette.textMuted,
+                            modifier = Modifier.padding(horizontal = 4.dp, vertical = 12.dp)
+                        )
+                    }
+                    item(key = "music-equalizer-hint") {
+                        Text(
+                            text = "Focus a band and press Up/Down to adjust it · OK resets that band",
+                            color = MusicPalette.textMuted,
+                            fontSize = 11.sp,
+                            modifier = Modifier.padding(start = 8.dp, bottom = 8.dp)
+                        )
+                    }
                 }
 
                 item(key = "downloads-label") { SettingsSection("Downloads") }
@@ -233,6 +253,45 @@ internal fun MusicSettingsScreen(onClose: () -> Unit) {
                         options = listOf("Off", "On"),
                         selectedIndex = if (wifiOnlyDownloads) 1 else 0,
                         onSelect = { MusicSettings.setWifiOnlyDownloads(it == 1) }
+                    )
+                }
+
+                item(key = "home-label") { SettingsSection("Home") }
+                item(key = "pin-library") {
+                    SettingsToggle(
+                        title = stringResource(R.string.music_settings_pin_library),
+                        detail = stringResource(R.string.music_settings_pin_library_detail),
+                        checked = homeRows.pinLibrary,
+                        onToggle = { MusicHomeRows.setPinLibrary(it) }
+                    )
+                }
+                homeRows.order.forEachIndexed { index, row ->
+                    item(key = "home-row-${row.id}") {
+                        SettingsOrderRow(
+                            title = stringResource(row.labelRes),
+                            status = if (row in homeRows.hidden) {
+                                stringResource(R.string.music_settings_row_hidden)
+                            } else {
+                                stringResource(
+                                    R.string.music_settings_row_position,
+                                    index + 1,
+                                    homeRows.order.size
+                                )
+                            },
+                            detail = stringResource(R.string.music_settings_home_rows_detail),
+                            hidden = row in homeRows.hidden,
+                            canMoveUp = index > 0,
+                            canMoveDown = index < homeRows.order.lastIndex,
+                            onMove = { MusicHomeRows.move(row, it) },
+                            onToggle = { MusicHomeRows.toggleHidden(row) }
+                        )
+                    }
+                }
+                item(key = "reset-home-rows") {
+                    SettingsActionRow(
+                        title = stringResource(R.string.music_settings_reset_rows),
+                        detail = stringResource(R.string.music_settings_reset_rows_detail),
+                        onClick = { MusicHomeRows.reset() }
                     )
                 }
 
@@ -478,6 +537,150 @@ private fun SettingsToggle(
                     .background(if (checked) MusicPalette.background else MusicPalette.textMuted)
             )
         }
+    }
+}
+
+/**
+ * One Home row in the order list. Left/Right moves it, Center hides or shows it, Up/Down leaves
+ * the row, so a whole list can be arranged with the D-pad alone.
+ */
+@Composable
+private fun SettingsOrderRow(
+    title: String,
+    status: String,
+    detail: String,
+    hidden: Boolean,
+    canMoveUp: Boolean,
+    canMoveDown: Boolean,
+    onMove: (Int) -> Unit,
+    onToggle: () -> Unit
+) {
+    val focusManager = LocalFocusManager.current
+    var focused by remember { mutableStateOf(false) }
+    Row(
+        Modifier
+            .fillMaxWidth()
+            .height(64.dp)
+            .clip(RoundedCornerShape(12.dp))
+            .background(
+                if (focused) MusicPalette.surfaceFocused else MusicPalette.surface.copy(alpha = 0.55f)
+            )
+            .border(
+                width = if (focused) 2.dp else 1.dp,
+                color = if (focused) MusicPalette.text else MusicPalette.border.copy(alpha = 0.55f),
+                shape = RoundedCornerShape(12.dp)
+            )
+            .onFocusChanged { focused = it.isFocused }
+            .onPreviewKeyEvent { event ->
+                if (event.type != KeyEventType.KeyDown) return@onPreviewKeyEvent false
+                when (event.key) {
+                    Key.DirectionLeft -> if (canMoveUp) { onMove(-1); true } else false
+                    Key.DirectionRight -> if (canMoveDown) { onMove(1); true } else false
+                    Key.DirectionCenter, Key.Enter -> {
+                        onToggle()
+                        true
+                    }
+                    Key.DirectionUp -> {
+                        focusManager.moveFocus(FocusDirection.Up)
+                        true
+                    }
+                    Key.DirectionDown -> {
+                        focusManager.moveFocus(FocusDirection.Down)
+                        true
+                    }
+                    else -> false
+                }
+            }
+            .clickable { onToggle() }
+            .padding(horizontal = 16.dp),
+        verticalAlignment = Alignment.CenterVertically
+    ) {
+        Column(Modifier.weight(1f)) {
+            Text(
+                text = title,
+                color = if (hidden) MusicPalette.textMuted else MusicPalette.text,
+                fontSize = 15.sp,
+                fontWeight = FontWeight.SemiBold,
+                maxLines = 1,
+                overflow = TextOverflow.Ellipsis
+            )
+            Spacer(Modifier.height(2.dp))
+            Text(
+                text = "$status · $detail",
+                color = MusicPalette.textMuted,
+                fontSize = 11.sp,
+                maxLines = 1,
+                overflow = TextOverflow.Ellipsis
+            )
+        }
+        Spacer(Modifier.width(12.dp))
+        Text(
+            text = if (hidden) "—" else "≡",
+            color = if (hidden) MusicPalette.textMuted else MusicPalette.accent,
+            fontSize = 18.sp,
+            fontWeight = FontWeight.Bold
+        )
+    }
+}
+
+@Composable
+private fun SettingsActionRow(title: String, detail: String, onClick: () -> Unit) {
+    val focusManager = LocalFocusManager.current
+    var focused by remember { mutableStateOf(false) }
+    Row(
+        Modifier
+            .fillMaxWidth()
+            .height(64.dp)
+            .clip(RoundedCornerShape(12.dp))
+            .background(
+                if (focused) MusicPalette.surfaceFocused else MusicPalette.surface.copy(alpha = 0.55f)
+            )
+            .border(
+                width = if (focused) 2.dp else 1.dp,
+                color = if (focused) MusicPalette.text else MusicPalette.border.copy(alpha = 0.55f),
+                shape = RoundedCornerShape(12.dp)
+            )
+            .onFocusChanged { focused = it.isFocused }
+            .onPreviewKeyEvent { event ->
+                if (event.type != KeyEventType.KeyDown) return@onPreviewKeyEvent false
+                when (event.key) {
+                    Key.DirectionCenter, Key.Enter -> {
+                        onClick()
+                        true
+                    }
+                    Key.DirectionUp -> {
+                        focusManager.moveFocus(FocusDirection.Up)
+                        true
+                    }
+                    Key.DirectionDown -> {
+                        focusManager.moveFocus(FocusDirection.Down)
+                        true
+                    }
+                    else -> false
+                }
+            }
+            .clickable(onClick = onClick)
+            .padding(horizontal = 16.dp),
+        verticalAlignment = Alignment.CenterVertically
+    ) {
+        Column(Modifier.weight(1f)) {
+            Text(
+                text = title,
+                color = MusicPalette.text,
+                fontSize = 15.sp,
+                fontWeight = FontWeight.SemiBold,
+                maxLines = 1
+            )
+            Spacer(Modifier.height(2.dp))
+            Text(
+                text = detail,
+                color = MusicPalette.textMuted,
+                fontSize = 11.sp,
+                maxLines = 1,
+                overflow = TextOverflow.Ellipsis
+            )
+        }
+        Text("›", color = MusicPalette.textMuted, fontSize = 18.sp)
     }
 }
 

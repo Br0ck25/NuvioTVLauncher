@@ -64,6 +64,8 @@ sealed interface PostPlayMode {
 
 data class PlayerUiState(
     val isPlaying: Boolean = false,
+    /** Live TV fork: the current movie or episode is looping instead of ending. */
+    val repeatOne: Boolean = false,
     val isBuffering: Boolean = true,
     val playbackEnded: Boolean = false,
     val pendingExitReason: PlayerExitReason? = null,

@@ -1,5 +1,6 @@
 package com.nuvio.tv.livetv.data
 
+import android.app.Application
 import android.content.Context
 import com.nuvio.tv.core.profile.ProfileManager
 import io.mockk.every
@@ -13,9 +14,14 @@ import org.junit.Assert.assertFalse
 import org.junit.Assert.assertTrue
 import org.junit.Before
 import org.junit.Test
+import org.junit.runner.RunWith
+import org.robolectric.RobolectricTestRunner
+import org.robolectric.annotation.Config
 import java.io.File
 import java.nio.file.Files
 
+@RunWith(RobolectricTestRunner::class)
+@Config(application = Application::class, manifest = Config.NONE, sdk = [34])
 class LiveTvImportProgressPreferencesTest {
     private lateinit var tempDir: File
     private lateinit var preferences: LiveTvPreferences
@@ -26,6 +32,7 @@ class LiveTvImportProgressPreferencesTest {
         val context = mockk<Context>(relaxed = true) {
             every { applicationContext } returns this
             every { filesDir } returns tempDir
+            every { noBackupFilesDir } returns File(tempDir, "no_backup").apply { mkdirs() }
         }
         val profileManager = mockk<ProfileManager> {
             every { activeProfileId } returns MutableStateFlow(1)

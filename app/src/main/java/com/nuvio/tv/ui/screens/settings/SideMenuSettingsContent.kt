@@ -401,6 +401,12 @@ fun CalendarSettingsContent(initialFocusRequester: FocusRequester? = null) {
                         s.calendarUpcomingRow,
                         { update { it.copy(calendarUpcomingRow = !it.calendarUpcomingRow) } }
                     )
+                    SettingsToggleRow(
+                        "New Upcoming Row",
+                        "Wide schedule cards and every show with an episode in the next 7 days. Off: the previous cards and filtering.",
+                        s.calendarUpcomingNewRow,
+                        { update { it.copy(calendarUpcomingNewRow = !it.calendarUpcomingNewRow) } }
+                    )
                 }
             }
             item(key = "detail_pages") {

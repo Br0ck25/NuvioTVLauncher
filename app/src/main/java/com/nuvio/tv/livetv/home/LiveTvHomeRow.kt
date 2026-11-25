@@ -28,6 +28,7 @@ import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxHeight
 import androidx.compose.foundation.layout.fillMaxWidth
+import androidx.compose.foundation.layout.fillMaxHeight
 import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.width
@@ -75,7 +76,9 @@ data class LiveTvHomeActions(
     /** The channel is now playing in Live TV: open it full screen. */
     val openFullscreen: () -> Unit = {},
     /** Open the Live TV guide. */
-    val openGuide: () -> Unit = {}
+    val openGuide: () -> Unit = {},
+    /** Open a game in the Sports page. */
+    val openGame: (String) -> Unit = {}
 )
 
 val LocalLiveTvHomeActions = compositionLocalOf { LiveTvHomeActions() }

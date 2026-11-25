@@ -61,6 +61,7 @@ import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.unit.dp
 import com.nuvio.tv.R
 import androidx.compose.ui.unit.sp
+import androidx.hilt.navigation.compose.hiltViewModel
 import androidx.tv.material3.Icon
 import androidx.tv.material3.Text
 import kotlinx.coroutines.Dispatchers
@@ -80,6 +81,8 @@ internal fun MusicIntegrationsScreen(
     val webDav by MusicWebDav.config.collectAsState()
     val navidrome by MusicNavidrome.config.collectAsState()
     val addons by MusicAddonRegistry.configs.collectAsState()
+    val geminiViewModel: MusicGeminiViewModel = hiltViewModel()
+    val gemini by geminiViewModel.state.collectAsState()
     val spotifyWeb by MusicSpotifyWebSession.state.collectAsState()
     val webSync by MusicSpotifyWebSync.state.collectAsState()
     var spotifyWebMessage by remember { mutableStateOf<String?>(null) }
@@ -316,6 +319,20 @@ internal fun MusicIntegrationsScreen(
                         onClick = onOpenSources
                     )
                 }
+
+                MusicGeminiCard(
+                    state = gemini,
+                    onSaveKey = geminiViewModel::saveKey,
+                    onRemoveKey = geminiViewModel::removeKey,
+                    onSetEnabled = geminiViewModel::setEnabled,
+                    onModelChange = geminiViewModel::setModel,
+                    onGenerate = geminiViewModel::generate,
+                    onClear = geminiViewModel::clearSuggestions,
+                    onShareTopArtists = geminiViewModel::setShareTopArtists,
+                    onShareLiked = geminiViewModel::setShareLiked,
+                    onShareRecents = geminiViewModel::setShareRecents,
+                    onSharePlaylists = geminiViewModel::setSharePlaylists,
+                )
 
                 IntegrationCard(
                     icon = Icons.Default.MusicNote,

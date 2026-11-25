@@ -313,6 +313,12 @@ class NuvioMpvSurfaceView @JvmOverloads constructor(
         mpv.setPropertyDouble("speed", speed.toDouble())
     }
 
+    /** Live TV fork: loop the current movie/episode instead of stopping at the end. */
+    fun setRepeatFile(enabled: Boolean) {
+        if (!initialized) return
+        runCatching { mpv.setPropertyString("loop-file", if (enabled) "inf" else "no") }
+    }
+
     fun applyAudioAmplificationDb(db: Int) {
         if (!initialized) return
         val clampedDb = db.coerceIn(AUDIO_GAIN_MIN_DB, AUDIO_GAIN_MAX_DB)
@@ -322,6 +328,28 @@ class NuvioMpvSurfaceView @JvmOverloads constructor(
             mpv.setPropertyDouble("volume", targetVolumePercent)
         }.onFailure {
             Log.w(TAG, "Failed to apply audio amplification on mpv (db=$clampedDb): ${it.message}")
+        }
+    }
+
+    /** Apply Nuvio's shared seven-band profile as a named libavfilter equalizer chain. */
+    fun applySevenBandEqualizer(profile: com.nuvio.tv.core.audio.SevenBandEqualizerProfile) {
+        if (!initialized) return
+        runCatching {
+            mpv.command("af", "remove", "@nuvio-seven-band-eq")
+        }
+        if (!profile.isEnabled) return
+
+        val bands = com.nuvio.tv.core.audio.SevenBandEqualizerSettings.frequenciesHz
+            .zip(profile.gainsDb)
+            .filter { (_, gain) -> gain != 0 }
+        if (bands.isEmpty()) return
+        val filters = bands.joinToString(",") { (frequency, gain) ->
+            "equalizer=f=$frequency:t=q:w=1:g=$gain"
+        }
+        runCatching {
+            mpv.command("af", "add", "@nuvio-seven-band-eq:lavfi=[$filters]")
+        }.onFailure {
+            Log.w(TAG, "Failed to apply seven-band equalizer on mpv: ${it.message}")
         }
     }
 

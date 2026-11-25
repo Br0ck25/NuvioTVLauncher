@@ -6,6 +6,8 @@ import com.nuvio.tv.R
 import com.nuvio.tv.data.local.ProfileDataStore
 import com.nuvio.tv.data.local.ProfileDataStoreFactory
 import com.nuvio.tv.domain.model.UserProfile
+import com.nuvio.tv.livetv.parental.ParentalControls
+import com.nuvio.tv.youtube.YouTubeAccountScopes
 import dagger.hilt.android.qualifiers.ApplicationContext
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Dispatchers
@@ -79,6 +81,9 @@ class ProfileManager @Inject constructor(
     val canCreateProfile: Boolean
         get() = profiles.value.size < MAX_PROFILES
 
+    /** The ids of the profiles stored on this TV (empty until the list has loaded). */
+    suspend fun knownProfileIds(): List<Int> = profileDataStore.profilesList.first().map { it.id }
+
     suspend fun setActiveProfile(id: Int) {
         val exists = profiles.value.any { it.id == id }
         if (exists) {
@@ -149,6 +154,8 @@ class ProfileManager @Inject constructor(
     private suspend fun removeLocalProfileData(id: Int) {
         if (id == 1) return
         credentialStores.forEach { store -> store.removeProfile(id) }
+        YouTubeAccountScopes.removeProfile(context, id)
+        ParentalControls.removeProfile(id)
         deleteProfileDataAsync(id)
     }
 

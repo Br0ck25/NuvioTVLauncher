@@ -126,7 +126,8 @@ val ContinueWatchingItem.shuffleFocusKey: String?
     }
 
 fun ContinueWatchingClickAction.opensDetails(item: ContinueWatchingItem): Boolean = when (this) {
-    ContinueWatchingClickAction.STREAM -> false
+    // An episode that has not aired cannot play; open its details instead.
+    ContinueWatchingClickAction.STREAM -> item is ContinueWatchingItem.NextUp && !item.info.hasAired
     ContinueWatchingClickAction.DETAILS -> true
     ContinueWatchingClickAction.DETAILS_FOR_UPCOMING -> item is ContinueWatchingItem.NextUp && !item.info.hasAired
 }
@@ -225,6 +226,9 @@ sealed class GridItem {
         val addonBaseUrl: String,
         val type: String
     ) : GridItem()
+    /** A full-width Live TV or Sports row embedded in the poster grid. */
+    @Immutable
+    data class LiveRow(val key: String, val title: String) : GridItem()
     @Immutable
     data class CollectionHeader(
         val collectionId: String,

@@ -30,6 +30,8 @@
     <string name="iptv_gear_first_list">"First list"</string>
     <string name="iptv_gear_last_used">"Last one used"</string>
     <string name="iptv_gear_audio_hint">"Applies to this channel"</string>
+    <string name="iptv_gear_audio_sync">"Audio sync"</string>
+    <string name="iptv_gear_audio_sync_reset">"Reset audio sync"</string>
     <string name="iptv_gear_sleep_hint">"Stops playback after"</string>
     <string name="iptv_gear_size_hint">"Applies to every channel"</string>
     <string name="iptv_gear_layout_hint">"The bar changes as you go"</string>

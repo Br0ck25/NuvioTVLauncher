@@ -1022,7 +1022,8 @@ class LayoutSettingsViewModel @Inject constructor(
         if (
             _uiState.value.posterCardWidthDp == 126 &&
             _uiState.value.posterCardHeightDp == 189 &&
-            _uiState.value.posterCardCornerRadiusDp == 12
+            _uiState.value.posterCardCornerRadiusDp == 12 &&
+            _uiState.value.homeTileWidthDp == null
         ) {
             return
         }
@@ -1030,6 +1031,7 @@ class LayoutSettingsViewModel @Inject constructor(
             layoutPreferenceDataStore.setPosterCardWidthDp(126)
             layoutPreferenceDataStore.setPosterCardHeightDp(189)
             layoutPreferenceDataStore.setPosterCardCornerRadiusDp(12)
+            layoutPreferenceDataStore.setHomeTileWidthDp(null)
         }
     }
 

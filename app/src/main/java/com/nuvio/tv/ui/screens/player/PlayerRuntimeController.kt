@@ -330,6 +330,8 @@ class PlayerRuntimeController(
     internal var currentSeason: Int? = initialSeason
     internal var currentEpisode: Int? = initialEpisode
     internal var currentEpisodeTitle: String? = initialEpisodeTitle
+    /** Live TV fork: loop the current movie/episode; mirrors [PlayerUiState.repeatOne]. */
+    internal var repeatOneRequested: Boolean = false
 
     internal val _uiState = MutableStateFlow(
         PlayerUiState(
@@ -552,6 +554,7 @@ class PlayerRuntimeController(
     internal var effectiveBackBufferDurationMs: Int = 0
     /** Custom LoadControl for this playback (null when using stock); used to resolve the back buffer at first frame. */
     internal var currentBitrateAwareLoadControl: BitrateAwareLoadControl? = null
+    internal var playbackBufferMemoryGuard: com.nuvio.tv.core.player.PlaybackBufferMemoryGuard? = null
     /** Parallel chunk buffer overhead (MB) currently deducted from the target buffer size. */
     internal var currentParallelChunkOverheadMb: Int = 0
     /** Back buffer (ms) the user configured, captured at build to restore once DV7 status is known. */
@@ -665,6 +668,7 @@ class PlayerRuntimeController(
     internal var bufferLogJob: Job? = null
     internal val gainAudioProcessor = GainAudioProcessor()
     internal val nightModeAudioProcessor = NightModeAudioProcessor()
+    internal val sevenBandEqualizerAudioProcessor = SevenBandEqualizerAudioProcessor()
     internal var loudnessEnhancer: LoudnessEnhancer? = null
     internal var trackSelector: DefaultTrackSelector? = null
     internal var currentMediaSession: MediaSession? = null
@@ -840,6 +844,8 @@ class PlayerRuntimeController(
         }
 
     init {
+        com.nuvio.tv.core.audio.SevenBandEqualizerSettings.init(context)
+        observePlaybackEqualizer()
         // NOTE: Saved watch progress is loaded inside preparePlaybackBeforeStart()
         // via loadSavedProgressSuspend() — NOT here.  Loading it in the init block
         // was a fire-and-forget coroutine that raced against initializePlayer(),
@@ -862,6 +868,27 @@ class PlayerRuntimeController(
         observeDeviceLocalReleaseDecoderOnBackground()
         observePlayerStatsHud()
         observeStreamDelayTrackSelection()
+    }
+
+    private fun observePlaybackEqualizer() {
+        scope.launch {
+            com.nuvio.tv.core.audio.SevenBandEqualizerSettings
+                .profile(com.nuvio.tv.core.audio.EqualizerOwner.PLAYBACK)
+                .collect { profile ->
+                    val wasEnabled = sevenBandEqualizerAudioProcessor.isEqualizerEnabled()
+                    sevenBandEqualizerAudioProcessor.setGainsDb(
+                        if (profile.isEnabled) profile.gainsDb else List(7) { 0 }
+                    )
+                    mpvView?.applySevenBandEqualizer(profile)
+                    vlcView?.setSevenBandEqualizerProfile(profile)
+                    if (wasEnabled != sevenBandEqualizerAudioProcessor.isEqualizerEnabled()) {
+                        playbackSpeedAwareAudioSink?.notifyAudioProcessingRequirementChanged()
+                        _exoPlayer?.let { player ->
+                            player.trackSelectionParameters = player.trackSelectionParameters.buildUpon().build()
+                        }
+                    }
+                }
+        }
     }
 
     // The stream delay hint can be scoped to a language: re-apply it whenever the selected tracks change.

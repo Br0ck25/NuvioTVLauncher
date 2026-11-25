@@ -244,7 +244,8 @@ internal fun LayoutSidebarSection(
             onToggle = { onEvent(LayoutSettingsEvent.SetSidebarCollapsed(!uiState.sidebarCollapsedByDefault)) }
         )
     }
-    // Live TV fork: where Discover goes is set in Settings → Menu & Features (with the rest of the menu).
+    // Live TV fork: the menu is hidden in every section now; Left/Menu/Back opens it and a
+    // selection hides it again. The old Collapse/Hide Pill switches no longer apply.
 }
 
 @Composable

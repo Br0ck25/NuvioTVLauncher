@@ -343,8 +343,8 @@ internal fun buildModernHomePresentation(
                                     occurrence = occurrence
                                 )
                             }.asStable()
-                        )
-                    }
+                    )
+                }
 
                     cache.collectionRows[rowKey] = ModernCollectionRowBuildCacheEntry(
                         source = collection,

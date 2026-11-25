@@ -34,6 +34,8 @@ import com.nuvio.tv.domain.model.FocusedPosterTrailerPlaybackTarget
 import com.nuvio.tv.domain.model.DetailImdbRatingsVisibility
 import com.nuvio.tv.domain.model.HomeLayout
 import com.nuvio.tv.domain.model.HomeImdbRatingsVisibility
+import com.nuvio.tv.domain.model.SectionScale
+import com.nuvio.tv.domain.model.SectionScales
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.SupervisorJob
@@ -44,6 +46,7 @@ import kotlinx.coroutines.flow.first
 import kotlinx.coroutines.flow.flatMapLatest
 import kotlinx.coroutines.flow.map
 import kotlinx.coroutines.flow.stateIn
+import kotlinx.coroutines.launch
 import javax.inject.Inject
 import javax.inject.Singleton
 
@@ -99,6 +102,13 @@ class LayoutPreferenceDataStore @Inject constructor(
     private val homeTileWidthDpKey = intPreferencesKey("home_tile_width_dp")
     private val posterCardHeightDpKey = intPreferencesKey("poster_card_height_dp")
     private val posterCardCornerRadiusDpKey = intPreferencesKey("poster_card_corner_radius_dp")
+    // Live TV fork: one text and one interface percentage for each top-level section.
+    private val sectionTextScaleKeys = SectionScales.ALL.associateWith {
+        intPreferencesKey("section_text_scale_$it")
+    }
+    private val sectionUiScaleKeys = SectionScales.ALL.associateWith {
+        intPreferencesKey("section_ui_scale_$it")
+    }
     private val cardDepthEnabledKey = booleanPreferencesKey("card_depth_enabled")
     private val cardDepthEdgeStrengthKey = intPreferencesKey("card_depth_edge_strength")
     private val cardDepthSheenStrengthKey = intPreferencesKey("card_depth_sheen_strength")
@@ -351,6 +361,21 @@ class LayoutPreferenceDataStore @Inject constructor(
 
     val posterCardCornerRadiusDp: Flow<Int> = profileFlow { prefs ->
         prefs[posterCardCornerRadiusDpKey] ?: DEFAULT_POSTER_CARD_CORNER_RADIUS_DP
+    }
+
+    // Live TV fork: per-section text and interface size for the current profile.
+    val sectionScales: Flow<Map<String, SectionScale>> = profileFlow { prefs ->
+        SectionScales.ALL.associateWith { key ->
+            val default = SectionScales.defaultFor(key)
+            SectionScale(
+                textPercent = SectionScales.clamp(
+                    prefs[sectionTextScaleKeys.getValue(key)] ?: default.textPercent
+                ),
+                uiPercent = SectionScales.clamp(
+                    prefs[sectionUiScaleKeys.getValue(key)] ?: default.uiPercent
+                )
+            )
+        }
     }
 
     val cardDepthStyle: Flow<CardDepthStyle> = profileFlow { prefs ->
@@ -748,6 +773,30 @@ class LayoutPreferenceDataStore @Inject constructor(
     suspend fun setPosterCardCornerRadiusDp(cornerRadiusDp: Int) {
         store().edit { prefs ->
             prefs[posterCardCornerRadiusDpKey] = cornerRadiusDp
+        }
+    }
+
+    /** Live TV fork: one section's text size, as a percentage (see [SectionScales]). */
+    suspend fun setSectionTextScale(section: String, percent: Int) {
+        val key = sectionTextScaleKeys[section] ?: return
+        store().edit { prefs ->
+            prefs[key] = SectionScales.clamp(percent)
+        }
+    }
+
+    /** Live TV fork: one section's whole-interface size, as a percentage. */
+    suspend fun setSectionUiScale(section: String, percent: Int) {
+        val key = sectionUiScaleKeys[section] ?: return
+        store().edit { prefs ->
+            prefs[key] = SectionScales.clamp(percent)
+        }
+    }
+
+    /** Live TV fork: every section goes back to its first-run size. */
+    suspend fun resetSectionScales() {
+        store().edit { prefs ->
+            sectionTextScaleKeys.values.forEach { prefs.remove(it) }
+            sectionUiScaleKeys.values.forEach { prefs.remove(it) }
         }
     }
 

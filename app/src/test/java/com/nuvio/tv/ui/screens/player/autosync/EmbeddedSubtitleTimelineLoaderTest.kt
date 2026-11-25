@@ -14,9 +14,23 @@ import okhttp3.mockwebserver.SocketPolicy
 import org.junit.Assert.assertEquals
 import org.junit.Assert.assertNotNull
 import org.junit.Assert.assertNull
+import org.junit.After
+import org.junit.Before
 import org.junit.Test
 
 class EmbeddedSubtitleTimelineLoaderTest {
+    @Before
+    fun useDirectHttpForRangeTests() {
+        EmbeddedSubtitleTimelineLoader.callFactory = { it }
+    }
+
+    @After
+    fun restoreVpnAwareHttpFactory() {
+        EmbeddedSubtitleTimelineLoader.callFactory = {
+            com.nuvio.vpn.android.VpnHttpClient.wrap(it)
+        }
+    }
+
     @Test
     fun concurrentIndexLoadsShareOneDownload(): Unit = runBlocking {
         MockWebServer().use { server ->

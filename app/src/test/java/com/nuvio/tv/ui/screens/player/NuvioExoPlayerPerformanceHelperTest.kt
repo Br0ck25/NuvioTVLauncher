@@ -188,12 +188,9 @@ class NuvioExoPlayerPerformanceHelperTest {
         NuvioExoPlayerPerformanceHelper.targetBufferSizeMb = 250
 
         // Overhead = 96 MB -> target should be 250 - 96 = 154 MB
-        val loadControl = NuvioExoPlayerPerformanceHelper.buildLoadControl(chunkOverheadMb = 96)
-        val targetBufferBytesField = androidx.media3.exoplayer.DefaultLoadControl::class.java.getDeclaredField("targetBufferBytesOverwrite")
-        targetBufferBytesField.isAccessible = true
-        val targetBytes = targetBufferBytesField.getInt(loadControl)
+        val loadControl = NuvioExoPlayerPerformanceHelper.buildLoadControl(chunkOverheadMb = 96) as com.nuvio.tv.core.player.BitrateAwareLoadControl
 
-        assertEquals(154 * 1024 * 1024, targetBytes)
+        assertEquals(154 * 1024 * 1024, loadControl.allocatorTargetBytes())
     }
 
     @Test
@@ -204,11 +201,8 @@ class NuvioExoPlayerPerformanceHelperTest {
         NuvioExoPlayerPerformanceHelper.targetBufferSizeMb = 50
 
         // Overhead = 100 MB -> 50 - 100 = -50 -> coerceAtLeast MIN_BUFFER_MB (25 MB)
-        val loadControl = NuvioExoPlayerPerformanceHelper.buildLoadControl(chunkOverheadMb = 100)
-        val targetBufferBytesField = androidx.media3.exoplayer.DefaultLoadControl::class.java.getDeclaredField("targetBufferBytesOverwrite")
-        targetBufferBytesField.isAccessible = true
-        val targetBytes = targetBufferBytesField.getInt(loadControl)
+        val loadControl = NuvioExoPlayerPerformanceHelper.buildLoadControl(chunkOverheadMb = 100) as com.nuvio.tv.core.player.BitrateAwareLoadControl
 
-        assertEquals(com.nuvio.tv.ui.screens.settings.MemoryBudget.MIN_BUFFER_MB * 1024 * 1024, targetBytes)
+        assertEquals(com.nuvio.tv.ui.screens.settings.MemoryBudget.MIN_BUFFER_MB * 1024 * 1024, loadControl.allocatorTargetBytes())
     }
 }

@@ -16,8 +16,11 @@ android {
     ndkVersion = "29.0.14206865"
     defaultConfig {
         minSdk = 24
+        externalNativeBuild.cmake.arguments("-DANDROID_STL=c++_static")
+        externalNativeBuild.cmake.targets("nuvio-openvpn", "nuvio-openvpn2", "nuvio-openvpn2-engine")
         consumerProguardFiles("consumer-rules.pro")
     }
+    externalNativeBuild { cmake { path = file("openvpn/CMakeLists.txt"); version = "3.22.1" } }
     compileOptions {
         sourceCompatibility = JavaVersion.VERSION_1_8
         targetCompatibility = JavaVersion.VERSION_1_8

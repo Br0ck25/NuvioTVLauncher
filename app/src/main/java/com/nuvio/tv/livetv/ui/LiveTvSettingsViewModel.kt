@@ -6,6 +6,7 @@ import android.widget.Toast
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
 import com.nuvio.tv.R
+import com.nuvio.tv.core.profile.ProfileManager
 import com.nuvio.tv.core.util.withAppLocale
 import com.nuvio.tv.livetv.data.LiveTvPreferences
 import com.nuvio.tv.livetv.data.LiveTvRepository
@@ -35,6 +36,7 @@ import javax.inject.Inject
 @HiltViewModel
 class LiveTvSettingsViewModel @Inject constructor(
     @ApplicationContext private val context: Context,
+    private val profileManager: ProfileManager,
     private val repository: LiveTvRepository,
     private val prefs: LiveTvPreferences,
     val driveSync: com.nuvio.tv.livetv.sync.LiveTvDriveSync,
@@ -44,6 +46,10 @@ class LiveTvSettingsViewModel @Inject constructor(
     private val matcher247: com.nuvio.tv.livetv.data.LiveTv247Matcher,
     private val addonRepository: com.nuvio.tv.domain.repository.AddonRepository
 ) : ViewModel() {
+
+    val isPrimaryProfileActive: StateFlow<Boolean> = profileManager.activeProfileId
+        .map { it == 1 }
+        .stateIn(viewModelScope, SharingStarted.Eagerly, true)
 
     val playlists: StateFlow<List<PlaylistSource>> =
         prefs.playlists.stateIn(viewModelScope, SharingStarted.Eagerly, emptyList())
@@ -231,13 +237,18 @@ class LiveTvSettingsViewModel @Inject constructor(
     fun setPlaylistVisible(id: String, visible: Boolean) =
         viewModelScope.launch { prefs.setPlaylistHidden(id, !visible) }
 
-    /** Manual scan: reads the loaded channel groups and lists the tags they use. */
-    fun scanGroupTags() {
+    /**
+     * Manual scan: reads the loaded channel groups and lists the tags they use.
+     * [countriesOnly] lists country names/codes from the groups instead of every word.
+     */
+    fun scanGroupTags(countriesOnly: Boolean = true) {
         if (_scanningGroupTags.value) return
         _scanningGroupTags.value = true
         viewModelScope.launch {
             val channels = repository.channels.value
-            _groupTags.value = withContext(Dispatchers.Default) { LiveTvGroupTags.scan(channels) }
+            _groupTags.value = withContext(Dispatchers.Default) {
+                LiveTvGroupTags.scan(channels, countriesOnly = countriesOnly)
+            }
             _scanningGroupTags.value = false
         }
     }

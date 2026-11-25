@@ -8,14 +8,16 @@ import org.junit.Assert.assertNull
 import org.junit.Assert.assertTrue
 import org.junit.Test
 import java.net.InetAddress
-import java.net.ServerSocket
 import java.security.KeyStore
 import java.util.Collections
 import javax.net.ssl.KeyManagerFactory
 import javax.net.ssl.SSLContext
 import javax.net.ssl.TrustManagerFactory
 import javax.net.ssl.X509TrustManager
-import kotlin.concurrent.thread
+import okhttp3.mockwebserver.Dispatcher
+import okhttp3.mockwebserver.MockResponse
+import okhttp3.mockwebserver.MockWebServer
+import okhttp3.mockwebserver.RecordedRequest as MockRecordedRequest
 
 class SubtitleCredentialScopeTest {
 
@@ -188,6 +190,8 @@ class SubtitleCredentialScopeTest {
                 )
                 // Real subtitle client, trusting the test certificate.
                 val client = subtitleHttpClient.newBuilder()
+                    .dns(Dns.SYSTEM)
+                    .socketFactory(javax.net.SocketFactory.getDefault())
                     .sslSocketFactory(tls.socketFactory, tls.trustManager)
                     .build()
 
@@ -235,6 +239,8 @@ class SubtitleCredentialScopeTest {
                 explicitHeaders = mapOf("X-Subtitle-Key" to "own")
             )
             val client = subtitleHttpClient.newBuilder()
+                .dns(Dns.SYSTEM)
+                .socketFactory(javax.net.SocketFactory.getDefault())
                 .sslSocketFactory(tls.socketFactory, tls.trustManager)
                 .build()
 
@@ -271,15 +277,18 @@ class SubtitleCredentialScopeTest {
             // No connection retries, so request counts are exact.
             val validated = subtitleHttpClient.newBuilder()
                 .dns(loopbackOnly)
+                .socketFactory(javax.net.SocketFactory.getDefault())
                 .retryOnConnectionFailure(false)
                 .sslSocketFactory(tls.socketFactory, tls.trustManager)
                 .build()
             val permissive = subtitleUnvalidatedTlsHttpClient.newBuilder()
                 .dns(loopbackOnly)
+                .socketFactory(javax.net.SocketFactory.getDefault())
                 .retryOnConnectionFailure(false)
                 .build()
 
-            executeSubtitleRequest(request, validated, permissive).use { assertEquals(200, it.code) }
+            executeSubtitleRequest(request, validated, permissive, callFactory = { it })
+                .use { assertEquals(200, it.code) }
 
             // Validated attempt, with credentials.
             val redirectHops = server.requestsTo("/redirect.srt")
@@ -320,58 +329,47 @@ class SubtitleCredentialScopeTest {
         return TestTls(serverContext, trustManager)
     }
 
-    private class RecordedRequest(val path: String, val headers: Map<String, String>)
-
     /** Records request headers; 302 for [redirects], a subtitle otherwise. */
     private class HeaderRecordingServer(tls: TestTls? = null) : AutoCloseable {
-        private val socket: ServerSocket = tls?.serverContext?.serverSocketFactory
-            ?.createServerSocket(0, 16, InetAddress.getByName("127.0.0.1"))
-            ?: ServerSocket(0, 16, InetAddress.getByName("127.0.0.1"))
-        val port: Int = socket.localPort
         val redirects: MutableMap<String, String> = java.util.concurrent.ConcurrentHashMap()
-        private val requests: MutableList<RecordedRequest> = Collections.synchronizedList(mutableListOf())
-
-        private val acceptor = thread(isDaemon = true) {
-            while (!socket.isClosed) {
-                val client = runCatching { socket.accept() }.getOrNull() ?: break
-                runCatching {
-                    client.use { connection ->
-                        val reader = connection.getInputStream().bufferedReader()
-                        val path = reader.readLine()?.split(' ')?.getOrNull(1) ?: return@use
-                        val headers = generateSequence { reader.readLine() }
-                            .takeWhile { it.isNotEmpty() }
-                            .associate { line ->
-                                line.substringBefore(':').trim().lowercase() to line.substringAfter(':').trim()
-                            }
-                        requests.add(RecordedRequest(path, headers))
-                        val location = redirects[path]
-                        val response = if (location != null) {
-                            "HTTP/1.1 302 Found\r\nLocation: $location\r\nContent-Length: 0\r\nConnection: close\r\n\r\n"
-                        } else {
-                            val body = "1\n00:00:01,000 --> 00:00:02,000\ntest\n"
-                            "HTTP/1.1 200 OK\r\nContent-Type: application/x-subrip\r\n" +
-                                "Content-Length: ${body.length}\r\nConnection: close\r\n\r\n$body"
-                        }
-                        connection.getOutputStream().apply { write(response.toByteArray()); flush() }
+        private val requests: MutableList<Pair<String, Map<String, String>>> =
+            Collections.synchronizedList(mutableListOf())
+        private val server = MockWebServer().apply {
+            if (tls != null) useHttps(tls.serverContext.socketFactory, false)
+            dispatcher = object : Dispatcher() {
+                override fun dispatch(request: MockRecordedRequest): MockResponse {
+                    val path = request.path.orEmpty()
+                    val headers = request.headers.toMultimap().mapValues { (_, values) ->
+                        values.firstOrNull().orEmpty()
+                    }
+                    requests.add(path to headers)
+                    val location = redirects[path]
+                    return if (location != null) {
+                        MockResponse().setResponseCode(302).addHeader("Location", location)
+                    } else {
+                        MockResponse()
+                            .setHeader("Content-Type", "application/x-subrip")
+                            .setBody("1\n00:00:01,000 --> 00:00:02,000\ntest\n")
                     }
                 }
             }
+            start(InetAddress.getByName("127.0.0.1"), 0)
         }
+        val port: Int = server.port
 
         fun requestsTo(path: String): List<Map<String, String>> =
-            synchronized(requests) { requests.filter { it.path == path }.map { it.headers } }
+            synchronized(requests) { requests.filter { it.first == path }.map { it.second } }
 
         /** Runs [check] on every request to [path]; at least one is required. */
         fun assertEvery(path: String, check: (Map<String, String>) -> Unit) {
-            val matching = synchronized(requests) { requests.filter { it.path == path } }
+            val matching = synchronized(requests) { requests.filter { it.first == path } }
             assertTrue("no request to $path", matching.isNotEmpty())
             // OkHttp may retry, so check them all.
-            matching.forEach { check(it.headers) }
+            matching.forEach { check(it.second) }
         }
 
         override fun close() {
-            socket.close()
-            acceptor.join(1_000)
+            server.shutdown()
         }
     }
 }

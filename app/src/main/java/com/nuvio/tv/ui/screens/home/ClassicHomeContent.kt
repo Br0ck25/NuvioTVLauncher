@@ -22,6 +22,8 @@ import androidx.compose.runtime.Composable
 import androidx.compose.runtime.CompositionLocalProvider
 import androidx.compose.runtime.DisposableEffect
 import androidx.compose.runtime.LaunchedEffect
+import androidx.compose.runtime.SideEffect
+import androidx.compose.runtime.collectAsState
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.mutableIntStateOf
@@ -296,8 +298,8 @@ fun ClassicHomeContent(
             uiState.catalogRows.filter { it.items.isNotEmpty() }.map { HomeRow.Catalog(it) }
         }
     }
-    val visibleRowKeys = remember(visibleHomeRows) {
-        visibleHomeRows.mapTo(mutableSetOf()) { row ->
+    val visibleRowKeys: Set<String> = remember(visibleHomeRows) {
+        visibleHomeRows.mapTo(mutableSetOf<String>()) { row ->
             when (row) {
                 is HomeRow.Catalog -> row.row.stableKey()
                 is HomeRow.CollectionRow -> "collection_${row.collection.id}"

@@ -2,6 +2,10 @@ package com.nuvio.tv.music
 
 import android.content.Context
 import android.content.SharedPreferences
+import com.nuvio.tv.core.audio.EqualizerOwner
+import com.nuvio.tv.core.audio.SevenBandEqualizerProfile
+import com.nuvio.tv.core.audio.SevenBandEqualizerSettings
+import com.nuvio.tv.core.audio.SevenBandPreset
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.asStateFlow
@@ -15,15 +19,6 @@ enum class MusicAudioQuality(
     LOW("Low", "~96 kbps · saves data", 96),
     MEDIUM("Medium", "~192 kbps", 192),
     HIGH("High", "Best available", 320)
-}
-
-/** The equalizer curves the music player can apply. */
-enum class MusicEqualizerPreset(val label: String) {
-    OFF("Off"),
-    FLAT("Flat"),
-    BASS("Bass"),
-    VOCAL("Vocal"),
-    ROCK("Rock")
 }
 
 /**
@@ -61,8 +56,8 @@ object MusicSettings {
     private val _fadeSeconds = MutableStateFlow(0)
     val fadeSeconds: StateFlow<Int> = _fadeSeconds.asStateFlow()
 
-    private val _equalizerPreset = MutableStateFlow(MusicEqualizerPreset.OFF)
-    val equalizerPreset: StateFlow<MusicEqualizerPreset> = _equalizerPreset.asStateFlow()
+    val equalizerProfile: StateFlow<SevenBandEqualizerProfile>
+        get() = SevenBandEqualizerSettings.profile(EqualizerOwner.MUSIC)
 
     private val _downloadQuality = MutableStateFlow(MusicAudioQuality.HIGH)
     val downloadQuality: StateFlow<MusicAudioQuality> = _downloadQuality.asStateFlow()
@@ -71,7 +66,7 @@ object MusicSettings {
     val wifiOnlyDownloads: StateFlow<Boolean> = _wifiOnlyDownloads.asStateFlow()
 
     /** Look for a matching addon recording before playing a YouTube track. */
-    private val _preferAddonSources = MutableStateFlow(false)
+    private val _preferAddonSources = MutableStateFlow(true)
     val preferAddonSources: StateFlow<Boolean> = _preferAddonSources.asStateFlow()
 
     /**
@@ -87,6 +82,7 @@ object MusicSettings {
         val store = context.applicationContext
             .getSharedPreferences(PREFS_NAME, Context.MODE_PRIVATE)
         prefs = store
+        SevenBandEqualizerSettings.init(context)
         _audioQuality.value = runCatching {
             MusicAudioQuality.valueOf(store.getString(KEY_QUALITY, null).orEmpty())
         }.getOrDefault(MusicAudioQuality.HIGH)
@@ -94,14 +90,18 @@ object MusicSettings {
         _skipSilence.value = store.getBoolean(KEY_SKIP_SILENCE, false)
         _playbackSpeed.value = store.getFloat(KEY_SPEED, 1.0f).coerceIn(0.5f, 2.0f)
         _fadeSeconds.value = store.getInt(KEY_FADE, 0).coerceIn(0, 4)
-        _equalizerPreset.value = runCatching {
-            MusicEqualizerPreset.valueOf(store.getString(KEY_EQUALIZER, null).orEmpty())
-        }.getOrDefault(MusicEqualizerPreset.OFF)
+        // Migrate the old preset-only preference once into the new independent seven-band profile.
+        if (!SevenBandEqualizerSettings.hasSavedProfile(EqualizerOwner.MUSIC)) {
+            val legacyPreset = runCatching {
+                store.getString(KEY_EQUALIZER, null)?.uppercase()?.let(SevenBandPreset::valueOf)
+            }.getOrNull()
+            if (legacyPreset != null) SevenBandEqualizerSettings.selectPreset(EqualizerOwner.MUSIC, legacyPreset)
+        }
         _downloadQuality.value = runCatching {
             MusicAudioQuality.valueOf(store.getString(KEY_DOWNLOAD_QUALITY, null).orEmpty())
         }.getOrDefault(MusicAudioQuality.HIGH)
         _wifiOnlyDownloads.value = store.getBoolean(KEY_WIFI_ONLY_DOWNLOADS, true)
-        _preferAddonSources.value = store.getBoolean(KEY_PREFER_ADDON_SOURCES, false)
+        _preferAddonSources.value = store.getBoolean(KEY_PREFER_ADDON_SOURCES, true)
         _keepPlayingWhileBrowsing.value = store.getBoolean(KEY_KEEP_PLAYING_WHILE_BROWSING, false)
     }
 
@@ -132,9 +132,15 @@ object MusicSettings {
         edit { putInt(KEY_FADE, safe) }
     }
 
-    fun setEqualizerPreset(value: MusicEqualizerPreset) {
-        _equalizerPreset.value = value
+    fun setEqualizerPreset(value: SevenBandPreset) {
+        SevenBandEqualizerSettings.selectPreset(EqualizerOwner.MUSIC, value)
+        MusicEqualizer.apply(SevenBandEqualizerSettings.current(EqualizerOwner.MUSIC))
         edit { putString(KEY_EQUALIZER, value.name) }
+    }
+
+    fun setEqualizerBand(index: Int, gainDb: Int) {
+        SevenBandEqualizerSettings.setBand(EqualizerOwner.MUSIC, index, gainDb)
+        MusicEqualizer.apply(SevenBandEqualizerSettings.current(EqualizerOwner.MUSIC))
     }
 
     fun setDownloadQuality(value: MusicAudioQuality) {

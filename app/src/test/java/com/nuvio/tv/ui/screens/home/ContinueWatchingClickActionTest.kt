@@ -45,10 +45,10 @@ class ContinueWatchingClickActionTest {
     )
 
     @Test
-    fun `stream never opens details`() {
-        for (item in listOf(inProgress, nextUp(hasAired = true), nextUp(hasAired = false))) {
-            assertFalse(ContinueWatchingClickAction.STREAM.opensDetails(item))
-        }
+    fun `stream opens details only for unaired next up episodes`() {
+        assertFalse(ContinueWatchingClickAction.STREAM.opensDetails(inProgress))
+        assertFalse(ContinueWatchingClickAction.STREAM.opensDetails(nextUp(hasAired = true)))
+        assertTrue(ContinueWatchingClickAction.STREAM.opensDetails(nextUp(hasAired = false)))
     }
 
     @Test

@@ -756,13 +756,17 @@ internal suspend fun HomeViewModel.updateCatalogRowsPipeline() {
                 placeholderDescriptors.associateBy { it.catalogKey }
             }
             val addedCollectionIds = mutableSetOf<String>()
+            val liveTitles = liveRowsCache.toMap()
+            val liveVodKeys = vodRowKeys
+            val emptyLiveKeys = emptyLiveRowKeys
+            val liveVodCatalogs = vodRowsCache
             collectionsCache.forEach { collection ->
                 val key = "collection_${collection.id}"
             if (collection.pinToTop && key !in disabledHomeCatalogKeys && addedCollectionIds.add(collection.id)) {
                 add(HomeRow.CollectionRow(collection))
             }
-        }
-        for (key in orderedKeys) {
+            }
+            for (key in orderedKeys) {
             if (key in disabledHomeCatalogKeys) continue
             if (key == com.nuvio.tv.core.apps.INSTALLED_APPS_CATALOG_KEY) {
                 installedAppsCache.takeIf { it.isNotEmpty() }?.let { add(HomeRow.InstalledApps(it)) }

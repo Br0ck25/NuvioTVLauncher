@@ -8,7 +8,6 @@ import androidx.media3.container.Mp4Box
 import androidx.media3.extractor.GaplessInfoHolder
 import androidx.media3.extractor.mp4.BoxParser
 import androidx.media3.extractor.mp4.TrackSampleTable
-import com.nuvio.tv.core.network.NoDelaySocketFactory
 import com.nuvio.tv.ui.screens.player.SubtitleSyncCue
 import kotlinx.coroutines.CancellationException
 import kotlinx.coroutines.CompletableDeferred
@@ -110,13 +109,18 @@ internal object EmbeddedSubtitleTimelineLoader {
     private const val ID_CUE_DURATION = 0xB2L
 
     private val httpClient = OkHttpClient.Builder()
-        .socketFactory(NoDelaySocketFactory)
         .connectTimeout(3, TimeUnit.SECONDS)
         .readTimeout(4, TimeUnit.SECONDS)
         .callTimeout(5, TimeUnit.SECONDS)
         .followRedirects(true)
         .followSslRedirects(true)
         .build()
+
+    /** Replaceable in unit tests so range parsing is tested independently of VPN app startup. */
+    @Volatile
+    internal var callFactory: (OkHttpClient) -> Call.Factory = {
+        com.nuvio.vpn.android.VpnHttpClient.wrap(it)
+    }
 
     private val cacheLock = Any()
     private val cache = object : LinkedHashMap<String, CachedLoadResult>(
@@ -1421,7 +1425,7 @@ internal object EmbeddedSubtitleTimelineLoader {
         if (remainingBudgetMs <= 0L) return null
 
         stats.requests++
-        val call = com.nuvio.vpn.android.VpnHttpClient.wrap(httpClient).newCall(requestBuilder.build())
+        val call = callFactory(httpClient).newCall(requestBuilder.build())
         call.timeout().timeout(
             minOf(remainingBudgetMs.coerceAtLeast(1L), 5_000L),
             TimeUnit.MILLISECONDS,

@@ -82,6 +82,7 @@ import androidx.compose.material.icons.filled.ZoomIn
 import androidx.compose.material.icons.filled.BugReport
 import androidx.compose.material.icons.filled.Check
 import androidx.compose.material.icons.filled.ClosedCaption
+import androidx.compose.material.icons.filled.Download
 import androidx.compose.material.icons.filled.Info
 import androidx.compose.material.icons.filled.Pause
 import androidx.compose.material.icons.filled.PlayArrow
@@ -189,6 +190,7 @@ import com.nuvio.tv.ui.util.localizeEpisodeTitle
 import com.nuvio.tv.data.local.InternalPlayerEngine
 import com.nuvio.tv.data.local.LibassRenderMode
 import com.nuvio.tv.data.local.PlayerControlButton
+import com.nuvio.tv.livetv.record.RecordingStorage
 import com.nuvio.tv.data.local.SubtitleStyleSettings
 import com.nuvio.tv.data.local.StreamAutoPlayMode
 import com.nuvio.tv.domain.model.StreamBadge
@@ -383,6 +385,7 @@ fun PlayerScreen(
     var reportCodeVisible by remember { mutableStateOf(false) }
     var exitDispatched by remember { mutableStateOf(false) }
     var externalHandoffInProgress by remember { mutableStateOf(false) }
+    var showVodDownloadDialog by remember { mutableStateOf(false) }
     val autoPlayEnabledForBack = playerBackTreatsSkipAsAutoPlay(
         streamAutoPlayMode = uiState.streamAutoPlayMode,
         preferBingeGroupForNextEpisode = uiState.streamAutoPlayPreferBingeGroupForNextEpisode
@@ -1196,6 +1199,22 @@ fun PlayerScreen(
         val playerSurfaceShape = RoundedCornerShape(postPlayRecommendationPlayerCornerRadius)
         val playerSurfaceIsFullscreen = !postPlayRecommendationState.isVisible &&
             postPlayRecommendationPlayerWidth >= 0.999f
+        if (showVodDownloadDialog) {
+            val destinations = remember(context) { RecordingStorage.choices(context) }
+            val smbConfigured = remember(context) { RecordingStorage.isSmbConfigured(context) }
+            VodDownloadDialog(
+                destinations = destinations,
+                supported = viewModel.currentVodDownloadSupported(),
+                smbConfigured = smbConfigured,
+                onDownload = { destinationId ->
+                    if (viewModel.startCurrentVodDownload(destinationId, permissionConfirmed = true)) {
+                        showVodDownloadDialog = false
+                    }
+                },
+                onDismiss = { showVodDownloadDialog = false }
+            )
+        }
+
         var subtitleControlsClearancePx by remember { mutableFloatStateOf(0f) }
         var progressBarSubtitleClearancePx by remember { mutableFloatStateOf(0f) }
         var controlsTitleRightPx by remember { mutableFloatStateOf(0f) }
@@ -1921,6 +1940,7 @@ fun PlayerScreen(
                 onYouTubePrevious = onYouTubePrevious,
                 onYouTubeNext = onYouTubeNext,
                 onShowSubtitleDialog = { viewModel.onEvent(PlayerEvent.OnShowSubtitleOverlay) },
+                onDownloadClick = { showVodDownloadDialog = true },
                 onShowSpeedDialog = { viewModel.onEvent(PlayerEvent.OnShowSpeedDialog) },
                 onToggleAspectRatio = {
                     Log.d("PlayerScreen", "onToggleAspectRatio called - dispatching event")
@@ -3191,6 +3211,7 @@ private fun PlayerControlsOverlay(
     onYouTubePrevious: (() -> Unit)?,
     onYouTubeNext: (() -> Unit)?,
     onShowSubtitleDialog: () -> Unit,
+    onDownloadClick: () -> Unit,
     onShowSpeedDialog: () -> Unit,
     onToggleAspectRatio: () -> Unit,
     onShowZoomDialog: () -> Unit,
@@ -3586,6 +3607,36 @@ private fun PlayerControlsOverlay(
                         onDownKey = onMainDown,
                         onFocused = onResetHideTimer
                     )
+
+                    val vodType = uiState.contentType?.lowercase()
+                    if (!isLivePlayback && !viewModel.isYouTubePlayback() && vodType in setOf("movie", "tv", "series", "episode", "cloud") &&
+                        PlayerControlButton.DOWNLOAD !in hiddenControls
+                    ) {
+                        ControlButton(
+                            icon = Icons.Default.Download,
+                            contentDescription = stringResource(R.string.vod_download_title),
+                            onClick = onDownloadClick,
+                            upFocusRequester = progressUpTarget,
+                            onDownKey = onMainDown,
+                            onFocused = onResetHideTimer
+                        )
+                    }
+
+                    // Live TV fork: loop the current movie or episode. Hidden for live streams and
+                    // for OneTube, which has its own loop button in its action row.
+                    if (!showYouTubeButton && !isLivePlayback && PlayerControlButton.REPEAT !in hiddenControls) {
+                        ControlButton(
+                            icon = if (uiState.repeatOne) Icons.Default.RepeatOne else Icons.Default.Repeat,
+                            contentDescription = stringResource(
+                                if (uiState.repeatOne) R.string.cd_repeat_video_stop else R.string.cd_repeat_video
+                            ),
+                            onClick = { viewModel.controller.toggleRepeatOne() },
+                            upFocusRequester = progressUpTarget,
+                            onDownKey = onMainDown,
+                            onFocused = onResetHideTimer,
+                            contentColor = if (uiState.repeatOne) Color(0xFFFF4D6A) else Color.White
+                        )
+                    }
 
                     if (showNextEpisodeButton && PlayerControlButton.NEXT_EPISODE !in hiddenControls) {
                         ControlButton(

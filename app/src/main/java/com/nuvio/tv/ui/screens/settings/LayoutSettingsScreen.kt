@@ -174,6 +174,7 @@ private fun LayoutSectionContent(
     when (section) {
         LayoutSection.HOME_LAYOUT -> LayoutHomeLayoutSection(uiState, onEvent)
         LayoutSection.HOME_CONTENT -> LayoutHomeContentSection(uiState, onEvent)
+        LayoutSection.HOME_ROWS -> LayoutHomeRowsSection()
         LayoutSection.SIDEBAR -> LayoutSidebarSection(uiState, onEvent)
         LayoutSection.CONTINUE_WATCHING -> LayoutContinueWatchingSection(uiState, onEvent)
         LayoutSection.FOCUSED_POSTER -> LayoutFocusedPosterSection(uiState, onEvent)

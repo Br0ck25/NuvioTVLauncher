@@ -795,6 +795,14 @@
     <string name="playback_visible_buttons_value">%1$d of %2$d</string>
     <string name="playback_buttons_dialog_title">Player Buttons</string>
     <string name="playback_buttons_dialog_sub">Choose the buttons to show. Play always stays visible.</string>
+    <string name="vod_download_title">Download video</string>
+    <string name="vod_download_supported">Choose where to save this direct video file. Downloads are limited to non-DRM file streams; adaptive playlists and protected sources are not supported.</string>
+    <string name="vod_download_unsupported">This source is not a supported direct video file. Adaptive playlists, DRM-protected sources, and restricted playback routes cannot be saved here.</string>
+    <string name="vod_download_permission_prompt">Confirm this source permits offline saving</string>
+    <string name="vod_download_permission_confirmed">✓ I confirm offline saving is permitted</string>
+    <string name="vod_download_smb_setup_required">Set up first</string>
+    <string name="vod_download_smb_setup_hint">Set it up in Settings → Live TV → Playback → Recordings → Set up SMB share.</string>
+    <string name="vod_download_action">Download</string>
     <string name="playback_skip_intro">Skip Intro</string>
     <string name="playback_skip_intro_sub">Use introdb.app to detect intros and recaps.</string>
     <string name="playback_parental_guide">Content Warnings</string>
@@ -1102,6 +1110,21 @@
     <string name="layout_modern_desc">Fixed hero with a single active row for faster browsing</string>
     <string name="layout_section_home">Home Layout</string>
     <string name="layout_section_home_desc">Choose structure and hero source.</string>
+    <string name="layout_tile_size">Tile Size</string>
+    <string name="appearance_section_scaling">Section scaling</string>
+    <string name="appearance_section_scaling_subtitle">Text and interface size for each section.</string>
+    <string name="appearance_scaling_section">Section</string>
+    <string name="appearance_scaling_section_subtitle">Choose the section to adjust.</string>
+    <string name="appearance_scaling_text">Text size</string>
+    <string name="appearance_scaling_interface">Interface size</string>
+    <string name="appearance_scaling_reset">Reset all sections</string>
+    <string name="appearance_scaling_low_ram_warning">This device has limited memory. Very small or very large interface sizes can use more memory; keep the size near 100% if the app feels slow.</string>
+    <string name="appearance_scaling_preview">Preview</string>
+    <string name="appearance_scaling_normal">Normal</string>
+    <string name="appearance_scaling_normal_detail" formatted="false">100% text · 100% interface</string>
+    <string name="appearance_scaling_preview_detail">%1$d%% text · %2$d%% interface</string>
+    <string name="cd_repeat_video">Repeat this video</string>
+    <string name="cd_repeat_video_stop">Stop repeating</string>
     <string name="layout_landscape_posters">Landscape Poster Mode</string>
     <string name="layout_landscape_posters_sub">Use landscape cards everywhere.</string>
     <string name="layout_preview_row">Show Preview Row</string>
@@ -1110,6 +1133,9 @@
     <string name="layout_hero_catalogs_sub">Select one or more catalogs for hero content.</string>
     <string name="layout_section_content">Home Content</string>
     <string name="layout_section_content_desc">Control what appears on home and search.</string>
+    <string name="layout_section_home_rows">Home Rows</string>
+    <string name="layout_section_home_rows_desc">Manage Live TV, Sports and On Demand rows.</string>
+    <string name="home_rows_settings_intro">Add and configure the Live TV, Sports and On Demand rows shown on Home. Change their position in Reorder Home Catalogs.</string>
     <string name="layout_section_sidebar">Sidebar &amp; Navigation</string>
     <string name="layout_section_sidebar_desc">Sidebar style and where Discover appears.</string>
     <string name="layout_section_card_depth_desc">Edge light and sheen on image cards.</string>

@@ -16,6 +16,8 @@ import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.heightIn
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.width
+import androidx.compose.foundation.rememberScrollState
+import androidx.compose.foundation.verticalScroll
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.getValue
@@ -55,6 +57,7 @@ fun NuvioDialog(
     containerCornerRadius: Dp = NuvioTheme.radii.xl,
     contentPadding: Dp = NuvioTheme.spacing.xl,
     contentSpacing: Dp = NuvioTheme.spacing.lg,
+    scrollContent: Boolean = false,
     backgroundContent: @Composable BoxScope.() -> Unit = {},
     content: @Composable ColumnScope.() -> Unit
 ) {
@@ -97,10 +100,15 @@ fun NuvioDialog(
                 }
         ) {
             backgroundContent()
+            val contentModifier = Modifier
+                .fillMaxWidth()
+                .padding(contentPadding)
             Column(
-                modifier = Modifier
-                    .fillMaxWidth()
-                    .padding(contentPadding),
+                modifier = if (scrollContent) {
+                    contentModifier.verticalScroll(rememberScrollState())
+                } else {
+                    contentModifier
+                },
                 verticalArrangement = Arrangement.spacedBy(contentSpacing)
             ) {
                 if (title.isNotBlank()) {

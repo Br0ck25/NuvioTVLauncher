@@ -83,6 +83,10 @@ internal fun GearPanel(
     isFavorite: Boolean,
     recording: Boolean,
     audioLabel: String,
+    /** Picture/sound offset for the channel on screen, in ms (positive = audio later). */
+    audioSyncMs: Int = 0,
+    onAudioSyncAdjust: (Int) -> Unit = {},
+    onAudioSyncReset: () -> Unit = {},
     captionsOn: Boolean,
     sizeLabel: String,
     /** Every screen size (Fit, Crop…) with whether it's the one on; shown on the Screen size page. */
@@ -202,9 +206,47 @@ internal fun GearPanel(
                     }
                     when (page) {
                         "audio" -> {
+                            GearRow(
+                                Modifier.fillMaxWidth().then(f(true)).onPreviewKeyEvent { e ->
+                                    if (e.type != androidx.compose.ui.input.key.KeyEventType.KeyDown) return@onPreviewKeyEvent false
+                                    val step = com.nuvio.tv.livetv.player.LiveTvAudioSync.stepForRepeat(e.nativeKeyEvent.repeatCount)
+                                    when (e.nativeKeyEvent.keyCode) {
+                                        android.view.KeyEvent.KEYCODE_DPAD_LEFT -> { onAudioSyncAdjust(-step); true }
+                                        android.view.KeyEvent.KEYCODE_DPAD_RIGHT -> { onAudioSyncAdjust(step); true }
+                                        else -> false
+                                    }
+                                },
+                                onClick = {}
+                            ) { focused ->
+                                LiveText(
+                                    stringResource(R.string.iptv_gear_audio_sync),
+                                    size = 13.sp,
+                                    weight = if (focused) FontWeight.Bold else FontWeight.Medium,
+                                    color = gearText(focused),
+                                    modifier = Modifier.weight(1f)
+                                )
+                                LiveText(
+                                    (if (focused) "◀  " else "") +
+                                        com.nuvio.tv.livetv.player.LiveTvAudioSync.format(audioSyncMs) +
+                                        (if (focused) "  ▶" else ""),
+                                    size = 12.sp,
+                                    weight = FontWeight.Bold,
+                                    color = gearText(focused, dim = !focused)
+                                )
+                            }
+                            if (audioSyncMs != 0) {
+                                GearRow(Modifier.fillMaxWidth(), onClick = onAudioSyncReset) { focused ->
+                                    LiveText(
+                                        stringResource(R.string.iptv_gear_audio_sync_reset),
+                                        size = 13.sp,
+                                        weight = if (focused) FontWeight.Bold else FontWeight.Medium,
+                                        color = gearText(focused),
+                                        modifier = Modifier.weight(1f)
+                                    )
+                                }
+                            }
                             if (audioOptions.isEmpty()) LiveText(stringResource(R.string.iptv_gear_no_tracks), size = 13.sp, color = Color.White.copy(alpha = 0.7f), modifier = Modifier.padding(10.dp))
-                            val at = audioOptions.indexOfFirst { it.selected }.coerceAtLeast(0)
-                            audioOptions.forEachIndexed { i, o -> choice(o.label, o.selected, i == at) { onPickAudio(o) } }
+                            audioOptions.forEachIndexed { i, o -> choice(o.label, o.selected, false) { onPickAudio(o) } }
                         }
                         "subs" -> {
                             subtitleNote?.let { LiveText(it, size = 12.sp, color = Color.White.copy(alpha = 0.7f), modifier = Modifier.padding(horizontal = 10.dp, vertical = 4.dp)) }

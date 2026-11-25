@@ -49,6 +49,7 @@ interface LoadingEntryPoint {
     fun onDemandRepository(): OnDemandRepository
     fun liveTvPlayback(): com.nuvio.tv.livetv.player.LiveTvPlaybackController
     fun liveTvPreferences(): com.nuvio.tv.livetv.data.LiveTvPreferences
+    fun profileManager(): com.nuvio.tv.core.profile.ProfileManager
 }
 
 /**
@@ -66,6 +67,7 @@ fun LiveTvLoadingHost(navController: NavController) {
     PauseLiveTvInBackground(entry.liveTvPlayback())
     val live by entry.liveTvRepository().status.collectAsState()
     val vod by entry.onDemandRepository().status.collectAsState()
+    val activeProfileId by entry.profileManager().activeProfileId.collectAsState()
     // Wait for the saved preference before showing progress, so an opted-out TV never flashes it.
     val showImportProgress by remember(entry) {
         entry.liveTvPreferences().settings.map { it.showImportProgress }.distinctUntilChanged()
@@ -127,7 +129,7 @@ fun LiveTvLoadingHost(navController: NavController) {
         LiveTvFullscreen.active.collect { hold.value = it }
     }
     val message = when {
-        live.loading && !live.quiet && !live.silent -> live.message ?: "Updating Live TV…"
+        live.profileId == activeProfileId && live.loading && !live.quiet && !live.silent -> live.message ?: "Updating Live TV…"
         vod.loading && !vod.silent -> vod.message ?: "Importing movies and series…"
         else -> null
     }
