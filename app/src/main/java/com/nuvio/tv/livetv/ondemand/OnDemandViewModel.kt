@@ -417,10 +417,180 @@ class OnDemandViewModel @Inject constructor(
 
     private val homeItems = java.util.concurrent.ConcurrentHashMap<String, List<VodItem>>()
     private val homeEnded = java.util.concurrent.ConcurrentHashMap.newKeySet<String>()
-    private val homeMatched = java.util.concurrent.ConcurrentHashMap<String, com.nuvio.tv.domain.model.MetaPreview>()
-    private val homeTried = java.util.concurrent.ConcurrentHashMap.newKeySet<String>()
+    private val homeMatched = BoundedHomeMap<com.nuvio.tv.domain.model.MetaPreview>(512, 1_048_576L, ::metaPreviewWeight)
+    private val homeTried = BoundedHomeSet(512)
     private var homeGroups: List<Pair<VodCategory, String>> = emptyList()
     private var homeEnrichJob: kotlinx.coroutines.Job? = null
+    private val homeRowKinds = ConcurrentHashMap<String, VodKind>()
+    private val homeRowRead = ConcurrentHashMap<String, Int>()
+    private val homeRowEnded = ConcurrentHashMap.newKeySet<String>()
+    private val homeRowLoading = ConcurrentHashMap.newKeySet<String>()
+    private var homeRowsJob: Job? = null
+    @Volatile private var homeRowSpecs: List<HomeScreenRowSpec> = emptyList()
+    private val _homeScreenRows = MutableStateFlow<Map<String, com.nuvio.tv.domain.model.CatalogRow>>(emptyMap())
+    val homeScreenRows: StateFlow<Map<String, com.nuvio.tv.domain.model.CatalogRow>> = _homeScreenRows
+    val catalogVersion: StateFlow<Int> = repository.version
+    private val continueAt = ConcurrentHashMap<String, com.nuvio.tv.domain.model.WatchProgress>()
+
+    data class HomeScreenRowSpec(
+        val rowId: String,
+        val source: String,
+        val limit: Int,
+        val name: String,
+        val wide: Boolean = false
+    )
+
+    val continueChanges: kotlinx.coroutines.flow.Flow<Int> = watchProgressRepository.allProgress
+        .map { progress -> progress.filter { VodHomeIds.uidOf(it.contentId) != null }.map { it.contentId to it.lastWatched }.hashCode() }
+        .distinctUntilChanged()
+
+    private fun homeScreenRowKey(id: String) = "homerow:$id"
+
+    fun loadHomeScreenRows(specs: List<HomeScreenRowSpec>) {
+        homeRowsJob?.cancel()
+        homeRowsJob = viewModelScope.launch {
+            val user = prefs.userState.first()
+            val settings = prefs.settings.first()
+            val categories = repository.categories(VodKind.MOVIE) + repository.categories(VodKind.SERIES)
+            val excluded = user.vodHiddenCategories + categories.filter { category ->
+                category.playlistId in user.hiddenPlaylists ||
+                    ParentalControls.isLocked("vod:${category.uid}", category.name, settings, user.lockedGroups)
+            }.map { it.uid }
+            val merge = settings.vodMergeDuplicates
+            homeItems.keys.filter { it.startsWith("homerow:") && specs.none { spec -> homeScreenRowKey(spec.rowId) == it } }
+                .forEach { homeItems.remove(it) }
+            for (spec in specs) {
+                val requested = if (spec.limit == 0) HOME_PAGE else spec.limit.coerceIn(1, 500)
+                val (kind, raw) = readHomeScreenRow(spec, 0, requested, user, settings, categories, excluded, merge)
+                val page = dedupe(emptyList(), raw)
+                primePosters(page)
+                homeItems[homeScreenRowKey(spec.rowId)] = page
+                homeRowRead[spec.rowId] = raw.size
+                if (spec.limit != 0 || raw.size < requested || spec.source == com.nuvio.tv.livetv.home.HomeLiveRow.VOD_CONTINUE) homeRowEnded += spec.rowId
+                else homeRowEnded -= spec.rowId
+                if (kind == null) homeRowKinds.remove(spec.rowId) else homeRowKinds[spec.rowId] = kind
+            }
+            homeRowSpecs = specs
+            publishHomeScreenRows()
+            val titles = specs.flatMap { homeItems[homeScreenRowKey(it.rowId)].orEmpty() }
+            enrichAll(titles)
+            publishHomeScreenRows()
+        }
+    }
+
+    private suspend fun readHomeScreenRow(
+        spec: HomeScreenRowSpec,
+        offset: Int,
+        size: Int,
+        user: LiveUserState,
+        settings: LiveTvSettings,
+        categories: List<VodCategory>,
+        excluded: Set<String>,
+        merge: Boolean
+    ): Pair<VodKind?, List<VodItem>> {
+        val recentKind = when (spec.source) {
+            "recent:movie" -> VodKind.MOVIE
+            "recent:series" -> VodKind.SERIES
+            else -> null
+        }
+        if (spec.source == com.nuvio.tv.livetv.home.HomeLiveRow.VOD_CONTINUE) {
+            if (offset > 0) return null to emptyList()
+            val started = continueWatching(user, settings, if (spec.limit == 0) 200 else spec.limit)
+            return (started.firstOrNull()?.kind ?: VodKind.MOVIE) to started
+        }
+        if (recentKind != null) {
+            return recentKind to repository.items(recentKind, null, excluded, true, size, offset, VodSort.DEFAULT, merge = merge)
+        }
+        val uid = spec.source.removePrefix(com.nuvio.tv.livetv.home.HomeLiveRow.VOD_GROUP_PREFIX)
+        val category = categories.firstOrNull { it.uid == uid }
+        if (category == null || category.uid in excluded) return null to emptyList()
+        val sort = VodSort.parse(user.vodSorts[category.uid]) ?: VodSort.parse(settings.vodDefaultSort) ?: (VodSort.DEFAULT to 1L)
+        return category.kind to repository.items(category.kind, category, emptySet(), false, size, offset, sort.first, merge = merge, seed = sort.second)
+    }
+
+    private suspend fun continueWatching(user: LiveUserState, settings: LiveTvSettings, limit: Int): List<VodItem> {
+        val progress = runCatching { watchProgressRepository.allProgress.first() }.getOrDefault(emptyList())
+            .asSequence()
+            .filter { VodHomeIds.uidOf(it.contentId) != null }
+            .filter { it.duration <= 0L || it.position < it.duration * 0.92 }
+            .filter { it.position > 0L || (it.progressPercent ?: 0f) > 0f }
+            .sortedByDescending { it.lastWatched }
+            .distinctBy { it.contentId }
+            .toList()
+        continueAt.clear()
+        val result = ArrayList<VodItem>()
+        for (place in progress) {
+            if (result.size >= limit) break
+            val uid = VodHomeIds.uidOf(place.contentId) ?: continue
+            val item = repository.itemByUid(uid) ?: continue
+            val categoryUid = "${item.kind.key}:${item.playlistId}:${item.categoryId}"
+            if (categoryUid in user.vodHiddenCategories) continue
+            val categoryName = categoriesName(item)
+            if (ParentalControls.isLocked("vod:$categoryUid", categoryName, settings, user.lockedGroups)) continue
+            if (repository.isAdult(item)) continue
+            continueAt[item.uid] = place
+            result += item
+        }
+        return result
+    }
+
+    private suspend fun categoriesName(item: VodItem): String = runCatching {
+        repository.categories(item.kind).firstOrNull { it.uid == "${item.kind.key}:${item.playlistId}:${item.categoryId}" }?.name
+    }.getOrNull().orEmpty()
+
+    fun continueTarget(metaId: String): Pair<VodItem, com.nuvio.tv.domain.model.WatchProgress>? {
+        if (!VodHomeIds.isContinue(metaId)) return null
+        val item = homeItem(metaId) ?: return null
+        return continueAt[item.uid]?.let { item to it }
+    }
+
+    fun loadMoreHomeScreenRow(catalogId: String) {
+        val id = catalogId.removePrefix("home:")
+        val spec = homeRowSpecs.firstOrNull { it.rowId == id } ?: return
+        if (spec.limit != 0 || id in homeRowEnded || !homeRowLoading.add(id)) return
+        viewModelScope.launch {
+            try {
+                val user = prefs.userState.first()
+                val settings = prefs.settings.first()
+                val categories = repository.categories(VodKind.MOVIE) + repository.categories(VodKind.SERIES)
+                val excluded = user.vodHiddenCategories + categories.filter { category ->
+                    category.playlistId in user.hiddenPlaylists || ParentalControls.isLocked("vod:${category.uid}", category.name, settings, user.lockedGroups)
+                }.map { it.uid }
+                val key = homeScreenRowKey(id)
+                val have = homeItems[key].orEmpty()
+                var offset = homeRowRead[id] ?: have.size
+                val (_, raw) = readHomeScreenRow(spec, offset, HOME_PAGE, user, settings, categories, excluded, settings.vodMergeDuplicates)
+                offset += raw.size
+                homeRowRead[id] = offset
+                if (raw.size < HOME_PAGE) homeRowEnded += id
+                val more = dedupe(have, raw)
+                primePosters(more)
+                homeItems[key] = have + more
+                publishHomeScreenRows()
+                enrichAll(more)
+            } finally { homeRowLoading.remove(id) }
+        }
+    }
+
+    private suspend fun publishHomeScreenRows() {
+        val specs = homeRowSpecs
+        _homeScreenRows.value = kotlinx.coroutines.withContext(kotlinx.coroutines.Dispatchers.Default) {
+            specs.mapNotNull { spec ->
+                val items = homeItems[homeScreenRowKey(spec.rowId)].orEmpty()
+                val kind = homeRowKinds[spec.rowId] ?: return@mapNotNull null
+                if (items.isEmpty()) return@mapNotNull null
+                spec.rowId to VodHomeIds.row(
+                    uid = "home:${spec.rowId}", name = spec.name, kind = kind,
+                    items = items.map { item ->
+                        VodHomeIds.toMeta(item, homeMatched[item.uid], posters[item.uid], names[item.uid] ?: OnDemandDatabase.displayTitle(item.name))
+                            .let { if (spec.source == com.nuvio.tv.livetv.home.HomeLiveRow.VOD_CONTINUE) it.copy(id = VodHomeIds.continueMetaId(item.uid)) else it }
+                    },
+                    hasMore = spec.limit == 0 && spec.rowId !in homeRowEnded,
+                    page = (items.size + HOME_PAGE - 1) / HOME_PAGE
+                ).let { it.copy(supportsSkip = it.hasMore) }
+            }.toMap()
+        }
+    }
     private var homeLoadJob: kotlinx.coroutines.Job? = null
     /** Catalog version the displayed home rows were built from; -1 before the first build. */
     private var homeVersion: Int = -1
@@ -634,6 +804,7 @@ class OnDemandViewModel @Inject constructor(
     private suspend fun updateHomeRows() {
         val rows = buildHomeRows()
         _home.value = _home.value.copy(rows = rows)
+        if (homeRowSpecs.isNotEmpty()) publishHomeScreenRows()
     }
 
     /**
@@ -690,9 +861,11 @@ class OnDemandViewModel @Inject constructor(
     }
 
     /** Titles whose full details (clear logo etc.) were already fetched. */
-    private val homeDetailed = java.util.concurrent.ConcurrentHashMap.newKeySet<String>()
+    private val homeDetailed = BoundedHomeSet(512)
     /** Each match's addon and type, to fetch its full details. */
-    private val homeHits = java.util.concurrent.ConcurrentHashMap<String, com.nuvio.tv.livetv.data.LiveTvPosterResolver.Hit>()
+    private val homeHits = BoundedHomeMap<com.nuvio.tv.livetv.data.LiveTvPosterResolver.Hit>(512, 1_048_576L) {
+        metaPreviewWeight(it.meta) + it.addonBaseUrl.length + it.type.length
+    }
 
     /**
      * The title's full details from your addons, the way Home gets them for its hero: search

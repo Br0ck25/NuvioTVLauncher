@@ -4,6 +4,7 @@ import android.app.Activity
 import android.content.Context
 import android.content.ContextWrapper
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.collectAsState
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableIntStateOf
@@ -11,7 +12,10 @@ import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.platform.LocalContext
+import androidx.hilt.navigation.compose.hiltViewModel
 import com.nuvio.tv.core.player.DeviceCapabilities
+import com.nuvio.tv.core.player.LastPlaybackDiagnostics
+import com.nuvio.tv.ui.screens.player.AudioOutputRouteDetector
 import com.nuvio.tv.data.local.AudioOutputChannels
 import com.nuvio.tv.data.local.FrameRateMatchingMode
 import com.nuvio.tv.data.local.PlayerSettings
@@ -25,13 +29,15 @@ import kotlinx.coroutines.withContext
 @Composable
 internal fun PlaybackCapabilitySection(
     settings: PlayerSettings,
-    onUpdate: PlaybackSettingsUpdate
+    onUpdate: PlaybackSettingsUpdate,
+    viewModel: PlaybackSettingsViewModel = hiltViewModel()
 ) {
     val context = LocalContext.current
     val activity = remember(context) { context.findActivity() }
     var generation by remember { mutableIntStateOf(0) }
     var report by remember { mutableStateOf<DeviceCapabilities.Report?>(null) }
     var checking by remember { mutableStateOf(true) }
+    val lastPlayback by viewModel.lastPlaybackDiagnostics.collectAsState(initial = LastPlaybackDiagnostics.EMPTY)
 
     LaunchedEffect(activity, generation) {
         checking = true
@@ -43,6 +49,9 @@ internal fun PlaybackCapabilitySection(
     }
 
     val current = report
+    val activeAudioRoute = remember(current, generation) {
+        AudioOutputRouteDetector.detect(context)
+    }
     SettingsSectionLabel(text = "This device")
     SettingsNote(
         text = "Checked on this TV. The hardware's claims are a guide, not a guarantee: " +
@@ -107,18 +116,51 @@ internal fun PlaybackCapabilitySection(
         )
         SettingsActionRow(
             title = "Audio passthrough",
-            subtitle = "Bitstream formats the current output reports it can carry to a receiver.",
-            value = current.passthroughLabels.takeIf { it.isNotEmpty() }?.joinToString(", ")
-                ?: "None reported",
+            subtitle = if (activeAudioRoute?.isBluetooth == true) {
+                "Bluetooth media output is PCM-only; encoded surround passthrough is not available on this route."
+            } else {
+                "Bitstream formats the current output reports it can carry to a receiver."
+            },
+            value = if (activeAudioRoute?.isBluetooth == true) {
+                "PCM only"
+            } else {
+                current.passthroughLabels.takeIf { it.isNotEmpty() }?.joinToString(", ") ?: "None reported"
+            },
             onClick = { generation++ }
         )
         SettingsActionRow(
             title = "Audio output",
-            subtitle = outputDetail(current),
-            value = current.audioOutputs.firstOrNull()?.typeName ?: "No output reported",
+            subtitle = buildString {
+                activeAudioRoute?.let { append("Active media route: ${it.label}. ") }
+                append(outputDetail(current))
+            },
+            value = activeAudioRoute?.label ?: current.audioOutputs.firstOrNull()?.typeName ?: "No output reported",
             onClick = { generation++ }
         )
         SettingsNote(text = "Tap any row to check again after changing a TV or receiver setting.")
+
+        SettingsSectionLabel(text = "Recent playback")
+        if (lastPlayback.timestampMs == 0L || lastPlayback.host.isBlank()) {
+            SettingsNote(text = "No playback diagnostics yet. Play a video to capture startup and buffering details.")
+        } else {
+            SettingsNote(
+                text = buildString {
+                    append(lastPlayback.result)
+                    append(" · ")
+                    append(lastPlayback.host)
+                    lastPlayback.videoResolution?.let { append(" · "); append(it) }
+                    lastPlayback.videoCodec?.let { append(" · "); append(it) }
+                }
+            )
+            SettingsNote(
+                text = buildString {
+                    append("First frame: ")
+                    append(if (lastPlayback.firstFrameMs >= 0) "${lastPlayback.firstFrameMs} ms" else "not rendered")
+                    append(" · Rebuffers: ${lastPlayback.rebufferCount} (${lastPlayback.rebufferTotalMs} ms)")
+                }
+            )
+            SettingsNote(text = "Detailed playback diagnostics remain available under Advanced settings.")
+        }
 
         val suggestions = capabilitySuggestions(current, settings)
         SettingsSectionLabel(text = "Suggested settings")

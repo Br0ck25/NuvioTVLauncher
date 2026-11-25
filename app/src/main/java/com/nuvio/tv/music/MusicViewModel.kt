@@ -21,6 +21,7 @@ import kotlinx.coroutines.delay
 import kotlinx.coroutines.flow.MutableStateFlow
 import androidx.annotation.StringRes
 import com.nuvio.tv.R
+import com.nuvio.tv.core.profile.ProfileManager
 import com.nuvio.tv.core.util.withAppLocale
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.asStateFlow
@@ -169,7 +170,8 @@ data class MusicUiState(
 
 @HiltViewModel
 class MusicViewModel @Inject constructor(
-    @ApplicationContext private val context: Context
+    @ApplicationContext private val context: Context,
+    private val profileManager: ProfileManager,
 ) : ViewModel() {
     private companion object {
         const val TAG = "MusicVM"
@@ -197,6 +199,10 @@ class MusicViewModel @Inject constructor(
     init {
         MusicAccountRepository.init(context)
         MusicAddonRegistry.init(context)
+        MusicHomeRows.init(context)
+        viewModelScope.launch {
+            profileManager.activeProfileId.collectLatest { MusicHomeRows.useProfile(it) }
+        }
         viewModelScope.launch {
             // Show the last feed at once; the network refresh replaces it when it arrives.
             val cached = withContext(Dispatchers.IO) { MusicFeedCache.load(context) }

@@ -42,6 +42,7 @@ import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.State
 import androidx.compose.runtime.derivedStateOf
 import androidx.compose.runtime.getValue
+import androidx.compose.runtime.collectAsState
 import androidx.compose.runtime.mutableIntStateOf
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.key
@@ -501,6 +502,7 @@ internal fun ModernRowSection(
     @Suppress("NAME_SHADOWING") val loadMoreRequestedTotals = loadMoreRequestedTotals.value
     @Suppress("NAME_SHADOWING") val itemFocusRequesters = itemFocusRequesters.value
     val rowKey = row.key
+    val newUpcomingRow by com.nuvio.tv.livetv.calendar.CalendarHomeFeed.newUpcomingRowFlow.collectAsState()
 
     // Per-row derived state: only invalidates when THIS row's focused index
     // changes, not when any other row's index changes in the shared map.
@@ -703,18 +705,21 @@ internal fun ModernRowSection(
             continueWatchingCardWidth,
             continueWatchingCardHeight,
             useEpisodeThumbnails,
-            blurUnwatchedEpisodes
+            blurUnwatchedEpisodes,
+            newUpcomingRow
         ) {
             if (!isActiveRow() || isVerticalRowsScrollingState.value) return@LaunchedEffect
             delay(150) // Wait before spamming image requests to survive rapid vertical D-pad scrolls!
-            val isUpcomingRow = row.key == MODERN_UPCOMING_ROW_KEY
+            val isUpcomingRow = row.key == MODERN_UPCOMING_ROW_KEY && newUpcomingRow
             val cwWidthPx = with(density) {
                 continueWatchingArtworkWidth(
                     continueWatchingCardStyle, continueWatchingCardWidth, continueWatchingCardHeight, isUpcomingRow
                 ).roundToPx()
             }
             val cwHeightPx = with(density) {
-                continueWatchingArtworkHeight(continueWatchingCardHeight, isUpcomingRow).roundToPx()
+                com.nuvio.tv.ui.components.continueWatchingArtworkHeight(
+                    continueWatchingCardHeight, isUpcomingRow
+                ).roundToPx()
             }
             fun imageUrlAndKey(item: ModernCarouselItem): Pair<String, MemoryCache.Key>? {
                 return when (val payload = item.payload) {
@@ -1100,28 +1105,23 @@ internal fun ModernRowSection(
                             }
                         }
                         is ModernPayload.ContinueWatching -> {
-                            val isUpcoming = row.key == MODERN_UPCOMING_ROW_KEY
+                            val isUpcoming = row.key == MODERN_UPCOMING_ROW_KEY && newUpcomingRow
                             ModernContinueWatchingRowItem(
                                 payload = payload,
                                 requester = requester,
                                 isTargetItem = isTargetItem,
-                                cardWidth = if (isUpcoming) UPCOMING_SCHEDULE_CARD_WIDTH else continueWatchingCardWidth,
+                                cardWidth = if (isUpcoming) {
+                                    com.nuvio.tv.ui.components.UPCOMING_SCHEDULE_CARD_WIDTH
+                                } else {
+                                    continueWatchingCardWidth
+                                },
                                 imageHeight = continueWatchingCardHeight,
                                 blurUnwatchedEpisodes = blurUnwatchedEpisodes,
                                 useEpisodeThumbnails = useEpisodeThumbnails,
                                 continueWatchingCardStyle = continueWatchingCardStyle,
                                 continueWatchingCornerRadius = continueWatchingCornerRadius,
                                 onFocused = onFocused,
-                                // An upcoming episode isn't out yet, so selecting it shows its details instead of playing.
-                                onContinueWatchingClick = if (isUpcoming) {
-                                    { item ->
-                                        val (id, type) = when (item) {
-                                            is ContinueWatchingItem.InProgress -> item.progress.contentId to item.progress.contentType
-                                            is ContinueWatchingItem.NextUp -> item.info.contentId to item.info.contentType
-                                        }
-                                        onNavigateToDetail(id, type, "")
-                                    }
-                                } else onContinueWatchingClick,
+                                onContinueWatchingClick = onContinueWatchingClick,
                                 onShowOptions = onShowOptionsForRow,
                                 isUpcomingCard = isUpcoming
                             )

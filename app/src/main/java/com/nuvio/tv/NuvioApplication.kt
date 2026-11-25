@@ -95,6 +95,7 @@ class NuvioApplication : Application(), SingletonImageLoader.Factory {
         // Before super.onCreate(): Hilt creates injected services there, and the budget is read once.
         com.nuvio.tv.core.launcher.StartupTiming.mark(this, "Application.onCreate start")
         MemoryBudget.init(this)
+        com.nuvio.tv.core.player.PlaybackDeviceSupport.init(this)
         super.onCreate()
         com.nuvio.tv.core.launcher.StartupTiming.mark(this, "dependency graph ready (super.onCreate)")
         PluginRuntimeHooks.onApplicationCreate(this)

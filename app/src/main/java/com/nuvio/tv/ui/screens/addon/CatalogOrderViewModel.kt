@@ -39,7 +39,8 @@ class CatalogOrderViewModel @Inject constructor(
     private val collectionsDataStore: CollectionsDataStore,
     private val layoutPreferenceDataStore: LayoutPreferenceDataStore,
     private val homeCatalogSettingsSyncService: HomeCatalogSettingsSyncService,
-    private val serverCatalog: ServerCatalog
+    private val serverCatalog: ServerCatalog,
+    private val homeLiveRows: com.nuvio.tv.livetv.home.HomeLiveRows
 ) : ViewModel() {
 
     private val _uiState = MutableStateFlow(CatalogOrderUiState())
@@ -196,7 +197,7 @@ class CatalogOrderViewModel @Inject constructor(
         firstUnpinnedIndex: Int,
         followAddonsOrder: Boolean,
     ): CatalogOrderItem {
-        val isCollection = key.startsWith("collection_")
+        val isCollection = key.isMovableKey()
         val canMoveUp: Boolean
         val canMoveDown: Boolean
         if (isPinnedToTop) {
@@ -250,7 +251,7 @@ class CatalogOrderViewModel @Inject constructor(
         key: String,
         direction: Int,
     ): List<String>? {
-        if (!key.startsWith("collection_")) return null
+        if (!key.isMovableKey()) return null
         val pinnedKeys = pinnedItemKeys()
         if (key in pinnedKeys) return null
         val items = _uiState.value.items
@@ -260,13 +261,13 @@ class CatalogOrderViewModel @Inject constructor(
         val newIndex: Int
         if (direction < 0) {
             var scanIdx = currentIndex - 1
-            while (scanIdx >= 0 && draft[scanIdx].startsWith("collection_")) {
+            while (scanIdx >= 0 && draft[scanIdx].isMovableKey()) {
                 scanIdx--
             }
             if (scanIdx < 0) return null
             val targetAddonId = items.firstOrNull { it.key == draft[scanIdx] }?.addonId
                 ?: return null
-            while (scanIdx > 0 && !draft[scanIdx - 1].startsWith("collection_") &&
+            while (scanIdx > 0 && !draft[scanIdx - 1].isMovableKey() &&
                 items.firstOrNull { it.key == draft[scanIdx - 1] }?.addonId == targetAddonId
             ) {
                 scanIdx--
@@ -274,13 +275,13 @@ class CatalogOrderViewModel @Inject constructor(
             newIndex = scanIdx
         } else {
             var scanIdx = currentIndex + 1
-            while (scanIdx < draft.size && draft[scanIdx].startsWith("collection_")) {
+            while (scanIdx < draft.size && draft[scanIdx].isMovableKey()) {
                 scanIdx++
             }
             if (scanIdx >= draft.size) return null
             val targetAddonId = items.firstOrNull { it.key == draft[scanIdx] }?.addonId
                 ?: return null
-            while (scanIdx < draft.lastIndex && !draft[scanIdx + 1].startsWith("collection_") &&
+            while (scanIdx < draft.lastIndex && !draft[scanIdx + 1].isMovableKey() &&
                 items.firstOrNull { it.key == draft[scanIdx + 1] }?.addonId == targetAddonId
             ) {
                 scanIdx++
@@ -330,7 +331,7 @@ class CatalogOrderViewModel @Inject constructor(
         if (addonKeys.isEmpty()) return pinnedItems + unpinnedItems
         val collectionKeys = unpinnedItems.asSequence()
             .map { it.key }
-            .filter { it.startsWith("collection_") }
+            .filter { it.isMovableKey() }
             .toSet()
         val orderedKeys = computeFollowAddonsOrderKeys(
             addonKeys = addonKeys,
@@ -370,6 +371,8 @@ class CatalogOrderViewModel @Inject constructor(
                 layoutPreferenceDataStore.disabledHomeCatalogKeys,
                 layoutPreferenceDataStore.customCatalogTitles,
                 layoutPreferenceDataStore.followAddonsOrder,
+                homeLiveRows.rows,
+                homeLiveRows.names,
             ) { values ->
                 @Suppress("UNCHECKED_CAST")
                 val addons = values[0] as List<Addon>
@@ -382,6 +385,10 @@ class CatalogOrderViewModel @Inject constructor(
                 @Suppress("UNCHECKED_CAST")
                 val customTitles = values[4] as Map<String, String>
                 val followAddons = values[5] as Boolean
+                @Suppress("UNCHECKED_CAST")
+                val homeRows = values[6] as List<com.nuvio.tv.livetv.home.HomeLiveRow>
+                @Suppress("UNCHECKED_CAST")
+                val homeRowNames = values[7] as Map<String, String>
                 persistedDisabledKeys = disabledKeys
 
                 val items = buildOrderedCatalogItems(
@@ -390,7 +397,9 @@ class CatalogOrderViewModel @Inject constructor(
                     savedOrderKeys = savedOrderKeys,
                     disabledKeys = disabledKeys,
                     customTitles = customTitles,
-                    followAddonsOrder = followAddons
+                    followAddonsOrder = followAddons,
+                    homeRows = homeRows,
+                    homeRowNames = homeRowNames
                 )
                 Triple(items, followAddons, savedOrderKeys)
             }.collectLatest { (orderedItems, followAddons, diskOrderKeys) ->
@@ -443,7 +452,9 @@ class CatalogOrderViewModel @Inject constructor(
         savedOrderKeys: List<String>,
         disabledKeys: Set<String>,
         customTitles: Map<String, String> = emptyMap(),
-        followAddonsOrder: Boolean = false
+        followAddonsOrder: Boolean = false,
+        homeRows: List<com.nuvio.tv.livetv.home.HomeLiveRow> = emptyList(),
+        homeRowNames: Map<String, String> = emptyMap()
     ): List<CatalogOrderItem> {
         val defaultEntries = buildDefaultCatalogEntries(addons)
         // Launcher: the Apps row is listed like a collection, so it can be moved and turned off here.
@@ -462,6 +473,15 @@ class CatalogOrderViewModel @Inject constructor(
                 addonName = "${collection.folders.size} folder${if (collection.folders.size != 1) "s" else ""}",
                 typeLabel = "collection",
                 isPinnedToTop = collection.pinToTop
+            )
+        } + homeRows.map { row ->
+            CatalogOrderEntry(
+                key = row.key,
+                disableKey = row.key,
+                catalogName = homeRowNames[row.id] ?: row.title.ifBlank { row.source },
+                addonName = "Home row",
+                typeLabel = "home_row",
+                liveRow = row
             )
         }
         val pinnedEntries = collectionEntries.filter { it.isPinnedToTop }
@@ -511,7 +531,7 @@ class CatalogOrderViewModel @Inject constructor(
         return effectiveOrder.mapIndexedNotNull { index, key ->
             val entry = availableMap[key] ?: return@mapIndexedNotNull null
             val displayName = customTitles[key]?.takeIf { it.isNotBlank() } ?: entry.catalogName
-            val isCollection = key.startsWith("collection_")
+            val isCollection = key.isMovableKey()
 
             val canMoveUp: Boolean
             val canMoveDown: Boolean
@@ -543,7 +563,8 @@ class CatalogOrderViewModel @Inject constructor(
                 isPinnedToTop = entry.isPinnedToTop,
                 canMoveUp = canMoveUp,
                 canMoveDown = canMoveDown,
-                canMove = canMoveUp || canMoveDown
+                canMove = canMoveUp || canMoveDown,
+                liveRow = entry.liveRow
             )
         }
     }
@@ -607,7 +628,7 @@ class CatalogOrderViewModel @Inject constructor(
             var i = 0
             while (i < result.size) {
                 val key = result[i]
-                if (!key.startsWith("collection_")) {
+                if (!key.isMovableKey()) {
                     i++
                     continue
                 }
@@ -617,7 +638,7 @@ class CatalogOrderViewModel @Inject constructor(
                     result.removeAt(i)
                     var insertPos = i
                     while (insertPos < result.size &&
-                        !result[insertPos].startsWith("collection_") &&
+                        !result[insertPos].isMovableKey() &&
                         addonIdForKey(result[insertPos]) == prevAddonId
                     ) {
                         insertPos++
@@ -639,7 +660,7 @@ class CatalogOrderViewModel @Inject constructor(
         addonIdForKey: (String) -> String?
     ): String? {
         for (j in index - 1 downTo 0) {
-            if (!order[j].startsWith("collection_")) {
+            if (!order[j].isMovableKey()) {
                 return addonIdForKey(order[j])
             }
         }
@@ -652,7 +673,7 @@ class CatalogOrderViewModel @Inject constructor(
         addonIdForKey: (String) -> String?
     ): String? {
         for (j in index + 1 until order.size) {
-            if (!order[j].startsWith("collection_")) {
+            if (!order[j].isMovableKey()) {
                 return addonIdForKey(order[j])
             }
         }
@@ -724,6 +745,7 @@ data class CatalogOrderItem(
     val canMoveUp: Boolean,
     val canMoveDown: Boolean,
     val canMove: Boolean,
+    val liveRow: com.nuvio.tv.livetv.home.HomeLiveRow? = null,
 )
 
 private data class CatalogOrderEntry(
@@ -734,5 +756,9 @@ private data class CatalogOrderEntry(
     val addonName: String,
     val addonId: String = "",
     val typeLabel: String,
-    val isPinnedToTop: Boolean = false
+    val isPinnedToTop: Boolean = false,
+    val liveRow: com.nuvio.tv.livetv.home.HomeLiveRow? = null
 )
+
+private fun String.isMovableKey(): Boolean =
+    startsWith("collection_") || com.nuvio.tv.livetv.home.isLiveHomeRowKey(this)

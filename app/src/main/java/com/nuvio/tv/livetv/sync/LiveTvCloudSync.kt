@@ -191,6 +191,36 @@ class LiveTvCloudSync @Inject constructor(
         }
     }
 
+    /** Creates a short-lived code for moving the active secondary profile's Live TV setup. */
+    suspend fun createProfileTransferCode(): Result<Pair<String, Long>> = runCatching {
+        mutex.withLock {
+            val uid = userId ?: error("Sign in to Nuvio to create a transfer code")
+            val profileId = prefs.activeProfileId
+            require(profileId > 1) { "Only a secondary profile can be transferred" }
+            check(isEnabled(uid)) { "Set up Live TV sync from the primary profile first" }
+            reconcileAndReport(uid)
+            val reply = call("POST", "/v1/profile-transfer", JSONObject().put("profileIndex", profileId))
+            if (reply.code != 200) error(reply.json?.optString("error")?.takeIf(String::isNotBlank) ?: failText(reply.code))
+            val code = reply.json?.optString("code")?.takeIf(String::isNotBlank) ?: error("The sync service returned no transfer code")
+            code to (reply.json?.optLong("expiresAt") ?: 0L)
+        }
+    }
+
+    /** Claims a transfer into the signed-in account's primary Live TV setup. */
+    suspend fun claimProfileTransferCode(code: String): Result<Unit> = runCatching {
+        mutex.withLock {
+            val uid = userId ?: error("Sign in to the receiving Nuvio account first")
+            require(prefs.activeProfileId == 1) { "Redeem the transfer from the receiving account's primary profile" }
+            val reply = call("POST", "/v1/profile-transfer/claim", JSONObject().put("code", code.trim()).put("profileIndex", 1))
+            if (reply.code != 200) error(reply.json?.optString("error")?.takeIf(String::isNotBlank) ?: failText(reply.code))
+            val data = reply.json?.optJSONObject("data") ?: error("The sync service returned no transferred setup")
+            applyShared(data)
+            setEnabled(uid, true)
+            saved(uid, data, emptySet())
+            _state.value = _state.value.copy(enabled = true, message = "Live TV setup transferred", lastSyncMs = System.currentTimeMillis())
+        }
+    }
+
     /** "Turn On" in settings: the same as accepting the question. */
     fun turnOn() {
         scope.launch {
@@ -272,12 +302,13 @@ class LiveTvCloudSync @Inject constructor(
                 }
                 _state.value = _state.value.copy(busy = true, message = null)
                 val result = runCatching {
+                    val listKey = prefs.playlistsSyncKey(prefs.activeProfileId)
                     val current = fetch()
                     if (current is Remote.Failed) error(failText(current.code))
                     val currentData = (current as? Remote.Found)?.data
                     val previousData = fetchPrevious()
                     val cloud = listOfNotNull(currentData, previousData).flatMap { data ->
-                        prefs.decodePlaylists(data.optJSONObject("playlists")?.optString("v"))
+                        prefs.decodePlaylists(data.optJSONObject(listKey)?.optString("v"))
                     }
                     PlaylistRecovery.missing(cloud, prefs.currentPlaylists()).map { source ->
                         RecoverablePlaylist(
@@ -305,16 +336,16 @@ class LiveTvCloudSync @Inject constructor(
                 if (playlists.isEmpty()) return@withLock Result.success(0)
                 _state.value = _state.value.copy(busy = true, message = null)
                 val result = runCatching {
+                    val listKey = prefs.playlistsSyncKey(prefs.activeProfileId)
                     val current = fetch()
                     val revision = (current as? Remote.Found)?.revision ?: 0
                     val local = prefs.exportForSync()
-                    val localPlaylists =
-                        prefs.decodePlaylists(local.optJSONObject("playlists")?.optString("v"))
+                    val localPlaylists = prefs.decodePlaylists(local.optJSONObject(listKey)?.optString("v"))
                     val add = PlaylistRecovery.missing(playlists, localPlaylists)
                     if (add.isEmpty()) return@runCatching 0
                     val merged = localPlaylists + add
                     local.put(
-                        "playlists",
+                        listKey,
                         JSONObject().put("t", "str").put("v", prefs.encodePlaylists(merged))
                     )
                     applyShared(local)

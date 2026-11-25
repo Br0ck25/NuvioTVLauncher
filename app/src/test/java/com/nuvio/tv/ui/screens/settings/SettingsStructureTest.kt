@@ -50,6 +50,7 @@ class SettingsStructureTest {
             listOf(
                 LayoutSection.HOME_LAYOUT,
                 LayoutSection.HOME_CONTENT,
+                LayoutSection.HOME_ROWS,
                 LayoutSection.SIDEBAR,
                 LayoutSection.CONTINUE_WATCHING,
                 LayoutSection.FOCUSED_POSTER,

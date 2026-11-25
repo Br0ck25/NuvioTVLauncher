@@ -2,6 +2,7 @@ package com.nuvio.tv.data.trailer
 
 import android.util.Log
 import com.nuvio.tv.core.player.TrailerVideoPolicy
+import com.nuvio.tv.core.cache.BoundedMemoryCache
 import com.nuvio.tv.core.tmdb.TmdbService
 import com.nuvio.tv.data.local.TmdbSettingsDataStore
 import com.nuvio.tv.data.local.TrailerSettingsDataStore
@@ -64,10 +65,10 @@ class TrailerService(
 
     // Cache: "title|year|tmdbId|type|maxHeight" -> trailer playback source (NEGATIVE_CACHE sentinel for misses).
     // The height is part of the key so toggling 4K trailers takes effect without a restart.
-    private val cache = ConcurrentHashMap<String, TrailerPlaybackSource>()
+    private val cache = BoundedMemoryCache<String, TrailerPlaybackSource>(256)
     private val NEGATIVE_CACHE = TrailerPlaybackSource(videoUrl = "")
     // Time-bound cache: youtubeVideoId -> resolved playback source (success-only)
-    private val youtubeSourceCache = ConcurrentHashMap<String, CachedTrailerPlaybackSource>()
+    private val youtubeSourceCache = BoundedMemoryCache<String, CachedTrailerPlaybackSource>(256)
     // Extractions running right now, by the same key as youtubeSourceCache
     private val inFlightYoutubeSources = ConcurrentHashMap<String, CompletableDeferred<TrailerPlaybackSource?>>()
 

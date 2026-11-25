@@ -126,7 +126,8 @@ val ContinueWatchingItem.shuffleFocusKey: String?
     }
 
 fun ContinueWatchingClickAction.opensDetails(item: ContinueWatchingItem): Boolean = when (this) {
-    ContinueWatchingClickAction.STREAM -> false
+    // An episode that has not aired cannot play; open its details instead.
+    ContinueWatchingClickAction.STREAM -> item is ContinueWatchingItem.NextUp && !item.info.hasAired
     ContinueWatchingClickAction.DETAILS -> true
     ContinueWatchingClickAction.DETAILS_FOR_UPCOMING -> item is ContinueWatchingItem.NextUp && !item.info.hasAired
 }
@@ -174,9 +175,9 @@ sealed class HomeRow {
     @Immutable
     data class CollectionRow(val collection: Collection) : HomeRow()
 
-    /** Launcher: the installed apps, placed like any other row. */
+    /** Live TV, Sports, or On Demand row configured independently from addon catalogs. */
     @Immutable
-    data class InstalledApps(val apps: List<com.nuvio.tv.core.apps.InstalledApp>) : HomeRow()
+    data class LiveRow(val key: String, val title: String) : HomeRow()
 
     /**
      * Placeholder for a catalog row whose data hasn't been fetched yet.
@@ -225,6 +226,9 @@ sealed class GridItem {
         val addonBaseUrl: String,
         val type: String
     ) : GridItem()
+    /** A full-width Live TV or Sports row embedded in the poster grid. */
+    @Immutable
+    data class LiveRow(val key: String, val title: String) : GridItem()
     @Immutable
     data class CollectionHeader(
         val collectionId: String,

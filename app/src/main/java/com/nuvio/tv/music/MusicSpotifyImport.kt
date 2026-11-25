@@ -5,7 +5,12 @@ import com.music.bitchord.data.YtMusicRepository
 import com.music.bitchord.data.model.SearchFilter
 import com.music.bitchord.data.model.SearchResult
 import com.music.bitchord.data.model.Song
+import com.music.bitchord.data.sources.TrackMatcher
 import kotlinx.coroutines.Dispatchers
+import kotlinx.coroutines.async
+import kotlinx.coroutines.awaitAll
+import kotlinx.coroutines.coroutineScope
+import kotlinx.coroutines.delay
 import kotlinx.coroutines.withContext
 import kotlinx.coroutines.withTimeoutOrNull
 import okhttp3.OkHttpClient
@@ -47,6 +52,8 @@ object MusicSpotifyImport {
         onProgress: suspend (done: Int, total: Int) -> Unit
     ): Result<SpotifyImportResult> = withContext(Dispatchers.IO) {
         runCatching {
+            val concurrency = 2
+            val paceMs = 300L
             val id = idPattern.find(playlistUrl.trim())?.groupValues?.getOrNull(1)
                 ?: error("Paste a Spotify playlist link, for example https://open.spotify.com/playlist/…")
             val html = fetch("https://open.spotify.com/embed/playlist/$id")
@@ -54,29 +61,56 @@ object MusicSpotifyImport {
             val name = entity.optString("name").ifBlank { "Spotify playlist" }
             val tracks = entity.optJSONArray("trackList") ?: error("This playlist has no tracks.")
             val total = tracks.length().coerceAtMost(100)
-            val matchedSongs = mutableListOf<Song>()
-            for (i in 0 until total) {
-                val track = tracks.optJSONObject(i) ?: continue
-                val title = track.optString("title").takeIf { it.isNotBlank() } ?: continue
-                val artist = track.optString("subtitle").takeIf { it.isNotBlank() }.orEmpty()
-                val query = listOf(title, artist).filter { it.isNotBlank() }.joinToString(" ")
-                val found = runCatching {
-                    withTimeoutOrNull(12_000L) {
-                        YtMusicRepository.search(query, SearchFilter.SONGS)
-                    }
-                }.getOrNull()?.getOrNull()
-                val song = found.orEmpty()
-                    .asSequence()
-                    .mapNotNull { result ->
-                        when (result) {
-                            is SearchResult.TopTrack -> result.song
-                            is SearchResult.Track -> result.song
-                            else -> null
+            val matchedSongs = ArrayList<Song>()
+            for (range in (0 until total).chunked(concurrency)) {
+                val chunk = coroutineScope {
+                    range.map { i ->
+                        async {
+                            val track = tracks.optJSONObject(i)
+                            val title = track?.optString("title")?.takeIf { it.isNotBlank() }
+                            val artist = track?.optString("subtitle").orEmpty()
+                            if (title == null) return@async i to null
+                            val target = TrackMatcher.targetOf(
+                                Song(
+                                    videoId = "",
+                                    title = title,
+                                    artist = artist,
+                                    thumbnailUrl = null,
+                                )
+                            )
+                            val query = TrackMatcher.queries(target).firstOrNull()
+                                ?.takeIf { it.isNotBlank() }
+                                ?: listOf(title, artist)
+                                    .filter { it.isNotBlank() }
+                                    .joinToString(" ")
+                            val found = runCatching {
+                                withTimeoutOrNull(12_000L) {
+                                    YtMusicRepository.search(query, SearchFilter.SONGS)
+                                }
+                            }.getOrNull()?.getOrNull()
+                            val candidates = found.orEmpty()
+                                .asSequence()
+                                .mapNotNull { result ->
+                                    when (result) {
+                                        is SearchResult.TopTrack -> result.song
+                                        is SearchResult.Track -> result.song
+                                        else -> null
+                                    }
+                                }
+                                .filter { it.videoId.isNotBlank() }
+                                .toList()
+                            val song = TrackMatcher.best(candidates, target)
+                                ?: candidates.firstOrNull { !it.isVideo }
+                                ?: candidates.firstOrNull()
+                            i to song
                         }
-                    }
-                    .firstOrNull { it.videoId.isNotBlank() }
-                if (song != null) matchedSongs += song
-                onProgress(i + 1, total)
+                    }.awaitAll()
+                }
+                chunk.sortedBy { it.first }.forEach { (_, song) ->
+                    if (song != null) matchedSongs += song
+                }
+                onProgress(range.last() + 1, total)
+                if (range.last() + 1 < total) delay(paceMs)
             }
             if (matchedSongs.isEmpty()) {
                 error("None of those tracks could be matched in the music catalogue.")

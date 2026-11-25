@@ -1,5 +1,6 @@
 package com.nuvio.tv.livetv.stalker
 
+import android.app.Application
 import android.content.Context
 import com.nuvio.stalker.StalkerConfig
 import com.nuvio.tv.core.profile.ProfileManager
@@ -14,10 +15,15 @@ import org.junit.After
 import org.junit.Assert.*
 import org.junit.Before
 import org.junit.Test
+import org.junit.runner.RunWith
+import org.robolectric.RobolectricTestRunner
+import org.robolectric.annotation.Config
 import java.io.File
 import java.nio.file.Files
 
 /** All identity values in this fixture are deliberately synthetic. */
+@RunWith(RobolectricTestRunner::class)
+@Config(application = Application::class, manifest = Config.NONE, sdk = [34])
 class StalkerSourcePersistenceTest {
     private lateinit var directory: File
     private lateinit var preferences: LiveTvPreferences
@@ -30,6 +36,7 @@ class StalkerSourcePersistenceTest {
         val context = mockk<Context>(relaxed = true) {
             every { applicationContext } returns this
             every { filesDir } returns directory
+            every { noBackupFilesDir } returns File(directory, "no_backup").apply { mkdirs() }
         }
         val profiles = mockk<ProfileManager> { every { activeProfileId } returns MutableStateFlow(1) }
         preferences = LiveTvPreferences(context, profiles)

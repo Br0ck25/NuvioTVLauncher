@@ -56,6 +56,8 @@ class LiveTvSession @Inject constructor() {
     /** Overlay mode off: Left in full screen returns to the guide with the groups open. */
     var openGroupsOnReturn = false
     val collapsedPlaylists = MutableStateFlow<Set<String>>(emptySet())
+    /** The playlist picked in the guide's Playlists section; null = All playlists. */
+    val selectedPlaylistId = MutableStateFlow<String?>(null)
     /** The saved folded playlists have been loaded into [collapsedPlaylists]. */
     var collapsedLoaded = false
     /** Sleep timer: when playback stops (null = off). Kept while the app is open. */
@@ -1379,6 +1381,13 @@ class LiveTvViewModel @Inject constructor(
 
     /** Playlists folded away in the group list (saved, so they stay folded next time). */
     val collapsedPlaylists = session.collapsedPlaylists
+    /** The playlist picked in the guide's Playlists section; null = All playlists. */
+    val selectedPlaylistId = session.selectedPlaylistId
+
+    /** Show only [id]'s groups in the guide's list; null shows every playlist. */
+    fun selectPlaylist(id: String?) {
+        session.selectedPlaylistId.value = id
+    }
 
     fun togglePlaylistCollapsed(id: String) {
         val cur = session.collapsedPlaylists.value

@@ -122,10 +122,14 @@ jobs:
           chmod +x gradlew
           ./gradlew :app:assembleFullRelease --stacktrace -PlivetvTestBuild=${{ inputs.test_build == true }}
 
+      - name: Package OpenVPN 2 corresponding source
+        run: python3 vpn-android/ci/package-openvpn2-sources.py --output vpn-android/build/openvpn2-corresponding-source.tar.gz
+
       - name: Collect APKs
         run: |
           mkdir -p out
           find app/build/outputs/apk/full/release -name "*.apk" -exec cp {} out/ \;
+          cp vpn-android/build/openvpn2-corresponding-source.tar.gz out/
           ls -la out
 
       # Test build: the single APK as it is (no zip to open), named so it's easy to spot.
@@ -146,6 +150,16 @@ jobs:
           if-no-files-found: error
           # Deleted after a day (the Actions tab of a public repo can be seen by any signed-in
           # GitHub user).
+          retention-days: 1
+
+      - name: Upload OpenVPN 2 corresponding source
+        if: ${{ inputs.test_build }}
+        uses: actions/upload-artifact@v7
+        with:
+          name: openvpn2-corresponding-source
+          path: out/openvpn2-corresponding-source.tar.gz
+          archive: false
+          if-no-files-found: error
           retention-days: 1
 
       # Test build: also copied to your Google Drive, in "Nuvio + IPTV test builds" (private,
@@ -216,7 +230,7 @@ jobs:
         uses: actions/upload-artifact@v4
         with:
           name: nuvio-livetv-apks
-          path: out/*.apk
+          path: out/*
           if-no-files-found: error
           retention-days: 90
 
@@ -224,5 +238,5 @@ jobs:
         if: startsWith(github.ref, 'refs/tags/')
         uses: softprops/action-gh-release@v2
         with:
-          files: out/*.apk
+          files: out/*
           generate_release_notes: true

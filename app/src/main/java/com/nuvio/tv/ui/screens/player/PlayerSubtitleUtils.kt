@@ -279,14 +279,36 @@ internal object PlayerSubtitleUtils {
     }
 
     fun mergeOverlappingCues(cues: List<Cue>): List<Cue> {
-        if (cues.size <= 1) return cues
-        val unpositioned = cues.filter { it.bitmap == null && it.line == Cue.DIMEN_UNSET }
-        if (unpositioned.size <= 1) return cues
-        if (unpositioned.size < cues.size) {
-            val positioned = cues.filterNot { it.bitmap == null && it.line == Cue.DIMEN_UNSET }
+        if (cues.isEmpty()) return cues
+        val normalized = cues.map(::removeRepeatedTextLines)
+        val unique = ArrayList<Cue>(normalized.size)
+        val textCueIndexes = HashMap<String, Int>()
+        normalized.forEach { cue ->
+            val text = cue.text
+            if (cue.bitmap != null || text == null || text.isBlank()) {
+                unique += cue
+            } else {
+                val key = text.toString()
+                val oldIndex = textCueIndexes[key]
+                if (oldIndex == null) {
+                    textCueIndexes[key] = unique.size
+                    unique += cue
+                } else if (isUnpositioned(unique[oldIndex]) && !isUnpositioned(cue)) {
+                    // Keep the explicit placement when the same caption arrived through both
+                    // positioned and unpositioned renderer paths.
+                    unique[oldIndex] = cue
+                }
+            }
+        }
+        val unpositioned = unique.filter(::isUnpositioned)
+        val unchanged = unique.size == cues.size && unique.indices.all { unique[it] === cues[it] }
+        if (unchanged && (unique.size <= 1 || unpositioned.size <= 1)) return cues
+        if (unique.size <= 1 || unpositioned.size <= 1) return unique
+        if (unpositioned.size < unique.size) {
+            val positioned = unique.filterNot(::isUnpositioned)
             return positioned + mergeOverlappingCues(unpositioned)
         }
-        val validTexts = cues.mapNotNull { it.text }.filter { it.isNotBlank() }
+        val validTexts = unique.mapNotNull { it.text }.filter { it.isNotBlank() }
         if (validTexts.isEmpty()) return emptyList()
 
         val hasSpanned = validTexts.any { it is Spanned }
@@ -300,11 +322,11 @@ internal object PlayerSubtitleUtils {
         } else {
             validTexts.distinct().joinToString("\n")
         }
-        val first = cues[0]
-        val sharesPosition = cues.all { it.position == first.position && it.positionAnchor == first.positionAnchor }
+        val first = unique[0]
+        val sharesPosition = unique.all { it.position == first.position && it.positionAnchor == first.positionAnchor }
         val base = when {
             sharesPosition -> first
-            else -> cues.firstOrNull { it.position == Cue.DIMEN_UNSET }
+            else -> unique.firstOrNull { it.position == Cue.DIMEN_UNSET }
                 ?: first.buildUpon()
                     .setPosition(Cue.DIMEN_UNSET)
                     .setPositionAnchor(Cue.TYPE_UNSET)
@@ -312,6 +334,36 @@ internal object PlayerSubtitleUtils {
                     .build()
         }
         return listOf(base.buildUpon().setText(mergedText).build())
+    }
+
+    private fun isUnpositioned(cue: Cue): Boolean = cue.bitmap == null && cue.line == Cue.DIMEN_UNSET
+
+    /** Removes repeated lines while preserving spans on the retained text ranges. */
+    private fun removeRepeatedTextLines(cue: Cue): Cue {
+        val text = cue.text ?: return cue
+        if (cue.bitmap != null || '\n' !in text) return cue
+        if (text !is Spanned) {
+            val cleaned = text.toString().split('\n').distinct().joinToString("\n")
+            return if (cleaned == text.toString()) cue else cue.buildUpon().setText(cleaned).build()
+        }
+        val seen = HashSet<String>()
+        val ranges = ArrayList<IntRange>()
+        var start = 0
+        for (i in 0..text.length) {
+            if (i == text.length || text[i] == '\n') {
+                val line = text.subSequence(start, i).toString()
+                if (seen.add(line)) ranges += start until i
+                start = i + 1
+            }
+        }
+        val lineCount = text.toString().count { it == '\n' } + 1
+        if (ranges.size == lineCount) return cue
+        val builder = SpannableStringBuilder()
+        ranges.forEachIndexed { index, range ->
+            if (index > 0) builder.append('\n')
+            if (!range.isEmpty()) builder.append(text, range.first, range.last + 1)
+        }
+        return cue.buildUpon().setText(builder).build()
     }
 
     fun normalizeBottomCuePosition(cue: Cue): Cue {

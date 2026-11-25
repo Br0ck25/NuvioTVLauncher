@@ -220,12 +220,18 @@ jobs:
         if: inputs.mode != 'dry-run'
         run: ./gradlew :app:testFullReleaseUnitTest --tests 'com.nuvio.tv.updater.*' :app:assembleFullRelease --stacktrace
 
+      - name: Package OpenVPN 2 corresponding source
+        if: inputs.mode != 'dry-run'
+        run: python3 vpn-android/ci/package-openvpn2-sources.py --output out/openvpn2-corresponding-source.tar.gz
+
       - name: Upload build artifacts
         if: inputs.mode != 'dry-run'
         uses: actions/upload-artifact@v6
         with:
           name: nuviotv-${{ steps.release.outputs.version }}-full-release
-          path: app/build/outputs/apk/full/release/*.apk
+          path: |
+            app/build/outputs/apk/full/release/*.apk
+            out/openvpn2-corresponding-source.tar.gz
           if-no-files-found: error
 
       - name: Create GitHub release
@@ -257,4 +263,4 @@ jobs:
           if [[ "${RELEASE_MODE}" == "draft" ]]; then
             release_args+=(--draft)
           fi
-          gh release create "${release_args[@]}" "${release_apks[@]}"
+          gh release create "${release_args[@]}" "${release_apks[@]}" out/openvpn2-corresponding-source.tar.gz

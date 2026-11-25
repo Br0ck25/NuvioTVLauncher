@@ -338,6 +338,7 @@ internal fun PlayerButtonsDialog(
 
 private fun playerControlLabel(control: PlayerControlButton): String = when (control) {
     PlayerControlButton.NEXT_EPISODE -> "Next Episode Button"
+    PlayerControlButton.REPEAT -> "Repeat Button"
     PlayerControlButton.SUBTITLES -> "Subtitles Button"
     PlayerControlButton.SPEED -> "Speed Button"
     PlayerControlButton.QUALITY -> "Quality Button"
@@ -346,12 +347,14 @@ private fun playerControlLabel(control: PlayerControlButton): String = when (con
     PlayerControlButton.SOURCES -> "Sources Button"
     PlayerControlButton.EPISODES -> "Episodes Button"
     PlayerControlButton.PARTY -> "Watch Party Button"
+    PlayerControlButton.DOWNLOAD -> "Download Button"
     PlayerControlButton.STREAM_INFO -> "Info Button"
     PlayerControlButton.MORE -> "More Menu"
 }
 
 private fun playerControlDescription(control: PlayerControlButton): String = when (control) {
     PlayerControlButton.NEXT_EPISODE -> "The next-episode shortcut in the control row. Auto-play is unaffected."
+    PlayerControlButton.REPEAT -> "The repeat shortcut for movies and episodes. It loops the current video until you turn it off."
     PlayerControlButton.SUBTITLES -> "The subtitles shortcut. Subtitles keep working."
     PlayerControlButton.SPEED -> "The speed shortcut. Playback speed is unchanged."
     PlayerControlButton.QUALITY -> "The quality shortcut. The current quality is unchanged."
@@ -360,6 +363,7 @@ private fun playerControlDescription(control: PlayerControlButton): String = whe
     PlayerControlButton.SOURCES -> "The sources shortcut. Automatic fallback still works."
     PlayerControlButton.EPISODES -> "The episode-list shortcut. Auto-play is unaffected."
     PlayerControlButton.PARTY -> "The Watch Party shortcut. An active party is unchanged."
+    PlayerControlButton.DOWNLOAD -> "Save a permitted, non-DRM direct video file to device, USB, or SMB storage."
     PlayerControlButton.STREAM_INFO -> "The stream-info shortcut in the More menu. The remote INFO key still opens it."
     PlayerControlButton.MORE -> "Aspect ratio, stream info, engine switch and reports. Turning this off hides the whole menu."
 }

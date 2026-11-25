@@ -390,7 +390,7 @@ internal fun MusicSourcesScreen(onClose: () -> Unit) {
 }
 
 @Composable
-private fun SourceCard(
+internal fun SourceCard(
     icon: androidx.compose.ui.graphics.vector.ImageVector,
     tint: Color,
     title: String,
@@ -437,7 +437,7 @@ private fun SourceCard(
 }
 
 @Composable
-private fun SourcePill(
+internal fun SourcePill(
     icon: androidx.compose.ui.graphics.vector.ImageVector,
     label: String,
     modifier: Modifier = Modifier,

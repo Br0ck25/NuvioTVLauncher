@@ -114,20 +114,42 @@ object MusicLibrary {
     /**
      * Adds Spotify-liked songs to this device's Liked Songs. Existing likes are kept and
      * duplicates are skipped; the returned count is how many were added.
+     *
+     * A song is also considered a duplicate when the same title/artist is already liked under a
+     * different YouTube video id. That happens when two devices match the same Spotify track to
+     * different uploads, and without this check every sync would add the recording again.
      */
     @Synchronized
     fun addLikedSongs(songs: List<Song>): Int {
         if (songs.isEmpty()) return 0
         val current = _liked.value
-        val existing = current.mapTo(HashSet()) { it.videoId }
-        val additions = songs
-            .filter { it.videoId.isNotBlank() && existing.add(it.videoId) }
-            .map { it.toStored() }
-        if (additions.isEmpty()) return 0
-        val next = current + additions
+        val next = mergeLikedSongs(current, songs)
+        val added = next.size - current.size
+        if (added <= 0) return 0
         _liked.value = next
         persist(KEY_LIKED, next)
-        return additions.size
+        return added
+    }
+
+    /**
+     * The pure part of [addLikedSongs], kept testable without Android storage. [current] is
+     * returned unchanged when every song is already liked.
+     */
+    internal fun mergeLikedSongs(current: List<StoredSong>, songs: List<Song>): List<StoredSong> {
+        val existingIds = current.mapTo(HashSet()) { it.videoId }
+        fun keyOf(title: String, artist: String): String? =
+            if (title.isBlank() || artist.isBlank()) null
+            else MusicMatchKeys.song(title, artist)
+        val existingKeys = current.mapNotNullTo(HashSet()) { keyOf(it.title, it.artist) }
+        val additions = songs
+            .filter { song ->
+                if (song.videoId.isBlank() || !existingIds.add(song.videoId)) return@filter false
+                val key = keyOf(song.title, song.artist) ?: return@filter true
+                existingKeys.add(key)
+            }
+            .map { it.toStored() }
+        if (additions.isEmpty()) return current
+        return current + additions
     }
 
     /** Moves [song] to the front of Recently Played, keeping one entry per video. */

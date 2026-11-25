@@ -1710,7 +1710,7 @@ private fun GamePage(
         }
     }
 
-    val panels = gameExtrasPanels(ev, extras, settings, onTable = onTable)
+    val panels = gameExtrasPanels(ev, extras, settings, onTable = onTable, viewModel = viewModel)
     if (videoOn) {
         // Two under the channels, the third under the video and the score.
         Row(Modifier.fillMaxSize().padding(start = 56.dp, end = 28.dp, top = 20.dp)) {

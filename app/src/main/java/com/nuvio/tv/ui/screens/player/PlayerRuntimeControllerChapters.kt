@@ -104,7 +104,20 @@ internal fun PlayerRuntimeController.setExternalChapters(chapters: List<PlayerCh
 
 /** YouTube fork: repeats the video that's playing instead of ending, or goes back to ending. */
 internal fun PlayerRuntimeController.setRepeatOne(enabled: Boolean) {
-    _exoPlayer?.repeatMode = if (enabled) androidx.media3.common.Player.REPEAT_MODE_ONE else androidx.media3.common.Player.REPEAT_MODE_OFF
+    repeatOneRequested = enabled
+    if (_uiState.value.repeatOne != enabled) {
+        _uiState.update { it.copy(repeatOne = enabled) }
+    }
+    _exoPlayer?.repeatMode =
+        if (enabled) androidx.media3.common.Player.REPEAT_MODE_ONE
+        else androidx.media3.common.Player.REPEAT_MODE_OFF
+    // mpv loops by itself; VLC and any other engine are restarted from the end handler.
+    mpvView?.setRepeatFile(enabled)
+}
+
+/** Live TV fork: the movie/episode repeat button in the player controls. */
+internal fun PlayerRuntimeController.toggleRepeatOne() {
+    setRepeatOne(!repeatOneRequested)
 }
 
 /**

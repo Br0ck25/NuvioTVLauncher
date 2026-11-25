@@ -109,7 +109,6 @@ import androidx.compose.ui.text.input.ImeAction
 import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.res.stringResource
-import androidx.compose.ui.unit.Density
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import androidx.hilt.navigation.compose.hiltViewModel
@@ -117,6 +116,8 @@ import androidx.lifecycle.Lifecycle
 import androidx.lifecycle.LifecycleEventObserver
 import androidx.lifecycle.compose.LocalLifecycleOwner
 import com.nuvio.tv.R
+import com.nuvio.tv.domain.model.SectionScales
+import com.nuvio.tv.ui.scale.LocalSectionScales
 import com.nuvio.tv.ui.components.NuvioDialog
 import com.nuvio.tv.ui.screens.settings.DebugReportDialog
 import java.util.Date
@@ -128,8 +129,6 @@ import com.nuvio.tv.core.qr.QrCodeGenerator
 
 private val YtRed = Color(0xFFFF0033)
 private val CardBg = Color(0xFF1C1C1E)
-/** The page is laid out at 90% density, so the same number of dp covers more of the screen. */
-private const val YouTubeContentScale = 0.90f
 /** Small edge margin for the page. The side menu's own room comes from LocalForkPageInset. */
 private val YouTubeEdgeInset = 28.dp
 
@@ -163,12 +162,9 @@ fun YouTubeScreen(
     LaunchedEffect(Unit) { viewModel.refreshIfStale() }
 
     var query by remember { mutableStateOf("") }
-    // OneTube sits slightly smaller than the rest of the app, so a 1080p TV shows more cards
-    // and the header/tabs stop feeling oversized. Everything inside the page scales together.
-    val baseDensity = LocalDensity.current
-    val contentDensity = remember(baseDensity) {
-        Density(baseDensity.density * YouTubeContentScale, baseDensity.fontScale)
-    }
+    // OneTube sits slightly smaller than the rest of the app; the section scaling above the
+    // NavHost applies that now, so this is already the page's final density.
+    val contentDensity = LocalDensity.current
 
     // Signing in happens on this page: the code shows here and the tab reloads when it's approved.
     val accountViewModel: YouTubeAccountViewModel = hiltViewModel()
@@ -780,7 +776,9 @@ private fun Content(
     // about four cards fit on a 1080p TV, with the next one peeking in at the edge.
     val columnCount = YouTubeSettings.posterColumns(context)
     // Width in the page's own density, so a row fills the space between the two insets.
-    val screenWidthDp = context.resources.configuration.screenWidthDp / YouTubeContentScale
+    val youtubeUiFactor = LocalSectionScales.current[SectionScales.YOUTUBE]?.uiFactor
+        ?: SectionScales.defaultFor(SectionScales.YOUTUBE).uiFactor
+    val screenWidthDp = context.resources.configuration.screenWidthDp / youtubeUiFactor
     // The same "Posters per row" choice drives horizontal feed rows and grids. It used to
     // affect only grids, so changing it from 5 to 3 or 4 left the Home rows looking identical.
     val rowCardWidth = run {

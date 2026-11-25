@@ -402,12 +402,13 @@ internal fun buildSubtitleRequest(
 internal fun executeSubtitleRequest(
     request: Request,
     validated: OkHttpClient = subtitleHttpClient,
-    permissive: OkHttpClient = subtitleUnvalidatedTlsHttpClient
+    permissive: OkHttpClient = subtitleUnvalidatedTlsHttpClient,
+    callFactory: (OkHttpClient) -> okhttp3.Call.Factory = { com.nuvio.vpn.android.VpnHttpClient.wrap(it) }
 ): okhttp3.Response =
     try {
-        com.nuvio.vpn.android.VpnHttpClient.wrap(validated).newCall(request).execute()
+        callFactory(validated).newCall(request).execute()
     } catch (e: SSLException) {
-        com.nuvio.vpn.android.VpnHttpClient.wrap(permissive).newCall(request.withoutCredentialHeaders()).execute()
+        callFactory(permissive).newCall(request.withoutCredentialHeaders()).execute()
     }
 
 private fun PlayerRuntimeController.executeSubtitleDownload(

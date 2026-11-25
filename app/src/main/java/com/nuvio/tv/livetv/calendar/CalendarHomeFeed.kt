@@ -23,6 +23,23 @@ object CalendarHomeFeed {
     /** Changes whenever the cards change (Home puts them in again). */
     val version: StateFlow<Int> = _version
 
+    /**
+     * Live TV fork: the new Upcoming row (wide schedule cards + every airing show). Off restores
+     * the previous filtering and card style. Set from Live TV settings.
+     */
+    @Volatile var newUpcomingRow: Boolean = true
+        private set
+    private val _newUpcomingRow = MutableStateFlow(true)
+    /** Observable copy of [newUpcomingRow], so Home switches cards immediately when it changes. */
+    val newUpcomingRowFlow: StateFlow<Boolean> = _newUpcomingRow
+
+    fun setNewUpcomingRow(enabled: Boolean) {
+        if (newUpcomingRow == enabled && _newUpcomingRow.value == enabled) return
+        newUpcomingRow = enabled
+        _newUpcomingRow.value = enabled
+        _version.value++
+    }
+
     @Volatile private var released: List<ContinueWatchingItem.NextUp> = emptyList()
     @Volatile private var upcoming: List<ContinueWatchingItem.NextUp> = emptyList()
     @Volatile private var movies: List<ContinueWatchingItem.InProgress> = emptyList()
@@ -176,7 +193,15 @@ object CalendarHomeFeed {
         }.toSet()
         val gone = synchronized(dismissed) { dismissed.toSet() }
         val addMain = r.filter { it.info.contentId !in native && key(it.info.contentId, it.info.season, it.info.episode).let { k -> k !in gone && !isSnoozed(k) } }
-        val addUp = u.filter { it.info.contentId !in native && it.info.contentId !in addMain.map { a -> a.info.contentId } }
+        // Every show the calendar has coming up gets its next airing episode in Upcoming,
+        // whatever else Continue Watching holds for it. Only a show Nuvio's own Upcoming row
+        // already holds is skipped.
+        val addUp = if (newUpcomingRow) {
+            val nativeUp = baseUp.mapNotNull { (it as? ContinueWatchingItem.NextUp)?.info?.contentId }.toSet()
+            u.filter { it.info.contentId !in nativeUp }
+        } else {
+            u.filter { it.info.contentId !in native && it.info.contentId !in addMain.map { a -> a.info.contentId } }
+        }
         val addMovies = mv.filter { it.progress.contentId !in native && key(it.progress.contentId, null, null) !in gone }
         injected = (addMain + addUp).map { "${it.info.contentId}|${it.info.videoId}" }.toSet()
         injectedMovies = addMovies.map { it.progress.contentId }.toSet()

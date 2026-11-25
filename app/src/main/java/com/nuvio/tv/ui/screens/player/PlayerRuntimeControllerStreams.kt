@@ -1251,9 +1251,21 @@ internal fun PlayerRuntimeController.loadEpisodesIfNeeded() {
     val id = contentId
     if (type.isNullOrBlank() || id.isNullOrBlank()) return
     if (type !in listOf("series", "tv")) return
-    // On Demand ids exist only in the provider; no metadata addon can resolve them, so asking
-    // just surfaced a confusing addon error. The panel shows "No episodes available" instead.
-    if (com.nuvio.tv.livetv.ondemand.VodHomeIds.isOnDemandContentId(id)) return
+    // These IDs belong to the On Demand provider, not a metadata addon. Keep the empty episode
+    // state so the panel shows its normal "No episodes available" fallback instead of a raw error.
+    if (com.nuvio.tv.livetv.ondemand.VodHomeIds.isOnDemandContentId(id)) {
+        _uiState.update {
+            it.copy(
+                isLoadingEpisodes = false,
+                episodesError = null,
+                episodesAll = emptyList(),
+                episodesAvailableSeasons = emptyList(),
+                episodesSelectedSeason = null,
+                episodes = emptyList()
+            )
+        }
+        return
+    }
     if (_uiState.value.episodesAll.isNotEmpty() || _uiState.value.isLoadingEpisodes) return
 
     scope.launch {
@@ -1527,7 +1539,9 @@ private suspend fun PlayerRuntimeController.selectEpisodeAutoPlayStream(
         source = settings.streamAutoPlaySource,
         installedAddonNames = installedAddonNames,
         selectedAddons = settings.streamAutoPlaySelectedAddons,
-        selectedPlugins = settings.streamAutoPlaySelectedPlugins
+        selectedPlugins = settings.streamAutoPlaySelectedPlugins,
+        qualityRules = settings.streamQualityRules,
+        lowQualityGroups = settings.streamLowQualityGroups
     )
 }
 
@@ -2209,7 +2223,9 @@ internal fun PlayerRuntimeController.playNextEpisode(userInitiated: Boolean = fa
                         null
                     },
                     preferBingeGroupInSelection = playerSettings.streamAutoPlayPreferBingeGroupForNextEpisode,
-                    bingeGroupOnly = bingeGroupOnlyManualMode
+                    bingeGroupOnly = bingeGroupOnlyManualMode,
+                    qualityRules = playerSettings.streamQualityRules,
+                    lowQualityGroups = playerSettings.streamLowQualityGroups
                 )
             }
 
@@ -2252,7 +2268,9 @@ internal fun PlayerRuntimeController.playNextEpisode(userInitiated: Boolean = fa
                     selectedPlugins = effectiveSelectedPlugins,
                     preferredBingeGroup = currentStreamBingeGroup,
                     preferBingeGroupInSelection = true,
-                    bingeGroupOnly = true
+                    bingeGroupOnly = true,
+                    qualityRules = playerSettings.streamQualityRules,
+                    lowQualityGroups = playerSettings.streamLowQualityGroups
                 )
             }
 

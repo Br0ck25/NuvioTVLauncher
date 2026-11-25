@@ -16,8 +16,29 @@ object ParentalControls {
     )
 
     private val _unlocked = MutableStateFlow<Set<String>>(emptySet())
-    /** Group ids unlocked with the PIN since the app started. */
+    /** Group ids unlocked with the PIN in the active profile since the app started. */
     val unlocked: StateFlow<Set<String>> = _unlocked.asStateFlow()
+
+    private val unlockedByProfile = mutableMapOf<Int, Set<String>>()
+    @Volatile private var profileId: Int = 1
+
+    /** Keeps one profile's session unlocks from opening groups in another profile. */
+    fun setProfile(id: Int) = synchronized(this) {
+        if (profileId == id) return
+        profileId = id
+        _unlocked.value = unlockedByProfile[id].orEmpty()
+    }
+
+    fun removeProfile(id: Int) = synchronized(this) {
+        unlockedByProfile.remove(id)
+        if (profileId == id) _unlocked.value = emptySet()
+    }
+
+    /** Forgets session unlocks, for example after this profile's PIN changes. */
+    fun clearUnlocked(id: Int = profileId) = synchronized(this) {
+        unlockedByProfile.remove(id)
+        if (profileId == id) _unlocked.value = emptySet()
+    }
 
     fun isAdult(name: String): Boolean = ADULT.containsMatchIn(name)
 
@@ -32,7 +53,11 @@ object ParentalControls {
     /** True (and the group stays open) if [pin] is right. */
     fun unlock(id: String, pin: String, s: LiveTvSettings): Boolean {
         if (pin.trim() != s.parentalPin) return false
-        _unlocked.value = _unlocked.value + id
+        synchronized(this) {
+            val next = unlockedByProfile[profileId].orEmpty() + id
+            unlockedByProfile[profileId] = next
+            _unlocked.value = next
+        }
         return true
     }
 

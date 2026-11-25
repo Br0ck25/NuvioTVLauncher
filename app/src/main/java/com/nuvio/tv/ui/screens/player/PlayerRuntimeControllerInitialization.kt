@@ -630,9 +630,20 @@ internal fun PlayerRuntimeController.initializePlayer(
                     PlayerRuntimeController.TAG,
                     "BUFFER_GATE: engine=exo-native-perf master=on parallelOverheadMb=$parallelOverheadMb; NuvioExoPlayerPerformanceHelper.buildLoadControl host=${diagnosticHost}"
                 )
-                NuvioExoPlayerPerformanceHelper.buildLoadControl(context, parallelOverheadMb)
+                NuvioExoPlayerPerformanceHelper.buildLoadControl(
+                    context,
+                    parallelOverheadMb,
+                    bufferForPlaybackMsOverride = if (youtubeVod) {
+                        com.nuvio.tv.youtube.OneTubeStartupBufferPolicy.initialBufferMs(
+                            NuvioExoPlayerPerformanceHelper.bufferForPlaybackMs
+                        )
+                    } else null
+                )
             } else if (playerSettings.bufferEngineEnabled) {
                 val bufferSettings = playerSettings.bufferSettings
+                val initialBufferMs = if (youtubeVod) {
+                    com.nuvio.tv.youtube.OneTubeStartupBufferPolicy.initialBufferMs(bufferSettings.bufferForPlaybackMs)
+                } else bufferSettings.bufferForPlaybackMs
                 // Managed (default) caps the buffer at the device budget; off uses Target Buffer Size.
                 // Stay full here even on a DV display; first frame tightens only for confirmed DV7.
                 val budgetManaged = playerSettings.bufferBudgetManaged
@@ -643,6 +654,9 @@ internal fun PlayerRuntimeController.initializePlayer(
                         .coerceAtLeast(MemoryBudget.MIN_BUFFER_MB)
                 }
                 val budgetBytes = budgetMbEffective.toLong() * 1024L * 1024L
+                if (youtubeVod) {
+                    Log.i(PlayerRuntimeController.TAG, "OneTube VOD startup buffer=$initialBufferMs ms (configured=${bufferSettings.bufferForPlaybackMs} ms)")
+                }
                 // Build with the user's back buffer so seek-back works immediately. First frame
                 // lowers it to 0 only for confirmed DV7 on low-RAM; everything else keeps it.
                 configuredBackBufferMs = bufferSettings.backBufferDurationMs
@@ -670,7 +684,7 @@ internal fun PlayerRuntimeController.initializePlayer(
                 BitrateAwareLoadControl(
                     minBufferMs = bufferSettings.minBufferMs,
                     maxBufferMs = bufferSettings.maxBufferMs,
-                    bufferForPlaybackMs = bufferSettings.bufferForPlaybackMs,
+                    bufferForPlaybackMs = initialBufferMs,
                     bufferForPlaybackAfterRebufferMs = bufferSettings.bufferForPlaybackAfterRebufferMs,
                     // Allow buffering past the byte budget until the minimum time threshold is
                     // met. Without this, high-bitrate remux files (e.g. 100+ Mbps UHD MKV with
@@ -696,6 +710,18 @@ internal fun PlayerRuntimeController.initializePlayer(
                     .build()
             }
             _loadControl = loadControl
+            playbackBufferMemoryGuard?.detach()
+            playbackBufferMemoryGuard = (loadControl as? BitrateAwareLoadControl)?.let { budgetControl ->
+                com.nuvio.tv.core.player.PlaybackBufferMemoryGuard(
+                    context = context,
+                    control = budgetControl,
+                    managedBudget = !(playerSettings.bufferEngineEnabled && !playerSettings.bufferBudgetManaged),
+                    outsideBudgetMb = parallelOverheadMb,
+                    fourKInAppMemory = currentVideoTrackWidth >= 3840 ||
+                        currentFilename.orEmpty().contains("2160p", ignoreCase = true) ||
+                        currentFilename.orEmpty().contains("4k", ignoreCase = true),
+                ).also { it.attach() }
+            }
 
             // The cache wraps whichever upstream data source it is given, so it does not depend on
             // either buffer engine. The low-RAM plus confirmed DV7 case is handled dynamically at
@@ -1007,6 +1033,12 @@ internal fun PlayerRuntimeController.initializePlayer(
                 playerSettings.audioOutputChannels
             }
             nightModeAudioProcessor.setMode(playerSettings.nightMode)
+            val playbackEq = com.nuvio.tv.core.audio.SevenBandEqualizerSettings.current(
+                com.nuvio.tv.core.audio.EqualizerOwner.PLAYBACK
+            )
+            sevenBandEqualizerAudioProcessor.setGainsDb(
+                if (playbackEq.isEnabled) playbackEq.gainsDb else List(7) { 0 }
+            )
             if (isBluetoothAudioOutput) {
                 Log.i(
                     PlayerRuntimeController.TAG,
@@ -1039,6 +1071,7 @@ internal fun PlayerRuntimeController.initializePlayer(
                 },
                 gainAudioProcessor = gainAudioProcessor,
                 nightModeAudioProcessor = nightModeAudioProcessor,
+                sevenBandEqualizerAudioProcessor = sevenBandEqualizerAudioProcessor,
                 downmixEnabled = effectiveDownmixEnabled,
                 audioOutputChannels = effectiveAudioOutputChannels,
                 downmixNormalizationEnabled = !playerSettings.maintainOriginalAudioOnDownmix,
@@ -1204,6 +1237,9 @@ internal fun PlayerRuntimeController.initializePlayer(
                     .build()
                 setAudioAttributes(audioAttributes, true)
                 setPlaybackSpeed(_uiState.value.playbackSpeed)
+                repeatMode =
+                    if (repeatOneRequested) androidx.media3.common.Player.REPEAT_MODE_ONE
+                    else androidx.media3.common.Player.REPEAT_MODE_OFF
                 if (applyPcmFallbackOnStartup) {
                     pendingAudioPcmFallbackRebuild = false
                     hasTriedAudioPcmFallback = true
@@ -2318,6 +2354,7 @@ private class SubtitleOffsetRenderersFactory(
     private val videoBoundsFractionProvider: () -> RectF?,
     private val gainAudioProcessor: GainAudioProcessor,
     private val nightModeAudioProcessor: NightModeAudioProcessor,
+    private val sevenBandEqualizerAudioProcessor: SevenBandEqualizerAudioProcessor,
     private val downmixEnabled: Boolean,
     private val audioOutputChannels: com.nuvio.tv.data.local.AudioOutputChannels,
     private val downmixNormalizationEnabled: Boolean,
@@ -2405,14 +2442,15 @@ private class SubtitleOffsetRenderersFactory(
         }
             .setEnableFloatOutput(enableFloatOutput)
             .setEnableAudioTrackPlaybackParams(enableAudioTrackPlaybackParams)
-            .setAudioProcessors(arrayOf(gainAudioProcessor, nightModeAudioProcessor))
+            .setAudioProcessors(arrayOf(gainAudioProcessor, nightModeAudioProcessor, sevenBandEqualizerAudioProcessor))
         val baseAudioSink = builder.build()
         // Audio sync hook: tap the base sink so the returned sink stays a PlaybackSpeedAwareAudioSink
         // and buildAudioRenderers keeps installing PlaybackSpeedAwareAudioRenderer.
         val playbackSpeedAwareAudioSink = PlaybackSpeedAwareAudioSink(
             sink = AudioSyncTaps.wrapAudioSink(baseAudioSink),
             initialForcePcm = initialForcePcm,
-            forcePcmForBluetooth = bluetoothForcePcm
+            forcePcmForBluetooth = bluetoothForcePcm,
+            forcePcmForEqualizer = { sevenBandEqualizerAudioProcessor.isEqualizerEnabled() }
         )
         playbackSpeedAwareAudioSink.setInitialPlaybackSpeed(playbackSpeedProvider())
         onPlaybackSpeedAwareAudioSinkCreated(playbackSpeedAwareAudioSink)

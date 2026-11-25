@@ -94,6 +94,12 @@ data class PlaylistSource(
     val isXtream: Boolean get() = !isStalker && xtreamServer.isNotBlank()
     val hasCatalog: Boolean get() = isXtream || isStalker
 
+    /** True when both entries can safely point at the same cached Xtream catalogue. */
+    fun sameXtreamAccount(other: PlaylistSource): Boolean =
+        isXtream && other.isXtream &&
+            cleanXtreamServer(xtreamServer).equals(cleanXtreamServer(other.xtreamServer), ignoreCase = true) &&
+            xtreamUsername == other.xtreamUsername && xtreamPassword == other.xtreamPassword
+
     /**
      * An M3U playlist that is really an Xtream login: the server, username and password, from
      * the link itself (".../get.php?username=a&password=b") or else from its channel links
@@ -554,6 +560,8 @@ data class LiveTvSettings(
     val sideMenuFit: Boolean = true,
     /** Calendar: your shows' next episodes in Home's Upcoming row. */
     val calendarUpcomingRow: Boolean = true,
+    /** Live TV fork: wide schedule cards and every airing show in the Upcoming row. */
+    val calendarUpcomingNewRow: Boolean = true,
     /** Calendar: a "new episode" card in Continue Watching for shows you rang the bell on. */
     val calendarNewEpisodeCards: Boolean = true,
     /** The Live TV options button under the buttons on a show or movie page. */
@@ -635,7 +643,7 @@ data class LiveTvSettings(
     /** OK opens the guide on the channel instead of playing it full screen. */
     val homeRowOpensGuide: Boolean = false,
     /** A "Next: 9:00 The News" line on each card. */
-    val homeRowShowNext: Boolean = false,
+    val homeRowShowNext: Boolean = true,
     /** Compact cards: logo and show name only. */
     val homeRowCompact: Boolean = false,
     /** Live TV buffer: "none" (the least the player can run on), "small" (fast channel changes), "normal", "large", "xlarge". */

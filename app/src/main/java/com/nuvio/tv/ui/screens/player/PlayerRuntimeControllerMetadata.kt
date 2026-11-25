@@ -11,6 +11,7 @@ import com.nuvio.tv.domain.model.Stream
 import com.nuvio.tv.domain.model.resolveContentLanguage
 import com.nuvio.tv.domain.model.normalizeLanguageCode
 import com.nuvio.tv.data.local.AudioLanguageOption
+import com.nuvio.tv.livetv.ondemand.VodHomeIds
 import kotlinx.coroutines.delay
 import kotlinx.coroutines.flow.first
 import kotlinx.coroutines.flow.update
@@ -18,8 +19,9 @@ import kotlinx.coroutines.launch
 
 internal fun PlayerRuntimeController.fetchMetaDetails(id: String?, type: String?) {
     if (id.isNullOrBlank() || type.isNullOrBlank()) return
-    // On Demand ids (`nuviovod:`) exist only in the provider; no metadata addon can resolve them.
-    if (com.nuvio.tv.livetv.ondemand.VodHomeIds.isOnDemandContentId(id)) return
+    // Provider-only On Demand IDs are not catalog-addon IDs. Looking them up here returns the
+    // addon's raw validation error instead of useful player metadata.
+    if (VodHomeIds.isOnDemandContentId(id)) return
 
     metaFetchJob = scope.launch {
         when (

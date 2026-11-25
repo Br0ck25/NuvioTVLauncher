@@ -28,6 +28,7 @@ import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxHeight
 import androidx.compose.foundation.layout.fillMaxWidth
+import androidx.compose.foundation.layout.fillMaxHeight
 import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.width
@@ -75,7 +76,9 @@ data class LiveTvHomeActions(
     /** The channel is now playing in Live TV: open it full screen. */
     val openFullscreen: () -> Unit = {},
     /** Open the Live TV guide. */
-    val openGuide: () -> Unit = {}
+    val openGuide: () -> Unit = {},
+    /** Open a game in the Sports page. */
+    val openGame: (String) -> Unit = {}
 )
 
 val LocalLiveTvHomeActions = compositionLocalOf { LiveTvHomeActions() }
@@ -350,8 +353,10 @@ private fun LiveTvHomeRowContent(
             LazyRow(
                 state = listState,
                 contentPadding = PaddingValues(start = startPadding, end = maxOf(startPadding, 24.dp)),
-                // The same gap as Upcoming and Continue Watching, so the cards line up with the rows around them.
-                horizontalArrangement = Arrangement.spacedBy(com.nuvio.tv.ui.components.rememberHomeTile()?.gap ?: 10.dp)
+                // The same gap as Upcoming and Continue Watching, so the cards line up.
+                horizontalArrangement = Arrangement.spacedBy(
+                    com.nuvio.tv.ui.components.rememberHomeTile()?.gap ?: 10.dp
+                )
             ) {
                 itemsIndexed(entries, key = { _, it -> it.channel.key }) { index, e ->
                     val requester = cardFocus.getOrPut(e.channel.key) { androidx.compose.ui.focus.FocusRequester() }
@@ -417,11 +422,9 @@ private fun HomeCard(
     val p = entry.now
     val next = entry.next
     val cardHeight = if (compact) 64.dp else 88.dp
-    // Two tiles wide, like the Upcoming cards (the height stays 88).
+    // Two tiles wide, like the Upcoming cards; the height stays 88.
     val homeTile = com.nuvio.tv.ui.components.rememberHomeTile()
     val cardWidth = if (compact) (homeTile?.width ?: 260.dp) else (homeTile?.wideWidth ?: 330.dp)
-    // No focus zoom: Upcoming and Continue Watching cards only get the border, and a 4% bigger card looked like a
-    // different size from the Upcoming cards it is meant to match.
     Row(
         modifier = modifier
             .width(cardWidth)
@@ -442,7 +445,7 @@ private fun HomeCard(
             .padding(8.dp),
         verticalAlignment = Alignment.CenterVertically
     ) {
-        // Where an Upcoming card has its poster: the logo on a dark tile.
+        // Where an Upcoming card has its poster: the channel logo on a dark tile.
         Box(
             modifier = Modifier
                 .width(if (compact) 80.dp else 112.dp)
@@ -451,27 +454,15 @@ private fun HomeCard(
                 .background(Color.Black.copy(alpha = 0.35f)),
             contentAlignment = Alignment.Center
         ) {
-            // A channel made from a Home list has no logo of its own: show the artwork of what's on it now, filling the
-            // tile like an Upcoming poster, instead of an empty box.
-            val art = p?.icon?.takeIf { it.isNotBlank() }
-            if (entry.channel.logo.isNullOrBlank() && art != null) {
-                coil3.compose.AsyncImage(
-                    model = art,
-                    contentDescription = null,
-                    contentScale = androidx.compose.ui.layout.ContentScale.Crop,
-                    modifier = Modifier.fillMaxSize()
-                )
-            } else {
-                ChannelLogo(entry.channel.logo, if (compact) 36.dp else 50.dp)
-            }
+            ChannelLogo(entry.channel.logo, if (compact) 36.dp else 50.dp)
         }
         Column(
-            modifier = Modifier.weight(1f).fillMaxHeight().padding(start = 12.dp, end = 6.dp),
+            modifier = Modifier
+                .weight(1f)
+                .fillMaxHeight()
+                .padding(start = 12.dp, end = 6.dp),
             verticalArrangement = Arrangement.spacedBy(3.dp, Alignment.CenterVertically)
         ) {
-            // Everything the Nuvio Plus IPTV card shows, in this card's layout: the show (with a red dot while it is
-            // the channel playing), the channel's number and name with how long is left, and the next show when
-            // "show next" is on. The pill says what the card is: LIVE, or CH when there is no listing.
             Row(verticalAlignment = Alignment.CenterVertically) {
                 if (!compact) {
                     val pill = if (p != null) "LIVE" to Color(0xFF0284C7) else "CH ${entry.channel.number}" to Color(0xFF334155)
@@ -481,15 +472,11 @@ private fun HomeCard(
                             .background(pill.second)
                             .padding(horizontal = 7.dp, vertical = 2.dp)
                     ) {
-                        androidx.tv.material3.Text(
-                            text = pill.first,
-                            style = androidx.tv.material3.MaterialTheme.typography.labelSmall.copy(
-                                fontWeight = FontWeight.SemiBold,
-                                letterSpacing = 0.5.sp
-                            ),
+                        LiveText(
+                            pill.first,
                             color = Color.White,
-                            maxLines = 1,
-                            softWrap = false
+                            size = 10.sp,
+                            weight = FontWeight.SemiBold
                         )
                     }
                     Spacer(Modifier.width(8.dp))
@@ -498,23 +485,34 @@ private fun HomeCard(
                 LiveText(
                     p?.title ?: entry.channel.name,
                     modifier = Modifier.weight(1f),
-                    color = NuvioTheme.colors.TextPrimary, size = if (compact) 14.sp else 16.sp,
-                    weight = FontWeight.SemiBold, marquee = focused
+                    color = NuvioTheme.colors.TextPrimary,
+                    size = if (compact) 14.sp else 16.sp,
+                    weight = FontWeight.SemiBold,
+                    marquee = focused
                 )
             }
             val sub = if (p != null || entry.channel.number != 0) {
-                listOfNotNull("${entry.channel.number}  ${entry.channel.name}", p?.let { minutesLeftLabel(it.stopMs, now) })
-                    .joinToString(" · ")
-            } else entry.channel.name
-            LiveText(sub, color = NuvioTheme.extendedColors.textSecondary, size = 12.sp, marquee = focused)
+                listOfNotNull(
+                    "${entry.channel.number}  ${entry.channel.name}",
+                    p?.let { minutesLeftLabel(it.stopMs, now) }
+                ).joinToString(" · ")
+            } else {
+                entry.channel.name
+            }
+            LiveText(sub, color = NuvioTheme.colors.TextSecondary, size = 12.sp, marquee = focused)
             // How far through the show it is: between what's playing and what's next.
             if (!compact && p != null) {
                 Box(
-                    modifier = Modifier.fillMaxWidth().height(3.dp).clip(RoundedCornerShape(2.dp))
+                    modifier = Modifier
+                        .fillMaxWidth()
+                        .height(3.dp)
+                        .clip(RoundedCornerShape(2.dp))
                         .background(Color.White.copy(alpha = 0.18f))
                 ) {
                     Box(
-                        modifier = Modifier.fillMaxWidth(p.progress(now)).height(3.dp)
+                        modifier = Modifier
+                            .fillMaxWidth(p.progress(now))
+                            .height(3.dp)
                             .background(NuvioTheme.colors.Secondary)
                     )
                 }
@@ -522,7 +520,9 @@ private fun HomeCard(
             if (!compact && showNext && next != null) {
                 LiveText(
                     "Next: ${formatClock(next.startMs, use24h)} ${next.title}",
-                    color = NuvioTheme.extendedColors.textSecondary, size = 12.sp, marquee = focused
+                    color = NuvioTheme.colors.TextSecondary,
+                    size = 12.sp,
+                    marquee = focused
                 )
             }
         }

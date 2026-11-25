@@ -292,6 +292,8 @@ fun ThemeSettingsContent(
                 }
             }
 
+            SectionScalingSettingsCard()
+
             SettingsGroupCard(
                 modifier = Modifier.fillMaxWidth(),
                 title = stringResource(R.string.appearance_launcher_artwork),

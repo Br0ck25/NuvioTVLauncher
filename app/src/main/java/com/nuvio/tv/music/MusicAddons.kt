@@ -397,7 +397,7 @@ object MusicAddonRegistry {
     private const val DIRECT_STREAM_TTL_MS = 4 * 60 * 1000L
     private const val SUBSTITUTION_TTL_MS = 4 * 60 * 1000L
     private const val SUBSTITUTION_MISS_TTL_MS = 2 * 60 * 1000L
-    private const val SUBSTITUTION_BUDGET_MS = 2500L
+    private const val SUBSTITUTION_BUDGET_MS = 6000L
 
     private val _configs = MutableStateFlow<List<MusicAddonConfig>>(emptyList())
     val configs: StateFlow<List<MusicAddonConfig>> = _configs.asStateFlow()
@@ -637,9 +637,14 @@ object MusicAddonRegistry {
                 byId[candidate.videoId] = hit to candidate
             }
             val ranked = TrackMatcher.ranked(byId.values.map { it.second }, target)
-            for (candidate in ranked.take(4)) {
+            val order = _configs.value.withIndex().associate { (index, config) -> config.id to index }
+            // Check add-ons in the order the listener added them; only move to the next
+            // add-on when this one has no confident match.
+            val ordered = ranked.mapNotNull { candidate ->
+                byId[candidate.videoId]?.let { (source, _) -> source to candidate }
+            }.sortedBy { (source, _) -> order[source.config.id] ?: Int.MAX_VALUE }
+            for ((source, candidate) in ordered.take(4)) {
                 if (System.currentTimeMillis() >= deadline) break
-                val source = byId[candidate.videoId]?.first ?: continue
                 val stream = resolveStream(candidate.videoId).getOrNull() ?: continue
                 if (substitutions.size > 256) substitutions.clear()
                 substitutions[song.videoId] = CachedSubstitution(

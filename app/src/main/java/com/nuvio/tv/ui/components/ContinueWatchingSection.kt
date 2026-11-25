@@ -43,6 +43,8 @@ import androidx.compose.ui.input.key.onPreviewKeyEvent
 import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextOverflow
+import androidx.compose.ui.text.font.FontWeight
+import androidx.compose.ui.unit.sp
 import com.nuvio.tv.R
 import com.nuvio.tv.domain.model.CardDepthSurface
 import androidx.compose.ui.unit.Dp
@@ -97,6 +99,8 @@ import androidx.compose.ui.graphics.painter.Painter
 import androidx.compose.ui.text.TextStyle
 import com.nuvio.tv.domain.model.CardDepthStyle
 import kotlinx.coroutines.delay
+import java.time.LocalDate
+import java.time.ZoneId
 
 /** Whether the cards show the "# EP left" badge. Provided by the Home screen from Layout settings. */
 internal val LocalShowContinueWatchingEpisodeCount = androidx.compose.runtime.compositionLocalOf { true }
@@ -138,6 +142,17 @@ internal fun upcomingScheduleThumbHeight(imageHeight: Dp): Dp =
 internal fun upcomingScheduleThumbWidth(imageHeight: Dp): Dp = UPCOMING_SCHEDULE_THUMB_WIDTH
 
 // The wide card fills its strip with poster art, so the strip width follows the card height and the poster is never cropped.
+internal val UPCOMING_SCHEDULE_CARD_WIDTH = 330.dp
+internal val UPCOMING_SCHEDULE_CARD_HEIGHT = 88.dp
+internal val UPCOMING_SCHEDULE_THUMB_WIDTH = 112.dp
+
+internal fun upcomingScheduleCardHeight(imageHeight: Dp): Dp = UPCOMING_SCHEDULE_CARD_HEIGHT
+
+internal fun upcomingScheduleThumbHeight(imageHeight: Dp): Dp =
+    (UPCOMING_SCHEDULE_CARD_HEIGHT - 16.dp).coerceAtLeast(64.dp)
+
+internal fun upcomingScheduleThumbWidth(imageHeight: Dp): Dp = UPCOMING_SCHEDULE_THUMB_WIDTH
+
 internal fun continueWatchingArtworkWidth(
     cardStyle: ContinueWatchingCardStyle,
     cardWidth: Dp,
@@ -154,6 +169,7 @@ internal fun continueWatchingArtworkHeight(
     isUpcomingCard: Boolean = false
 ): Dp = if (isUpcomingCard) (UPCOMING_SCHEDULE_CARD_HEIGHT - 16.dp) else cardHeight
 
+/** "S1E10 · Title", without repeating the code when the title already starts with it. */
 internal fun formatCompactEpisodeSubtitle(
     compactEpisodeStr: String?,
     episodeTitle: String?,
@@ -564,11 +580,7 @@ fun ContinueWatchingCard(
     val compactEpisodeStr = remember(progress, nextUp) {
         val season = progress?.season ?: nextUp?.season
         val episode = progress?.episode ?: nextUp?.episode
-        if (season != null && episode != null) {
-            "S${season}E${episode}"
-        } else {
-            null
-        }
+        if (season != null && episode != null) "S${season}E${episode}" else null
     }
     val strUpcoming = stringResource(R.string.cw_upcoming)
     val strNextUp = stringResource(R.string.cw_next_up)
@@ -774,7 +786,7 @@ fun ContinueWatchingCard(
                 val today = LocalDate.now(ZoneId.systemDefault())
                 val isAiringToday = releaseDate != null && releaseDate == today
                 val rawLabel = if (isAiringToday) {
-                    context.getString(R.string.cw_airs_today)
+                    context.getString(R.string.cw_airs_today_short)
                 } else if (nextUp != null && !nextUp.hasAired) {
                     computeAirDateBadgeTextShort(context, nextUp.released, nextUp.airDateLabel)
                         ?: computeAirDateBadgeText(context, nextUp.released, nextUp.airDateLabel)
@@ -1322,6 +1334,7 @@ private fun WideCardContent(
                         }
                     }
                 }
+                // One compact line: "S1E10 · Title".
                 val combinedSubtitle = remember(episodeStr, episodeTitle) {
                     formatCompactEpisodeSubtitle(episodeStr, episodeTitle)
                 }

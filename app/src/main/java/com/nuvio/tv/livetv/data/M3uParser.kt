@@ -39,8 +39,14 @@ object M3uParser {
      * away instead of being fully read and then thrown away.
      */
     fun parse(reader: BufferedReader, skip: ((String) -> Boolean)? = null): M3uPlaylist {
-        val epgUrls = mutableListOf<String>()
         val entries = ArrayList<M3uEntry>(4096)
+        val epgUrls = read(reader, skip) { entries += it }
+        return M3uPlaylist(epgUrls, entries)
+    }
+
+    /** Emits each parsed entry immediately so channel builders needn't retain a second playlist list. */
+    fun read(reader: BufferedReader, skip: ((String) -> Boolean)? = null, onEntry: (M3uEntry) -> Unit): List<String> {
+        val epgUrls = mutableListOf<String>()
 
         var pendingInfo: String? = null
         var pendingGroup: String? = null
@@ -108,11 +114,10 @@ object M3uParser {
                             val v = pendingProps[key]
                             if (!v.isNullOrBlank()) v.split('&').forEach { part ->
                                 val k = part.substringBefore('=').trim()
-                                if (k.isNotEmpty()) pendingHeaders[normalizeHeader(k)] =
-                                    runCatching { java.net.URLDecoder.decode(part.substringAfter('=', ""), "UTF-8") }.getOrDefault(part.substringAfter('=', ""))
+                                if (k.isNotEmpty()) pendingHeaders[normalizeHeader(k)] = decodeHeaderValue(part.substringAfter('=', ""))
                             }
                         }
-                        entries.add(buildEntry(
+                        onEntry(buildEntry(
                             info, pendingGroup, line,
                             if (pendingHeaders.isEmpty()) emptyMap() else pendingHeaders.toMap(),
                             headerCatchup,
@@ -126,7 +131,7 @@ object M3uParser {
                 }
             }
         }
-        return M3uPlaylist(epgUrls.distinct(), entries)
+        return epgUrls.distinct()
     }
 
     /**
@@ -149,13 +154,13 @@ object M3uParser {
         val headers = LinkedHashMap<String, String>()
         parts.getOrNull(1)?.takeIf { it.contains('=') }?.split('&')?.forEach { h ->
             val k = h.substringBefore('=').trim()
-            if (k.isNotEmpty()) headers[normalizeHeader(k)] = java.net.URLDecoder.decode(h.substringAfter('=', ""), "UTF-8")
+            if (k.isNotEmpty()) headers[normalizeHeader(k)] = decodeHeaderValue(h.substringAfter('=', ""))
         }
         // Newer Kodi style: license request headers on their own line.
         props["license_headers"]?.takeIf { it.isNotBlank() }?.split('&')?.forEach { h ->
             val k = h.substringBefore('=').trim()
             if (k.isNotEmpty()) headers[normalizeHeader(k)] =
-                runCatching { java.net.URLDecoder.decode(h.substringAfter('=', ""), "UTF-8") }.getOrDefault(h.substringAfter('=', ""))
+                decodeHeaderValue(h.substringAfter('=', ""))
         }
         if (license.isBlank() && scheme != "clearkey") return null
         return com.nuvio.tv.livetv.model.DrmInfo(
@@ -189,7 +194,7 @@ object M3uParser {
                 url = urlLine.substring(0, pipe)
                 urlLine.substring(pipe + 1).split('&').forEach { part ->
                     val k = part.substringBefore('=').trim()
-                    val v = java.net.URLDecoder.decode(part.substringAfter('=', ""), "UTF-8")
+                    val v = decodeHeaderValue(part.substringAfter('=', ""))
                     if (k.isNotEmpty()) headers[normalizeHeader(k)] = v
                 }
             }
@@ -234,6 +239,10 @@ object M3uParser {
         "cookie" -> "Cookie"
         else -> key
     }
+
+    /** A malformed percent escape in an optional header must not invalidate the whole playlist. */
+    private fun decodeHeaderValue(value: String): String =
+        runCatching { java.net.URLDecoder.decode(value, "UTF-8") }.getOrDefault(value)
 
     /**
      * name="value" and name=value pairs on a line, read in one pass (this used to be two

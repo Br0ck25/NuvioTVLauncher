@@ -17,6 +17,7 @@ import com.nuvio.tv.core.player.StreamAutoPlayPolicy
 import com.nuvio.tv.core.tracking.TrackingScrobbleCoordinator
 import com.nuvio.tv.core.torrent.TorrentService
 import com.nuvio.tv.core.torrent.TorrentSettings
+import com.nuvio.tv.core.downloads.VodDownloads
 import com.nuvio.tv.data.local.AudioDelayRouteDataStore
 import com.nuvio.tv.data.local.PlayerSettingsDataStore
 import com.nuvio.tv.data.local.DeviceLocalPlayerPreferences
@@ -235,6 +236,27 @@ class PlayerViewModel @Inject constructor(
         ?.removePrefix(com.nuvio.tv.youtube.YouTubeProgress.ID_PREFIX)
 
     fun getCurrentHeaders(): Map<String, String> = controller.getCurrentHeaders()
+
+    fun currentVodDownloadSupported(): Boolean = VodDownloads.canDownload(currentVodDownloadRequest())
+
+    fun startCurrentVodDownload(destinationId: String, permissionConfirmed: Boolean): Boolean =
+        VodDownloads.start(context, currentVodDownloadRequest(), destinationId, permissionConfirmed) { url, headers, method, connectTimeout, readTimeout ->
+            PlayerPlaybackNetworking.openConnection(url, headers, method, connectTimeout, readTimeout)
+        }
+
+    private fun currentVodDownloadRequest() = VodDownloads.Request(
+        url = controller.getCurrentStreamUrl(),
+        headers = controller.getCurrentHeaders(),
+        title = controller.currentEpisodeTitle?.takeIf { it.isNotBlank() } ?: controller.title,
+        filename = controller.currentFilename,
+        isLive = controller.youtubeLive || controller.contentType.equals("live", ignoreCase = true),
+        isYoutube = isYouTubePlayback(),
+        knownDrm = exoPlayer?.currentTracks?.groups?.any { group ->
+            (0 until group.length).any { index ->
+                group.getTrackFormat(index).cryptoType != androidx.media3.common.C.CRYPTO_TYPE_NONE
+            }
+        } == true
+    )
 
     fun getCurrentFileSizeBytes(): Long? = controller.currentVideoSize
 

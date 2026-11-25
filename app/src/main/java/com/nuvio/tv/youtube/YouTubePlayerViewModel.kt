@@ -475,10 +475,12 @@ class YouTubePlayerViewModel @Inject constructor(
         if (isLive) return null
         return YtItem(
             kind = YtKind.VIDEO,
-            videoId = id,
-            title = title.orEmpty(),
-            author = author,
-            thumbnail = cardImageUrl,
+                videoId = id,
+                title = title.orEmpty(),
+                author = author,
+                meta = secondTitle?.toString()?.takeIf { it.isNotBlank() && it != author },
+                postTime = productionDate?.takeIf { it.isNotBlank() && it != title },
+                thumbnail = cardImageUrl,
             badge = badgeText,
             isLive = isLive,
             isShorts = isShorts,

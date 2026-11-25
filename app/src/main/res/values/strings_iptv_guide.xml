@@ -63,6 +63,8 @@
     <string name="iptv_guide_loading_help">"Large playlists and guides can take several minutes the first time. It keeps going if you leave this screen, and next time it opens straight away."</string>
     <string name="iptv_guide_no_channels_match">"No channels match: %1$s"</string>
     <string name="iptv_guide_no_playlists">"No playlists yet"</string>
+    <string name="iptv_guide_playlists_section">"Playlists"</string>
+    <string name="iptv_guide_all_playlists">"All playlists"</string>
     <string name="iptv_guide_starting_recording">"Starting the recording…"</string>
     <string name="iptv_guide_pick_another_group">"Press left to pick another group."</string>
     <string name="iptv_guide_no_guides_loaded">"No guides loaded. Add an EPG source in Live TV settings."</string>

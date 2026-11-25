@@ -22,6 +22,7 @@ import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.padding
+import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
@@ -75,6 +76,8 @@ fun CatalogOrderScreen(
     onBackPress: () -> Unit
 ) {
     val uiState by viewModel.uiState.collectAsState()
+    val rowsSetup: com.nuvio.tv.livetv.home.HomeRowsSetupViewModel = hiltViewModel()
+    val emptyRowIds by rowsSetup.emptyRowIds.collectAsState()
     val pinToMoveNotice = stringResource(R.string.catalog_order_pin_to_move_toast)
     var pinnedNoticeMessage by remember { mutableStateOf<String?>(null) }
     var pinnedNoticeNonce by remember { mutableIntStateOf(0) }
@@ -181,6 +184,7 @@ fun CatalogOrderScreen(
                         },
                         onToggleEnabled = { viewModel.toggleCatalogEnabled(item.disableKey) },
                         actionsEnabled = uiState.movingKey == null || isMoving,
+                        hiddenEmpty = item.liveRow?.id?.let { it in emptyRowIds } == true,
                     )
                 }
                 SettingsVerticalScrollIndicators(
@@ -320,6 +324,7 @@ private fun CatalogOrderCard(
     onPinnedMoveAttempt: () -> Unit,
     onToggleEnabled: () -> Unit,
     actionsEnabled: Boolean,
+    hiddenEmpty: Boolean = false,
 ) {
     val cardColor by animateColorAsState(
         targetValue = if (isMoving) {
@@ -356,14 +361,31 @@ private fun CatalogOrderCard(
                 horizontalArrangement = Arrangement.spacedBy(NuvioTheme.spacing.md),
             ) {
                 Column {
+                    val live = item.liveRow
+                    val typeName = when (live?.kind) {
+                        com.nuvio.tv.livetv.home.HomeLiveRow.KIND_CHANNELS -> stringResource(R.string.home_rows_type_live)
+                        com.nuvio.tv.livetv.home.HomeLiveRow.KIND_SPORTS -> stringResource(R.string.home_rows_type_sports)
+                        com.nuvio.tv.livetv.home.HomeLiveRow.KIND_VOD -> stringResource(R.string.home_rows_type_vod)
+                        else -> item.typeLabel.toDisplayTypeLabel()
+                    }
                     Text(
-                        text = "${item.catalogName} - ${item.typeLabel.toDisplayTypeLabel()}",
+                        text = "${item.catalogName} - $typeName",
                         style = MaterialTheme.typography.titleMedium.copy(fontWeight = FontWeight.Bold),
                         color = if (item.isDisabled) NuvioTheme.colors.TextSecondary else NuvioTheme.colors.TextPrimary
                     )
                     Spacer(modifier = Modifier.height(NuvioTheme.spacing.xs))
                     val subtitle = if (item.isPinnedToTop) {
                         "${item.addonName} • ${stringResource(R.string.catalog_order_pinned_to_top)}"
+                    } else if (live != null) {
+                        stringResource(
+                            when (live.kind) {
+                                com.nuvio.tv.livetv.home.HomeLiveRow.KIND_CHANNELS -> R.string.home_rows_desc_channels
+                                com.nuvio.tv.livetv.home.HomeLiveRow.KIND_SPORTS -> R.string.home_rows_desc_sports
+                                else -> R.string.home_rows_desc_vod
+                            },
+                            typeName,
+                            live.limit
+                        )
                     } else {
                         item.addonName
                     }
@@ -372,6 +394,10 @@ private fun CatalogOrderCard(
                         style = MaterialTheme.typography.bodySmall,
                         color = NuvioTheme.colors.TextSecondary
                     )
+                    if (hiddenEmpty && !item.isDisabled) {
+                        Spacer(modifier = Modifier.height(NuvioTheme.spacing.xs))
+                        Text(stringResource(R.string.home_rows_hidden_empty), style = MaterialTheme.typography.bodySmall, color = NuvioTheme.colors.TextTertiary)
+                    }
                     if (item.isDisabled) {
                         Spacer(modifier = Modifier.height(NuvioTheme.spacing.xs))
                         Text(

@@ -68,7 +68,7 @@ data class LayoutSettingsUiState(
     val focusedPosterBackdropTrailerPlaybackTarget: FocusedPosterTrailerPlaybackTarget =
         FocusedPosterTrailerPlaybackTarget.HERO_MEDIA,
     val posterCardWidthDp: Int = 126,
-    /** The chosen Tile size preset (a poster width in dp), or null while tiles follow the poster Width. */
+    /** Live TV fork: the chosen Tile size preset (a poster width in dp), or null to follow poster Width. */
     val homeTileWidthDp: Int? = null,
     val posterCardHeightDp: Int = 189,
     val posterCardCornerRadiusDp: Int = 12,
@@ -1022,7 +1022,8 @@ class LayoutSettingsViewModel @Inject constructor(
         if (
             _uiState.value.posterCardWidthDp == 126 &&
             _uiState.value.posterCardHeightDp == 189 &&
-            _uiState.value.posterCardCornerRadiusDp == 12
+            _uiState.value.posterCardCornerRadiusDp == 12 &&
+            _uiState.value.homeTileWidthDp == null
         ) {
             return
         }
@@ -1030,6 +1031,7 @@ class LayoutSettingsViewModel @Inject constructor(
             layoutPreferenceDataStore.setPosterCardWidthDp(126)
             layoutPreferenceDataStore.setPosterCardHeightDp(189)
             layoutPreferenceDataStore.setPosterCardCornerRadiusDp(12)
+            layoutPreferenceDataStore.setHomeTileWidthDp(null)
         }
     }
 

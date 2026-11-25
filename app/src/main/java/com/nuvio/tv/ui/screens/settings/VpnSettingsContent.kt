@@ -202,6 +202,12 @@ fun VpnSettingsContent(initialFocusRequester: FocusRequester? = null) {
                         onClick = { choose(openVpn = false) }
                     )
                     SettingsActionRow(
+                        title = stringResource(VpnR.string.vpn_openvpn_title),
+                        subtitle = stringResource(VpnR.string.vpn_openvpn_detail),
+                        leadingIcon = Icons.Default.Add,
+                        onClick = { choose(openVpn = true) }
+                    )
+                    SettingsActionRow(
                         title = stringResource(R.string.vpn_phone_add),
                         subtitle = stringResource(R.string.vpn_phone_add_detail),
                         leadingIcon = Icons.Default.Add,
