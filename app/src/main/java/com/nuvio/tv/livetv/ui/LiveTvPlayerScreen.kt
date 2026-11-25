@@ -275,6 +275,9 @@ fun LiveTvPlayerScreen(
     var videoFps by remember { mutableStateOf(-1f) }
     // For the info bar: this channel's frame rate (not the last channel's while it starts).
     var shownFps by remember { mutableStateOf(-1f) }
+    // The largest picture this channel has shown, so a stream that steps up (540p to 1080p) switches the TV once.
+    var videoWidth by remember { mutableStateOf(0) }
+    var videoHeight by remember { mutableStateOf(0) }
     LaunchedEffect(playback.channelKey, playback.catchupTitle, settings.matchFrameRate) {
         val frameRateStabilizer = LiveFrameRateStabilizer()
         val startedAt = android.os.SystemClock.elapsedRealtime()
@@ -282,6 +285,8 @@ fun LiveTvPlayerScreen(
         shownFps = -1f
         // A new channel is matched afresh (the last channel's rate never stands in for it).
         videoFps = -1f
+        videoWidth = 0
+        videoHeight = 0
         while (true) {
             val p = viewModel.playback.player
             val f = p?.videoFormat
@@ -289,6 +294,10 @@ fun LiveTvPlayerScreen(
             val measured = if (active) viewModel.playback.measuredFps else -1f
             if (measured > 0f) hasMeasuredFrames = true
             if (f != null) {
+                if (f.width > 0 && f.height > 0 && f.width.toLong() * f.height > videoWidth.toLong() * videoHeight) {
+                    videoWidth = f.width
+                    videoHeight = f.height
+                }
                 if (playback.catchupTitle == null) playback.channelKey?.let { viewModel.recordQuality(it, f.height) }
             }
             // Timestamp callbacks can be usable before videoFormat/its frameRate is available.
@@ -314,6 +323,9 @@ fun LiveTvPlayerScreen(
     MatchFrameRate(
         enabled = settings.matchFrameRate && playback.channelKey != null, fps = videoFps, restore = settings.frameRateMode == "START_STOP",
         channelKey = playback.channelKey,
+        matchResolution = settings.matchResolution,
+        videoWidth = videoWidth,
+        videoHeight = videoHeight,
         diagnostics = { viewModel.playback.frameRateDiagnostics() },
         // The switch is made with the picture paused, as Nuvio's own player and TiviMate do: some
         // TVs ignored a switch asked for while a channel was playing.
@@ -1914,6 +1926,8 @@ private fun SleepTimerDialog(onPick: (Int?) -> Unit, onDismiss: () -> Unit) {
  * Match frame rate: while the player is on screen, asks the TV for a display mode whose refresh
  * rate fits the video (24 → 24 Hz, 25 → 50 Hz, 30 → 60 Hz…). [restore] ("On start/stop"): puts
  * the original mode back when the player closes; otherwise ("On start") the TV stays switched.
+ * With [matchResolution] the TV's resolution follows the picture too (the smallest size that fits it, never below 720p),
+ * and a changed resolution is always put back when the player closes, so the guide and Home aren't left at 720p.
  */
 @Composable
 private fun MatchFrameRate(
@@ -1921,6 +1935,9 @@ private fun MatchFrameRate(
     fps: Float,
     restore: Boolean,
     channelKey: String? = null,
+    matchResolution: Boolean = false,
+    videoWidth: Int = 0,
+    videoHeight: Int = 0,
     diagnostics: () -> String = { "" },
     pause: () -> Boolean = { false },
     resume: (Boolean) -> Unit = {}
@@ -1933,9 +1950,11 @@ private fun MatchFrameRate(
     } ?: return
     val originalMode = remember { activity.window.attributes.preferredDisplayModeId }
     val restoreNow = androidx.compose.runtime.rememberUpdatedState(restore)
+    // Set once this player has changed the TV's resolution (not just its refresh rate).
+    val resolutionChanged = remember { booleanArrayOf(false) }
     DisposableEffect(Unit) {
         onDispose {
-            if (!restoreNow.value) return@onDispose
+            if (!restoreNow.value && !resolutionChanged[0]) return@onDispose
             val attrs = activity.window.attributes
             if (attrs.preferredDisplayModeId != originalMode) {
                 attrs.preferredDisplayModeId = originalMode
@@ -1955,8 +1974,10 @@ private fun MatchFrameRate(
     }
     // The per-channel stabilizer has already normalized and confirmed the rate.
     val target = fps
-    LaunchedEffect(enabled, target, channelKey) {
+    LaunchedEffect(enabled, target, channelKey, matchResolution, videoWidth, videoHeight) {
         if (!enabled || target <= 0f) return@LaunchedEffect
+        // The picture size is needed to pick a resolution; it arrives with the first frames.
+        if (matchResolution && (videoWidth <= 0 || videoHeight <= 0)) return@LaunchedEffect
         val fps = target
         // The window's own display (what the switch applies to).
         @Suppress("DEPRECATION")
@@ -1965,20 +1986,33 @@ private fun MatchFrameRate(
         val candidates = display.supportedModes.filter {
             it.physicalWidth == current.physicalWidth && it.physicalHeight == current.physicalHeight
         }
+        // With Match resolution: the sizes that hold the picture (never under 720p), smallest first. A picture bigger
+        // than anything the display offers stays at the current size.
+        val resolutionGroups: List<List<android.view.Display.Mode>> =
+            if (matchResolution) {
+                display.supportedModes
+                    .filter { it.physicalWidth >= videoWidth && it.physicalHeight >= videoHeight && it.physicalHeight >= 720 }
+                    .groupBy { it.physicalWidth to it.physicalHeight }
+                    .entries.sortedBy { it.key.first.toLong() * it.key.second }
+                    .map { it.value }
+                    .ifEmpty { listOf(candidates) }
+            } else listOf(candidates)
         // The refresh rates that show every frame for the same time: a whole multiple of the
         // frame rate (25 fps: 25, 50, 75 Hz; 29.97 fps: 59.94 Hz). Close enough counts, but an
         // exact match wins (59.94 over 60 Hz for 29.97 fps, which otherwise skips a frame every
         // 16 seconds). Of those, the highest up to 60 Hz: sports at 25 fps are usually
         // interlaced and move 50 times a second, so 25 Hz stuttered where 50 Hz is smooth.
         fun error(refresh: Float): Float = (1..4).minOf { k -> kotlin.math.abs(refresh - fps * k) }
-        val fitting = candidates.filter { error(it.refreshRate) <= 0.6f }
-        val best = fitting.sortedWith(
-            compareBy<android.view.Display.Mode>(
-                { if (error(it.refreshRate) < 0.02f) 0 else 1 },
-                { if (it.refreshRate <= 61f) 0 else 1 },
-                { -it.refreshRate }
-            )
-        ).firstOrNull()
+        // The first (smallest) size that has a refresh rate that fits.
+        val best = resolutionGroups.firstNotNullOfOrNull { group ->
+            group.filter { error(it.refreshRate) <= 0.6f }.sortedWith(
+                compareBy<android.view.Display.Mode>(
+                    { if (error(it.refreshRate) < 0.02f) 0 else 1 },
+                    { if (it.refreshRate <= 61f) 0 else 1 },
+                    { -it.refreshRate }
+                )
+            ).firstOrNull()
+        }
         if (best == null) {
             com.nuvio.tv.livetv.model.LiveTvLoadReport.add(
                 "Match frame rate: video %.3f fps, but at %dx%d this box only offers ".format(fps, current.physicalWidth, current.physicalHeight) +
@@ -1990,6 +2024,14 @@ private fun MatchFrameRate(
         if (best.modeId == current.modeId) {
             com.nuvio.tv.livetv.model.LiveTvLoadReport.add("Match frame rate: video %.3f fps, display already at %.3f Hz".format(fps, current.refreshRate))
             return@LaunchedEffect
+        }
+        if (best.physicalWidth != current.physicalWidth || best.physicalHeight != current.physicalHeight) {
+            resolutionChanged[0] = true
+            com.nuvio.tv.livetv.model.LiveTvLoadReport.add(
+                "Match resolution: video %dx%d, display %dx%d → %dx%d".format(
+                    videoWidth, videoHeight, current.physicalWidth, current.physicalHeight, best.physicalWidth, best.physicalHeight
+                )
+            )
         }
         com.nuvio.tv.livetv.model.LiveTvLoadReport.add(
             "Match frame rate: video %.3f fps, display %.3f Hz → %.3f Hz".format(fps, current.refreshRate, best.refreshRate)
