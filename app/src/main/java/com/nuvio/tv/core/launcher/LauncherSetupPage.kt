@@ -13,7 +13,7 @@ internal object LauncherSetupPage {
     private val groups: List<Pair<String, List<Button>>> = listOf(
         "Home button" to listOf(
             Button(DeviceAction.MAKE_HOME, "Make this the Home app", "Android's Home role: the Home button opens this launcher."),
-            Button(DeviceAction.ENABLE_OVERRIDE, "Turn on Home button override", "Turns on this app's accessibility setting, so Home still opens the launcher on TVs that won't switch Home apps. It stays on after a restart."),
+            Button(DeviceAction.ENABLE_OVERRIDE, "Turn on Home button override", "Turns on this app's accessibility setting, so Home still opens the launcher on TVs that won't switch Home apps. It stays on after a restart. It also gives the app the permission to switch this back on by itself after restarts and app updates, so run it once."),
             Button(DeviceAction.ENABLE_NOTIFICATIONS, "Turn on notifications", "Lets the launcher show your TV's notifications under the bell at the top right of Home."),
             Button(DeviceAction.CHECK_HOME, "Which launcher is Home now?", "Only reads; changes nothing.")
         ),
