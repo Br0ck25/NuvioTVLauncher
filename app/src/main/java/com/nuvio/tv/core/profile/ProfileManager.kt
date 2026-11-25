@@ -39,8 +39,12 @@ class ProfileManager @Inject constructor(
 
     // Launcher: code that has only a Context (the apps row) reads the profile in use from ActiveProfile.
     val activeProfileId: StateFlow<Int> = profileDataStore.activeProfileId
-        .onEach { ActiveProfile.id = it }
-        .onEach { VpnPlaybackProtection.setActiveUserProfile(it) }
+        .onEach {
+            ActiveProfile.id = it
+            VpnPlaybackProtection.setActiveUserProfile(it)
+            YouTubeAccountScopes.setProfile(it)
+            ParentalControls.setProfile(it)
+        }
         .stateIn(scope, SharingStarted.Eagerly, 1)
 
     val activeProfileReady: StateFlow<Boolean> = profileDataStore.activeProfileId

@@ -1986,8 +1986,10 @@ open class MainActivity : ComponentActivity() {
                 }
                 return true
             }
-            // While the menu is open, Back is the exit prompt. Handling it here keeps the
-            // drawer's own Back handler from closing the sidebar first.
+            // While the menu is open, Back goes Home first (or shows the exit prompt when Home
+            // is already showing). Handling it here keeps the drawer's own Back handler from
+            // closing the sidebar first. Launcher: as the Home app Back never opens the exit prompt, the
+            // BackHandler below just closes the sidebar.
             if (sidebarOpenForBack && !nuvioHandlesHomeKey) {
                 if (event.action == KeyEvent.ACTION_DOWN && event.repeatCount == 0) {
                     val backToHome = sidebarBackToHome
@@ -2175,7 +2177,7 @@ private fun LegacySidebarScaffold(
             pendingContentFocusTransfer = true
             drawerState.setValue(DrawerValue.Closed)
         } else {
-            onExitApp()
+            backFromMenu()
         }
     }
 
@@ -2833,7 +2835,7 @@ private fun ModernSidebarScaffold(
             // As the Home app, Back must never leave: just collapse the sidebar.
             sidebarCollapsePending = true
         } else {
-            onExitApp()
+            backFromMenu()
         }
     }
 

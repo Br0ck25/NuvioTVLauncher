@@ -736,7 +736,11 @@ fun ModernHomeContent(
     val modernTileGap = NuvioTheme.spacing.md
     androidx.compose.runtime.SideEffect {
         com.nuvio.tv.ui.components.HomeTiles.publish(
-            com.nuvio.tv.ui.components.HomeTile(modernTileWidth, modernTileWidth / 1.77f, modernTileGap)
+            com.nuvio.tv.ui.components.HomeTile(
+                modernTileWidth,
+                modernTileWidth / 1.77f,
+                modernTileGap
+            )
         )
     }
 

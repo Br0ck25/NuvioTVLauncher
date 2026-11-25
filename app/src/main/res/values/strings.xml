@@ -1110,6 +1110,7 @@
     <string name="layout_modern_desc">Fixed hero with a single active row for faster browsing</string>
     <string name="layout_section_home">Home Layout</string>
     <string name="layout_section_home_desc">Choose structure and hero source.</string>
+    <string name="layout_tile_size">Tile Size</string>
     <string name="appearance_section_scaling">Section scaling</string>
     <string name="appearance_section_scaling_subtitle">Text and interface size for each section.</string>
     <string name="appearance_scaling_section">Section</string>
@@ -3626,20 +3627,6 @@
     <string name="youtube_continue_unavailable">Couldn\'t open this YouTube video right now.</string>
     <string name="youtube_settings_continue_watching_on_home">Continue watching on Home</string>
     <string name="youtube_settings_continue_watching_on_home_desc">Show videos you started on the YouTube page in their own row on Nuvio\'s Home screen.</string>
-    <string name="player_zoom_title">Manual zoom</string>
-    <string name="player_zoom_both">Zoom</string>
-    <string name="player_zoom_width">Width</string>
-    <string name="player_zoom_height">Height</string>
-    <string name="player_zoom_position_horizontal">Horizontal position</string>
-    <string name="player_zoom_position_vertical">Vertical position</string>
-    <string name="player_zoom_unavailable_tunneling">Manual zoom is unavailable while tunneling is on</string>
-    <string name="player_zoom_unavailable_engine">Manual zoom is not available in this player</string>
-    <string name="player_zoom_reset">Reset zoom</string>
-    <string name="player_zoom_remember">Remember zoom for each show</string>
-    <string name="player_zoom_remember_sub">The next episode opens with the zoom you set. Movies are remembered too.</string>
-    <string name="player_more_zoom">Manual zoom</string>
-
-    <!-- Restored from Nuvio One merge (strings dropped by conflict resolution) -->
     <string name="iptv_transfer_generate_title">Move this profile to another Nuvio account</string>
     <string name="iptv_transfer_generate_desc">Create a one-time code to move this profile\'s Live TV setup. The code expires after 15 minutes.</string>
     <string name="iptv_transfer_generate_action">Generate code</string>
@@ -3653,4 +3640,18 @@
     <string name="iptv_transfer_success_desc">The transferred setup is now part of this account\'s primary profile.</string>
     <string name="iptv_transfer_failed_title">Transfer not completed</string>
     <string name="iptv_transfer_failed_desc">Could not complete the Live TV transfer. Try again.</string>
+
+    <!-- Player zoom (launcher) -->
+    <string name="player_zoom_title">Manual zoom</string>
+    <string name="player_zoom_both">Zoom</string>
+    <string name="player_zoom_width">Width</string>
+    <string name="player_zoom_height">Height</string>
+    <string name="player_zoom_position_horizontal">Horizontal position</string>
+    <string name="player_zoom_position_vertical">Vertical position</string>
+    <string name="player_zoom_unavailable_tunneling">Manual zoom is unavailable while tunneling is on</string>
+    <string name="player_zoom_unavailable_engine">Manual zoom is not available in this player</string>
+    <string name="player_zoom_reset">Reset zoom</string>
+    <string name="player_zoom_remember">Remember zoom for each show</string>
+    <string name="player_zoom_remember_sub">The next episode opens with the zoom you set. Movies are remembered too.</string>
+    <string name="player_more_zoom">Manual zoom</string>
 </resources>

@@ -41,13 +41,13 @@ import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.layout.ContentScale
 import androidx.compose.ui.input.key.onPreviewKeyEvent
 import androidx.compose.ui.res.stringResource
-import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextOverflow
+import androidx.compose.ui.text.font.FontWeight
+import androidx.compose.ui.unit.sp
 import com.nuvio.tv.R
 import com.nuvio.tv.domain.model.CardDepthSurface
 import androidx.compose.ui.unit.Dp
 import androidx.compose.ui.unit.dp
-import androidx.compose.ui.unit.sp
 import androidx.compose.foundation.lazy.LazyListState
 import androidx.compose.foundation.lazy.LazyRow
 import androidx.compose.foundation.lazy.itemsIndexed
@@ -79,8 +79,6 @@ import coil3.request.ImageRequest
 import coil3.request.transformations
 import coil3.request.crossfade
 import kotlin.math.roundToInt
-import java.time.LocalDate
-import java.time.ZoneId
 import java.util.concurrent.TimeUnit
 import com.nuvio.tv.ui.util.recompositionHighlighter
 import com.nuvio.tv.ui.util.localizeEpisodeTitle
@@ -97,6 +95,8 @@ import androidx.compose.ui.graphics.painter.Painter
 import androidx.compose.ui.text.TextStyle
 import com.nuvio.tv.domain.model.CardDepthStyle
 import kotlinx.coroutines.delay
+import java.time.LocalDate
+import java.time.ZoneId
 
 /** Whether the cards show the "# EP left" badge. Provided by the Home screen from Layout settings. */
 internal val LocalShowContinueWatchingEpisodeCount = androidx.compose.runtime.compositionLocalOf { true }
@@ -126,6 +126,7 @@ private val POSTER_TITLE_BLOCK_HEIGHT = 30.dp
 // Width to height ratio of poster art, used to size the wide card's artwork strip.
 private const val WIDE_POSTER_ASPECT = 2f / 3f
 
+// The wide card fills its strip with poster art, so the strip width follows the card height and the poster is never cropped.
 internal val UPCOMING_SCHEDULE_CARD_WIDTH = 330.dp
 internal val UPCOMING_SCHEDULE_CARD_HEIGHT = 88.dp
 internal val UPCOMING_SCHEDULE_THUMB_WIDTH = 112.dp
@@ -137,7 +138,6 @@ internal fun upcomingScheduleThumbHeight(imageHeight: Dp): Dp =
 
 internal fun upcomingScheduleThumbWidth(imageHeight: Dp): Dp = UPCOMING_SCHEDULE_THUMB_WIDTH
 
-// The wide card fills its strip with poster art, so the strip width follows the card height and the poster is never cropped.
 internal fun continueWatchingArtworkWidth(
     cardStyle: ContinueWatchingCardStyle,
     cardWidth: Dp,
@@ -154,6 +154,7 @@ internal fun continueWatchingArtworkHeight(
     isUpcomingCard: Boolean = false
 ): Dp = if (isUpcomingCard) (UPCOMING_SCHEDULE_CARD_HEIGHT - 16.dp) else cardHeight
 
+/** "S1E10 · Title", without repeating the code when the title already starts with it. */
 internal fun formatCompactEpisodeSubtitle(
     compactEpisodeStr: String?,
     episodeTitle: String?,
@@ -564,11 +565,7 @@ fun ContinueWatchingCard(
     val compactEpisodeStr = remember(progress, nextUp) {
         val season = progress?.season ?: nextUp?.season
         val episode = progress?.episode ?: nextUp?.episode
-        if (season != null && episode != null) {
-            "S${season}E${episode}"
-        } else {
-            null
-        }
+        if (season != null && episode != null) "S${season}E${episode}" else null
     }
     val strUpcoming = stringResource(R.string.cw_upcoming)
     val strNextUp = stringResource(R.string.cw_next_up)
@@ -774,7 +771,7 @@ fun ContinueWatchingCard(
                 val today = LocalDate.now(ZoneId.systemDefault())
                 val isAiringToday = releaseDate != null && releaseDate == today
                 val rawLabel = if (isAiringToday) {
-                    context.getString(R.string.cw_airs_today)
+                    context.getString(R.string.cw_airs_today_short)
                 } else if (nextUp != null && !nextUp.hasAired) {
                     computeAirDateBadgeTextShort(context, nextUp.released, nextUp.airDateLabel)
                         ?: computeAirDateBadgeText(context, nextUp.released, nextUp.airDateLabel)
@@ -1322,6 +1319,7 @@ private fun WideCardContent(
                         }
                     }
                 }
+                // One compact line: "S1E10 · Title".
                 val combinedSubtitle = remember(episodeStr, episodeTitle) {
                     formatCompactEpisodeSubtitle(episodeStr, episodeTitle)
                 }
@@ -1441,6 +1439,23 @@ fun ContinueWatchingOptionsDialog(
             Text(stringResource(R.string.cw_action_go_to_details))
         }
 
+        // Live TV fork: a Calendar "new episode" card can be put off until tomorrow.
+        if (item is ContinueWatchingItem.NextUp && item.info.fromCalendar && item.info.isReleaseAlert) {
+            Button(
+                onClick = {
+                    com.nuvio.tv.livetv.calendar.CalendarHomeFeed.snooze(item.info.contentId, item.info.season, item.info.episode)
+                    onDismiss()
+                },
+                colors = ButtonDefaults.colors(
+                    containerColor = NuvioTheme.colors.BackgroundCard,
+                    contentColor = NuvioTheme.colors.TextPrimary
+                ),
+                modifier = Modifier.fillMaxWidth()
+            ) {
+                Text("Not today (back on Home tomorrow)")
+            }
+        }
+
         if (showPlayManually && isPlayEnabled) {
             Button(
                 onClick = onPlayManually,
@@ -1477,26 +1492,6 @@ fun ContinueWatchingOptionsDialog(
                 modifier = Modifier.fillMaxWidth()
             ) {
                 Text(stringResource(R.string.hero_mark_watched))
-            }
-        }
-
-        if (item is ContinueWatchingItem.NextUp && item.info.fromCalendar && item.info.isReleaseAlert) {
-            Button(
-                onClick = {
-                    com.nuvio.tv.livetv.calendar.CalendarHomeFeed.snooze(
-                        item.info.contentId,
-                        item.info.season,
-                        item.info.episode
-                    )
-                    onDismiss()
-                },
-                colors = ButtonDefaults.colors(
-                    containerColor = NuvioTheme.colors.BackgroundCard,
-                    contentColor = NuvioTheme.colors.TextPrimary
-                ),
-                modifier = Modifier.fillMaxWidth()
-            ) {
-                Text("Not today (back on Home tomorrow)")
             }
         }
 

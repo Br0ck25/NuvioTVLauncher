@@ -22,6 +22,8 @@ import androidx.compose.runtime.Composable
 import androidx.compose.runtime.CompositionLocalProvider
 import androidx.compose.runtime.DisposableEffect
 import androidx.compose.runtime.LaunchedEffect
+import androidx.compose.runtime.SideEffect
+import androidx.compose.runtime.collectAsState
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.mutableIntStateOf
@@ -134,6 +136,7 @@ fun ClassicHomeContent(
     val globalLandscape = LocalLandscapePosterMode.current
     // The user's Tile size (Layout settings) applies to the tile every Home row shares.
     val userTileScale = com.nuvio.tv.ui.components.rememberHomeTileScale()
+    val newUpcomingRow by com.nuvio.tv.livetv.calendar.CalendarHomeFeed.newUpcomingRowFlow.collectAsState()
     val classicContinueWatchingCardWidth = remember(classicCatalogPosterCardStyle, classicSecondaryPosterCardStyle, uiState.continueWatchingCardStyle, globalLandscape, userTileScale) {
         when (uiState.continueWatchingCardStyle) {
             ContinueWatchingCardStyle.POSTER -> if (globalLandscape) classicLandscapeCatalogWidth else classicCatalogPosterCardStyle.width
@@ -150,16 +153,28 @@ fun ClassicHomeContent(
     }
     // The tile every row shares: Continue Watching's 16:9 card size, whatever style it is set to.
     val classicTileGap = NuvioTheme.spacing.lg
-    val classicHomeTile = remember(classicSecondaryPosterCardStyle, classicLandscapeCatalogWidth, classicLandscapeCatalogHeight, globalLandscape, classicTileGap) {
+    val classicHomeTile = remember(
+        classicSecondaryPosterCardStyle,
+        classicLandscapeCatalogWidth,
+        classicLandscapeCatalogHeight,
+        globalLandscape,
+        classicTileGap
+    ) {
         if (globalLandscape) {
-            com.nuvio.tv.ui.components.HomeTile(classicLandscapeCatalogWidth, classicLandscapeCatalogHeight, classicTileGap)
+            com.nuvio.tv.ui.components.HomeTile(
+                classicLandscapeCatalogWidth,
+                classicLandscapeCatalogHeight,
+                classicTileGap
+            )
         } else {
             com.nuvio.tv.ui.components.HomeTile(
-                classicSecondaryPosterCardStyle.width * (16f / 9f), classicSecondaryPosterCardStyle.width, classicTileGap
+                classicSecondaryPosterCardStyle.width * (16f / 9f),
+                classicSecondaryPosterCardStyle.width,
+                classicTileGap
             )
         }
     }
-    androidx.compose.runtime.SideEffect { com.nuvio.tv.ui.components.HomeTiles.publish(classicHomeTile) }
+    SideEffect { com.nuvio.tv.ui.components.HomeTiles.publish(classicHomeTile) }
     // Match catalog poster label style so CW poster titles look the same as catalog ones.
     val classicPosterTitleStyle = if (uiState.continueWatchingCardStyle == ContinueWatchingCardStyle.POSTER) {
         MaterialTheme.typography.titleMedium
@@ -296,11 +311,12 @@ fun ClassicHomeContent(
             uiState.catalogRows.filter { it.items.isNotEmpty() }.map { HomeRow.Catalog(it) }
         }
     }
-    val visibleRowKeys = remember(visibleHomeRows) {
-        visibleHomeRows.mapTo(mutableSetOf()) { row ->
+    val visibleRowKeys: Set<String> = remember(visibleHomeRows) {
+        visibleHomeRows.mapTo(mutableSetOf<String>()) { row ->
             when (row) {
                 is HomeRow.Catalog -> row.row.stableKey()
                 is HomeRow.CollectionRow -> "collection_${row.collection.id}"
+                is HomeRow.LiveRow -> row.key
                 is HomeRow.InstalledApps -> com.nuvio.tv.core.apps.INSTALLED_APPS_CATALOG_KEY
                 is HomeRow.PlaceholderCatalog -> row.stableCatalogKey
             }
@@ -909,13 +925,17 @@ fun ClassicHomeContent(
                                 ?.toClassicFocusArtwork(uiState.focusedPosterBackdropExpandEnabled)
                         }
                     },
-                    cardWidth = UPCOMING_SCHEDULE_CARD_WIDTH,
+                    cardWidth = if (newUpcomingRow) {
+                        com.nuvio.tv.ui.components.UPCOMING_SCHEDULE_CARD_WIDTH
+                    } else {
+                        classicContinueWatchingCardWidth
+                    },
                     imageHeight = classicContinueWatchingImageHeight,
                     cardStyle = uiState.continueWatchingCardStyle,
                     cornerRadius = posterCardStyle.cornerRadius,
                     posterTitleOverride = classicPosterTitleStyle,
                     listState = upcomingListState,
-                    isUpcomingSection = true
+                    isUpcomingSection = newUpcomingRow
                 )
             }
         }
@@ -929,6 +949,7 @@ fun ClassicHomeContent(
                         "${r.stableKey()}_$index"
                     }
                     is HomeRow.CollectionRow -> "collection_${item.collection.id}"
+                    is HomeRow.LiveRow -> item.key
                     is HomeRow.InstalledApps -> com.nuvio.tv.core.apps.INSTALLED_APPS_CATALOG_KEY
                     is HomeRow.PlaceholderCatalog -> "${item.stableCatalogKey}_$index"
                 }
@@ -937,6 +958,7 @@ fun ClassicHomeContent(
                 when (item) {
                     is HomeRow.Catalog -> "catalog_row"
                     is HomeRow.CollectionRow -> "collection_row"
+                    is HomeRow.LiveRow -> "live_row"
                     is HomeRow.InstalledApps -> "installed_apps_row"
                     is HomeRow.PlaceholderCatalog -> "catalog_row"
                 }
@@ -1080,6 +1102,25 @@ fun ClassicHomeContent(
                 is HomeRow.InstalledApps -> {
                     // Launcher: the installed apps, placed like any other row.
                     com.nuvio.tv.ui.components.InstalledAppsHomeRow(startPadding = NuvioTheme.spacing.xxxl, titleStyle = MaterialTheme.typography.headlineMedium)
+                }
+
+                is HomeRow.LiveRow -> {
+                    val tile = com.nuvio.tv.ui.components.rememberHomeTile()
+                        ?: classicHomeTile
+                    com.nuvio.tv.livetv.home.HomeLiveRowSection(
+                        rowKey = homeRow.key,
+                        style = com.nuvio.tv.livetv.home.HomeLiveRowStyle(
+                            landscape = globalLandscape,
+                            portraitWidth = tile.width,
+                            portraitHeight = tile.height,
+                            landscapeWidth = tile.width,
+                            landscapeHeight = tile.height,
+                            startPadding = NuvioTheme.spacing.xxxl,
+                            cornerRadius = classicCatalogPosterCardStyle.cornerRadius,
+                            cardSpacing = tile.gap,
+                            titleStyle = MaterialTheme.typography.headlineMedium
+                        )
+                    )
                 }
 
                 is HomeRow.PlaceholderCatalog -> { }

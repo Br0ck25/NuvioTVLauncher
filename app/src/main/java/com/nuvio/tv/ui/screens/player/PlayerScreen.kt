@@ -1257,6 +1257,7 @@ fun PlayerScreen(
             !uiState.showPartyPanel &&
             !uiState.showAudioOverlay &&
             !uiState.showSubtitleOverlay &&
+            !uiState.showYouTubePanel &&
             !uiState.showSpeedDialog && !uiState.showZoomDialog &&
             !postPlayRecommendationState.isVisible &&
             uiState.postPlayMode !is PostPlayMode.StillWatching

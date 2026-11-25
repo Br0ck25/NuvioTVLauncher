@@ -265,7 +265,6 @@
     
 <string name="wizard_welcome_points">• Home opens the launcher\'s home page\n• Double-tap Home to switch profile\n• Back never drops you out of the launcher</string>
     
-    <string name="layout_tile_size">Tile size</string>
     <string name="layout_pill_shows_profile">Floating Pill Shows Profile</string>
     <string name="layout_pill_shows_profile_sub">Show your profile picture and name in the floating pill instead of the page name, on Home only (other pages show no pill, so it never covers a title). It needs more than one profile.</string>
     <string name="appearance_icon_pack_title">Icon pack</string>

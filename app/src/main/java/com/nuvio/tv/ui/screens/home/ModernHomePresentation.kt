@@ -353,6 +353,15 @@ internal fun buildModernHomePresentation(
                     add(mappedRow)
                 }
 
+                is HomeRow.LiveRow -> add(
+                    HeroCarouselRow(
+                        key = homeRow.key,
+                        title = homeRow.title,
+                        globalRowIndex = index,
+                        items = emptyList<ModernCarouselItem>().asStable()
+                    )
+                )
+
                 is HomeRow.InstalledApps -> {
                     add(HeroCarouselRow(
                         key = com.nuvio.tv.core.apps.INSTALLED_APPS_CATALOG_KEY,
@@ -451,6 +460,7 @@ private fun resolveVisibleHomeRows(input: ModernHomePresentationInput): List<Hom
                 is HomeRow.CollectionRow -> {
                     homeRow.collection.takeIf(Collection::hasVisibleFolders)?.let(HomeRow::CollectionRow)
                 }
+                is HomeRow.LiveRow -> homeRow
                 is HomeRow.InstalledApps -> homeRow.takeIf { it.apps.isNotEmpty() }
                 is HomeRow.PlaceholderCatalog -> {
                     // Keep placeholder rows as-is — they'll be rendered as shimmer skeletons

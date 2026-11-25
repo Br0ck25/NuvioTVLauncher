@@ -142,6 +142,8 @@ internal fun VideoZoomDialog(
                         ),
                     ),
                     shape = CardDefaults.shape(shape = RoundedCornerShape(10.dp)),
+                    // No focus zoom: the panel clips to its rounded corners, so a scaled-up card would be cut off at the edges.
+                    scale = CardDefaults.scale(focusedScale = 1f, pressedScale = 1f),
                 ) {
                     Text(
                         text = stringResource(R.string.player_zoom_reset),

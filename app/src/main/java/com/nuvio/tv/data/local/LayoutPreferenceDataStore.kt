@@ -340,14 +340,16 @@ class LayoutPreferenceDataStore @Inject constructor(
     }
 
     /**
-     * The size for the Home tiles (Continue Watching, Upcoming, Live TV, apps), as a poster width preset (104 to 140):
-     * a tile is the size of a landscape poster at that preset. Null follows the poster Width setting.
+     * Live TV fork: the Home tile size as a poster-width preset (104–140). A tile is the size of a
+     * landscape poster at that preset. Null follows the poster Width setting, exactly as before.
      */
-    val homeTileWidthDp: Flow<Int?> = profileFlow { prefs -> prefs[homeTileWidthDpKey]?.takeIf { it > 0 } }
+    val homeTileWidthDp: Flow<Int?> = profileFlow { prefs ->
+        prefs[homeTileWidthDpKey]?.takeIf { it > 0 }
+    }
 
     init {
-        // Home's tiles read the size from HomeTiles, which they share with the Apps page. The scale is the chosen
-        // preset against the poster width the layouts already size their tiles from, so "follow" is exactly 1.
+        // The Home layouts publish their tile; this scales it against the poster width they
+        // already size their tiles from, so "follow poster Width" is exactly 1.
         scope.launch {
             kotlinx.coroutines.flow.combine(posterCardWidthDp, homeTileWidthDp) { poster, tile ->
                 if (tile == null) 1f else tile / poster.toFloat()
@@ -758,9 +760,14 @@ class LayoutPreferenceDataStore @Inject constructor(
         }
     }
 
+    /** Live TV fork: the shared Home tile size, or null to follow the poster Width setting. */
     suspend fun setHomeTileWidthDp(widthDp: Int?) {
         store().edit { prefs ->
-            if (widthDp == null) prefs.remove(homeTileWidthDpKey) else prefs[homeTileWidthDpKey] = widthDp
+            if (widthDp == null) {
+                prefs.remove(homeTileWidthDpKey)
+            } else {
+                prefs[homeTileWidthDpKey] = widthDp.coerceIn(104, 140)
+            }
         }
     }
 
