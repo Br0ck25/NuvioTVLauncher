@@ -33,7 +33,6 @@ import androidx.compose.runtime.DisposableEffect
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.derivedStateOf
 import androidx.compose.runtime.getValue
-import androidx.compose.runtime.collectAsState
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.mutableIntStateOf
 import androidx.compose.runtime.remember
@@ -396,7 +395,7 @@ fun GridHomeContent(
     // are "pre-section" items (e.g. Hero). Continue Watching goes between them and the rest.
     val firstSectionIndex = remember(gridItemsWithKeys) {
         gridItemsWithKeys.indexOfFirst { (item, _) ->
-            item is GridItem.SectionDivider || item is GridItem.CollectionHeader || item is GridItem.LiveRow
+            item is GridItem.SectionDivider || item is GridItem.CollectionHeader
         }
     }
     val preItems = remember(gridItemsWithKeys, firstSectionIndex) {
@@ -447,13 +446,13 @@ fun GridHomeContent(
             var i = 0
             while (i < postItems.size) {
                 val (item, _) = postItems[i]
-                if (item is GridItem.SectionDivider || item is GridItem.CollectionHeader || item is GridItem.LiveRow) {
+                if (item is GridItem.SectionDivider || item is GridItem.CollectionHeader) {
                     // Collect all items in this section
                     result.add(postItems[i])
                     i++
                     val sectionContent = mutableListOf<Pair<GridItem, String>>()
                     var seeAllItem: Pair<GridItem, String>? = null
-                    while (i < postItems.size && postItems[i].first !is GridItem.SectionDivider && postItems[i].first !is GridItem.CollectionHeader && postItems[i].first !is GridItem.LiveRow) {
+                    while (i < postItems.size && postItems[i].first !is GridItem.SectionDivider && postItems[i].first !is GridItem.CollectionHeader) {
                         if (postItems[i].first is GridItem.SeeAll) {
                             seeAllItem = postItems[i]
                         } else if (postItems[i].first is GridItem.Content) {
@@ -545,7 +544,6 @@ fun GridHomeContent(
                     }
                 ) { (gridItem, itemKey) ->
                     when (gridItem) {
-                        is GridItem.LiveRow -> GridLiveHomeRow(gridItem.key, posterCardStyle, globalLandscape)
                         is GridItem.Hero -> {
                             HeroCarousel(
                                 items = gridItem.items.asStable(),
@@ -826,7 +824,6 @@ fun GridHomeContent(
                     }
                 ) { (gridItem, itemKey) ->
                 when (gridItem) {
-                        is GridItem.LiveRow -> GridLiveHomeRow(gridItem.key, posterCardStyle, globalLandscape)
                         is GridItem.Hero -> {
                             HeroCarousel(
                                 items = gridItem.items.asStable(),
@@ -997,29 +994,6 @@ fun GridHomeContent(
             fixedTitle = stickyTitle
         )
     }
-}
-
-@Composable
-private fun GridLiveHomeRow(
-    key: String,
-    posterCardStyle: PosterCardStyle,
-    landscape: Boolean
-) {
-    val tile = com.nuvio.tv.ui.components.rememberHomeTile()
-    com.nuvio.tv.livetv.home.HomeLiveRowSection(
-        rowKey = key,
-        style = com.nuvio.tv.livetv.home.HomeLiveRowStyle(
-            landscape = landscape,
-            portraitWidth = tile?.width ?: posterCardStyle.width,
-            portraitHeight = tile?.height ?: posterCardStyle.height,
-            landscapeWidth = tile?.width ?: posterCardStyle.width,
-            landscapeHeight = tile?.height ?: posterCardStyle.height,
-            startPadding = 0.dp,
-            cornerRadius = posterCardStyle.cornerRadius,
-            cardSpacing = tile?.gap ?: NuvioTheme.spacing.lg,
-            titleStyle = MaterialTheme.typography.headlineMedium
-        )
-    )
 }
 
 @Composable

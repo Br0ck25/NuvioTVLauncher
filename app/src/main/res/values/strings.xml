@@ -1110,7 +1110,6 @@
     <string name="layout_modern_desc">Fixed hero with a single active row for faster browsing</string>
     <string name="layout_section_home">Home Layout</string>
     <string name="layout_section_home_desc">Choose structure and hero source.</string>
-    <string name="layout_tile_size">Tile Size</string>
     <string name="appearance_section_scaling">Section scaling</string>
     <string name="appearance_section_scaling_subtitle">Text and interface size for each section.</string>
     <string name="appearance_scaling_section">Section</string>
@@ -3639,4 +3638,19 @@
     <string name="player_zoom_remember">Remember zoom for each show</string>
     <string name="player_zoom_remember_sub">The next episode opens with the zoom you set. Movies are remembered too.</string>
     <string name="player_more_zoom">Manual zoom</string>
+
+    <!-- Restored from Nuvio One merge (strings dropped by conflict resolution) -->
+    <string name="iptv_transfer_generate_title">Move this profile to another Nuvio account</string>
+    <string name="iptv_transfer_generate_desc">Create a one-time code to move this profile\'s Live TV setup. The code expires after 15 minutes.</string>
+    <string name="iptv_transfer_generate_action">Generate code</string>
+    <string name="iptv_transfer_redeem_title">Move Live TV setup to this account</string>
+    <string name="iptv_transfer_redeem_desc">Enter a one-time code from a secondary profile on another Nuvio account.</string>
+    <string name="iptv_transfer_redeem_action">Redeem code</string>
+    <string name="iptv_transfer_code_title">One-time transfer code</string>
+    <string name="iptv_transfer_code_display">%1$s\n\nEnter this code on the receiving account within 15 minutes. It moves only Live TV setup.</string>
+    <string name="iptv_transfer_code_hint">XXXX-XXXX-XXXX</string>
+    <string name="iptv_transfer_success_title">Live TV setup moved</string>
+    <string name="iptv_transfer_success_desc">The transferred setup is now part of this account\'s primary profile.</string>
+    <string name="iptv_transfer_failed_title">Transfer not completed</string>
+    <string name="iptv_transfer_failed_desc">Could not complete the Live TV transfer. Try again.</string>
 </resources>

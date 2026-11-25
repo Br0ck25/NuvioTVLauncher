@@ -226,9 +226,6 @@ sealed class GridItem {
         val addonBaseUrl: String,
         val type: String
     ) : GridItem()
-    /** A full-width Live TV or Sports row embedded in the poster grid. */
-    @Immutable
-    data class LiveRow(val key: String, val title: String) : GridItem()
     @Immutable
     data class CollectionHeader(
         val collectionId: String,
