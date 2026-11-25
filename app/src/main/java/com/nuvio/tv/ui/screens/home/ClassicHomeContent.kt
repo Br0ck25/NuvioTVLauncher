@@ -317,6 +317,7 @@ fun ClassicHomeContent(
                 is HomeRow.Catalog -> row.row.stableKey()
                 is HomeRow.CollectionRow -> "collection_${row.collection.id}"
                 is HomeRow.LiveRow -> row.key
+                is HomeRow.InstalledApps -> com.nuvio.tv.core.apps.INSTALLED_APPS_CATALOG_KEY
                 is HomeRow.PlaceholderCatalog -> row.stableCatalogKey
             }
         }
@@ -949,6 +950,7 @@ fun ClassicHomeContent(
                     }
                     is HomeRow.CollectionRow -> "collection_${item.collection.id}"
                     is HomeRow.LiveRow -> item.key
+                    is HomeRow.InstalledApps -> com.nuvio.tv.core.apps.INSTALLED_APPS_CATALOG_KEY
                     is HomeRow.PlaceholderCatalog -> "${item.stableCatalogKey}_$index"
                 }
             },
@@ -957,6 +959,7 @@ fun ClassicHomeContent(
                     is HomeRow.Catalog -> "catalog_row"
                     is HomeRow.CollectionRow -> "collection_row"
                     is HomeRow.LiveRow -> "live_row"
+                    is HomeRow.InstalledApps -> "installed_apps_row"
                     is HomeRow.PlaceholderCatalog -> "catalog_row"
                 }
             }
@@ -1094,6 +1097,11 @@ fun ClassicHomeContent(
                             }
                         }
                     )
+                }
+
+                is HomeRow.InstalledApps -> {
+                    // Launcher: the installed apps, placed like any other row.
+                    com.nuvio.tv.ui.components.InstalledAppsHomeRow(startPadding = NuvioTheme.spacing.xxxl, titleStyle = MaterialTheme.typography.headlineMedium)
                 }
 
                 is HomeRow.LiveRow -> {

@@ -224,7 +224,8 @@ internal fun HomeViewModel.removeTruncatedRowCacheEntry(key: String) {
 
 internal fun HomeViewModel.rebuildCatalogOrder(addons: List<Addon>) {
     val defaultOrder = buildDefaultCatalogOrder(addons)
-    val collectionKeys = collectionsCache.map { "collection_${it.id}" } + liveRowsCache.map { it.first }
+    val collectionKeys = collectionsCache.map { "collection_${it.id}" } + liveRowsCache.map { it.first } +
+        com.nuvio.tv.core.apps.INSTALLED_APPS_CATALOG_KEY
     val allAvailable = (defaultOrder + collectionKeys).toSet()
 
     if (followAddonsOrderEnabled) {

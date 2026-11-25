@@ -93,6 +93,7 @@ class HomeViewModel @Inject constructor(
     internal val onDemandRepository: com.nuvio.tv.livetv.ondemand.OnDemandRepository,
     internal val liveTvPreferences: com.nuvio.tv.livetv.data.LiveTvPreferences,
     internal val homeLiveRows: com.nuvio.tv.livetv.home.HomeLiveRows,
+    internal val installedAppsRepository: com.nuvio.tv.core.apps.InstalledAppsRepository? = null,
     internal val trailerPlayerPool: com.nuvio.tv.core.player.TrailerPlayerPool,
     internal val backgroundTrailerController: com.nuvio.tv.core.player.BackgroundTrailerController,
     internal val metaPreviewEnricher: MetaPreviewEnricher = MetaPreviewEnricher(
@@ -242,6 +243,7 @@ class HomeViewModel @Inject constructor(
     internal var vodRowsCache: Map<String, CatalogRow> = emptyMap()
     internal var vodRowKeys: Set<String> = emptySet()
     internal var emptyLiveRowKeys: Set<String> = emptySet()
+    @Volatile internal var installedAppsCache: List<com.nuvio.tv.core.apps.InstalledApp> = emptyList()
     internal var homeCatalogOrderKeys: List<String> = emptyList()
     internal var disabledHomeCatalogKeys: Set<String> = emptySet()
     internal var followAddonsOrderEnabled: Boolean = false

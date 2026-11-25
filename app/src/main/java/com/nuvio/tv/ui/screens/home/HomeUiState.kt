@@ -179,6 +179,10 @@ sealed class HomeRow {
     @Immutable
     data class LiveRow(val key: String, val title: String) : HomeRow()
 
+    /** Launcher: the installed apps, placed like any other row. */
+    @Immutable
+    data class InstalledApps(val apps: List<com.nuvio.tv.core.apps.InstalledApp>) : HomeRow()
+
     /**
      * Placeholder for a catalog row whose data hasn't been fetched yet.
      * Rendered as a shimmer/skeleton row until the user scrolls near it

@@ -1258,7 +1258,7 @@ fun PlayerScreen(
             !uiState.showAudioOverlay &&
             !uiState.showSubtitleOverlay &&
             !uiState.showYouTubePanel &&
-            !uiState.showSpeedDialog &&
+            !uiState.showSpeedDialog && !uiState.showZoomDialog &&
             !postPlayRecommendationState.isVisible &&
             uiState.postPlayMode !is PostPlayMode.StillWatching
         val latestPlayerControlsVisible by rememberUpdatedState(playerControlsVisible)

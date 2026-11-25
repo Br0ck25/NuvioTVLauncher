@@ -3640,4 +3640,18 @@
     <string name="iptv_transfer_success_desc">The transferred setup is now part of this account\'s primary profile.</string>
     <string name="iptv_transfer_failed_title">Transfer not completed</string>
     <string name="iptv_transfer_failed_desc">Could not complete the Live TV transfer. Try again.</string>
+
+    <!-- Player zoom (launcher) -->
+    <string name="player_zoom_title">Manual zoom</string>
+    <string name="player_zoom_both">Zoom</string>
+    <string name="player_zoom_width">Width</string>
+    <string name="player_zoom_height">Height</string>
+    <string name="player_zoom_position_horizontal">Horizontal position</string>
+    <string name="player_zoom_position_vertical">Vertical position</string>
+    <string name="player_zoom_unavailable_tunneling">Manual zoom is unavailable while tunneling is on</string>
+    <string name="player_zoom_unavailable_engine">Manual zoom is not available in this player</string>
+    <string name="player_zoom_reset">Reset zoom</string>
+    <string name="player_zoom_remember">Remember zoom for each show</string>
+    <string name="player_zoom_remember_sub">The next episode opens with the zoom you set. Movies are remembered too.</string>
+    <string name="player_more_zoom">Manual zoom</string>
 </resources>

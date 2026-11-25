@@ -362,6 +362,28 @@ internal fun buildModernHomePresentation(
                     )
                 )
 
+                is HomeRow.InstalledApps -> {
+                    add(HeroCarouselRow(
+                        key = com.nuvio.tv.core.apps.INSTALLED_APPS_CATALOG_KEY,
+                        title = localizedContext.getString(R.string.apps_title),
+                        globalRowIndex = index,
+                        items = homeRow.apps.map { app ->
+                            ModernCarouselItem(
+                                key = "installed_app_${app.packageName}",
+                                title = app.label,
+                                subtitle = null,
+                                imageUrl = null,
+                                heroPreview = HeroPreview(
+                                    title = "", logo = null, description = null,
+                                    contentTypeText = null, yearText = null, imdbText = null,
+                                    genres = emptyList<String>().asStable(), poster = null, backdrop = null, imageUrl = null
+                                ),
+                                payload = ModernPayload.InstalledApp(app)
+                            )
+                        }.asStable()
+                    ))
+                }
+
                 is HomeRow.PlaceholderCatalog -> {
                     if (catalogRowLimit != null && renderedCatalogRows >= catalogRowLimit) {
                         return@forEachIndexed
@@ -439,6 +461,7 @@ private fun resolveVisibleHomeRows(input: ModernHomePresentationInput): List<Hom
                     homeRow.collection.takeIf(Collection::hasVisibleFolders)?.let(HomeRow::CollectionRow)
                 }
                 is HomeRow.LiveRow -> homeRow
+                is HomeRow.InstalledApps -> homeRow.takeIf { it.apps.isNotEmpty() }
                 is HomeRow.PlaceholderCatalog -> {
                     // Keep placeholder rows as-is — they'll be rendered as shimmer skeletons
                     homeRow

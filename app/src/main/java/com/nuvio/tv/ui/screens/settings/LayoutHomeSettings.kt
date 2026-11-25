@@ -223,6 +223,26 @@ internal fun LayoutSidebarSection(
                 onToggle = { onEvent(LayoutSettingsEvent.SetModernSidebarBlurEnabled(!uiState.modernSidebarBlurEnabled)) }
             )
         }
+        SettingsToggleRow(
+            title = stringResource(R.string.layout_hide_floating_pill),
+            subtitle = stringResource(R.string.layout_hide_floating_pill_sub),
+            checked = uiState.sidebarCollapsedByDefault,
+            onToggle = { onEvent(LayoutSettingsEvent.SetSidebarCollapsed(!uiState.sidebarCollapsedByDefault)) }
+        )
+        // One pill, one job: the page's name, or the profile. Needs more than one profile to show anything.
+        SettingsToggleRow(
+            title = stringResource(R.string.layout_pill_shows_profile),
+            subtitle = stringResource(R.string.layout_pill_shows_profile_sub),
+            checked = uiState.floatingPillShowsProfile,
+            onToggle = { onEvent(LayoutSettingsEvent.SetFloatingPillShowsProfile(!uiState.floatingPillShowsProfile)) }
+        )
+    } else {
+        SettingsToggleRow(
+            title = stringResource(R.string.layout_collapse_sidebar),
+            subtitle = stringResource(R.string.layout_collapse_sidebar_sub),
+            checked = uiState.sidebarCollapsedByDefault,
+            onToggle = { onEvent(LayoutSettingsEvent.SetSidebarCollapsed(!uiState.sidebarCollapsedByDefault)) }
+        )
     }
     // Live TV fork: the menu is hidden in every section now; Left/Menu/Back opens it and a
     // selection hides it again. The old Collapse/Hide Pill switches no longer apply.

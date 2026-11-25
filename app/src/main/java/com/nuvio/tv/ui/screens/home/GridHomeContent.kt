@@ -386,6 +386,7 @@ fun GridHomeContent(
                 is GridItem.CollectionHeader -> "col_header_${item.collectionId}"
                 is GridItem.CollectionFolder -> "col_folder_${item.collectionId}_${item.folder.id}"
                 is GridItem.LiveRow -> item.key
+                is GridItem.InstalledAppsRow -> "installed_apps_row"
             }
             item to key
         }
@@ -526,7 +527,7 @@ fun GridHomeContent(
                     key = { it.second },
                     span = { pair ->
                         val spanCount = when (pair.first) {
-                            is GridItem.Hero, is GridItem.SectionDivider, is GridItem.CollectionHeader, is GridItem.LiveRow -> maxLineSpan
+                            is GridItem.Hero, is GridItem.SectionDivider, is GridItem.CollectionHeader, is GridItem.LiveRow, is GridItem.InstalledAppsRow -> maxLineSpan
                             else -> 1
                         }
                         GridItemSpan(spanCount)
@@ -540,6 +541,7 @@ fun GridHomeContent(
                             is GridItem.CollectionHeader -> "collection_header"
                             is GridItem.CollectionFolder -> "collection_folder"
                             is GridItem.LiveRow -> "live_row"
+                            is GridItem.InstalledAppsRow -> "installed_apps"
                         }
                     }
                 ) { (gridItem, itemKey) ->
@@ -807,7 +809,7 @@ fun GridHomeContent(
                     key = { it.second },
                     span = { pair ->
                         val spanCount = when (pair.first) {
-                            is GridItem.Hero, is GridItem.SectionDivider, is GridItem.CollectionHeader, is GridItem.LiveRow -> maxLineSpan
+                            is GridItem.Hero, is GridItem.SectionDivider, is GridItem.CollectionHeader, is GridItem.LiveRow, is GridItem.InstalledAppsRow -> maxLineSpan
                             else -> 1
                         }
                         GridItemSpan(spanCount)
@@ -821,6 +823,7 @@ fun GridHomeContent(
                             is GridItem.CollectionHeader -> "collection_header"
                             is GridItem.CollectionFolder -> "collection_folder"
                             is GridItem.LiveRow -> "live_row"
+                            is GridItem.InstalledAppsRow -> "installed_apps"
                         }
                     }
                 ) { (gridItem, itemKey) ->

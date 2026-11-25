@@ -1988,8 +1988,9 @@ open class MainActivity : ComponentActivity() {
             }
             // While the menu is open, Back goes Home first (or shows the exit prompt when Home
             // is already showing). Handling it here keeps the drawer's own Back handler from
-            // closing the sidebar first.
-            if (sidebarOpenForBack) {
+            // closing the sidebar first. Launcher: as the Home app Back never opens the exit prompt, the
+            // BackHandler below just closes the sidebar.
+            if (sidebarOpenForBack && !nuvioHandlesHomeKey) {
                 if (event.action == KeyEvent.ACTION_DOWN && event.repeatCount == 0) {
                     val backToHome = sidebarBackToHome
                     if (backToHome != null) backToHome() else handleAppExit()
@@ -2171,7 +2172,13 @@ private fun LegacySidebarScaffold(
 
     BackHandler(enabled = currentRoute in rootRoutes && drawerState.currentValue == DrawerValue.Open) {
         if (longPressBackHeld.value) return@BackHandler
-        backFromMenu()
+        if (launcherMode()) {
+            // As the Home app, Back must never leave: just close the sidebar.
+            pendingContentFocusTransfer = true
+            drawerState.setValue(DrawerValue.Closed)
+        } else {
+            backFromMenu()
+        }
     }
 
     // Live TV fork: back from the menu to Home, the Live TV row gets the highlight back only if
@@ -2824,7 +2831,12 @@ private fun ModernSidebarScaffold(
 
     BackHandler(enabled = currentRoute in rootRoutes && isSidebarExpanded && !sidebarCollapsePending) {
         if (longPressBackHeld.value) return@BackHandler
-        backFromMenu()
+        if (launcherMode()) {
+            // As the Home app, Back must never leave: just collapse the sidebar.
+            sidebarCollapsePending = true
+        } else {
+            backFromMenu()
+        }
     }
 
     LaunchedEffect(sidebarCollapsePending, isSidebarExpanded, showSidebar) {
