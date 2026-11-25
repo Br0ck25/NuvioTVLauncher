@@ -18,6 +18,8 @@ import kotlinx.coroutines.launch
 
 internal fun PlayerRuntimeController.fetchMetaDetails(id: String?, type: String?) {
     if (id.isNullOrBlank() || type.isNullOrBlank()) return
+    // On Demand ids (`nuviovod:`) exist only in the provider; no metadata addon can resolve them.
+    if (com.nuvio.tv.livetv.ondemand.VodHomeIds.isOnDemandContentId(id)) return
 
     metaFetchJob = scope.launch {
         when (
