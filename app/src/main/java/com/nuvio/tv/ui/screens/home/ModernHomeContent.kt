@@ -276,14 +276,30 @@ fun ModernHomeContent(
     val contentHasFocus = remember { mutableStateOf(false) }
     val fullscreenHeroTrailerPlaying = remember { mutableStateOf(false) }
     val stopHeroTrailer = remember { mutableStateOf<(() -> Unit)?>(null) }
+    val firstRowKey = rememberUpdatedState(carouselRows.list.firstOrNull()?.key)
     val shouldInterceptBack = remember {
         derivedStateOf {
             if (!contentHasFocus.value) return@derivedStateOf false
             if (fullscreenHeroTrailerPlaying.value) return@derivedStateOf true
             val rowKey = activeRowKey.value ?: return@derivedStateOf false
             val itemIndex = focusedItemByRow[rowKey] ?: 0
-            itemIndex > 0
+            // First Back: to the start of the row. Second Back: to the first item of the first row (the top).
+            itemIndex > 0 || rowKey != firstRowKey.value
         }
+    }
+    // Focus on the first item of the first row, with Home scrolled to the top.
+    suspend fun focusTopOfHome() {
+        verticalRowListState.scrollToItem(0, 0)
+        val firstRow = carouselRows.list.firstOrNull() ?: return
+        rowListStates[firstRow.key]?.scrollToItem(0, 0)
+        focusedItemByRow[firstRow.key] = 0
+        activeRowKey.value = firstRow.key
+        activeItemIndex.intValue = 0
+        focusHolder.activeRowKey = firstRow.key
+        focusHolder.activeItemIndex = 0
+        pendingRowFocusKey.value = firstRow.key
+        pendingRowFocusIndex.value = 0
+        pendingRowFocusNonce.intValue++
     }
     IsolatedReadScope {
         BackHandler(enabled = shouldInterceptBack.value) {
@@ -292,6 +308,10 @@ fun ModernHomeContent(
                 return@BackHandler
             }
             val rowKey = activeRowKey.value ?: return@BackHandler
+            if ((focusedItemByRow[rowKey] ?: 0) == 0) {
+                backScrollScope.launch { focusTopOfHome() }
+                return@BackHandler
+            }
             val listState = rowListStates[rowKey]
             focusedItemByRow[rowKey] = 0
             pendingRowFocusKey.value = rowKey
@@ -305,7 +325,7 @@ fun ModernHomeContent(
 
     LaunchedEffect(scrollToTopTrigger) {
         if (scrollToTopTrigger > 0) {
-            verticalRowListState.scrollToItem(0, 0)
+            focusTopOfHome()
         }
     }
 

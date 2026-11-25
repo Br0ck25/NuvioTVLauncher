@@ -368,6 +368,41 @@ fun ClassicHomeContent(
 
     val contentFocusRequester = LocalContentFocusRequester.current
 
+    // Focus on the first item of the first row, scrolled to the top.
+    val focusTopOfHome: suspend () -> Unit = {
+        columnListState.scrollToItem(0, 0)
+        val firstKey = visibleRowKeys.firstOrNull()
+        val requester = when {
+            heroVisible -> heroFocusRequester
+            uiState.continueWatchingEnabled && uiState.continueWatchingItems.isNotEmpty() -> {
+                cwListState.scrollToItem(0, 0)
+                cwRowFocusRequester
+            }
+            firstKey != null -> {
+                rowStates[firstKey]?.scrollToItem(0, 0)
+                rowFocusedItemIndex[firstKey] = 0
+                rowFocusRequesters[firstKey]
+            }
+            else -> null
+        }
+        if (requester != null) {
+            currentFocusSnapshot.itemIndex = 0
+            for (attempt in 0 until 8) {
+                withFrameNanos { }
+                if (runCatching { requester.requestFocus(); true }.getOrDefault(false)) break
+            }
+        }
+    }
+    // Home: land on the first item of the first row, so Down goes to the second row and focus shows at once.
+    LaunchedEffect(scrollToTopTrigger) {
+        if (scrollToTopTrigger > 0) focusTopOfHome()
+    }
+    // Second Back (the first one went to the start of the row): to the top of Home.
+    val canScrollUp by remember { derivedStateOf { columnListState.canScrollBackward } }
+    BackHandler(enabled = contentHasFocus.value && canScrollUp) {
+        scope.launch { focusTopOfHome() }
+    }
+
     // Surfaced from [Modifier.dpadVerticalFastScroll] so cards inside the
     // LazyColumn can hide their focus chrome while the list is being dragged
     // by a held DPAD_UP / DPAD_DOWN (see [LocalFastScrollActive] below).

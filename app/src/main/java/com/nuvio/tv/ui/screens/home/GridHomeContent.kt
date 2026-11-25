@@ -39,6 +39,7 @@ import androidx.compose.runtime.remember
 import androidx.compose.runtime.saveable.rememberSaveable
 import androidx.compose.runtime.setValue
 import androidx.compose.runtime.withFrameNanos
+import kotlinx.coroutines.launch
 import kotlinx.coroutines.delay
 import androidx.compose.runtime.snapshotFlow
 import androidx.compose.ui.Alignment
@@ -335,6 +336,36 @@ fun GridHomeContent(
                 return@LaunchedEffect
             }
         }
+    }
+
+    // Focus on the first item of the grid, scrolled to the top.
+    val focusTopOfGrid: suspend () -> Unit = {
+        gridState.scrollToItem(0, 0)
+        val requester = when {
+            hasHero -> heroFocusRequester
+            hasContinueWatching -> {
+                cwListState.scrollToItem(0, 0)
+                cwRowFocusRequester
+            }
+            hasStandaloneFocusableGridItem -> firstGridItemFocusRequester
+            else -> null
+        }
+        if (requester != null) {
+            for (attempt in 0 until 8) {
+                withFrameNanos { }
+                if (runCatching { requester.requestFocus(); true }.getOrDefault(false)) break
+            }
+        }
+    }
+    // Home: land on the first item, so Down goes to the second row and focus shows at once.
+    LaunchedEffect(scrollToTopTrigger) {
+        if (scrollToTopTrigger > 0) focusTopOfGrid()
+    }
+    // Second Back (the first one went to the start of the row): to the top of the grid.
+    val gridCanScrollUp by remember { derivedStateOf { gridState.canScrollBackward } }
+    val backScope = androidx.compose.runtime.rememberCoroutineScope()
+    BackHandler(enabled = contentHasFocus.value && gridCanScrollUp) {
+        backScope.launch { focusTopOfGrid() }
     }
 
     // Throttle D-pad key repeats to prevent HWUI overload when a key is held down.
