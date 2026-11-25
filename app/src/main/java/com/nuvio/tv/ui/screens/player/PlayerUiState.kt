@@ -152,6 +152,9 @@ data class PlayerUiState(
     val subtitleAutoSyncLoading: Boolean = false,
     val subtitleAutoSyncLoadedTrackKey: String? = null,
     val showSpeedDialog: Boolean = false,
+    val showZoomDialog: Boolean = false,
+    /** Manual zoom (width, height, position) on top of the aspect mode; saved per show. */
+    val videoZoom: VideoZoom = VideoZoom.IDENTITY,
     val showMoreDialog: Boolean = false,
     // Subtitle style settings
     val subtitleStyle: SubtitleStyleSettings = SubtitleStyleSettings(),
@@ -451,6 +454,9 @@ sealed class PlayerEvent {
     data class OnSetSubtitleShadowSize(val size: Int) : PlayerEvent()
     data object OnResetSubtitleDefaults : PlayerEvent()
     data object OnToggleAspectRatio : PlayerEvent()
+    data object OnShowZoomDialog : PlayerEvent()
+    data class OnAdjustVideoZoom(val axis: VideoZoomAxis, val steps: Int) : PlayerEvent()
+    data object OnResetVideoZoom : PlayerEvent()
     data object OnSwitchInternalPlayerEngine : PlayerEvent()
     data object OnSwitchToMpvPlayer : PlayerEvent()
     data object OnShowStreamInfo : PlayerEvent()

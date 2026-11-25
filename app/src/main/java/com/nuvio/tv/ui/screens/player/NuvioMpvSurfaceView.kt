@@ -40,6 +40,7 @@ class NuvioMpvSurfaceView @JvmOverloads constructor(
     private var appliedHi10pGnextSoftwareFallback: Boolean? = null
     private var cachedTrackList: MpvTrackListCache? = null
     private var currentAspectMode: AspectMode = AspectMode.ORIGINAL
+    private var currentVideoZoom: VideoZoom = VideoZoom.IDENTITY
     private var pendingAspectRetryCount = 0
     private var styledSubtitlesEnabled = false
     private val aspectReapplyRunnable = Runnable {
@@ -420,6 +421,12 @@ class NuvioMpvSurfaceView @JvmOverloads constructor(
         }
     }
 
+    /** Manual zoom (width, height, position) on top of the aspect mode. */
+    fun applyVideoZoom(zoom: VideoZoom) {
+        currentVideoZoom = zoom
+        applyAspectModeInternal(currentAspectMode, allowRetry = false)
+    }
+
     fun applyAspectMode(mode: AspectMode) {
         currentAspectMode = mode
         pendingAspectRetryCount = 0
@@ -445,8 +452,11 @@ class NuvioMpvSurfaceView @JvmOverloads constructor(
             viewAspect = viewAspect,
             videoAspect = videoAspect
         )
-        scaleX = scale.scaleX
-        scaleY = scale.scaleY
+        val zoom = VideoZoomPolicy.normalize(currentVideoZoom)
+        scaleX = scale.scaleX * zoom.scaleX
+        scaleY = scale.scaleY * zoom.scaleY
+        translationX = zoom.panX * width * scaleX
+        translationY = zoom.panY * height * scaleY
         if (
             allowRetry &&
             aspectModeNeedsVideoAspect(mode) &&

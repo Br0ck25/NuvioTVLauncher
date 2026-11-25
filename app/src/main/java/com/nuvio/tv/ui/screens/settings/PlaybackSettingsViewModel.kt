@@ -160,6 +160,10 @@ class PlaybackSettingsViewModel @Inject constructor(
         playerSettingsDataStore.setNightMode(mode)
     }
 
+    suspend fun setRememberVideoZoom(enabled: Boolean) {
+        playerSettingsDataStore.setRememberVideoZoom(enabled)
+    }
+
     suspend fun setRememberAudioDelayPerDevice(enabled: Boolean) {
         playerSettingsDataStore.setRememberAudioDelayPerDevice(enabled)
     }

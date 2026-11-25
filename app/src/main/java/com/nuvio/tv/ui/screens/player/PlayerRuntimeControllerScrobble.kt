@@ -99,6 +99,7 @@ internal fun PlayerRuntimeController.preparePlaybackBeforeStart(
                 _uiState.update { it.copy(playbackSpeed = speed) }
             }
         }
+        loadRememberedVideoZoom()
         // Load saved watch progress BEFORE player init.
         // This eliminates the race condition where ExoPlayer's STATE_READY
         // callback fired before the DB read completed, causing the resume

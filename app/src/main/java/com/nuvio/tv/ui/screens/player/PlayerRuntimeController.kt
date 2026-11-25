@@ -640,6 +640,7 @@ class PlayerRuntimeController(
     internal var hasInitializedAudioAmplificationForSession: Boolean = false
     internal var hasInitializedCenterMixForSession: Boolean = false
     internal var rememberAudioDelayPerDeviceEnabled: Boolean = false
+    internal var rememberVideoZoomEnabled: Boolean = true
     internal var currentAudioOutputRoute: AudioOutputRoute? = null
     /** USB audio has no hardware A/V sync output, so tunneled playback is skipped while it plays. */
     internal var tunnelingBlockedByUsbAudio: Boolean = false

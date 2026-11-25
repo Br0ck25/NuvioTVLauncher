@@ -61,6 +61,15 @@ internal fun PlaybackVideoSection(
     val showAfrWarning = settings.frameRateMatchingMode != FrameRateMatchingMode.OFF ||
         (settings.resolutionMatchingEnabled && !resolutionSwitchingSupported)
 
+    SettingsSectionLabel(text = stringResource(R.string.player_zoom_title))
+    SettingsToggleRow(
+        title = stringResource(R.string.player_zoom_remember),
+        subtitle = stringResource(R.string.player_zoom_remember_sub),
+        checked = settings.rememberVideoZoom,
+        onToggle = { onUpdate { setRememberVideoZoom(!settings.rememberVideoZoom) } },
+        enabled = enabled
+    )
+
     SettingsSectionLabel(text = stringResource(R.string.playback_auto_frame_rate))
     SettingsActionRow(
         title = stringResource(R.string.playback_afr_mode),

@@ -333,6 +333,8 @@ data class PlayerSettings(
     val centerMixLevelDb: Int = 0,
     val persistAudioAmplification: Boolean = false,
     val rememberAudioDelayPerDevice: Boolean = true,
+    /** Manual zoom is saved per show/title, so the next episode opens with the same zoom. */
+    val rememberVideoZoom: Boolean = true,
     val preferredAudioLanguage: String = AudioLanguageOption.DEVICE,
     val secondaryPreferredAudioLanguage: String? = null,
     val loadingOverlayEnabled: Boolean = true,
@@ -713,6 +715,7 @@ class PlayerSettingsDataStore @Inject constructor(
     private val centerMixLevelDbKey = intPreferencesKey("center_mix_level_db")
     private val persistAudioAmplificationKey = booleanPreferencesKey("persist_audio_amplification")
     private val rememberAudioDelayPerDeviceKey = booleanPreferencesKey("remember_audio_delay_per_device")
+    private val rememberVideoZoomKey = booleanPreferencesKey("remember_video_zoom")
     private val preferredAudioLanguageKey = stringPreferencesKey("preferred_audio_language")
     private val secondaryPreferredAudioLanguageKey = stringPreferencesKey("secondary_preferred_audio_language")
     private val loadingOverlayEnabledKey = booleanPreferencesKey("loading_overlay_enabled")
@@ -1118,6 +1121,7 @@ class PlayerSettingsDataStore @Inject constructor(
                 ),
                 persistAudioAmplification = prefs[persistAudioAmplificationKey] ?: false,
                 rememberAudioDelayPerDevice = prefs[rememberAudioDelayPerDeviceKey] ?: true,
+                rememberVideoZoom = prefs[rememberVideoZoomKey] ?: true,
                 preferredAudioLanguage = normalizeSelectableLanguageCode(
                     prefs[preferredAudioLanguageKey] ?: AudioLanguageOption.DEVICE
                 ),
@@ -1447,6 +1451,12 @@ class PlayerSettingsDataStore @Inject constructor(
                     CENTER_MIX_LEVEL_DB_MAX
                 )
             }
+        }
+    }
+
+    suspend fun setRememberVideoZoom(enabled: Boolean) {
+        store().edit { prefs ->
+            prefs[rememberVideoZoomKey] = enabled
         }
     }
 

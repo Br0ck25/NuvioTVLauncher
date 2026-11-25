@@ -1462,7 +1462,7 @@ fun PlayerRuntimeController.scheduleHideControls() {
         delay(3000)
         if (_uiState.value.isPlaying && !_uiState.value.showAudioOverlay && !_uiState.value.showQualityOverlay && !_uiState.value.showYouTubePanel &&
             !_uiState.value.showSubtitleOverlay && !_uiState.value.showSubtitleStylePanel &&
-            !_uiState.value.showSpeedDialog && !_uiState.value.showMoreDialog &&
+            !_uiState.value.showSpeedDialog && !_uiState.value.showZoomDialog && !_uiState.value.showMoreDialog &&
             !_uiState.value.showSubtitleDelayOverlay &&
             !_uiState.value.showSubtitleTimingDialog &&
             !_uiState.value.showEpisodesPanel && !_uiState.value.showSourcesPanel &&
@@ -1484,7 +1484,7 @@ internal fun PlayerRuntimeController.showSubtitleDelayOverlay() {
             showSubtitleOverlay = false,
             showSubtitleStylePanel = false,
             showSubtitleTimingDialog = false,
-            showSpeedDialog = false
+            showSpeedDialog = false, showZoomDialog = false
         )
     }
     scheduleHideSubtitleDelayOverlay()
@@ -1578,7 +1578,7 @@ internal fun PlayerRuntimeController.schedulePauseOverlay() {
         delay(pauseOverlayDelayMs)
         val s = _uiState.value
         val anyPanelOpen = s.showSubtitleOverlay || s.showSubtitleStylePanel ||
-            s.showSpeedDialog || s.showMoreDialog || s.showEpisodesPanel ||
+            s.showSpeedDialog || s.showZoomDialog || s.showMoreDialog || s.showEpisodesPanel ||
             s.showSourcesPanel || s.showChaptersPanel || s.showAudioOverlay || s.showQualityOverlay || s.showYouTubePanel || s.showStreamInfoOverlay ||
             s.showSubtitleTimingDialog || s.showSubtitleDelayOverlay || s.showPartyPanel
         if (!s.isPlaying && s.pauseOverlayEnabled && s.error == null && !anyPanelOpen) {
@@ -1914,7 +1914,7 @@ fun PlayerRuntimeController.onEvent(
             _uiState.update {
                 it.copy(
                     playbackSpeed = event.speed,
-                    showSpeedDialog = false,
+                    showSpeedDialog = false, showZoomDialog = false,
                     showSubtitleTimingDialog = false,
                     showSubtitleDelayOverlay = false
                 )
@@ -2102,6 +2102,47 @@ fun PlayerRuntimeController.onEvent(
                 )
             }
         }
+        PlayerEvent.OnShowZoomDialog -> {
+            val state = _uiState.value
+            val messageRes = when {
+                state.tunnelingEnabled -> R.string.player_zoom_unavailable_tunneling
+                isUsingVlcEngine() -> R.string.player_zoom_unavailable_engine
+                else -> null
+            }
+            if (messageRes != null) {
+                _uiState.update {
+                    it.copy(
+                        showAspectRatioIndicator = true,
+                        aspectRatioIndicatorText = context.getString(messageRes)
+                    )
+                }
+                hideAspectRatioIndicatorJob?.cancel()
+                hideAspectRatioIndicatorJob = scope.launch {
+                    delay(1500)
+                    _uiState.update { it.copy(showAspectRatioIndicator = false) }
+                }
+                return
+            }
+            _uiState.update {
+                it.copy(
+                    showZoomDialog = true,
+                    showSpeedDialog = false,
+                    showAudioOverlay = false,
+                    showSubtitleOverlay = false,
+                    showSubtitleStylePanel = false,
+                    showMoreDialog = false,
+                    showSubtitleTimingDialog = false,
+                    showSubtitleDelayOverlay = false,
+                    showControls = true
+                )
+            }
+        }
+        is PlayerEvent.OnAdjustVideoZoom -> {
+            changeVideoZoom(VideoZoomPolicy.adjust(_uiState.value.videoZoom, event.axis, event.steps))
+        }
+        PlayerEvent.OnResetVideoZoom -> {
+            changeVideoZoom(VideoZoom.IDENTITY)
+        }
         PlayerEvent.OnShowMoreDialog -> {
             _uiState.update {
                 it.copy(
@@ -2111,7 +2152,7 @@ fun PlayerRuntimeController.onEvent(
                     showSubtitleStylePanel = false,
                     showSubtitleTimingDialog = false,
                     showSubtitleDelayOverlay = false,
-                    showSpeedDialog = false,
+                    showSpeedDialog = false, showZoomDialog = false,
                     showControls = true
                 )
             }
@@ -2183,7 +2224,7 @@ fun PlayerRuntimeController.onEvent(
                     showSubtitleOverlay = false,
                     showSubtitleStylePanel = false,
                     showSubtitleTimingDialog = false,
-                    showSpeedDialog = false,
+                    showSpeedDialog = false, showZoomDialog = false,
                     showSubtitleDelayOverlay = false,
                     showMoreDialog = false
                 )

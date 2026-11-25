@@ -54,7 +54,7 @@ internal fun PlayerRuntimeController.showChaptersPanel() {
             showSubtitleOverlay = false,
             showSubtitleStylePanel = false,
             showSubtitleTimingDialog = false,
-            showSpeedDialog = false,
+            showSpeedDialog = false, showZoomDialog = false,
             showMoreDialog = false
         )
     }

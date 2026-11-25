@@ -32,6 +32,11 @@ class TrackPreferenceDataStore @Inject constructor(
         // almost certainly wrong.
         private const val SUB_DELAY_MS = "sub_delay_ms"
         private const val PLAYBACK_SPEED = "playback_speed"
+        // Manual zoom is per title/show (like the track choices), so the next episode opens the same.
+        private const val ZOOM_SCALE_X = "zoom_scale_x"
+        private const val ZOOM_SCALE_Y = "zoom_scale_y"
+        private const val ZOOM_PAN_X = "zoom_pan_x"
+        private const val ZOOM_PAN_Y = "zoom_pan_y"
     }
 
     private fun store() = factory.get(profileManager.activeProfileId.value, FEATURE)
@@ -108,6 +113,33 @@ class TrackPreferenceDataStore @Inject constructor(
 
     suspend fun loadSubtitleDelayMs(videoId: String): Int? {
         return store().data.first()[intKey(SUB_DELAY_MS, videoId)]
+    }
+
+    /** Saves the manual zoom for a title/show; an unzoomed picture is stored as nothing. */
+    suspend fun saveVideoZoom(contentId: String, zoom: com.nuvio.tv.ui.screens.player.VideoZoom) {
+        val z = com.nuvio.tv.ui.screens.player.VideoZoomPolicy.normalize(zoom)
+        store().edit { prefs ->
+            val fields = listOf(
+                ZOOM_SCALE_X to z.scaleX, ZOOM_SCALE_Y to z.scaleY, ZOOM_PAN_X to z.panX, ZOOM_PAN_Y to z.panY
+            )
+            fields.forEach { (field, value) ->
+                val k = floatKey(field, contentId)
+                if (z.isIdentity) prefs.remove(k) else prefs[k] = value
+            }
+        }
+    }
+
+    suspend fun loadVideoZoom(contentId: String): com.nuvio.tv.ui.screens.player.VideoZoom? {
+        val prefs = store().data.first().asMap()
+        fun read(field: String) = (prefs[floatKey(field, contentId)] as? Number)?.toFloat()
+        val sx = read(ZOOM_SCALE_X)
+        val sy = read(ZOOM_SCALE_Y)
+        val px = read(ZOOM_PAN_X)
+        val py = read(ZOOM_PAN_Y)
+        if (sx == null && sy == null && px == null && py == null) return null
+        return com.nuvio.tv.ui.screens.player.VideoZoomPolicy.normalize(
+            com.nuvio.tv.ui.screens.player.VideoZoom(sx ?: 1f, sy ?: 1f, px ?: 0f, py ?: 0f)
+        )
     }
 
     suspend fun savePlaybackSpeed(contentId: String, speed: Float?) {
