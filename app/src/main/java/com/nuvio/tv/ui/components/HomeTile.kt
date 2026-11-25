@@ -9,8 +9,10 @@ import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
 
 /**
- * The one tile size the Home rows share: Continue Watching's 16:9 card. Apps, collections and the
- * Apps page use it as it is; Upcoming and Live TV cards are two tiles wide (and keep their own height).
+ * Live TV fork: the one tile size the Home rows share — Continue Watching's 16:9 card.
+ *
+ * Collection folders, Upcoming and the Live TV row read it so they line up. Upcoming and Live TV
+ * cards are two tiles wide ([wideWidth]).
  */
 @Immutable
 data class HomeTile(val width: Dp, val height: Dp, val gap: Dp) {
@@ -19,13 +21,13 @@ data class HomeTile(val width: Dp, val height: Dp, val gap: Dp) {
 }
 
 /**
- * The tile the Home layout on screen is using. Each layout publishes its Continue Watching size here, so
- * screens outside Home (the Apps page) and the shared cards can follow it. Null until Home has been drawn.
+ * The tile the Home layout on screen is using. Each layout publishes its Continue Watching size
+ * here, so screens outside Home and the shared cards can follow it. Null until Home has been drawn.
  */
 object HomeTiles {
     private val current = MutableStateFlow<HomeTile?>(null)
 
-    /** The user's tile size (Layout settings), 1f by default. Applied to the published tile and Continue Watching. */
+    /** The user's Tile size (Layout settings), 1f by default. */
     private val scaleState = MutableStateFlow(1f)
     val scale: StateFlow<Float> = scaleState
 
