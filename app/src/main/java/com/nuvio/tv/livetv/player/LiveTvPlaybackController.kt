@@ -1863,35 +1863,6 @@ class LiveTvPlaybackController @Inject constructor(
                 // in the start-up report, so we can see when it starts and what was going on.
                 setVideoFrameMetadataListener(frameListener)
                 addAnalyticsListener(object : androidx.media3.exoplayer.analytics.AnalyticsListener {
-                    private var lastAudioWasCompressed = false
-
-                    /**
-                     * Passthrough on: after a Dolby / DTS channel, a PCM (stereo AAC / MP3) channel
-                     * can play in silence on some boxes (Shield) because the audio output stays set
-                     * up for the compressed stream; it only recovers when the player is rebuilt
-                     * (what leaving to Android settings and coming back did). Rebuild right away.
-                     */
-                    override fun onAudioInputFormatChanged(
-                        eventTime: androidx.media3.exoplayer.analytics.AnalyticsListener.EventTime,
-                        format: androidx.media3.common.Format,
-                        decoderReuseEvaluation: androidx.media3.exoplayer.DecoderReuseEvaluation?
-                    ) {
-                        val compressed = format.sampleMimeType in COMPRESSED_AUDIO_MIME_TYPES
-                        val wasCompressed = lastAudioWasCompressed
-                        lastAudioWasCompressed = compressed
-                        if (!(wasCompressed && !compressed && passthrough)) return
-                        val ch = currentChannel ?: return
-                        val url = currentUrl
-                        val title = _state.value.catchupTitle
-                        val providerRef = activeStalkerRef
-                        Log.w(TAG, "Compressed audio to PCM on one player; rebuilding it so the sound isn't lost")
-                        scope.launch {
-                            if (currentChannel?.key != ch.key) return@launch
-                            release()
-                            play(ch, overrideUrl = url.takeIf { it != ch.url }, catchupTitle = title, stalkerStream = providerRef)
-                        }
-                    }
-
                     private var droppedTotal = 0L
                     private var lastReportAt = 0L
                     override fun onDroppedVideoFrames(
@@ -1914,7 +1885,7 @@ class LiveTvPlaybackController @Inject constructor(
             }
     }
 
-        // ---------------------------------------------------------------- picture watchdog
+    // ---------------------------------------------------------------- picture watchdog
 
     /**
      * Moving the picture between the guide preview and full screen gives the player a new
@@ -2529,18 +2500,6 @@ class LiveTvPlaybackController @Inject constructor(
         private val FORMAT_GUESSES = LiveStreamFormats.FORMAT_GUESSES
         /** No picture this long after the video moved to a new screen = stuck. */
         private const val FRAME_TIMEOUT_MS = 2_500L
-
-        /** Formats sent to the speakers/receiver as-is when passthrough is on. */
-        private val COMPRESSED_AUDIO_MIME_TYPES = setOf(
-            androidx.media3.common.MimeTypes.AUDIO_AC3,
-            androidx.media3.common.MimeTypes.AUDIO_E_AC3,
-            androidx.media3.common.MimeTypes.AUDIO_E_AC3_JOC,
-            androidx.media3.common.MimeTypes.AUDIO_AC4,
-            androidx.media3.common.MimeTypes.AUDIO_DTS,
-            androidx.media3.common.MimeTypes.AUDIO_DTS_HD,
-            androidx.media3.common.MimeTypes.AUDIO_DTS_EXPRESS,
-            androidx.media3.common.MimeTypes.AUDIO_TRUEHD
-        )
         /** Still loading this long after the video moved to a new screen = stuck. */
         private const val LOADING_AFTER_MOVE_MS = 7_000L
         private const val C_TIME_UNSET = Long.MIN_VALUE + 1
