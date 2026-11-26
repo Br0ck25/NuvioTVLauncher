@@ -4,6 +4,7 @@ import androidx.activity.compose.BackHandler
 import androidx.compose.foundation.Image
 import androidx.compose.foundation.background
 import androidx.compose.foundation.border
+import androidx.compose.foundation.combinedClickable
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
@@ -389,6 +390,7 @@ fun MusicScreen(
                 accountAvatar = account.accounts.firstOrNull { it.selected }?.avatar,
                 partyRunning = party.running,
                 onOpenNowPlaying = { showNowPlaying = true },
+                onStopAndClear = { MusicPlaybackService.stopAndClear(context) },
                 onOpenAccount = { showAccount = true },
                 onOpenSettings = { showSettings = true },
                 onOpenParty = { showParty = true },
@@ -833,6 +835,7 @@ private fun MusicTopNavigation(
     accountAvatar: String?,
     partyRunning: Boolean,
     onOpenNowPlaying: () -> Unit,
+    onStopAndClear: () -> Unit,
     onOpenAccount: () -> Unit,
     onOpenSettings: () -> Unit,
     onOpenParty: () -> Unit,
@@ -890,7 +893,8 @@ private fun MusicTopNavigation(
                 if (playback.song != null) {
                     NowPlayingChip(
                         playback = playback,
-                        onClick = onOpenNowPlaying
+                        onClick = onOpenNowPlaying,
+                        onLongClick = onStopAndClear
                     )
                 }
             }
@@ -1093,9 +1097,13 @@ private fun MusicTopNavItem(
 private fun NowPlayingChip(
     playback: MusicPlayer.State,
     onClick: () -> Unit,
+    onLongClick: () -> Unit,
     modifier: Modifier = Modifier
 ) {
     var focused by remember { mutableStateOf(false) }
+    var remoteOkPressed by remember { mutableStateOf(false) }
+    var remoteLongClickFired by remember { mutableStateOf(false) }
+    val longClickLabel = stringResource(R.string.music_stop_and_clear)
     Row(
         modifier
             .width(185.dp)
@@ -1107,8 +1115,43 @@ private fun NowPlayingChip(
                 if (focused) Color.White else MusicPalette.border,
                 RoundedCornerShape(50)
             )
-            .onFocusChanged { focused = it.isFocused }
-            .clickable(onClick = onClick)
+            .onFocusChanged {
+                focused = it.isFocused
+                if (!it.isFocused) {
+                    remoteOkPressed = false
+                    remoteLongClickFired = false
+                }
+            }
+            // Handle TV remotes that send repeated OK key-down events instead of pointer input.
+            .onPreviewKeyEvent { event ->
+                val isOk = event.key == Key.DirectionCenter ||
+                    event.key == Key.Enter || event.key == Key.NumPadEnter
+                if (!isOk) return@onPreviewKeyEvent false
+                when (event.type) {
+                    KeyEventType.KeyDown -> {
+                        if (event.nativeKeyEvent.repeatCount == 0) {
+                            remoteOkPressed = true
+                            remoteLongClickFired = false
+                        } else if (remoteOkPressed && !remoteLongClickFired) {
+                            remoteLongClickFired = true
+                            onLongClick()
+                        }
+                        true
+                    }
+                    KeyEventType.KeyUp -> {
+                        if (remoteOkPressed && !remoteLongClickFired) onClick()
+                        remoteOkPressed = false
+                        remoteLongClickFired = false
+                        true
+                    }
+                    else -> false
+                }
+            }
+            .combinedClickable(
+                onClick = onClick,
+                onLongClickLabel = longClickLabel,
+                onLongClick = onLongClick
+            )
             .padding(start = 5.dp, end = 11.dp),
         verticalAlignment = Alignment.CenterVertically
     ) {

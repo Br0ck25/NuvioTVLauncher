@@ -82,10 +82,18 @@ class YouTubeAccountViewModel @Inject constructor(
     private fun check(attempt: Int) {
         // Reading accounts touches storage, so keep it off the main thread.
         Schedulers.io().scheduleDirect {
-            val signed = runCatching { signInService.isSigned }.getOrDefault(false)
+            var signed = runCatching { signInService.isSigned }.getOrDefault(false)
             if (!signed && attempt < RECHECKS) {
                 Schedulers.io().scheduleDirect({ check(attempt + 1) }, RECHECK_DELAY_MS, java.util.concurrent.TimeUnit.MILLISECONDS)
                 return@scheduleDirect
+            }
+            // OneTube can have a saved account even when YouTube's engine temporarily reports
+            // the session as unsigned (for example, after an access-token refresh fails). Try
+            // refreshing/restoring that saved session before showing the sign-in prompt.
+            if (!signed) {
+                signed = runCatching { YouTubeAccountScopes.recover(context, scope) }
+                    .onFailure { Log.w(TAG, "couldn't recover $scope sign-in", it) }
+                    .getOrDefault(false)
             }
             val list = runCatching { YouTubeAccountScopes.accounts(context, scope) }.getOrDefault(emptyList())
             // Keep the saved copy current after a token refresh or a name/avatar sync.

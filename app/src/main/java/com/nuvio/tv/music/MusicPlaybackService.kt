@@ -55,6 +55,17 @@ class MusicPlaybackService : Service() {
             val intent = Intent(app, MusicPlaybackService::class.java)
             runCatching { ContextCompat.startForegroundService(app, intent) }
         }
+
+        /** Stops playback, clears its saved queue, and removes the foreground notification. */
+        fun stopAndClear(context: Context) {
+            val app = context.applicationContext
+            if (running) {
+                val intent = Intent(app, MusicPlaybackService::class.java).setAction(ACTION_STOP)
+                if (runCatching { ContextCompat.startForegroundService(app, intent) }.isSuccess) return
+            }
+            MusicPlayer.stop()
+            app.getSystemService(NotificationManager::class.java)?.cancel(NOTIFICATION_ID)
+        }
     }
 
     private val scope = CoroutineScope(SupervisorJob() + Dispatchers.Main.immediate)
