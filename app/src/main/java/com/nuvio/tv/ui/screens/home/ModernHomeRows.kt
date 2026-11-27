@@ -115,8 +115,6 @@ import com.nuvio.tv.domain.model.MetaPreview
 import com.nuvio.tv.domain.model.ContinueWatchingCardStyle
 import com.nuvio.tv.domain.model.PLACEHOLDER_IMAGE_URL
 import com.nuvio.tv.domain.model.isPlaceholder
-import com.nuvio.tv.ui.components.appMoveKeys
-import com.nuvio.tv.ui.components.clampedStep
 import com.nuvio.tv.ui.components.ContinueWatchingCard
 import com.nuvio.tv.ui.components.UPCOMING_SCHEDULE_CARD_WIDTH
 import com.nuvio.tv.ui.components.continueWatchingArtworkHeight
@@ -513,31 +511,7 @@ internal fun ModernRowSection(
     // Blocks vertical focus exit during placeholder→data transition.
     val blockingFocusExit = remember { mutableStateOf(false) }
 
-    // Launcher: the Apps row. Long-press on an app opens its menu (open, rename, move, app info).
-    val appsViewModel: com.nuvio.tv.core.apps.InstalledAppsViewModel? =
-        if (row.key == com.nuvio.tv.core.apps.INSTALLED_APPS_CATALOG_KEY) androidx.hilt.navigation.compose.hiltViewModel() else null
-    var contextMenuApp by remember { mutableStateOf<com.nuvio.tv.core.apps.InstalledApp?>(null) }
-    val appMove = com.nuvio.tv.ui.components.rememberAppMoveState()
-    val appMoveContext = androidx.compose.ui.platform.LocalContext.current
-    contextMenuApp?.let { app ->
-        val shown = row.items.list.mapNotNull { (it.payload as? ModernPayload.InstalledApp)?.app }
-        val index = shown.indexOfFirst { it.packageName == app.packageName }
-        if (appsViewModel == null || index < 0) contextMenuApp = null else com.nuvio.tv.ui.components.InstalledAppActionsDialog(
-            app = app,
-            canMove = shown.size > 1,
-            onOpen = { appsViewModel.launch(app) },
-            onMove = {
-                appMove.pickUp(app.packageName)
-                android.widget.Toast.makeText(appMoveContext, R.string.app_move_hint, android.widget.Toast.LENGTH_SHORT).show()
-            },
-            onAppInfo = { appsViewModel.openAppInfo(app) },
-            onRename = { appsViewModel.rename(app, it) },
-            iconChooser = appsViewModel.iconChooser(app),
-            onSetHidden = { appsViewModel.setHidden(app, it) },
-            onSetHiddenOnPage = { appsViewModel.setHiddenOnPage(app, it) },
-            onDismiss = { contextMenuApp = null }
-        )
-    }
+    val appsRow = rememberModernAppsRow(row)
 
     // Item keys carry item identity, which the placeholder the ring sits on loses when real data
     // arrives: its key changes and Compose tears the focused node down. Lend that one card a
@@ -955,59 +929,13 @@ internal fun ModernRowSection(
                 null
             }
 
-            // Launcher: while an app is carried along the Apps row, keep it on screen and give it the focus after each step.
-            // Without this the focus ring stayed on whichever tile sat in the same place on screen (a neighbour), not on the
-            // app being moved, and the moved app could be partly off the edge.
-            val carriedAppIndex = row.items.list.indexOfFirst {
-                (it.payload as? ModernPayload.InstalledApp)?.app?.packageName == appMove.carrying
-            }
-            // Moving an app: the carried tile keeps the focus (see isTarget below), the reordered list lands a few frames
-            // after the key press, and the row keeps its scroll position by index when it does. Left alone the row
-            // re-anchors on the moved tile, which made every other tile jump a slot (and the focus used to go to the
-            // neighbour first, scrolling the row one tile, before the reorder arrived: the smooth-then-snap on each step).
-            val moveHolder = remember { object { var seenIndex = -1; var before: Pair<Int, Int>? = null } }
-            androidx.compose.runtime.SideEffect {
-                if (appMove.carrying == null) {
-                    moveHolder.seenIndex = -1
-                    moveHolder.before = null
-                } else if (carriedAppIndex != moveHolder.seenIndex) {
-                    val before = moveHolder.before
-                    if (moveHolder.seenIndex >= 0 && before != null) rowListState.requestScrollToItem(before.first, before.second)
-                    moveHolder.seenIndex = carriedAppIndex
-                }
-            }
-            LaunchedEffect(appMove.carrying, carriedAppIndex) {
-                if (appMove.carrying == null || carriedAppIndex < 0) return@LaunchedEffect
-                // The row's focus index follows the app (it is where the carried tile is now).
-                onRowItemFocused(row.key, carriedAppIndex, false)
-                // Keep it on screen with one smooth scroll by however much of it sticks out.
-                val info = rowListState.layoutInfo
-                val item = info.visibleItemsInfo.firstOrNull { it.index == carriedAppIndex }
-                val end = info.viewportEndOffset - info.afterContentPadding
-                when {
-                    item == null -> rowListState.scrollToItem(carriedAppIndex)
-                    item.offset + item.size > end -> rowListState.animateScrollBy((item.offset + item.size - end).toFloat())
-                    item.offset < info.viewportStartOffset -> rowListState.animateScrollBy((item.offset - info.viewportStartOffset).toFloat())
-                }
-            }
+            ModernAppsRowEffects(appsRow, rowListState, onRowItemFocused)
 
             LazyRow(
                 state = rowListState,
                 modifier = Modifier
                     .recompositionHighlighter()
-                    // Launcher: an app picked up with "Move" is carried along the Apps row by the D-pad.
-                    .appMoveKeys(appMove) { delta ->
-                        val vm = appsViewModel ?: return@appMoveKeys
-                        val shownApps = row.items.list.mapNotNull { (it.payload as? ModernPayload.InstalledApp)?.app }
-                        val carried = shownApps.firstOrNull { it.packageName == appMove.carrying } ?: return@appMoveKeys
-                        val from = shownApps.indexOf(carried)
-                        val step = clampedStep(from, delta, shownApps.lastIndex)
-                        if (step != 0) {
-                            // Remember where the row is scrolled to, to restore it when the reordered list lands.
-                            moveHolder.before = rowListState.firstVisibleItemIndex to rowListState.firstVisibleItemScrollOffset
-                            vm.move(carried, step)
-                        }
-                    }
+                    .then(appsRow.moveKeysModifier(rowListState))
                     .focusRequester(rowFocusRequester)
                     .focusRestorer {
                         val savedIdx = rowFocusedIndex.value
@@ -1071,39 +999,7 @@ internal fun ModernRowSection(
                     }
 
                     when (val payload = item.payload) {
-                        is ModernPayload.InstalledApp -> {
-                            // Launcher: one app in the Apps row.
-                            // While an app is carried only that app takes the focus: the row's own focus index changes
-                            // before the reordered list arrives, and the neighbour used to be given the focus then.
-                            val carryingNow = appMove.carrying
-                            val wantsFocus = if (carryingNow != null) carryingNow == payload.app.packageName else isTargetItem
-                            LaunchedEffect(wantsFocus) {
-                                if (wantsFocus) runCatching { requester.requestFocus() }
-                            }
-                            val appsVm = appsViewModel
-                            if (appsVm != null) {
-                                com.nuvio.tv.ui.components.InstalledAppCard(
-                                    app = payload.app,
-                                    loadImage = appsVm::image,
-                                    onClick = {
-                                        onFocused()
-                                        appsVm.launch(payload.app)
-                                    },
-                                    onLongClick = { contextMenuApp = payload.app },
-                                    modifier = Modifier
-                                        .focusRequester(requester)
-                                        .onFocusChanged { if (it.isFocused) onFocused() },
-                                    width = com.nuvio.tv.ui.components.rememberHomeTile()?.width ?: 160.dp,
-                                    showLabel = false,
-                                    // The same corner as the poster cards in this row (the setting), so the tiles match.
-                                    cornerRadius = posterCardCornerRadius,
-                                    moving = appMove.carrying == payload.app.packageName,
-                                    quietFocus = appMove.carrying != null && appMove.carrying != payload.app.packageName,
-                                    // Tiles slide to their new place when the order changes (no fade in or out).
-                                    rootModifier = Modifier.animateItem(fadeInSpec = null, fadeOutSpec = null)
-                                )
-                            }
-                        }
+                        is ModernPayload.InstalledApp -> ModernAppsRowTile(appsRow, payload, isTargetItem, requester, onFocused, posterCardCornerRadius)
                         is ModernPayload.ContinueWatching -> {
                             val isUpcoming = row.key == MODERN_UPCOMING_ROW_KEY && newUpcomingRow
                             ModernContinueWatchingRowItem(

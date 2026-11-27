@@ -96,10 +96,6 @@ fun HomeScreen(
     onNavigateToFolderDetail: (String, String) -> Unit = { _, _ -> },
     onNavigateToSettings: () -> Unit = {}
 ) {
-    // Launcher: the gear and bell at the top right open these panels.
-    var showSettingsDrawer by rememberSaveable { mutableStateOf(false) }
-    var showNotificationsDrawer by rememberSaveable { mutableStateOf(false) }
-
     val uiState by viewModel.uiState.collectAsStateWithLifecycle()
     val homeVodActions = com.nuvio.tv.livetv.home.LocalHomeVodActions.current
 
@@ -120,15 +116,6 @@ fun HomeScreen(
     val modernPresentation by viewModel.modernHomePresentation.collectAsStateWithLifecycle()
     val initialCwResolved by viewModel.initialCwResolved.collectAsStateWithLifecycle()
     val scrollToTopTrigger by viewModel.scrollToTopTrigger.collectAsStateWithLifecycle()
-    // Launcher: Home closes the top-right panels.
-    var handledPanelCloseTrigger by rememberSaveable { mutableStateOf(scrollToTopTrigger) }
-    LaunchedEffect(scrollToTopTrigger) {
-        if (scrollToTopTrigger != handledPanelCloseTrigger) {
-            handledPanelCloseTrigger = scrollToTopTrigger
-            showSettingsDrawer = false
-            showNotificationsDrawer = false
-        }
-    }
     val effectiveAutoplayEnabled by viewModel.effectiveAutoplayEnabled.collectAsStateWithLifecycle(
         initialValue = false
     )
@@ -495,23 +482,7 @@ fun HomeScreen(
             }
         }
 
-        // Launcher: settings, notifications and TV inputs at the top right of Home.
-        if (!showHomeLoader) {
-            HomeTopBarHeader(
-                onNotificationsClick = { showNotificationsDrawer = true },
-                onSettingsClick = { showSettingsDrawer = true },
-                modifier = Modifier.align(Alignment.TopEnd)
-            )
-        }
-        if (showSettingsDrawer) {
-            HomeSettingsDrawer(
-                onDismiss = { showSettingsDrawer = false },
-                onOpenNuvioSettings = onNavigateToSettings
-            )
-        }
-        if (showNotificationsDrawer) {
-            NotificationsDrawer(onDismiss = { showNotificationsDrawer = false })
-        }
+        LauncherHomeOverlays(scrollToTopTrigger, showHomeLoader, onNavigateToSettings)
     }
 
     val selectedPoster = posterOptionsTarget

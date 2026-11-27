@@ -41,12 +41,16 @@ Bug fixes in Nuvio One code that are not launcher features (Live TV, player zoom
 their files. Keep each one small, comment it with `Fork:` so it is easy to grep, and list it in
 `LAUNCHER_TOUCHPOINTS.md`.
 
-## 4. Planned structure (not done yet)
+## 4. Manifest and Gradle
 
-- `app/src/launcher/AndroidManifest.xml` as its own source set, so HOME/ALL_APPS filters, services and the
-  boot receiver stop living in the main manifest.
-- `launcher.gradle.kts`, applied from `app/build.gradle.kts`, for app id, update repo and extra dependencies.
-- An `AppsRow` composable (our file) so the Classic/Grid/Modern home files need only one call each.
+- **Manifest:** our entries go in `app/src/launcher/AndroidManifest.xml`. `launcher.gradle.kts` points every
+  build type's source set at it, so it is merged into all variants. Add a `<service>`, `<receiver>`,
+  `<queries>` entry, or an `<intent-filter>` for an existing activity (`<activity android:name=".MainActivity">`)
+  there. Only an attribute change on an existing Nuvio One element (like `launchMode`) has to go in the main manifest.
+- **Gradle:** our app id, update repo and dependencies go in `app/launcher.gradle.kts`, which is applied from the
+  last line of `build.gradle.kts` and so runs after Nuvio One's own settings and overrides them.
+- **Home rows:** the Apps row's behaviour goes in `ModernAppsRow.kt`; the Nuvio One row file only calls it.
+  Exhaustive `when`s over Nuvio One's sealed types still need a branch for our types (one line each).
 
 ## 5. Merging Nuvio One
 

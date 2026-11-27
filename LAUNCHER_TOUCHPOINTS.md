@@ -20,6 +20,8 @@ To check whether a bug is ours or Nuvio One's, build that tag. If the bug is the
 | Settings pages | `ButtonMapper*`, `ButtonCaptureDialog`, `DefaultLauncherSettingsContent`, `IconPackPickerDialog`, `LocalAdbSetupDialog` |
 | Launcher strings | `res/values/strings_launcher.xml` (Nuvio One's `strings.xml` is untouched) |
 | Activity hooks (Home/Apps keys, Button Mapper, navigation requests) | `core/launcher/LauncherHost.kt`, `ui/screens/setup/LauncherHostCompose.kt` |
+| Apps row in Modern Home, Home top-right panels, side-menu profile picture | `ui/screens/home/ModernAppsRow.kt`, `ui/screens/home/LauncherHomeOverlays.kt`, `ui/components/LauncherSidebarProfile.kt` |
+| Manifest entries (HOME/ALL_APPS filters, services, boot receiver, queries) and Gradle settings | `app/src/launcher/AndroidManifest.xml`, `app/launcher.gradle.kts` |
 | Tests | `core/apps/*Test`, `core/launcher/*Test` |
 
 ## Nuvio One files we edit (keep each edit small; re-check on every Nuvio One update)
@@ -28,10 +30,12 @@ To check whether a bug is ours or Nuvio One's, build that tag. If the bug is the
 |---|---|
 | `MainActivity.kt` | One `LauncherHost` property and about 10 one-line calls into it (`onCreate`, `onResume`, `onPause`, `onDestroy`, `onNewIntent`, `onWindowFocusChanged`, `onDispatchKeyEvent`, `onMappedKeyEvent`, `suppressAppExit`), plus `LauncherSetupGate`, `LauncherNavigationEffects`, `LauncherProfileSwitchEffect`, `attachListChannelsToProfile`, the Apps and Settings menu entries, sidebar `launcherMode` and the floating-pill profile. The logic is in `core/launcher/LauncherHost.kt` and `ui/screens/setup/LauncherHostCompose.kt` |
 | `NuvioApplication.kt` | Heavy services made lazy and started off the main thread so the accessibility service can bind early |
-| `AndroidManifest.xml`, `full/AndroidManifest.xml` | HOME and ALL_APPS filters, services, boot receiver, app-icon aliases |
-| `app/build.gradle.kts` | App id `com.nuvio.tv.launcher`, update repo, ADB libraries, test deps |
-| `HomeScreen.kt` | Top bar, settings drawer, notifications drawer |
-| `ClassicHomeContent`, `GridHomeContent`, `ModernHomeContent`, `ModernHomeRows`, `ModernHomeRowsList`, `ModernHomeModels`, `ModernHomePresentation` | The Apps row (long-press menu, move mode) and `HomeTile` size publishing |
+| `AndroidManifest.xml` | `MainActivity` launch mode `singleTask`, and the app-icon aliases (Nuvio One's icon activities became `activity-alias`). Everything else of ours is in `app/src/launcher/AndroidManifest.xml` |
+| `full/AndroidManifest.xml` | `WRITE_SECURE_SETTINGS` permission (full flavor only) |
+| `app/build.gradle.kts` | One `apply(from = "launcher.gradle.kts")` at the end, plus the default Nuvio account server and key (`defaultSupabaseUrl`, `defaultSupabaseAnonKey` and their four call sites). App id, update repo, ADB libraries and test deps are in `app/launcher.gradle.kts` |
+| `HomeScreen.kt` | One `LauncherHomeOverlays(...)` call (top bar, settings and notifications drawers; the code is in `LauncherHomeOverlays.kt`), the `onNavigateToSettings` parameter, and `hasInstalledAppsContent` in the loading and empty-state checks |
+| `ModernHomeRows` | Four calls into `ModernAppsRow.kt` (`rememberModernAppsRow`, `ModernAppsRowEffects`, `moveKeysModifier`, `ModernAppsRowTile`) and the `InstalledApp` branches of exhaustive `when`s |
+| `ClassicHomeContent`, `GridHomeContent`, `ModernHomeContent`, `ModernHomeRowsList`, `ModernHomeModels`, `ModernHomePresentation` | The Apps row as a row type (`when` branches, `InstalledAppsHomeRow` call) and "Home key / second Back goes to the top" (`focusTopOfHome`, still inline: it uses these files' local state) |
 | `HomeViewModel`, `HomeViewModelCatalogPipeline`, `HomeViewModelCatalogUtils`, `HomeUiState`, `CatalogOrderViewModel` | The Apps row is a catalog entry, so it can be reordered and turned off in Reorder Home Catalogs |
 | `NuvioNavHost.kt`, `Screen.kt` | Apps route, settings navigation |
 | `SettingsScreen`, `SettingsCatalog`, `SettingsSearch`, `SideMenuSettingsContent`, `CalendarModels` (`SideMenuPages`) | Default Launcher and Remote Buttons settings, Apps and Settings menu toggles |

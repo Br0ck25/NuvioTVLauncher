@@ -210,6 +210,8 @@ import com.nuvio.tv.ui.screens.account.AuthQrSignInScreen
 import com.nuvio.tv.ui.screens.addon.EssentialAddonSetupScreen
 import com.nuvio.tv.ui.screens.profile.ProfileSelectionScreen
 import com.nuvio.tv.core.launcher.LauncherHost
+import com.nuvio.tv.ui.components.LauncherPillProfileAvatar
+import com.nuvio.tv.ui.components.LauncherRailProfileAvatar
 import com.nuvio.tv.livetv.lists.attachListChannelsToProfile
 import com.nuvio.tv.ui.screens.setup.LauncherNavigationEffects
 import com.nuvio.tv.ui.screens.setup.LauncherProfileSwitchEffect
@@ -2070,28 +2072,13 @@ private fun LegacySidebarScaffold(
                             }
                         }
                     } else if (showProfileSelector && activeProfileName.isNotEmpty()) {
-                        // Collapsed rail: the profile's picture above Home, so you can see whose Home it is without
-                        // opening the sidebar. Display only (the expanded row is the one that switches profile), so it
-                        // never takes the focus when the rail opens.
-                        Box(
-                            modifier = Modifier
-                                .align(Alignment.TopStart)
-                                .padding(top = 30.dp)
-                                .offset(x = NuvioTheme.spacing.md)
-                                .width(itemWidth)
-                                .height(sidebarTokens.itemHeight)
-                                .focusProperties { canFocus = false }
-                                .semantics { contentDescription = activeProfileName },
-                            contentAlignment = Alignment.Center
-                        ) {
-                            ProfileAvatarCircle(
-                                name = activeProfileName,
-                                colorHex = activeProfileColorHex,
-                                size = NuvioTheme.sizes.sidebar.leadingVisual,
-                                avatarImageUrl = activeProfileAvatarImageUrl,
-                                imageCrossfade = false
-                            )
-                        }
+                        LauncherRailProfileAvatar(
+                            name = activeProfileName,
+                            colorHex = activeProfileColorHex,
+                            avatarImageUrl = activeProfileAvatarImageUrl,
+                            itemWidth = itemWidth,
+                            itemHeight = sidebarTokens.itemHeight
+                        )
                     }
 
                     // Live TV fork: every page in one menu. Slimmer items, a thin line between
@@ -3069,24 +3056,15 @@ private fun CollapsedSidebarPill(
                         .size(NuvioTheme.sizes.sidebar.leadingVisual),
                     contentAlignment = Alignment.Center
                 ) {
-                    if (profileName != null) {
-                        ProfileAvatarCircle(
-                            name = profileName,
-                            colorHex = profileColorHex,
-                            size = NuvioTheme.sizes.sidebar.leadingVisual - NuvioTheme.spacing.xs,
-                            avatarImageUrl = profileAvatarImageUrl,
-                            imageCrossfade = false
-                        )
-                    } else {
-                        DrawerItemIcon(
-                            iconRes = iconRes,
-                            icon = icon,
-                            tint = NuvioTheme.colors.text.onOverlay,
-                            modifier = Modifier
-                                .size(NuvioTheme.sizes.sidebar.leadingVisual - NuvioTheme.spacing.md)
-                                .offset(y = (-0.5).dp)
-                        )
-                    }
+                    if (profileName != null) LauncherPillProfileAvatar(profileName, profileColorHex, profileAvatarImageUrl) else
+                    DrawerItemIcon(
+                        iconRes = iconRes,
+                        icon = icon,
+                        tint = NuvioTheme.colors.text.onOverlay,
+                        modifier = Modifier
+                            .size(NuvioTheme.sizes.sidebar.leadingVisual - NuvioTheme.spacing.md)
+                            .offset(y = (-0.5).dp)
+                    )
                 }
 
                 AnimatedVisibility(
