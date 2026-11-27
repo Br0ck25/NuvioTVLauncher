@@ -9,17 +9,21 @@ import androidx.compose.runtime.saveable.rememberSaveable
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.focus.FocusRequester
 
 /**
  * Launcher: settings, notifications and TV inputs at the top right of Home, and the two panels they open.
  * `HomeScreen` makes one call to this from inside its content `Box`; the state lives here, not in `HomeScreen`.
- * Home (the Home key, [scrollToTopTrigger]) closes the panels.
+ * Nuvio One's Downloads button sits first in the bar, and its focus requester is Nuvio One's (Up from Modern Home's
+ * first row moves the focus to it). Home (the Home key, [scrollToTopTrigger]) closes the panels.
  */
 @Composable
 fun BoxScope.LauncherHomeOverlays(
     scrollToTopTrigger: Int,
     showHomeLoader: Boolean,
     onNavigateToSettings: () -> Unit,
+    onOpenDownloads: () -> Unit,
+    downloadsFocusRequester: FocusRequester,
 ) {
     var showSettingsDrawer by rememberSaveable { mutableStateOf(false) }
     var showNotificationsDrawer by rememberSaveable { mutableStateOf(false) }
@@ -37,6 +41,8 @@ fun BoxScope.LauncherHomeOverlays(
         HomeTopBarHeader(
             onNotificationsClick = { showNotificationsDrawer = true },
             onSettingsClick = { showSettingsDrawer = true },
+            onDownloadsClick = onOpenDownloads,
+            downloadsFocusRequester = downloadsFocusRequester,
             modifier = Modifier.align(Alignment.TopEnd)
         )
     }

@@ -127,6 +127,7 @@
     <string name="music_p2_nothing_to_explore">Nothing to explore</string>
     <string name="music_p2_nothing_to_play">Nothing to play</string>
     <string name="music_p2_now_playing">NOW PLAYING</string>
+    <string name="music_stop_and_clear">Hold to stop playback and clear the queue</string>
     <string name="music_p2_nuvio_needs_permission_to_read">Nuvio needs permission to read music files on this device and on USB drives.</string>
     <string name="music_p2_offline">OFFLINE</string>
     <string name="music_p2_on_your_computer_open">On your computer, open:</string>

@@ -30,6 +30,10 @@ object HomeTiles {
     /** The user's Tile size (Layout settings), 1f by default. */
     private val scaleState = MutableStateFlow(1f)
     val scale: StateFlow<Float> = scaleState
+    private val liveTvScaleState = MutableStateFlow(1f)
+    val liveTvScale: StateFlow<Float> = liveTvScaleState
+    private val upcomingScaleState = MutableStateFlow(1f)
+    val upcomingScale: StateFlow<Float> = upcomingScaleState
 
     /** The published tile with the user's size applied. */
     private val scaledState = MutableStateFlow<HomeTile?>(null)
@@ -52,6 +56,9 @@ object HomeTiles {
         }
     }
 
+    fun setLiveTvScale(value: Float) { liveTvScaleState.value = value }
+    fun setUpcomingScale(value: Float) { upcomingScaleState.value = value }
+
     private fun update() {
         val base = current.value
         val s = if (scalable) scaleState.value else 1f
@@ -68,5 +75,17 @@ fun rememberHomeTile(): HomeTile? {
 @Composable
 fun rememberHomeTileScale(): Float {
     val scale by HomeTiles.scale.collectAsStateWithLifecycle()
+    return scale
+}
+
+@Composable
+fun rememberLiveTvHomeRowScale(): Float {
+    val scale by HomeTiles.liveTvScale.collectAsStateWithLifecycle()
+    return scale
+}
+
+@Composable
+fun rememberUpcomingHomeRowScale(): Float {
+    val scale by HomeTiles.upcomingScale.collectAsStateWithLifecycle()
     return scale
 }

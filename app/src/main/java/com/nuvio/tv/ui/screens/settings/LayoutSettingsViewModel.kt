@@ -70,6 +70,9 @@ data class LayoutSettingsUiState(
     val posterCardWidthDp: Int = 126,
     /** Live TV fork: the chosen Tile size preset (a poster width in dp), or null to follow poster Width. */
     val homeTileWidthDp: Int? = null,
+    val liveTvRowWidthDp: Int = 126,
+    val upcomingRowWidthDp: Int = 126,
+    val upcomingRowEnabled: Boolean = true,
     val posterCardHeightDp: Int = 189,
     val posterCardCornerRadiusDp: Int = 12,
     val cardDepthStyle: CardDepthStyle = CardDepthStyle(),
@@ -136,6 +139,9 @@ sealed class LayoutSettingsEvent {
     ) : LayoutSettingsEvent()
     data class SetPosterCardWidth(val widthDp: Int) : LayoutSettingsEvent()
     data class SetHomeTileWidth(val widthDp: Int) : LayoutSettingsEvent()
+    data class SetLiveTvRowWidth(val widthDp: Int) : LayoutSettingsEvent()
+    data class SetUpcomingRowWidth(val widthDp: Int) : LayoutSettingsEvent()
+    data class SetUpcomingRowEnabled(val enabled: Boolean) : LayoutSettingsEvent()
     data class SetPosterCardCornerRadius(val cornerRadiusDp: Int) : LayoutSettingsEvent()
     data class SetCardDepthEnabled(val enabled: Boolean) : LayoutSettingsEvent()
     data class SetCardDepthEdgeStrength(val strength: Int) : LayoutSettingsEvent()
@@ -343,6 +349,21 @@ class LayoutSettingsViewModel @Inject constructor(
             }
         }
         viewModelScope.launch {
+            layoutPreferenceDataStore.liveTvRowWidthDp.distinctUntilChanged().collectLatest { widthDp ->
+                updateUiStateIfChanged { it.copy(liveTvRowWidthDp = widthDp) }
+            }
+        }
+        viewModelScope.launch {
+            layoutPreferenceDataStore.upcomingRowWidthDp.distinctUntilChanged().collectLatest { widthDp ->
+                updateUiStateIfChanged { it.copy(upcomingRowWidthDp = widthDp) }
+            }
+        }
+        viewModelScope.launch {
+            layoutPreferenceDataStore.upcomingRowEnabled.distinctUntilChanged().collectLatest { enabled ->
+                updateUiStateIfChanged { it.copy(upcomingRowEnabled = enabled) }
+            }
+        }
+        viewModelScope.launch {
             layoutPreferenceDataStore.posterCardCornerRadiusDp.distinctUntilChanged().collectLatest { cornerRadiusDp ->
                 updateUiStateIfChanged { it.copy(posterCardCornerRadiusDp = cornerRadiusDp) }
             }
@@ -528,6 +549,15 @@ class LayoutSettingsViewModel @Inject constructor(
             is LayoutSettingsEvent.SetPosterCardWidth -> setPosterCardWidth(event.widthDp)
             is LayoutSettingsEvent.SetHomeTileWidth -> viewModelScope.launch {
                 layoutPreferenceDataStore.setHomeTileWidthDp(event.widthDp)
+            }
+            is LayoutSettingsEvent.SetLiveTvRowWidth -> viewModelScope.launch {
+                layoutPreferenceDataStore.setLiveTvRowWidthDp(event.widthDp)
+            }
+            is LayoutSettingsEvent.SetUpcomingRowWidth -> viewModelScope.launch {
+                layoutPreferenceDataStore.setUpcomingRowWidthDp(event.widthDp)
+            }
+            is LayoutSettingsEvent.SetUpcomingRowEnabled -> viewModelScope.launch {
+                layoutPreferenceDataStore.setUpcomingRowEnabled(event.enabled)
             }
             is LayoutSettingsEvent.SetPosterCardCornerRadius -> setPosterCardCornerRadius(event.cornerRadiusDp)
             is LayoutSettingsEvent.SetCardDepthEnabled -> setCardDepthEnabled(event.enabled)
@@ -1023,7 +1053,9 @@ class LayoutSettingsViewModel @Inject constructor(
             _uiState.value.posterCardWidthDp == 126 &&
             _uiState.value.posterCardHeightDp == 189 &&
             _uiState.value.posterCardCornerRadiusDp == 12 &&
-            _uiState.value.homeTileWidthDp == null
+            _uiState.value.homeTileWidthDp == null &&
+            _uiState.value.liveTvRowWidthDp == 126 &&
+            _uiState.value.upcomingRowWidthDp == 126
         ) {
             return
         }
@@ -1032,6 +1064,8 @@ class LayoutSettingsViewModel @Inject constructor(
             layoutPreferenceDataStore.setPosterCardHeightDp(189)
             layoutPreferenceDataStore.setPosterCardCornerRadiusDp(12)
             layoutPreferenceDataStore.setHomeTileWidthDp(null)
+            layoutPreferenceDataStore.setLiveTvRowWidthDp(126)
+            layoutPreferenceDataStore.setUpcomingRowWidthDp(126)
         }
     }
 

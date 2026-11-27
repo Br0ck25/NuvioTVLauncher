@@ -2,8 +2,8 @@
 
 How to add code without growing this list: see `LAUNCHER_RULES.md`.
 
-This branch is Nuvio One `1.2.0-beta.1.17.2.1` (commit `5780885`, the last build Nuvio One published)
-plus the launcher layer. Nothing else from Nuvio One is changed.
+This branch is Nuvio One `1.2.0-beta.4.2.1` (commit `8ec6830`, the last build Nuvio One published)
+plus the launcher layer. The edits listed below are the only changes to Nuvio One's files.
 
 To check whether a bug is ours or Nuvio One's, build that tag. If the bug is there, it is theirs.
 
@@ -35,8 +35,8 @@ To check whether a bug is ours or Nuvio One's, build that tag. If the bug is the
 | `NuvioApplication.kt` | Heavy services made lazy and started off the main thread so the accessibility service can bind early |
 | `AndroidManifest.xml` | `MainActivity` launch mode `singleTask`, and the app-icon aliases (Nuvio One's icon activities became `activity-alias`). Everything else of ours is in `app/src/launcher/AndroidManifest.xml` |
 | `full/AndroidManifest.xml` | `WRITE_SECURE_SETTINGS` permission (full flavor only) |
-| `app/build.gradle.kts` | One `apply(from = "launcher.gradle.kts")` at the end, plus the default Nuvio account server and key (`defaultSupabaseUrl`, `defaultSupabaseAnonKey` and their four call sites). App id, update repo, ADB libraries and test deps are in `app/launcher.gradle.kts` |
-| `HomeScreen.kt` | One `LauncherHomeOverlays(...)` call (top bar, settings and notifications drawers; the code is in `LauncherHomeOverlays.kt`), the `onNavigateToSettings` parameter, and `hasInstalledAppsContent` in the loading and empty-state checks |
+| `app/build.gradle.kts` | One `apply(from = "launcher.gradle.kts")` at the end. App id, update repo, default Nuvio account server and key, ADB libraries and test deps are all in `app/launcher.gradle.kts` |
+| `HomeScreen.kt` | One `LauncherHomeOverlays(...)` call (top bar, settings and notifications drawers; the code is in `LauncherHomeOverlays.kt`; Nuvio One's Downloads button is the first button in our bar and keeps its `downloadsFocusRequester`), the `onNavigateToSettings` parameter, and `hasInstalledAppsContent` in the loading and empty-state checks |
 | `ModernHomeRows` | Four calls into `ModernAppsRow.kt` (`rememberModernAppsRow`, `ModernAppsRowEffects`, `moveKeysModifier`, `ModernAppsRowTile`) and the `InstalledApp` branches of exhaustive `when`s |
 | `ClassicHomeContent`, `GridHomeContent`, `ModernHomeContent`, `ModernHomeRowsList`, `ModernHomeModels`, `ModernHomePresentation` | The Apps row as a row type (`when` branches, `InstalledAppsHomeRow` call) and "Home key / second Back goes to the top" (`focusTopOfHome`, still inline: it uses these files' local state) |
 | `HomeViewModel`, `HomeViewModelCatalogPipeline`, `HomeViewModelCatalogUtils`, `HomeUiState`, `CatalogOrderViewModel` | The Apps row is a catalog entry, so it can be reordered and turned off in Reorder Home Catalogs |

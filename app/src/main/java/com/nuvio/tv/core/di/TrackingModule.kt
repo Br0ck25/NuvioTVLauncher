@@ -10,6 +10,7 @@ import com.nuvio.tv.core.tracking.TrackingLibraryProvider
 import com.nuvio.tv.core.tracking.TrackingProvider
 import com.nuvio.tv.data.repository.TraktTrackingLibraryProvider
 import com.nuvio.tv.data.repository.TraktTrackingProvider
+import com.nuvio.tv.data.repository.TraktPersonalRatings
 import com.nuvio.tv.data.simkl.SimklLibraryService
 import com.nuvio.tv.core.tracking.TrackingHistoryWriter
 import com.nuvio.tv.core.tracking.TrackingProgressProvider
@@ -58,6 +59,10 @@ abstract class TrackingModule {
     @Binds
     @IntoSet
     abstract fun bindSimklRatings(provider: SimklRatings): TrackingRatingProvider
+
+    @Binds
+    @IntoSet
+    abstract fun bindTraktRatings(provider: TraktPersonalRatings): TrackingRatingProvider
 
     @Binds
     @Singleton

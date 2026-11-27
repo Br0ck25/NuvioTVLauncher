@@ -34,11 +34,16 @@ import androidx.compose.ui.focus.focusRequester
 import androidx.compose.ui.graphics.Color
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.ui.unit.dp
+import androidx.compose.material.icons.Icons
+import androidx.compose.material.icons.filled.Download
 import androidx.hilt.navigation.compose.hiltViewModel
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import androidx.tv.material3.Button
 import androidx.tv.material3.ButtonDefaults
 import androidx.tv.material3.ExperimentalTvMaterial3Api
+import androidx.tv.material3.Icon
+import androidx.tv.material3.IconButton
+import androidx.tv.material3.IconButtonDefaults
 import androidx.tv.material3.MaterialTheme
 import androidx.tv.material3.Text
 import com.nuvio.tv.domain.model.HomeLayout
@@ -94,10 +99,12 @@ fun HomeScreen(
     onContinueWatchingPlayManually: (ContinueWatchingItem) -> Unit = onContinueWatchingClick,
     onNavigateToCatalogSeeAll: (String, String, String) -> Unit = { _, _, _ -> },
     onNavigateToFolderDetail: (String, String) -> Unit = { _, _ -> },
-    onNavigateToSettings: () -> Unit = {}
+    onNavigateToSettings: () -> Unit = {},
+    onOpenDownloads: () -> Unit = {}
 ) {
     val uiState by viewModel.uiState.collectAsStateWithLifecycle()
     val homeVodActions = com.nuvio.tv.livetv.home.LocalHomeVodActions.current
+    val downloadsFocusRequester = remember { FocusRequester() }
 
     // Home was the only major screen without a lifecycle observer, so nothing ever told it to
     // look at its catalogs again.
@@ -442,6 +449,9 @@ fun HomeScreen(
                                 showContinueWatchingManualPlayOption = effectiveAutoplayEnabled,
                                 onNavigateToFolderDetail = onNavigateToFolderDetailStable,
                                 isCatalogItemWatched = isCatalogItemWatched,
+                                onMoveFocusToDownloads = {
+                                    runCatching { downloadsFocusRequester.requestFocus() }.getOrDefault(false)
+                                },
                                 onCatalogItemLongPress = onCatalogItemLongPress
                             )
                         }
@@ -482,7 +492,8 @@ fun HomeScreen(
             }
         }
 
-        LauncherHomeOverlays(scrollToTopTrigger, showHomeLoader, onNavigateToSettings)
+        // Launcher: top-right buttons (Nuvio One's Downloads button is the first one in that bar).
+        LauncherHomeOverlays(scrollToTopTrigger, showHomeLoader, onNavigateToSettings, onOpenDownloads, downloadsFocusRequester)
     }
 
     val selectedPoster = posterOptionsTarget
@@ -688,6 +699,7 @@ private fun ModernHomeRoute(
     showContinueWatchingManualPlayOption: Boolean,
     onNavigateToFolderDetail: (String, String) -> Unit = { _, _ -> },
     isCatalogItemWatched: (MetaPreview) -> Boolean,
+    onMoveFocusToDownloads: () -> Boolean,
     onCatalogItemLongPress: (MetaPreview, String) -> Unit
 ) {
     val focusState by viewModel.focusState.collectAsStateWithLifecycle()
@@ -754,6 +766,7 @@ private fun ModernHomeRoute(
         isCatalogItemWatched = isCatalogItemWatched,
         onCatalogItemLongPress = onCatalogItemLongPress,
         onNavigateToFolderDetail = onNavigateToFolderDetail,
+        onMoveFocusToDownloads = onMoveFocusToDownloads,
         onItemFocus = remember(viewModel) {
             { item ->
                 com.nuvio.tv.livetv.ondemand.VodHomeIds.focused(item.id)

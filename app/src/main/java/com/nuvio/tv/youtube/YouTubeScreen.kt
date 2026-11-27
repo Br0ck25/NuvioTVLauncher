@@ -151,9 +151,13 @@ fun YouTubeScreen(
     // YouTube changes its recommendations over time. A TV app can stay in memory for days, so
     // reload a stale feed when the app comes back instead of showing the same rows forever.
     val lifecycleOwner = LocalLifecycleOwner.current
-    DisposableEffect(lifecycleOwner) {
+    val accountViewModel: YouTubeAccountViewModel = hiltViewModel()
+    DisposableEffect(lifecycleOwner, accountViewModel) {
         val observer = LifecycleEventObserver { _, event ->
-            if (event == Lifecycle.Event.ON_RESUME) viewModel.refreshIfStale()
+            if (event == Lifecycle.Event.ON_RESUME) {
+                viewModel.refreshIfStale()
+                accountViewModel.refresh()
+            }
         }
         lifecycleOwner.lifecycle.addObserver(observer)
         onDispose { lifecycleOwner.lifecycle.removeObserver(observer) }
@@ -167,7 +171,6 @@ fun YouTubeScreen(
     val contentDensity = LocalDensity.current
 
     // Signing in happens on this page: the code shows here and the tab reloads when it's approved.
-    val accountViewModel: YouTubeAccountViewModel = hiltViewModel()
     val account by accountViewModel.state.collectAsState()
     var signInStarted by remember { mutableStateOf(false) }
     var showAccounts by remember { mutableStateOf(false) }
@@ -236,7 +239,6 @@ fun YouTubeScreen(
         // A tab you've since turned off can't stay open.
         if (state.tab !in tabs) viewModel.selectTab(tabs.first())
     }
-    LaunchedEffect(Unit) { accountViewModel.refresh() }
     LaunchedEffect(account.signedIn) {
         if (signInStarted && account.signedIn) {
             signInStarted = false

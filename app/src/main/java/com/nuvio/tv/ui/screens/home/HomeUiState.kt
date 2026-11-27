@@ -29,6 +29,7 @@ data class HomeUiState(
     /** YouTube fork: videos started on the YouTube page, shown only when that row is switched on. */
     val youtubeContinueWatchingItems: List<ContinueWatchingItem> = emptyList(),
     val upcomingItems: List<ContinueWatchingItem> = emptyList(),
+    val upcomingRowEnabled: Boolean = true,
     val isLoading: Boolean = true,
     val layoutPreferencesReady: Boolean = false,
     val error: String? = null,

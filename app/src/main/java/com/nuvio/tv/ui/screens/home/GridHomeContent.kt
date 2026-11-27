@@ -726,7 +726,7 @@ fun GridHomeContent(
                     )
                 }
             }
-            if (uiState.continueWatchingEnabled && uiState.upcomingItems.isNotEmpty()) {
+            if (uiState.upcomingRowEnabled && uiState.continueWatchingEnabled && uiState.upcomingItems.isNotEmpty()) {
                 item(
                     key = "upcoming_section",
                     span = { GridItemSpan(maxLineSpan) },

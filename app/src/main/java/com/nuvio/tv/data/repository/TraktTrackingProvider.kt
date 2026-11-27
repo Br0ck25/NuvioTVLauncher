@@ -33,7 +33,8 @@ class TraktTrackingProvider @Inject constructor(
             TrackingCapability.PROGRESS_WRITE,
             TrackingCapability.SCROBBLE,
             TrackingCapability.COMMENTS,
-            TrackingCapability.RECOMMENDATIONS
+            TrackingCapability.RECOMMENDATIONS,
+            TrackingCapability.RATINGS
         )
     )
     override val isAuthenticated = authDataStore.isEffectivelyAuthenticated

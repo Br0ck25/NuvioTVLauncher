@@ -150,6 +150,12 @@ internal fun LayoutContinueWatchingSection(
             checked = uiState.showUnairedNextUp,
             onToggle = { onEvent(LayoutSettingsEvent.SetShowUnairedNextUp(!uiState.showUnairedNextUp)) }
         )
+        SettingsToggleRow(
+            title = stringResource(R.string.layout_upcoming_row_enabled),
+            subtitle = stringResource(R.string.layout_upcoming_row_enabled_sub),
+            checked = uiState.upcomingRowEnabled,
+            onToggle = { onEvent(LayoutSettingsEvent.SetUpcomingRowEnabled(!uiState.upcomingRowEnabled)) }
+        )
         SettingsActionRow(
             title = stringResource(R.string.layout_cw_click_action),
             subtitle = stringResource(R.string.layout_cw_click_action_sub),
@@ -293,6 +299,10 @@ internal fun LayoutPosterCardSection(
         PresetOption(stringResource(R.string.layout_preset_comfort), 134),
         PresetOption(stringResource(R.string.layout_preset_large), 140)
     )
+    val rowWidthOptions = listOf(
+        PresetOption(stringResource(R.string.layout_preset_tiny), 88),
+        PresetOption(stringResource(R.string.layout_preset_extra_compact), 96)
+    ) + widthOptions
     val radiusOptions = listOf(
         PresetOption(stringResource(R.string.layout_preset_sharp), 0),
         PresetOption(stringResource(R.string.layout_preset_subtle), 4),
@@ -309,6 +319,18 @@ internal fun LayoutPosterCardSection(
         selectedValue = uiState.homeTileWidthDp ?: uiState.posterCardWidthDp,
         options = widthOptions,
         onSelected = { width -> onEvent(LayoutSettingsEvent.SetHomeTileWidth(width)) }
+    )
+    OptionRow(
+        title = stringResource(R.string.layout_live_tv_row_width),
+        selectedValue = uiState.liveTvRowWidthDp,
+        options = rowWidthOptions,
+        onSelected = { width -> onEvent(LayoutSettingsEvent.SetLiveTvRowWidth(width)) }
+    )
+    OptionRow(
+        title = stringResource(R.string.layout_upcoming_row_width),
+        selectedValue = uiState.upcomingRowWidthDp,
+        options = rowWidthOptions,
+        onSelected = { width -> onEvent(LayoutSettingsEvent.SetUpcomingRowWidth(width)) }
     )
     OptionRow(
         title = stringResource(R.string.layout_card_width),

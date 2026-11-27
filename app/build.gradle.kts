@@ -51,12 +51,6 @@ fun parseBooleanProperty(value: String?): Boolean {
     return normalized == "1" || normalized == "true" || normalized == "yes" || normalized == "on"
 }
 
-// The official Nuvio account server and its publishable (public by design) client key, used when a build
-// doesn't set its own NUVIO_SUPABASE_URL / NUVIO_SUPABASE_ANON_KEY, so signing in with a real Nuvio account
-// works without any extra setup.
-val defaultSupabaseUrl = "https://api.nuvio.tv"
-val defaultSupabaseAnonKey = "sb_publishable_1Clq8rlTVACkdcZuqr6_AD__xUUC_EN"
-
 fun resolveProperty(dev: Properties, local: Properties, key: String, fallback: String = ""): String {
     return dev.getProperty(key)?.trim()?.takeIf { it.isNotBlank() }
         ?: local.getProperty(key)?.trim()?.takeIf { it.isNotBlank() }
@@ -126,6 +120,18 @@ if (debugReportDiscordWebhook.isNullOrBlank()) {
 }
 
 fun env(name: String): String? = providers.environmentVariable(name).orNull
+
+// Release-like local/test builds may receive the official client config from the environment,
+// matching CI, while production secrets remain out of source control.
+val releaseSupabaseUrl = env("NUVIO_SUPABASE_URL")?.trim()?.takeIf { it.isNotBlank() }
+    ?: localProperties.getProperty("NUVIO_SUPABASE_URL", "").trim().takeIf { it.isNotBlank() }.orEmpty()
+val releaseSupabaseAnonKey = env("NUVIO_SUPABASE_ANON_KEY")?.trim()?.takeIf { it.isNotBlank() }
+    ?: localProperties.getProperty("NUVIO_SUPABASE_ANON_KEY", "").trim().takeIf { it.isNotBlank() }.orEmpty()
+val releaseSupabaseFallbackUrl = env("NUVIO_SUPABASE_FALLBACK_URL")?.trim()?.takeIf { it.isNotBlank() }
+    ?: localProperties.getProperty("NUVIO_SUPABASE_FALLBACK_URL", "").trim().takeIf { it.isNotBlank() }.orEmpty()
+if (releaseSupabaseUrl.isBlank() || releaseSupabaseAnonKey.isBlank()) {
+    logger.warn("Nuvio account auth is not configured for this release build; QR login will be unavailable.")
+}
 
 fun truthy(value: String?): Boolean {
     return value.equals("true", ignoreCase = true) ||
@@ -268,8 +274,8 @@ android {
             buildConfigField("String", "SENTRY_ENVIRONMENT", buildConfigString("debug"))
 
             // Dev environment (from local.dev.properties)
-            buildConfigField("String", "SUPABASE_URL", buildConfigString(resolveProperty(devProperties, localProperties, "NUVIO_SUPABASE_URL", defaultSupabaseUrl)))
-            buildConfigField("String", "SUPABASE_ANON_KEY", buildConfigString(resolveProperty(devProperties, localProperties, "NUVIO_SUPABASE_ANON_KEY", defaultSupabaseAnonKey)))
+            buildConfigField("String", "SUPABASE_URL", buildConfigString(resolveProperty(devProperties, localProperties, "NUVIO_SUPABASE_URL")))
+            buildConfigField("String", "SUPABASE_ANON_KEY", buildConfigString(resolveProperty(devProperties, localProperties, "NUVIO_SUPABASE_ANON_KEY")))
             buildConfigField("String", "SUPABASE_FALLBACK_URL", buildConfigString(resolveProperty(devProperties, localProperties, "NUVIO_SUPABASE_FALLBACK_URL")))
             buildConfigField("String", "TV_LOGIN_WEB_BASE_URL", "\"${devProperties.getProperty("TV_LOGIN_WEB_BASE_URL", "https://nuvio.tv/tv-login")}\"")
             buildConfigField("String", "DEVICE_LOGIN_WEB_BASE_URL", "\"${devProperties.getProperty("DEVICE_LOGIN_WEB_BASE_URL", "https://nuvio.tv/link")}\"")
@@ -303,9 +309,9 @@ android {
             buildConfigField("String", "SENTRY_ENVIRONMENT", buildConfigString("production"))
 
             // Production environment (from local.properties)
-            buildConfigField("String", "SUPABASE_URL", buildConfigString(localProperties.getProperty("NUVIO_SUPABASE_URL", defaultSupabaseUrl)))
-            buildConfigField("String", "SUPABASE_ANON_KEY", buildConfigString(localProperties.getProperty("NUVIO_SUPABASE_ANON_KEY", defaultSupabaseAnonKey)))
-            buildConfigField("String", "SUPABASE_FALLBACK_URL", buildConfigString(localProperties.getProperty("NUVIO_SUPABASE_FALLBACK_URL", "")))
+            buildConfigField("String", "SUPABASE_URL", buildConfigString(releaseSupabaseUrl))
+            buildConfigField("String", "SUPABASE_ANON_KEY", buildConfigString(releaseSupabaseAnonKey))
+            buildConfigField("String", "SUPABASE_FALLBACK_URL", buildConfigString(releaseSupabaseFallbackUrl))
             buildConfigField("String", "TV_LOGIN_WEB_BASE_URL", "\"${localProperties.getProperty("TV_LOGIN_WEB_BASE_URL", "https://nuvio.tv/tv-login")}\"")
             buildConfigField("String", "DEVICE_LOGIN_WEB_BASE_URL", "\"${localProperties.getProperty("DEVICE_LOGIN_WEB_BASE_URL", "https://nuvio.tv/link")}\"")
             buildConfigField("String", "PARENTAL_GUIDE_API_URL", "\"${localProperties.getProperty("PARENTAL_GUIDE_API_URL", "")}\"")
@@ -341,15 +347,25 @@ android {
 
     splits {
         abi {
-            // Live TV fork: test builds are one APK for every device (no per-processor copies),
-            // which is all a test needs and builds quicker.
+            // Test builds default to one APK for convenience. Allow an ABI-specific test APK for
+            // low-storage devices such as Fire TV, where the universal APK is too large to install.
+            val isTestBuild = (findProperty("livetvTestBuild") as String?)?.toBoolean() == true
+            val testAbiSplitsEnabled = (findProperty("livetvTestAbiSplits") as String?)?.toBoolean() == true
+            val requestedTestAbi = (findProperty("livetvTestAbi") as String?)?.takeIf { it.isNotBlank() }
             isEnable = !buildingAppBundle &&
-                (findProperty("livetvTestBuild") as String?)?.toBoolean() != true
+                (!isTestBuild || testAbiSplitsEnabled)
             reset()
             // Live TV fork: TV boxes are all ARM. The x86 copies (for PC emulators) only made
             // the all-in-one APK, the one most people install, far bigger.
-            include("armeabi-v7a", "arm64-v8a")
-            isUniversalApk = true
+            if (isTestBuild && testAbiSplitsEnabled && requestedTestAbi != null) {
+                require(requestedTestAbi in setOf("armeabi-v7a", "arm64-v8a", "x86_64")) {
+                    "Unsupported test ABI: $requestedTestAbi"
+                }
+                include(requestedTestAbi)
+            } else {
+                include("armeabi-v7a", "arm64-v8a")
+            }
+            isUniversalApk = !(isTestBuild && testAbiSplitsEnabled && requestedTestAbi != null)
         }
     }
 
@@ -768,5 +784,5 @@ dependencies {
     debugImplementation(libs.androidx.compose.ui.test.manifest)
 }
 
-// Launcher layer: app id, update repo and extra dependencies (see LAUNCHER_RULES.md).
+// Launcher layer: app id, update repo, default account server and extra dependencies (see LAUNCHER_RULES.md).
 apply(from = "launcher.gradle.kts")

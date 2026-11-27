@@ -34,6 +34,7 @@ import androidx.compose.foundation.layout.wrapContentWidth
 import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
+import androidx.compose.material.icons.filled.Download
 import androidx.compose.material.icons.filled.Notifications
 import androidx.compose.material.icons.filled.Settings
 import androidx.compose.material.icons.filled.Tv
@@ -81,7 +82,10 @@ private fun launchPassthroughInput(context: Context, inputId: String): Boolean =
 fun HomeTopBarHeader(
     onNotificationsClick: () -> Unit,
     onSettingsClick: () -> Unit,
-    modifier: Modifier = Modifier
+    modifier: Modifier = Modifier,
+    /** Nuvio One's Downloads button: shown first in the bar when set; [downloadsFocusRequester] is its focus target. */
+    onDownloadsClick: (() -> Unit)? = null,
+    downloadsFocusRequester: FocusRequester? = null
 ) {
     val context = LocalContext.current
     val notifications by LauncherNotificationListenerService.notifications.collectAsStateWithLifecycle()
@@ -142,6 +146,39 @@ fun HomeTopBarHeader(
         verticalAlignment = Alignment.CenterVertically,
         horizontalArrangement = Arrangement.spacedBy(14.dp)
     ) {
+        // Downloads Button
+        if (onDownloadsClick != null) {
+            Surface(
+                onClick = onDownloadsClick,
+                modifier = Modifier
+                    .size(36.dp)
+                    .then(if (downloadsFocusRequester != null) Modifier.focusRequester(downloadsFocusRequester) else Modifier),
+                shape = ClickableSurfaceDefaults.shape(RoundedCornerShape(10.dp)),
+                colors = ClickableSurfaceDefaults.colors(
+                    containerColor = Color.Black.copy(alpha = 0.35f),
+                    focusedContainerColor = NuvioTheme.colors.FocusBackground,
+                    pressedContainerColor = NuvioTheme.colors.FocusBackground
+                ),
+                scale = ClickableSurfaceDefaults.scale(focusedScale = 1f),
+                border = ClickableSurfaceDefaults.border(
+                    border = Border(BorderStroke(1.dp, Color.White.copy(alpha = 0.12f))),
+                    focusedBorder = Border(BorderStroke(2.dp, NuvioTheme.colors.FocusRing))
+                )
+            ) {
+                Box(
+                    modifier = Modifier.fillMaxSize(),
+                    contentAlignment = Alignment.Center
+                ) {
+                    Icon(
+                        imageVector = Icons.Default.Download,
+                        contentDescription = stringResource(R.string.vod_downloads_title),
+                        tint = Color.White,
+                        modifier = Modifier.size(18.dp)
+                    )
+                }
+            }
+        }
+
         // TV Inputs Button
         if (hasTvInputs) {
             Surface(

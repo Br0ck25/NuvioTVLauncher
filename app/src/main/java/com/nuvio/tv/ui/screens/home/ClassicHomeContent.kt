@@ -136,6 +136,7 @@ fun ClassicHomeContent(
     val globalLandscape = LocalLandscapePosterMode.current
     // The user's Tile size (Layout settings) applies to the tile every Home row shares.
     val userTileScale = com.nuvio.tv.ui.components.rememberHomeTileScale()
+    val upcomingRowWidthScale = com.nuvio.tv.ui.components.rememberUpcomingHomeRowScale()
     val newUpcomingRow by com.nuvio.tv.livetv.calendar.CalendarHomeFeed.newUpcomingRowFlow.collectAsState()
     val classicContinueWatchingCardWidth = remember(classicCatalogPosterCardStyle, classicSecondaryPosterCardStyle, uiState.continueWatchingCardStyle, globalLandscape, userTileScale) {
         when (uiState.continueWatchingCardStyle) {
@@ -519,7 +520,7 @@ fun ClassicHomeContent(
             val onDemandOffset = if (uiState.onDemandContinueWatchingItems.isNotEmpty()) 1 else 0
             val youtubeOffset = if (uiState.youtubeContinueWatchingItems.isNotEmpty()) 1 else 0
             val upcomingOffset =
-                if (uiState.continueWatchingEnabled && uiState.upcomingItems.isNotEmpty()) 1 else 0
+                if (uiState.upcomingRowEnabled && uiState.continueWatchingEnabled && uiState.upcomingItems.isNotEmpty()) 1 else 0
             val rowsOffset = heroOffset + cwOffset + liveTvOffset + onDemandOffset + youtubeOffset + upcomingOffset
             for (idx in firstVisible.coerceAtLeast(0)..(lastVisible + prefetchAhead)) {
                 val rowIdx = idx - rowsOffset
@@ -852,7 +853,7 @@ fun ClassicHomeContent(
                 )
             }
         }
-        if (uiState.continueWatchingEnabled && uiState.upcomingItems.isNotEmpty()) {
+        if (uiState.upcomingRowEnabled && uiState.continueWatchingEnabled && uiState.upcomingItems.isNotEmpty()) {
             item(key = "upcoming_section", contentType = "upcoming_section") {
                 LaunchedEffect(upcomingPendingScrollToStart.intValue) {
                     if (upcomingPendingScrollToStart.intValue > 0) {
@@ -925,11 +926,11 @@ fun ClassicHomeContent(
                                 ?.toClassicFocusArtwork(uiState.focusedPosterBackdropExpandEnabled)
                         }
                     },
-                    cardWidth = if (newUpcomingRow) {
+                    cardWidth = (if (newUpcomingRow) {
                         com.nuvio.tv.ui.components.UPCOMING_SCHEDULE_CARD_WIDTH
                     } else {
                         classicContinueWatchingCardWidth
-                    },
+                    }) * upcomingRowWidthScale,
                     imageHeight = classicContinueWatchingImageHeight,
                     cardStyle = uiState.continueWatchingCardStyle,
                     cornerRadius = posterCardStyle.cornerRadius,

@@ -30,6 +30,33 @@ extensions.getByType<ApplicationAndroidComponentsExtension>().apply {
     }
 }
 
+// The official Nuvio account server and its publishable (public by design) client key, used when a build
+// doesn't set its own NUVIO_SUPABASE_URL / NUVIO_SUPABASE_ANON_KEY, so signing in with a real Nuvio account
+// works without any extra setup. Same lookup order as build.gradle.kts: debug reads local.dev.properties then
+// local.properties; release reads the environment, then local.properties.
+val launcherDefaultSupabaseUrl = "https://api.nuvio.tv"
+val launcherDefaultSupabaseAnonKey = "sb_publishable_1Clq8rlTVACkdcZuqr6_AD__xUUC_EN"
+fun launcherProps(fileName: String): java.util.Properties = java.util.Properties().apply {
+    val file = rootProject.file(fileName)
+    if (file.exists()) file.inputStream().use { load(it) }
+}
+val launcherLocalProps = launcherProps("local.properties")
+val launcherDevProps = launcherProps("local.dev.properties")
+fun launcherSupabase(key: String, fallback: String, vararg sources: (String) -> String?): String =
+    sources.firstNotNullOfOrNull { source -> source(key)?.trim()?.takeIf { it.isNotBlank() } } ?: fallback
+launcherAndroid.buildTypes.getByName("debug") {
+    val fromDev = { key: String -> launcherDevProps.getProperty(key) }
+    val fromLocal = { key: String -> launcherLocalProps.getProperty(key) }
+    buildConfigField("String", "SUPABASE_URL", "\"${launcherSupabase("NUVIO_SUPABASE_URL", launcherDefaultSupabaseUrl, fromDev, fromLocal)}\"")
+    buildConfigField("String", "SUPABASE_ANON_KEY", "\"${launcherSupabase("NUVIO_SUPABASE_ANON_KEY", launcherDefaultSupabaseAnonKey, fromDev, fromLocal)}\"")
+}
+launcherAndroid.buildTypes.getByName("release") {
+    val fromEnv = { key: String -> System.getenv(key) }
+    val fromLocal = { key: String -> launcherLocalProps.getProperty(key) }
+    buildConfigField("String", "SUPABASE_URL", "\"${launcherSupabase("NUVIO_SUPABASE_URL", launcherDefaultSupabaseUrl, fromEnv, fromLocal)}\"")
+    buildConfigField("String", "SUPABASE_ANON_KEY", "\"${launcherSupabase("NUVIO_SUPABASE_ANON_KEY", launcherDefaultSupabaseAnonKey, fromEnv, fromLocal)}\"")
+}
+
 dependencies {
     // On-device ADB client used by the phone-driven Home button setup (runs the commands on this TV).
     add("fullImplementation", "com.github.MuntashirAkon:libadb-android:3.0.0")

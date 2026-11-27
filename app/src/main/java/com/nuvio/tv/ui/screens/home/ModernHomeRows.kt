@@ -501,6 +501,7 @@ internal fun ModernRowSection(
     @Suppress("NAME_SHADOWING") val itemFocusRequesters = itemFocusRequesters.value
     val rowKey = row.key
     val newUpcomingRow by com.nuvio.tv.livetv.calendar.CalendarHomeFeed.newUpcomingRowFlow.collectAsState()
+    val upcomingRowWidthScale = com.nuvio.tv.ui.components.rememberUpcomingHomeRowScale()
 
     // Per-row derived state: only invalidates when THIS row's focused index
     // changes, not when any other row's index changes in the shared map.
@@ -1006,11 +1007,11 @@ internal fun ModernRowSection(
                                 payload = payload,
                                 requester = requester,
                                 isTargetItem = isTargetItem,
-                                cardWidth = if (isUpcoming) {
+                                cardWidth = (if (isUpcoming) {
                                     com.nuvio.tv.ui.components.UPCOMING_SCHEDULE_CARD_WIDTH
                                 } else {
                                     continueWatchingCardWidth
-                                },
+                                }) * if (isUpcoming) upcomingRowWidthScale else 1f,
                                 imageHeight = continueWatchingCardHeight,
                                 blurUnwatchedEpisodes = blurUnwatchedEpisodes,
                                 useEpisodeThumbnails = useEpisodeThumbnails,

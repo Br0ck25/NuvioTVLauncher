@@ -712,7 +712,10 @@ fun ContinueWatchingCard(
     val backgroundPainter = remember(bgCardColor) { androidx.compose.ui.graphics.painter.ColorPainter(bgCardColor) }
     // Upcoming is two tiles wide (the shared Home tile and the gap between), so it lines up with the rows around it.
     val homeTile = rememberHomeTile()
-    val effectiveCardWidth = if (isUpcomingCard) (homeTile?.wideWidth ?: UPCOMING_SCHEDULE_CARD_WIDTH) else cardWidth
+    val upcomingWidthScale = rememberUpcomingHomeRowScale()
+    val effectiveCardWidth = if (isUpcomingCard) {
+        (homeTile?.wideWidth ?: UPCOMING_SCHEDULE_CARD_WIDTH) * upcomingWidthScale
+    } else cardWidth
 
     LightweightCard(
         onClick = {
