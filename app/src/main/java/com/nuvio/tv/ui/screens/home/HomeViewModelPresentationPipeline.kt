@@ -75,7 +75,8 @@ private data class LayoutUiPrefs(
     val focusedBackdropTrailerPlaybackTarget: FocusedPosterTrailerPlaybackTarget,
     val posterCardWidthDp: Int,
     val posterCardHeightDp: Int,
-    val posterCardCornerRadiusDp: Int
+    val posterCardCornerRadiusDp: Int,
+    val upcomingRowEnabled: Boolean = true
 )
 
 private data class ModernLayoutPrefs(
@@ -189,8 +190,9 @@ internal fun HomeViewModel.observeLayoutPreferencesPipeline() {
         combine(
             baseLayoutUiPrefsFlow,
             modernLayoutPrefsFlow,
-            layoutPreferenceDataStore.heroDescriptionAutoScrollEnabled
-        ) { basePrefs, modernPrefs, heroDescriptionAutoScrollEnabled ->
+            layoutPreferenceDataStore.heroDescriptionAutoScrollEnabled,
+            layoutPreferenceDataStore.upcomingRowEnabled
+        ) { basePrefs, modernPrefs, heroDescriptionAutoScrollEnabled, upcomingRowEnabled ->
             basePrefs.copy(
                 modernLandscapePostersEnabled = modernPrefs.landscapePosters,
                 modernHeroFullScreenBackdropEnabled = modernPrefs.fullScreenBackdrop,
@@ -198,6 +200,7 @@ internal fun HomeViewModel.observeLayoutPreferencesPipeline() {
                 alwaysShowLandscapeClearlogo = modernPrefs.alwaysShowLandscapeClearlogo,
                 detailImdbRatingsVisibility = modernPrefs.detailImdbRatingsVisibility,
                 heroDescriptionAutoScrollEnabled = heroDescriptionAutoScrollEnabled,
+                upcomingRowEnabled = upcomingRowEnabled,
             )
         }
             .distinctUntilChanged()
@@ -216,7 +219,8 @@ internal fun HomeViewModel.observeLayoutPreferencesPipeline() {
                         previousState.homeLayout != prefs.layout ||
                         previousState.hideUnreleasedContent != prefs.hideUnreleasedContent ||
                         previousState.posterCardWidthDp != prefs.posterCardWidthDp ||
-                        previousState.homeImdbRatingsVisibility != prefs.homeImdbRatingsVisibility
+                        previousState.homeImdbRatingsVisibility != prefs.homeImdbRatingsVisibility ||
+                        previousState.upcomingRowEnabled != prefs.upcomingRowEnabled
                 currentHeroCatalogKeys = prefs.heroCatalogKeys
                 // Reset focus state when layout changes so the outgoing
                 // layout's onDispose doesn't poison the incoming layout
@@ -253,7 +257,8 @@ internal fun HomeViewModel.observeLayoutPreferencesPipeline() {
                         focusedPosterBackdropTrailerPlaybackTarget = prefs.focusedBackdropTrailerPlaybackTarget,
                         posterCardWidthDp = prefs.posterCardWidthDp,
                         posterCardHeightDp = prefs.posterCardHeightDp,
-                        posterCardCornerRadiusDp = prefs.posterCardCornerRadiusDp
+                        posterCardCornerRadiusDp = prefs.posterCardCornerRadiusDp,
+                        upcomingRowEnabled = prefs.upcomingRowEnabled
                     )
                 }
                 if (shouldRefreshCatalogPresentation) {
@@ -337,7 +342,7 @@ internal fun HomeViewModel.observeModernHomePresentationPipeline() {
                     continueWatchingItems = overlay.continueWatchingItems,
                     onDemandItems = overlay.onDemandItems,
                     youtubeItems = overlay.youtubeItems,
-                    upcomingItems = overlay.upcomingItems,
+                    upcomingItems = if (state.upcomingRowEnabled) overlay.upcomingItems else emptyList(),
                     useLandscapePosters = state.modernLandscapePostersEnabled,
                     showCatalogTypeSuffix = state.catalogTypeSuffixEnabled,
                     showFullReleaseDate = state.showFullReleaseDate,

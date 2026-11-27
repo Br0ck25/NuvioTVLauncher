@@ -414,7 +414,8 @@ private fun HomeCard(
     val cardHeight = if (compact) 64.dp else 88.dp
     // Two tiles wide, like the Upcoming cards; the height stays 88.
     val homeTile = com.nuvio.tv.ui.components.rememberHomeTile()
-    val cardWidth = if (compact) (homeTile?.width ?: 260.dp) else (homeTile?.wideWidth ?: 330.dp)
+    val liveTvWidthScale = com.nuvio.tv.ui.components.rememberLiveTvHomeRowScale()
+    val cardWidth = (if (compact) (homeTile?.width ?: 260.dp) else (homeTile?.wideWidth ?: 330.dp)) * liveTvWidthScale
     Row(
         modifier = modifier
             .width(cardWidth)

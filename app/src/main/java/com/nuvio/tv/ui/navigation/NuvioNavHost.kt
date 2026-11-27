@@ -630,6 +630,9 @@ private fun PlaybackNavHost(
                 },
                 onNavigateToFolderDetail = { collectionId, folderId ->
                     navController.navigate(Screen.FolderDetail.createRoute(collectionId, folderId))
+                },
+                onOpenDownloads = {
+                    navController.navigate(Screen.VodDownloads.route) { launchSingleTop = true }
                 }
             )
             }
@@ -2016,6 +2019,12 @@ private fun PlaybackNavHost(
                     com.nuvio.tv.livetv.record.RecordingLaunch.open(recordingId, fromStart, Screen.Recordings.route)
                     navController.navigate(Screen.LiveTvPlayer.route) { launchSingleTop = true }
                 }
+            )
+        }
+
+        forkPageComposable(Screen.VodDownloads.route) {
+            com.nuvio.tv.ui.screens.downloads.VodDownloadsScreen(
+                onBack = { navController.popBackStack() }
             )
         }
 

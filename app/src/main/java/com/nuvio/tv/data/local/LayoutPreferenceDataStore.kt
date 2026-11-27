@@ -98,6 +98,9 @@ class LayoutPreferenceDataStore @Inject constructor(
         stringPreferencesKey("focused_poster_backdrop_trailer_playback_target")
     private val posterCardWidthDpKey = intPreferencesKey("poster_card_width_dp")
     private val homeTileWidthDpKey = intPreferencesKey("home_tile_width_dp")
+    private val liveTvRowWidthDpKey = intPreferencesKey("live_tv_home_row_width_dp")
+    private val upcomingRowWidthDpKey = intPreferencesKey("upcoming_home_row_width_dp")
+    private val upcomingRowEnabledKey = booleanPreferencesKey("upcoming_home_row_enabled")
     private val posterCardHeightDpKey = intPreferencesKey("poster_card_height_dp")
     private val posterCardCornerRadiusDpKey = intPreferencesKey("poster_card_corner_radius_dp")
     // Live TV fork: one text and one interface percentage for each top-level section.
@@ -340,6 +343,18 @@ class LayoutPreferenceDataStore @Inject constructor(
         prefs[homeTileWidthDpKey]?.takeIf { it > 0 }
     }
 
+    val liveTvRowWidthDp: Flow<Int> = profileFlow { prefs ->
+        (prefs[liveTvRowWidthDpKey] ?: 126).coerceIn(88, 140)
+    }
+
+    val upcomingRowWidthDp: Flow<Int> = profileFlow { prefs ->
+        (prefs[upcomingRowWidthDpKey] ?: 126).coerceIn(88, 140)
+    }
+
+    val upcomingRowEnabled: Flow<Boolean> = profileFlow { prefs ->
+        prefs[upcomingRowEnabledKey] ?: true
+    }
+
     init {
         // The Home layouts publish their tile; this scales it against the poster width they
         // already size their tiles from, so "follow poster Width" is exactly 1.
@@ -347,6 +362,16 @@ class LayoutPreferenceDataStore @Inject constructor(
             kotlinx.coroutines.flow.combine(posterCardWidthDp, homeTileWidthDp) { poster, tile ->
                 if (tile == null) 1f else tile / poster.toFloat()
             }.collect { com.nuvio.tv.ui.components.HomeTiles.setScale(it) }
+        }
+        scope.launch {
+            liveTvRowWidthDp.collect { width ->
+                com.nuvio.tv.ui.components.HomeTiles.setLiveTvScale(width / 126f)
+            }
+        }
+        scope.launch {
+            upcomingRowWidthDp.collect { width ->
+                com.nuvio.tv.ui.components.HomeTiles.setUpcomingScale(width / 126f)
+            }
         }
     }
 
@@ -758,6 +783,18 @@ class LayoutPreferenceDataStore @Inject constructor(
                 prefs[homeTileWidthDpKey] = widthDp.coerceIn(104, 140)
             }
         }
+    }
+
+    suspend fun setLiveTvRowWidthDp(widthDp: Int) {
+        store().edit { prefs -> prefs[liveTvRowWidthDpKey] = widthDp.coerceIn(88, 140) }
+    }
+
+    suspend fun setUpcomingRowWidthDp(widthDp: Int) {
+        store().edit { prefs -> prefs[upcomingRowWidthDpKey] = widthDp.coerceIn(88, 140) }
+    }
+
+    suspend fun setUpcomingRowEnabled(enabled: Boolean) {
+        store().edit { prefs -> prefs[upcomingRowEnabledKey] = enabled }
     }
 
     suspend fun setPosterCardHeightDp(heightDp: Int) {

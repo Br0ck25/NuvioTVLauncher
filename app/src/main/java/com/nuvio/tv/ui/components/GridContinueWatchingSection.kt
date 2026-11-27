@@ -75,6 +75,7 @@ fun GridContinueWatchingSection(
     isUpcomingSection: Boolean = false
 ) {
     if (items.isEmpty()) return
+    val upcomingWidthScale = rememberUpcomingHomeRowScale()
 
     var optionsItem by remember { mutableStateOf<ContinueWatchingItem?>(null) }
     var lastRequestedFocusIndex by remember { mutableIntStateOf(-1) }
@@ -178,7 +179,7 @@ fun GridContinueWatchingSection(
                             }
                         },
                     cardWidth = when {
-                        isUpcomingSection -> UPCOMING_SCHEDULE_CARD_WIDTH
+                        isUpcomingSection -> UPCOMING_SCHEDULE_CARD_WIDTH * upcomingWidthScale
                         cardStyle == ContinueWatchingCardStyle.POSTER -> posterCardWidth ?: posterCardHeight?.let { it * (2f / 3f) } ?: 120.dp
                         cardStyle == ContinueWatchingCardStyle.WIDE -> 320.dp
                         else -> 220.dp

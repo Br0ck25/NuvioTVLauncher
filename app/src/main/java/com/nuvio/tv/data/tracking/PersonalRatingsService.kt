@@ -1,15 +1,11 @@
 package com.nuvio.tv.data.tracking
 
-import com.nuvio.tv.core.tracking.TrackingMediaKind
 import com.nuvio.tv.core.tracking.TrackingMediaReference
+import com.nuvio.tv.core.tracking.TrackingMediaKind
 import com.nuvio.tv.core.tracking.TrackingProviderId
 import com.nuvio.tv.core.tracking.TrackingProviderRegistry
 import com.nuvio.tv.data.mdblist.MdbListApiClient
-import com.nuvio.tv.data.remote.api.TraktApi
-import com.nuvio.tv.data.remote.dto.trakt.TraktIdsDto
-import com.nuvio.tv.data.remote.dto.trakt.TraktRatingItemDto
-import com.nuvio.tv.data.remote.dto.trakt.TraktRatingsRequestDto
-import com.nuvio.tv.data.repository.TraktAuthService
+import com.nuvio.tv.data.repository.TraktPersonalRatings
 import com.nuvio.tv.data.simkl.SimklApiClient
 import com.nuvio.tv.data.simkl.SimklApiRequest
 import com.nuvio.tv.data.simkl.SimklHttpMethod
@@ -32,8 +28,7 @@ import kotlinx.serialization.json.putJsonObject
  */
 @Singleton
 class PersonalRatingsService @Inject constructor(
-    private val traktApi: TraktApi,
-    private val traktAuthService: TraktAuthService,
+    private val traktPersonalRatings: TraktPersonalRatings,
     private val simklClient: SimklApiClient,
     private val mdbListClient: MdbListApiClient,
     private val providers: TrackingProviderRegistry
@@ -61,7 +56,12 @@ class PersonalRatingsService @Inject constructor(
                 async {
                     runCatching { send(provider, media, rating) }
                         .fold(
-                            onSuccess = { Outcome(provider, ok = true) },
+                            onSuccess = {
+                                if (provider == TrackingProviderId.TRAKT) {
+                                    traktPersonalRatings.remember(media, rating)
+                                }
+                                Outcome(provider, ok = true)
+                            },
                             onFailure = { Outcome(provider, ok = false, message = it.message ?: "Failed") }
                         )
                 }
@@ -71,29 +71,10 @@ class PersonalRatingsService @Inject constructor(
 
     private suspend fun send(provider: TrackingProviderId, media: TrackingMediaReference, rating: Int?) =
         when (provider) {
-            TrackingProviderId.TRAKT -> sendTrakt(media, rating)
+            TrackingProviderId.TRAKT -> traktPersonalRatings.submit(media, rating)
             TrackingProviderId.SIMKL -> sendSimkl(media, rating)
             TrackingProviderId.MDBLIST -> sendMdbList(media, rating)
         }
-
-    private suspend fun sendTrakt(media: TrackingMediaReference, rating: Int?) {
-        val ids = TraktIdsDto(
-            imdb = media.ids.imdb,
-            tmdb = media.ids.tmdb?.toInt(),
-            trakt = media.ids.trakt?.toInt(),
-            tvdb = media.ids.tvdb?.toIntOrNull()
-        )
-        val item = TraktRatingItemDto(ids = ids, rating = rating)
-        val body = if (media.kind == TrackingMediaKind.MOVIE) {
-            TraktRatingsRequestDto(movies = listOf(item))
-        } else {
-            TraktRatingsRequestDto(shows = listOf(item))
-        }
-        val response = traktAuthService.executeAuthorizedRequest { header ->
-            if (rating == null) traktApi.removeRatings(header, body) else traktApi.addRatings(header, body)
-        } ?: throw IllegalStateException("Trakt is not signed in")
-        if (!response.isSuccessful) throw IllegalStateException("Trakt: HTTP ${response.code()}")
-    }
 
     private suspend fun sendSimkl(media: TrackingMediaReference, rating: Int?) {
         val key = when (media.kind) {

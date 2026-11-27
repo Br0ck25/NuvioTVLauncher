@@ -139,6 +139,7 @@
 -dontwarn org.videolan.libvlc.**
 
 # ── Missing class stubs (referenced by cloudstream3 / jsoup / newpipe) ────────
+-dontwarn kotlin.hvm.functions.Function0
 -dontwarn org.mozilla.javascript.**
 -dontwarn com.google.re2j.**
 -dontwarn javax.script.**
