@@ -294,9 +294,15 @@ internal fun ModernHomeRowsList(
                 .onPreviewKeyEvent { event ->
                     val firstRowKey = carouselRows.list.firstOrNull()?.key
                     val lastRowKey = carouselRows.list.lastOrNull()?.key
+                    // The Live TV Favorites row is tucked above the first carousel row. Let
+                    // normal focus search reach its reveal target before routing Up to Downloads.
+                    val liveTvRowWaitingAbove = liveTvRowAbove == true &&
+                        com.nuvio.tv.livetv.home.LiveTvHomeReveal.available.value &&
+                        !com.nuvio.tv.livetv.home.LiveTvHomeReveal.open.value
                     if (event.type == KeyEventType.KeyDown &&
                         event.key == Key.DirectionUp &&
                         activeRowKey.value == firstRowKey &&
+                        !liveTvRowWaitingAbove &&
                         onMoveFocusToDownloads()
                     ) return@onPreviewKeyEvent true
                     // Live TV fork: not when the Live TV row is waiting above the top row (with no

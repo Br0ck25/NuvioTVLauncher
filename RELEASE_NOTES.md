@@ -1,11 +1,5 @@
-# Nuvio One 1.2.0-beta.4.2
-
-## New
-
-- **Downloads manager:** Track download progress, speed, time remaining, and storage. Cancel active downloads, dismiss failures, and delete saved files.
-- **Home shortcut:** Open Downloads directly from Home using the remote.
-- **More layout control:** Adjust Live TV and Upcoming row widths, or hide the Upcoming row.
+# Nuvio One 1.2.0-beta.4.2.1
 
 ## Fixes
 
-- **Trakt ratings:** Fixed rating updates so they sync with Trakt and refresh in the app.
+- **Home navigation:** Pressing Up from the top row now reveals the tucked-away Live TV Favorites row instead of jumping to Downloads.
