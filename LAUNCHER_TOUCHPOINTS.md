@@ -21,8 +21,11 @@ To check whether a bug is ours or Nuvio One's, build that tag. If the bug is the
 | Launcher strings | `res/values/strings_launcher.xml` (Nuvio One's `strings.xml` is untouched) |
 | Activity hooks (Home/Apps keys, Button Mapper, navigation requests) | `core/launcher/LauncherHost.kt`, `ui/screens/setup/LauncherHostCompose.kt` |
 | Apps row in Modern Home, Home top-right panels, side-menu profile picture | `ui/screens/home/ModernAppsRow.kt`, `ui/screens/home/LauncherHomeOverlays.kt`, `ui/components/LauncherSidebarProfile.kt` |
+| Icon pack picker (Settings → Appearance) | `ui/screens/settings/IconPackSettingsSection.kt`, `IconPackPickerDialog.kt` |
+| Apps row catalog pipeline | `ui/screens/home/HomeViewModelInstalledApps.kt` |
+| Merge-driver setup for files that are wholly ours | `.gitattributes`, `scripts/setup-merge-drivers.sh` |
 | Manifest entries (HOME/ALL_APPS filters, services, boot receiver, queries) and Gradle settings | `app/src/launcher/AndroidManifest.xml`, `app/launcher.gradle.kts` |
-| Tests | `core/apps/*Test`, `core/launcher/*Test` |
+| Tests | `core/apps/*Test`, `core/launcher/*Test`, `core/sync/LauncherHomeCatalogSyncTest` |
 
 ## Nuvio One files we edit (keep each edit small; re-check on every Nuvio One update)
 
@@ -39,7 +42,7 @@ To check whether a bug is ours or Nuvio One's, build that tag. If the bug is the
 | `HomeViewModel`, `HomeViewModelCatalogPipeline`, `HomeViewModelCatalogUtils`, `HomeUiState`, `CatalogOrderViewModel` | The Apps row is a catalog entry, so it can be reordered and turned off in Reorder Home Catalogs |
 | `NuvioNavHost.kt`, `Screen.kt` | Apps route, settings navigation |
 | `SettingsScreen`, `SettingsCatalog`, `SettingsSearch`, `SideMenuSettingsContent`, `CalendarModels` (`SideMenuPages`) | Default Launcher and Remote Buttons settings, Apps and Settings menu toggles |
-| `ThemeSettingsScreen`, `ThemeSettingsViewModel` | Icon pack picker |
+| `ThemeSettingsScreen` | One `IconPackSettingsSection()` call (the card, picker and ViewModel are in `IconPackSettingsSection.kt`) |
 | `LayoutPreferenceDataStore`, `LayoutSettingsViewModel`, `LayoutCardSettings`, `LayoutHomeSettings` | Tile size and "pill shows profile" settings |
 
 ## Our sign-in code (kept as on `dev`)

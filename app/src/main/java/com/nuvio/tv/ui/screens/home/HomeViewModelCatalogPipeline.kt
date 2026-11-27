@@ -142,20 +142,6 @@ internal fun HomeViewModel.loadCustomCatalogTitlesPipeline() {
     }
 }
 
-/** Launcher: keeps the Apps row's content (the installed apps, in the user's order and names) up to date. */
-internal fun HomeViewModel.observeInstalledAppsRowPipeline() {
-    val repository = installedAppsRepository ?: return
-    viewModelScope.launch {
-        repository.homeApps
-            .distinctUntilChanged()
-            .collectLatest { apps ->
-                installedAppsCache = apps
-                rebuildCatalogOrder(addonsCache)
-                scheduleUpdateCatalogRows()
-            }
-    }
-}
-
 internal fun HomeViewModel.observeTmdbSettingsPipeline() {
     viewModelScope.launch {
         tmdbSettingsDataStore.settings

@@ -52,8 +52,20 @@ their files. Keep each one small, comment it with `Fork:` so it is easy to grep,
 - **Home rows:** the Apps row's behaviour goes in `ModernAppsRow.kt`; the Nuvio One row file only calls it.
   Exhaustive `when`s over Nuvio One's sealed types still need a branch for our types (one line each).
 
+## 4b. Files that are entirely ours
+
+`.gitattributes` marks files we own outright (README, privacy text, the issue-template config, app icons,
+banners, logo and wordmark) with `merge=ours`, so a merge keeps our version instead of stopping on a
+conflict. Run `scripts/setup-merge-drivers.sh` once per clone to turn it on; without it Git merges normally.
+Note that Nuvio One's own changes to those files are ignored: if they change something we want (new
+privacy wording, say), copy it over by hand. Add a path there only if the whole file is ours.
+
+Settings that other code needs a hook for: put the screen in our own file and give it its own ViewModel
+(see `IconPackSettingsSection.kt`) instead of adding fields to a Nuvio One ViewModel and its tests.
+
 ## 5. Merging Nuvio One
 
+0. Once per clone: `scripts/setup-merge-drivers.sh`.
 1. `git fetch` Nuvio One's release tag and merge it into the working branch.
 2. Conflicts should be only in the files listed in `LAUNCHER_TOUCHPOINTS.md`. Keep Nuvio One's version,
    then re-apply our hook lines.

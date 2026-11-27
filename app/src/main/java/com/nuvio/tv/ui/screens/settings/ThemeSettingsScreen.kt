@@ -106,7 +106,6 @@ fun ThemeSettingsContent(
     var showFontDialog by remember { mutableStateOf(false) }
     var showLanguageDialog by remember { mutableStateOf(false) }
     var showAppIconDialog by remember { mutableStateOf(false) }
-    var showIconPackDialog by remember { mutableStateOf(false) }
     var showCustomThemeDialog by remember(uiState.customThemeGradientEnabled) { mutableStateOf(false) }
     var restoreCustomThemeFocus by remember { mutableStateOf(false) }
     var appIconConfirmation by remember { mutableStateOf<AppIconOption?>(null) }
@@ -311,26 +310,7 @@ fun ThemeSettingsContent(
                 )
             }
 
-            SettingsGroupCard(
-                modifier = Modifier.fillMaxWidth(),
-                title = stringResource(R.string.appearance_icon_pack_title),
-                subtitle = stringResource(R.string.appearance_icon_pack_subtitle)
-            ) {
-                val currentPackName = remember(uiState.selectedIconPackPackage, uiState.installedIconPacks) {
-                    uiState.selectedIconPackPackage?.let { selected ->
-                        uiState.installedIconPacks.firstOrNull { it.packageName == selected }?.name ?: selected
-                    }
-                }
-                SettingsActionRow(
-                    title = stringResource(R.string.appearance_icon_pack_row_title),
-                    subtitle = stringResource(R.string.appearance_icon_pack_row_subtitle),
-                    value = currentPackName ?: stringResource(R.string.appearance_icon_pack_system_default),
-                    onClick = {
-                        viewModel.onEvent(ThemeSettingsEvent.RefreshIconPacks)
-                        showIconPackDialog = true
-                    }
-                )
-            }
+            IconPackSettingsSection()
 
             AmbientModeSettingsCard()
 
@@ -424,19 +404,6 @@ fun ThemeSettingsContent(
                 showAppIconDialog = false
             },
             onToggleIptv = { viewModel.setIptvBranding(it) }
-        )
-    }
-
-    if (showIconPackDialog) {
-        IconPackPickerDialog(
-            installedPacks = uiState.installedIconPacks,
-            selectedPackage = uiState.selectedIconPackPackage,
-            isLoading = uiState.isLoadingIconPacks,
-            onSelect = { pkg ->
-                viewModel.onEvent(ThemeSettingsEvent.SelectIconPack(pkg))
-                showIconPackDialog = false
-            },
-            onDismiss = { showIconPackDialog = false }
         )
     }
 

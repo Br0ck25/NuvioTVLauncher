@@ -1,0 +1,17 @@
+# Files that are entirely ours (branding and our own text). When Nuvio One changes the same file, a merge
+# keeps our version instead of stopping on a conflict. Needs the "ours" driver once per clone:
+#   scripts/setup-merge-drivers.sh
+# Without the driver Git falls back to its normal merge, so nothing breaks (you just get the conflict).
+# See LAUNCHER_RULES.md.
+README.md merge=ours
+PRIVACY.md merge=ours
+.github/ISSUE_TEMPLATE/config.yml merge=ours
+spotify-link/README.md merge=ours
+
+# App icons, banners, logo and wordmark: all colour variants are ours.
+app/src/*/res/mipmap-*/*.png merge=ours
+app/src/*/res/mipmap-*/*.webp merge=ours
+app/src/main/res/drawable-nodpi/app_logo_*.png merge=ours
+app/src/main/res/drawable-nodpi/tv_banner.png merge=ours
+app/src/main/res/drawable/ic_launcher.png merge=ours
+app/src/main/res/drawable/tv_banner.png merge=ours
