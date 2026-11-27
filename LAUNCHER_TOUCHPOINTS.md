@@ -1,5 +1,7 @@
 # Launcher touchpoints
 
+How to add code without growing this list: see `LAUNCHER_RULES.md`.
+
 This branch is Nuvio One `1.2.0-beta.1.17.2.1` (commit `5780885`, the last build Nuvio One published)
 plus the launcher layer. Nothing else from Nuvio One is changed.
 
@@ -17,13 +19,14 @@ To check whether a bug is ours or Nuvio One's, build that tag. If the bug is the
 | Setup wizard | `ui/screens/setup/LauncherSetupWizard.kt` |
 | Settings pages | `ButtonMapper*`, `ButtonCaptureDialog`, `DefaultLauncherSettingsContent`, `IconPackPickerDialog`, `LocalAdbSetupDialog` |
 | Launcher strings | `res/values/strings_launcher.xml` (Nuvio One's `strings.xml` is untouched) |
+| Activity hooks (Home/Apps keys, Button Mapper, navigation requests) | `core/launcher/LauncherHost.kt`, `ui/screens/setup/LauncherHostCompose.kt` |
 | Tests | `core/apps/*Test`, `core/launcher/*Test` |
 
 ## Nuvio One files we edit (keep each edit small; re-check on every Nuvio One update)
 
 | File | What the hook does |
 |---|---|
-| `MainActivity.kt` | Home/Apps key handling, Button Mapper dispatch, setup wizard gate, Back never exits, sidebar `launcherMode`, Apps and Settings menu entries |
+| `MainActivity.kt` | One `LauncherHost` property and about 10 one-line calls into it (`onCreate`, `onResume`, `onPause`, `onDestroy`, `onNewIntent`, `onWindowFocusChanged`, `onDispatchKeyEvent`, `onMappedKeyEvent`, `suppressAppExit`), plus `LauncherSetupGate`, `LauncherNavigationEffects`, `LauncherProfileSwitchEffect`, `attachListChannelsToProfile`, the Apps and Settings menu entries, sidebar `launcherMode` and the floating-pill profile. The logic is in `core/launcher/LauncherHost.kt` and `ui/screens/setup/LauncherHostCompose.kt` |
 | `NuvioApplication.kt` | Heavy services made lazy and started off the main thread so the accessibility service can bind early |
 | `AndroidManifest.xml`, `full/AndroidManifest.xml` | HOME and ALL_APPS filters, services, boot receiver, app-icon aliases |
 | `app/build.gradle.kts` | App id `com.nuvio.tv.launcher`, update repo, ADB libraries, test deps |
