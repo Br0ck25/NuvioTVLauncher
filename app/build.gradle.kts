@@ -213,7 +213,7 @@ android {
         val updateRepo = (findProperty("livetvUpdateRepo") as String?)
             ?.trim()
             ?.takeIf { it.isNotBlank() }
-            ?: "Br0ck25/NuvioTVLauncher"
+            ?: "zoga2o3-ops/Nuvio-One"
         buildConfigField("String", "GITHUB_OWNER", "\"${updateRepo.substringBefore('/', "")}\"")
         buildConfigField("String", "GITHUB_REPO", "\"${updateRepo.substringAfter('/', "")}\"")
     }
@@ -470,7 +470,7 @@ androidComponents {
     onVariants(selector().withBuildType("debug")) { variant ->
         val isPlaystore = variant.productFlavors.any { it.second == "playstore" }
         // -PlivetvDebugAppId=<id> installs a debug build next to another copy (own data, own icon).
-        val debugAppId = (findProperty("livetvDebugAppId") as String?)?.takeIf { it.isNotBlank() } ?: "com.nuvio.tv.launcher"
+        val debugAppId = (findProperty("livetvDebugAppId") as String?)?.takeIf { it.isNotBlank() } ?: "com.nuvio.livetv"
         variant.applicationId.set(if (isPlaystore) "com.nuvio.appdebug" else debugAppId)
     }
     // Live TV fork: release builds get their own app ID too, so they install next to official
@@ -480,7 +480,7 @@ androidComponents {
         // Test builds (-PlivetvTestBuild=true) get their own ID, so they install next to the
         // real app instead of replacing it.
         val testBuild = (findProperty("livetvTestBuild") as String?)?.toBoolean() == true
-        if (!isPlaystore) variant.applicationId.set(if (testBuild) "com.nuvio.tv.launcher.test" else "com.nuvio.tv.launcher")
+        if (!isPlaystore) variant.applicationId.set(if (testBuild) "app.onetube.tv.test" else "app.onetube.tv")
     }
     // Only the full flavor ships the in-app updater.
     onVariants(selector().withFlavor("distribution" to "full")) { variant ->
@@ -715,19 +715,6 @@ dependencies {
     add("fullImplementation", "com.fasterxml.jackson.module:jackson-module-kotlin:2.17.0")
     add("fullImplementation", libs.nicehttp)
     add("fullImplementation", libs.conscrypt.android)
-    // On-device ADB client used by the phone-driven Home button setup (runs the commands on this TV).
-    add("fullImplementation", "com.github.MuntashirAkon:libadb-android:3.0.0")
-    // libadb-android only exposes BouncyCastle at runtime; used to create the ADB identity cert.
-    add("fullImplementation", "org.bouncycastle:bcprov-jdk15to18:1.78")
-    // Nuvio One's SMB library (jcifs-ng) pulls org.bouncycastle:bcprov-jdk18on:1.76, the same classes as the
-    // bcprov-jdk15to18:1.78 above. Two copies fail the duplicate-class check, so the full flavor keeps the newer one.
-    // (The playstore flavor has no launcher libraries and keeps jcifs-ng's own copy.)
-    configurations.matching { it.name.startsWith("full") }.configureEach {
-        exclude(group = "org.bouncycastle", module = "bcprov-jdk18on")
-    }
-    testImplementation("org.robolectric:robolectric:4.17")
-    // Icon pack tests parse appfilter.xml; Android's XmlPullParser is not on the JVM test classpath.
-    testImplementation("net.sf.kxml:kxml2:2.3.0")
     add("fullImplementation", "com.github.recloudstream.cloudstream:library:${libs.versions.cloudstream.get()}") {
         exclude(group = "org.mozilla", module = "rhino")
         exclude(group = "com.github.AmarullisVFX", module = "newpipeextractor")
@@ -780,3 +767,6 @@ dependencies {
     debugImplementation("androidx.compose.ui:ui-tooling")
     debugImplementation(libs.androidx.compose.ui.test.manifest)
 }
+
+// Launcher layer: app id, update repo and extra dependencies (see LAUNCHER_RULES.md).
+apply(from = "launcher.gradle.kts")

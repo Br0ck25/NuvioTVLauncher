@@ -1,0 +1,130 @@
+<?xml version="1.0" encoding="utf-8"?>
+<!--
+  Launcher layer's manifest entries. Merged into every build type (see launcher.gradle.kts) so that
+  Nuvio One's main AndroidManifest.xml stays close to upstream. What cannot move here (the singleTask
+  launch mode on MainActivity and the app-icon aliases) is listed in LAUNCHER_TOUCHPOINTS.md.
+-->
+<manifest xmlns:android="http://schemas.android.com/apk/res/android">
+
+    <queries>
+        <intent>
+            <action android:name="android.settings.HOME_SETTINGS" />
+        </intent>
+        <!-- Launcher: installed apps are listed through these, and the Home chooser needs the HOME query. -->
+        <intent>
+            <action android:name="android.intent.action.MAIN" />
+            <category android:name="android.intent.category.HOME" />
+        </intent>
+        <intent>
+            <action android:name="android.intent.action.MAIN" />
+            <category android:name="android.intent.category.LEANBACK_LAUNCHER" />
+        </intent>
+        <intent>
+            <action android:name="android.intent.action.MAIN" />
+            <category android:name="android.intent.category.LAUNCHER" />
+        </intent>
+        <!-- Icon Pack and Theme discovery on Android 11+ -->
+        <intent>
+            <action android:name="org.adw.launcher.THEMES" />
+        </intent>
+        <intent>
+            <action android:name="com.novalauncher.THEME" />
+        </intent>
+        <intent>
+            <action android:name="com.gau.go.launcherex.theme" />
+        </intent>
+        <intent>
+            <action android:name="com.fede.launcher.THEME_ICONPACK" />
+        </intent>
+        <intent>
+            <action android:name="com.teslacoilsw.launcher.THEME" />
+        </intent>
+        <intent>
+            <action android:name="com.anddoes.launcher.THEME" />
+        </intent>
+        <intent>
+            <action android:name="com.dlto.atom.launcher.THEME" />
+        </intent>
+        <intent>
+            <action android:name="com.actionlauncher.THEME" />
+        </intent>
+        <intent>
+            <action android:name="mobi.bbase.ahome.THEME" />
+        </intent>
+        <intent>
+            <action android:name="com.sonymobile.home.ICON_PACK" />
+        </intent>
+        <intent>
+            <action android:name="com.spocky.projengmenu.ACTION_THEME" />
+        </intent>
+        <intent>
+            <action android:name="com.spocky.projengmenu.THEME" />
+        </intent>
+        <intent>
+            <action android:name="com.spocky.projectivy.THEME" />
+        </intent>
+        <intent>
+            <action android:name="com.spocky.projectivy.ICON_PACK" />
+        </intent>
+        <intent>
+            <action android:name="com.projectivy.intent.action.ICON_PACK" />
+        </intent>
+        <intent>
+            <action android:name="com.projectivy.theme.ICON_PACK" />
+        </intent>
+        <intent>
+            <action android:name="org.adw.launcher.icons.ACTION_PICK_ICON" />
+        </intent>
+    </queries>
+
+    <application>
+
+        <!-- Launcher: brings the app up on the Home button when Android won't deliver it as the Home app,
+             and re-enables itself after a reboot or update. Authorised by the user (or the phone setup). -->
+        <receiver
+            android:name=".core.launcher.LauncherBootReceiver"
+            android:exported="true">
+            <intent-filter>
+                <action android:name="android.intent.action.BOOT_COMPLETED" />
+                <action android:name="android.intent.action.MY_PACKAGE_REPLACED" />
+            </intent-filter>
+        </receiver>
+
+        <service
+            android:name=".core.launcher.LauncherAccessibilityService"
+            android:permission="android.permission.BIND_ACCESSIBILITY_SERVICE"
+            android:exported="true">
+            <intent-filter>
+                <action android:name="android.accessibilityservice.AccessibilityService" />
+            </intent-filter>
+            <meta-data
+                android:name="android.accessibilityservice"
+                android:resource="@xml/launcher_accessibility_service_config" />
+        </service>
+
+        <service
+            android:name=".core.notification.LauncherNotificationListenerService"
+            android:label="@string/app_name"
+            android:permission="android.permission.BIND_NOTIFICATION_LISTENER_SERVICE"
+            android:exported="true">
+            <intent-filter>
+                <action android:name="android.service.notification.NotificationListenerService" />
+            </intent-filter>
+        </service>
+
+        <activity android:name=".MainActivity">
+            <!-- Makes the app selectable as the device's Home app (same as FLauncher / ArcLauncher). -->
+            <intent-filter>
+                <action android:name="android.intent.action.MAIN" />
+
+                <category android:name="android.intent.category.HOME" />
+                <category android:name="android.intent.category.DEFAULT" />
+            </intent-filter>
+            <!-- The remote's Apps button, when Android sends it to the Home app. -->
+            <intent-filter>
+                <action android:name="android.intent.action.ALL_APPS" />
+                <category android:name="android.intent.category.DEFAULT" />
+            </intent-filter>
+        </activity>
+    </application>
+</manifest>
