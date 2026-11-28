@@ -121,7 +121,7 @@ fun HomeSettingsDrawer(
                 modifier = Modifier
                     .align(Alignment.CenterEnd)
                     .fillMaxHeight()
-                    .width(420.dp)
+                    .width(500.dp)
                     .padding(24.dp)
                     .clickable(interactionSource = remember { MutableInteractionSource() }, indication = null) { },
                 shape = RoundedCornerShape(24.dp),
@@ -129,28 +129,13 @@ fun HomeSettingsDrawer(
                 border = Border(BorderStroke(1.dp, Color.White.copy(alpha = 0.12f)))
             ) {
                 when (mode) {
-                    DrawerMode.MENU -> Column(Modifier.padding(20.dp), verticalArrangement = Arrangement.spacedBy(10.dp)) {
-                        Text(
-                            stringResource(R.string.home_drawer_title),
-                            style = MaterialTheme.typography.headlineSmall,
-                            color = NuvioTheme.colors.TextPrimary,
-                            modifier = Modifier.padding(bottom = 6.dp)
-                        )
-                        DrawerRow(Icons.Default.Apps, stringResource(R.string.apps_title), Modifier.focusRequester(first)) {
-                            mode = DrawerMode.APPS
-                        }
-                        DrawerRow(Icons.Default.Home, stringResource(R.string.home_drawer_nuvio_settings)) {
-                            onDismiss(); onOpenNuvioSettings()
-                        }
-                        DrawerRow(Icons.Default.Settings, stringResource(R.string.home_drawer_android_settings)) {
-                            try {
-                                context.startActivity(Intent(Settings.ACTION_SETTINGS).addFlags(Intent.FLAG_ACTIVITY_NEW_TASK))
-                                onDismiss()
-                            } catch (_: ActivityNotFoundException) {
-                                // No such page on this firmware: leave the panel open.
-                            }
-                        }
-                    }
+                    // Laid out like Google TV's quick settings (see HomeQuickSettings.kt).
+                    DrawerMode.MENU -> HomeQuickSettingsPanel(
+                        firstFocus = first,
+                        onOpenApps = { mode = DrawerMode.APPS },
+                        onOpenNuvioSettings = onOpenNuvioSettings,
+                        onDismiss = onDismiss
+                    )
                     DrawerMode.APPS -> Column(Modifier.padding(20.dp), verticalArrangement = Arrangement.spacedBy(10.dp)) {
                         Text(
                             stringResource(R.string.apps_title),

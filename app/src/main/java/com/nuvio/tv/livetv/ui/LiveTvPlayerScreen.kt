@@ -76,7 +76,7 @@ import com.nuvio.tv.ui.theme.NuvioTheme
 import kotlinx.coroutines.delay
 import kotlinx.coroutines.launch
 
-private enum class PlayerDialog { NONE, OPTIONS, AUDIO, SUBTITLES, SCREEN_SIZE, STREAM_INFO, SLEEP, BACKUPS, BACKUP_FLYOUT, SOURCES }
+private enum class PlayerDialog { NONE, OPTIONS, AUDIO, SUBTITLES, SCREEN_SIZE, STREAM_INFO, SLEEP, BACKUPS, BACKUP_FLYOUT, SOURCES, MANUAL_ZOOM }
 
 /** Right twice within this long, in full screen: the backup channels flyout. */
 /** Seconds before the next episode of a recording starts by itself. */
@@ -111,6 +111,9 @@ fun LiveTvPlayerScreen(
     val sportsSettings by sports.settings.collectAsStateWithLifecycle()
     val settings by viewModel.settings.collectAsStateWithLifecycle()
     val playback by viewModel.playbackState.collectAsStateWithLifecycle()
+    val zoomVm: com.nuvio.tv.livetv.player.LiveVideoZoomViewModel = hiltViewModel()
+    val videoZoom by zoomVm.zoom.collectAsStateWithLifecycle()
+    androidx.compose.runtime.LaunchedEffect(playback.channelKey) { zoomVm.open(playback.channelKey) }
     val user by viewModel.userState.collectAsStateWithLifecycle()
     val pictureShapes by viewModel.pictureShapes.collectAsStateWithLifecycle()
     val pictureShape = com.nuvio.tv.livetv.player.PictureShape.of(playback.channelKey?.let { pictureShapes[it] })
@@ -903,7 +906,8 @@ fun LiveTvPlayerScreen(
             useSurfaceView = true,
             onAttached = { viewModel.playback.onSurfaceAttached() },
             aspectMode = aspectModeOf(settings.aspectMode),
-            pictureShape = pictureShape
+            pictureShape = pictureShape,
+            videoZoom = videoZoom
         )
 
         // Status in the middle of the screen. "Loading…" only for channels that are actually
@@ -1510,9 +1514,16 @@ fun LiveTvPlayerScreen(
                     zap(1)
                 },
                 onSettings = { dialog = PlayerDialog.NONE; onOpenSettings() },
+                onManualZoom = { dialog = PlayerDialog.MANUAL_ZOOM },
                 onDismiss = { dialog = PlayerDialog.NONE; scope.launch { delay(60); runCatching { rootFocus.requestFocus() } } }
             )
         } ?: run { dialog = PlayerDialog.NONE }
+        PlayerDialog.MANUAL_ZOOM -> com.nuvio.tv.ui.screens.player.VideoZoomDialog(
+            zoom = videoZoom,
+            onAdjust = zoomVm::adjust,
+            onReset = zoomVm::reset,
+            onDismiss = { dialog = PlayerDialog.NONE; scope.launch { delay(60); runCatching { rootFocus.requestFocus() } } }
+        )
         PlayerDialog.AUDIO -> TrackDialog(
             title = stringResource(R.string.iptv_gear_audio),
             options = viewModel.playback.audioTracks(),

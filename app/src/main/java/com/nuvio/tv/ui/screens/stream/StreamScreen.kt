@@ -213,7 +213,7 @@ fun StreamScreen(
         if (openExternalInBrowser(playbackInfo)) {
             return
         }
-        val preference = if (playbackInfo.isServerStream) PlayerPreference.INTERNAL else playerPreference ?: return
+        val preference = playerPreference ?: return // Fork: media-server items follow the player setting too (External, Ask every time)
         if (playbackInfo.isTorrent && !p2pEnabled) {
             pendingTorrentPlaybackInfo = playbackInfo
             showP2pConsentDialog = true
@@ -246,7 +246,7 @@ fun StreamScreen(
             showP2pConsentDialog = true
             return
         }
-        val preference = if (playbackInfo.isServerStream) PlayerPreference.INTERNAL else playerPreference ?: return
+        val preference = playerPreference ?: return // Fork: media-server items follow the player setting too
         if (uiState.isDirectAutoPlayFlow) {
             // Respect player preference even in direct autoplay flow
             when (preference) {

@@ -273,5 +273,13 @@
     <string name="appearance_icon_pack_row_subtitle">Use an Android TV or Projectivy icon pack for your apps</string>
     <string name="launcher_accessibility_service_description">Allows Nuvio to detect the Home button and act as your default launcher.</string>
     <string name="licenses_attributions_nuvio_one_title">Nuvio One</string>
+    <string name="iptv_gear_manual_zoom">Manual zoom</string>
+    <string name="quick_settings_all_settings">All settings</string>
+    <string name="quick_settings_screensaver">Screensaver</string>
+    <string name="quick_settings_network">Network</string>
+    <string name="quick_settings_bluetooth">Bluetooth</string>
+    <string name="quick_settings_display">Display</string>
+    <string name="quick_settings_audio_output">Audio output</string>
+    <string name="quick_settings_accessibility">Accessibility</string>
     <string name="licenses_attributions_nuvio_one_body">This app is a fork of Nuvio One by zoga2o3 (GPL-3.0): OneTube, Music, the Live TV guide, Sports hub and the sync and sports data services all come from it. Not affiliated with or endorsed by Nuvio One.</string>
 </resources>

@@ -14,7 +14,7 @@ files only get small hooks.
 | Strings | `res/values/strings_launcher.xml` (never `strings.xml`) |
 | Other resources (drawables, icons, XML) | New files with a `launcher_` prefix, not edits to existing ones |
 | Manifest entries | `app/src/launcher/AndroidManifest.xml` where possible (see section 4), never scattered through the main manifest |
-| Gradle values | `launcher.gradle.kts` (see section 4), not new blocks in `app/build.gradle.kts` |
+| Gradle values | `launcher.gradle` (Groovy: a Kotlin script applied with `apply(from)` cannot see the Android plugin; see section 4), not new blocks in `app/build.gradle.kts` |
 | Tests | New test files next to ours (`core/launcher/*Test`), not additions to Nuvio One's tests |
 
 ## 2. What a hook in a Nuvio One file may look like
@@ -43,11 +43,11 @@ their files. Keep each one small, comment it with `Fork:` so it is easy to grep,
 
 ## 4. Manifest and Gradle
 
-- **Manifest:** our entries go in `app/src/launcher/AndroidManifest.xml`. `launcher.gradle.kts` points every
+- **Manifest:** our entries go in `app/src/launcher/AndroidManifest.xml`. `launcher.gradle` points every
   build type's source set at it, so it is merged into all variants. Add a `<service>`, `<receiver>`,
   `<queries>` entry, or an `<intent-filter>` for an existing activity (`<activity android:name=".MainActivity">`)
   there. Only an attribute change on an existing Nuvio One element (like `launchMode`) has to go in the main manifest.
-- **Gradle:** our app id, update repo and dependencies go in `app/launcher.gradle.kts`, which is applied from the
+- **Gradle:** our app id, update repo and dependencies go in `app/launcher.gradle`, which is applied from the
   last line of `build.gradle.kts` and so runs after Nuvio One's own settings and overrides them.
 - **Home rows:** the Apps row's behaviour goes in `ModernAppsRow.kt`; the Nuvio One row file only calls it.
   Exhaustive `when`s over Nuvio One's sealed types still need a branch for our types (one line each).

@@ -2046,6 +2046,7 @@ class StreamScreenViewModel @Inject constructor(
                 context = context
             )
             if (launched) rememberPlayedPlugin(playbackInfo.bingeGroup)
+            if (launched && playbackInfo.isServerStream) com.nuvio.tv.data.mediaserver.ServerExternalPlayback.get(context).launched(playUrl) // Fork: media-server item in an external player
         } finally {
             if (!launched) abortExternalHandoff()
         }

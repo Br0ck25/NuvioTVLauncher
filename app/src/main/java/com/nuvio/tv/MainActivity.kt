@@ -427,6 +427,7 @@ open class MainActivity : ComponentActivity() {
         com.nuvio.tv.core.player.ExternalPlayerResultContract()
     ) { result ->
         Log.d("MainActivity", "External player ActivityResult: $result")
+        com.nuvio.tv.data.mediaserver.ServerExternalPlayback.get(this).onResult(result) // Fork: tell the media server where the external player stopped
         externalPlaybackTracker.onActivityResult(result)
     }
 
@@ -1841,7 +1842,7 @@ private fun LegacySidebarScaffold(
     // permanently visible collapsed strip along the left edge.
     // Live TV fork: no permanent collapsed strip or pill in any section. The menu opens with
     // Left/Menu/Back and hides again after a selection, as it already did in Music.
-    val hideSidebarRail = true
+    val hideSidebarRail = currentRoute == Screen.Music.route // Fork: only Music is full-bleed; the rail follows "Collapse sidebar" elsewhere
 
     val sidebarTokens = NuvioComponents.tokens.sidebar
     val closedDrawerWidth = if (sidebarCollapsed || hideSidebarRail) NuvioTheme.spacing.none else sidebarTokens.legacyCollapsedWidth
@@ -2449,7 +2450,7 @@ private fun ModernSidebarScaffold(
         !com.nuvio.tv.livetv.ui.LiveTvFullscreen.pending
     // Music is full-bleed: no permanent collapsed strip or pill until the menu is opened.
     // Live TV fork: the whole app now behaves that way; Left/Menu/Back opens the menu.
-    val hideSidebarRail = true
+    val hideSidebarRail = currentRoute == Screen.Music.route // Fork: only Music is full-bleed; the pill follows "Hide floating pill" elsewhere
     val sidebarTokens = NuvioComponents.tokens.sidebar
     val collapsedSidebarWidth = if (sidebarCollapsed || hideSidebarRail) NuvioTheme.spacing.none else sidebarTokens.collapsedWidth
     val openSidebarWidth = sidebarTokens.expandedWidth

@@ -120,6 +120,8 @@ internal fun GearPanel(
     onReload: () -> Unit,
     onHide: () -> Unit,
     onSettings: () -> Unit,
+    /** Opens the manual zoom (width, height, position) for this channel; null where it isn't offered. */
+    onManualZoom: (() -> Unit)? = null,
     onDismiss: () -> Unit,
     /** "Add to Multiview" for the channel on screen (null where it does not apply). */
     onMultiview: (() -> Unit)? = null
@@ -379,6 +381,7 @@ internal fun GearPanel(
                     bell?.let { (label, value, action) -> add(Triple(label, value, action)) }
                     onMultiview?.let { add(Triple(stringResource(R.string.iptv_gear_add_multiview), null, it)) }
                     add(Triple(stringResource(R.string.iptv_gear_screen_size), sizeLabel, { sizing = true }))
+                    onManualZoom?.let { add(Triple(stringResource(R.string.iptv_gear_manual_zoom), null, it)) }
                     add(Triple(stringResource(R.string.iptv_gear_sleep_timer), sleepLabel, { page = "sleep" }))
                     add(Triple(stringResource(R.string.iptv_gear_previous_channel), null, onPrevious))
                     add(Triple(stringResource(R.string.iptv_gear_stream_info), null, { page = "info" }))

@@ -250,7 +250,7 @@ class InstalledAppsRepository @Inject constructor(
         context.registerReceiver(receiver, filter)
         trySend(Unit)
         awaitClose { runCatching { context.unregisterReceiver(receiver) } }
-    }.conflate().map { query() }.flowOn(Dispatchers.IO)
+    }.refreshSafely(fallback = emptyList()) { query() }.flowOn(Dispatchers.IO)
 
     private companion object {
         const val KEY_ORDER = "order"

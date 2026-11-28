@@ -59,7 +59,13 @@ internal object LivePictureShape {
      * Sizes the picture in [view] to the worked-out shape, then applies the picture-size mode
      * (Fit, Crop, Stretch, …) on top, the same way Nuvio's movie player does but from that shape.
      */
-    fun apply(view: PlayerView, shape: PictureShape, mode: AspectMode?) {
+    fun apply(
+        view: PlayerView,
+        shape: PictureShape,
+        mode: AspectMode?,
+        /** The viewer's manual zoom (full screen only), on top of the mode. */
+        zoom: com.nuvio.tv.ui.screens.player.VideoZoom = com.nuvio.tv.ui.screens.player.VideoZoom.IDENTITY
+    ) {
         val frame = view.findViewById<View>(androidx.media3.ui.R.id.exo_content_frame) as? AspectRatioFrameLayout
             ?: return
         // The preview window (no screen-size mode) is never zoomed or stretched: undo whatever
@@ -74,9 +80,11 @@ internal object LivePictureShape {
         reset(frame)
         val viewAspect = if (view.width > 0 && view.height > 0) view.width.toFloat() / view.height else 0f
         val scale = resolveAspectScale(mode, viewAspect, aspect)
-        frame.scaleX = scale.scaleX
-        frame.scaleY = scale.scaleY
+        val z = com.nuvio.tv.ui.screens.player.VideoZoomPolicy.normalize(zoom)
+        frame.scaleX = scale.scaleX * z.scaleX
+        frame.scaleY = scale.scaleY * z.scaleY
         center(view, frame)
+        com.nuvio.tv.ui.screens.player.applyZoomPan(frame, z, view.width, view.height)
     }
 
     private fun reset(v: View) {

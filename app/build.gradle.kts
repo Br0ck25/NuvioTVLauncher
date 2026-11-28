@@ -785,4 +785,4 @@ dependencies {
 }
 
 // Launcher layer: app id, update repo, default account server and extra dependencies (see LAUNCHER_RULES.md).
-apply(from = "launcher.gradle.kts")
+apply(from = "launcher.gradle")

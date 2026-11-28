@@ -647,14 +647,17 @@ internal fun LivePlayerSurface(
     /** Called when this view takes over the picture (the player's watchdog checks it starts). */
     onAttached: () -> Unit = {},
     /** How to treat the stream's pixel-shape flag (fixes 24/7 movies that come out tall). */
-    pictureShape: com.nuvio.tv.livetv.player.PictureShape = com.nuvio.tv.livetv.player.PictureShape.AUTO
+    pictureShape: com.nuvio.tv.livetv.player.PictureShape = com.nuvio.tv.livetv.player.PictureShape.AUTO,
+    /** The viewer's manual zoom for this channel (full screen only; ignored with no [aspectMode]). */
+    videoZoom: com.nuvio.tv.ui.screens.player.VideoZoom = com.nuvio.tv.ui.screens.player.VideoZoom.IDENTITY
 ) {
     val layout = if (useSurfaceView) R.layout.live_tv_surface_player_view else R.layout.live_tv_texture_player_view
     var viewRef by remember { mutableStateOf<PlayerView?>(null) }
     val currentMode = androidx.compose.runtime.rememberUpdatedState(aspectMode)
     val currentShape = androidx.compose.runtime.rememberUpdatedState(pictureShape)
+    val currentZoom = androidx.compose.runtime.rememberUpdatedState(videoZoom)
     fun reshape(view: PlayerView) = view.post {
-        com.nuvio.tv.livetv.player.LivePictureShape.apply(view, currentShape.value, currentMode.value)
+        com.nuvio.tv.livetv.player.LivePictureShape.apply(view, currentShape.value, currentMode.value, currentZoom.value)
     }
     AndroidView(
         modifier = modifier,
@@ -686,7 +689,7 @@ internal fun LivePlayerSurface(
         reshape(view)
         onDispose { player.removeListener(listener); remove() }
     }
-    androidx.compose.runtime.LaunchedEffect(pictureShape, aspectMode) { viewRef?.let { reshape(it) } }
+    androidx.compose.runtime.LaunchedEffect(pictureShape, aspectMode, videoZoom) { viewRef?.let { reshape(it) } }
     DisposableEffect(Unit) {
         onDispose { viewRef?.player = null }
     }

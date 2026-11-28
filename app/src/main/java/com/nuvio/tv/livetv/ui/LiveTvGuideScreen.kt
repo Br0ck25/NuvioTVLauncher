@@ -1963,13 +1963,18 @@ private fun LiveTvGuideScreenBody(
         if (fullscreen) Box(Modifier.fillMaxSize().background(Color.Black))
         val shapes by viewModel.pictureShapes.collectAsStateWithLifecycle()
         val pictureShapeNow = com.nuvio.tv.livetv.player.PictureShape.of(playback.channelKey?.let { shapes[it] })
+        // Manual zoom for this channel (the player screen's own copy shares it when the guide embeds the player).
+        val zoomVm: com.nuvio.tv.livetv.player.LiveVideoZoomViewModel = androidx.hilt.navigation.compose.hiltViewModel()
+        val videoZoomNow by zoomVm.zoom.collectAsStateWithLifecycle()
+        androidx.compose.runtime.LaunchedEffect(playback.channelKey) { zoomVm.open(playback.channelKey) }
         LivePlayerSurface(
             player = viewModel.playback.player,
             useSurfaceView = true,
             modifier = videoModifier,
             onAttached = { viewModel.playback.onSurfaceAttached() },
             aspectMode = if (fullscreen) aspectModeOf(settings.aspectMode) else null,
-            pictureShape = pictureShapeNow
+            pictureShape = pictureShapeNow,
+            videoZoom = videoZoomNow
         )
         // Rounded corners for the preview. The video surface can't be clipped to a rounded
         // shape on most TVs, so its four corners are painted over in exactly what's behind

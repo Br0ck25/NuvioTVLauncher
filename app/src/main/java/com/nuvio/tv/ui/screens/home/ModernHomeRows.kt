@@ -579,6 +579,7 @@ internal fun ModernRowSection(
         }
 
         val firstItemKey = row.items.list.firstOrNull()?.key
+        LauncherKeepRowAtStart(rowListState, firstItemKey, isActiveRow) // Fork: a row that was at its start stays there when items are added in front
 
         // When placeholder items are replaced by real data and this row
         // is the active row, re-request focus on the first real item.

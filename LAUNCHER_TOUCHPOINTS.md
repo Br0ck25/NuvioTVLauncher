@@ -23,21 +23,24 @@ To check whether a bug is ours or Nuvio One's, build that tag. If the bug is the
 | Apps row in Modern Home, Home top-right panels, side-menu profile picture | `ui/screens/home/ModernAppsRow.kt`, `ui/screens/home/LauncherHomeOverlays.kt`, `ui/components/LauncherSidebarProfile.kt` |
 | Icon pack picker (Settings → Appearance) | `ui/screens/settings/IconPackSettingsSection.kt`, `IconPackPickerDialog.kt` |
 | Apps row catalog pipeline | `ui/screens/home/HomeViewModelInstalledApps.kt` |
+| Live TV manual zoom (per channel; reuses the movie player's zoom dialog) | `livetv/player/LiveVideoZoomViewModel.kt`; hooks in `LivePictureShape`, `LivePlayerSurface`, the Live TV player screen, the guide and the gear panel |
+| Media-server items in an external player (follow the Player setting; report where it stopped) | `data/mediaserver/ServerExternalPlayback.kt`; hooks: two lines in `StreamScreen` (`routePlayback`, `routeAutoPlay`), one in `StreamScreenViewModel.launchExternalPlayer`, one in `MainActivity` (the external-player result) |
+| Home rows stay at their start when items are added in front | `ui/screens/home/LauncherRowStartKeeper.kt` |
 | Merge-driver setup for files that are wholly ours | `.gitattributes`, `scripts/setup-merge-drivers.sh` |
-| Manifest entries (HOME/ALL_APPS filters, services, boot receiver, queries) and Gradle settings | `app/src/launcher/AndroidManifest.xml`, `app/launcher.gradle.kts` |
+| Manifest entries (HOME/ALL_APPS filters, services, boot receiver, queries) and Gradle settings | `app/src/launcher/AndroidManifest.xml`, `app/launcher.gradle` |
 | Tests | `core/apps/*Test`, `core/launcher/*Test`, `core/sync/LauncherHomeCatalogSyncTest` |
 
 ## Nuvio One files we edit (keep each edit small; re-check on every Nuvio One update)
 
 | File | What the hook does |
 |---|---|
-| `MainActivity.kt` | One `LauncherHost` property and about 10 one-line calls into it (`onCreate`, `onResume`, `onPause`, `onDestroy`, `onNewIntent`, `onWindowFocusChanged`, `onDispatchKeyEvent`, `onMappedKeyEvent`, `suppressAppExit`), plus `LauncherSetupGate`, `LauncherNavigationEffects`, `LauncherProfileSwitchEffect`, `attachListChannelsToProfile`, the Apps and Settings menu entries, sidebar `launcherMode` and the floating-pill profile. The logic is in `core/launcher/LauncherHost.kt` and `ui/screens/setup/LauncherHostCompose.kt` |
+| `MainActivity.kt` | One `LauncherHost` property and about 10 one-line calls into it (`onCreate`, `onResume`, `onPause`, `onDestroy`, `onNewIntent`, `onWindowFocusChanged`, `onDispatchKeyEvent`, `onMappedKeyEvent`, `suppressAppExit`), plus `LauncherSetupGate`, `LauncherNavigationEffects`, `LauncherProfileSwitchEffect`, `attachListChannelsToProfile`, the Apps and Settings menu entries, sidebar `launcherMode`, the floating-pill profile and `hideSidebarRail` (two lines, `Fork:`: only Music hides the side menu rail / floating pill; Nuvio One 1.2.0-beta.4 hides them in every section, which left "Collapse sidebar", "Hide floating pill" and "Floating Pill Shows Profile" with nothing to control). The logic is in `core/launcher/LauncherHost.kt` and `ui/screens/setup/LauncherHostCompose.kt` |
 | `NuvioApplication.kt` | Heavy services made lazy and started off the main thread so the accessibility service can bind early |
 | `AndroidManifest.xml` | `MainActivity` launch mode `singleTask`, and the app-icon aliases (Nuvio One's icon activities became `activity-alias`). Everything else of ours is in `app/src/launcher/AndroidManifest.xml` |
 | `full/AndroidManifest.xml` | `WRITE_SECURE_SETTINGS` permission (full flavor only) |
-| `app/build.gradle.kts` | One `apply(from = "launcher.gradle.kts")` at the end. App id, update repo, default Nuvio account server and key, ADB libraries and test deps are all in `app/launcher.gradle.kts` |
+| `app/build.gradle.kts` | One `apply(from = "launcher.gradle")` at the end. App id, update repo, default Nuvio account server and key, ADB libraries and test deps are all in `app/launcher.gradle` |
 | `HomeScreen.kt` | One `LauncherHomeOverlays(...)` call (top bar, settings and notifications drawers; the code is in `LauncherHomeOverlays.kt`; Nuvio One's Downloads button is the first button in our bar and keeps its `downloadsFocusRequester`), the `onNavigateToSettings` parameter, and `hasInstalledAppsContent` in the loading and empty-state checks |
-| `ModernHomeRows` | Four calls into `ModernAppsRow.kt` (`rememberModernAppsRow`, `ModernAppsRowEffects`, `moveKeysModifier`, `ModernAppsRowTile`) and the `InstalledApp` branches of exhaustive `when`s |
+| `ModernHomeRows` | Four calls into `ModernAppsRow.kt` (`rememberModernAppsRow`, `ModernAppsRowEffects`, `moveKeysModifier`, `ModernAppsRowTile`), one `LauncherKeepRowAtStart` call (`Fork:`) and the `InstalledApp` branches of exhaustive `when`s |
 | `ClassicHomeContent`, `GridHomeContent`, `ModernHomeContent`, `ModernHomeRowsList`, `ModernHomeModels`, `ModernHomePresentation` | The Apps row as a row type (`when` branches, `InstalledAppsHomeRow` call) and "Home key / second Back goes to the top" (`focusTopOfHome`, still inline: it uses these files' local state) |
 | `HomeViewModel`, `HomeViewModelCatalogPipeline`, `HomeViewModelCatalogUtils`, `HomeUiState`, `CatalogOrderViewModel` | The Apps row is a catalog entry, so it can be reordered and turned off in Reorder Home Catalogs |
 | `NuvioNavHost.kt`, `Screen.kt` | Apps route, settings navigation |
