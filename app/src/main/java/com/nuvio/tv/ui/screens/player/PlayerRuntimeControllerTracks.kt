@@ -221,7 +221,8 @@ internal fun PlayerRuntimeController.updateAvailableTracks(tracks: Tracks) {
                             name = name,
                             language = format.language,
                             trackId = format.id,
-                            codec = CustomDefaultTrackNameProvider.formatNameFromMime(format.sampleMimeType),
+                            codec = CustomDefaultTrackNameProvider.formatNameFromMime(format.sampleMimeType)
+                                ?: CustomDefaultTrackNameProvider.formatNameFromMime(format.codecs),
                             isForced = forced,
                             isSelected = isSelected
                         )
