@@ -16,8 +16,8 @@ data class AppIconSettingsState(
     val selected: AppIconOption = AppIconOption.ORIGINAL,
     val pending: AppIconOption? = null,
     val changeFailed: Boolean = false,
-    /** Live TV fork: show the Nuvio One Live TV badge on the icon and banner (off: the plain Nuvio One icons). */
-    val iptvBranding: Boolean = true
+    /** Live TV fork: show the Nuvio One Live TV badge on the icon and banner (off, the default: the Nuvio TV Launcher icons). */
+    val iptvBranding: Boolean = false
 )
 
 @Singleton
@@ -43,7 +43,7 @@ class AppIconManager @Inject constructor(
         AppIconOption.GRAPHITE to "com.nuvio.tv.livetv.branding.IptvIconGraphite"
     )
     private val brandingPrefs = context.getSharedPreferences("livetv_app_icon", Context.MODE_PRIVATE)
-    private fun iptvBranding() = brandingPrefs.getBoolean("iptv_branding", true)
+    private fun iptvBranding() = brandingPrefs.getBoolean("iptv_branding", false)
     private fun allClasses() = launcherClasses.values + iptvClasses.values
     private fun classFor(option: AppIconOption, iptv: Boolean) =
         (if (iptv) iptvClasses else launcherClasses).getValue(option)
@@ -85,7 +85,7 @@ class AppIconManager @Inject constructor(
             .getOrDefault(PackageManager.COMPONENT_ENABLED_STATE_DEFAULT)
         return setting == PackageManager.COMPONENT_ENABLED_STATE_ENABLED ||
             // The one entry the manifest enables by default.
-            (setting == PackageManager.COMPONENT_ENABLED_STATE_DEFAULT && className == iptvClasses.getValue(AppIconOption.ORIGINAL))
+            (setting == PackageManager.COMPONENT_ENABLED_STATE_DEFAULT && className == launcherClasses.getValue(AppIconOption.ORIGINAL))
     }
 
     fun select(option: AppIconOption): Boolean {

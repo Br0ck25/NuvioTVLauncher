@@ -42,18 +42,16 @@
             android:excludeFromRecents="true"
             android:theme="@android:style/Theme.DeviceDefault.NoActionBar.Fullscreen" />
 
-        <!-- Live TV fork: Nuvio One Live TV icons (one per icon color). The original Nuvio
-             icons stay available: Settings > Appearance > App icon > "Live TV badge on the icon". -->
-        <activity
-            android:name="com.nuvio.tv.launcher.AppIconDefault"
-            android:enabled="false"
-            tools:replace="android:enabled" />
-
+        <!-- Live TV fork: Nuvio One Live TV icons (one per icon color). Fork: the Nuvio TV Launcher icon (the
+             AppIconDefault alias in the main manifest) is the one enabled by default; these are the optional
+             "Live TV badge on the icon" versions (Settings > Appearance > App icon). This used to disable the
+             main alias with an <activity> element of the same name, which the manifest merger cannot match to an
+             <activity-alias>: the app then had two components with one name and launchers could not open it. -->
         <activity
             android:name="com.nuvio.tv.livetv.branding.IptvIconDefault"
             android:banner="@mipmap/iptv_banner"
             android:configChanges="orientation|screenSize|smallestScreenSize|screenLayout|density|uiMode|keyboard|keyboardHidden|navigation|layoutDirection|fontScale|locale"
-            android:enabled="true"
+            android:enabled="false"
             android:exported="true"
             android:icon="@mipmap/iptv_ic_launcher"
             android:label="@string/app_name"
